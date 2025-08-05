@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { getDoc, doc } from 'firebase/firestore';
+import { app, db } from '@/lib/firebase';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -21,12 +22,22 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // تسجيل الدخول من Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await userCredential.user.getIdToken();
+      const uid = userCredential.user.uid;
 
-      const isAdmin = email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-      router.push(isAdmin ? '/admin/dashboard' : '/dashboard');
-    } catch (err: unknown) {
+      // قراءة الدور (role) من Firestore
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      const role = userDoc.exists() ? userDoc.data()?.role : 'user';
+
+      // إعادة التوجيه حسب الدور
+      if (role === 'admin') {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
+
+    } catch (err) {
       console.error('Login error:', err);
       setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
     } finally {
