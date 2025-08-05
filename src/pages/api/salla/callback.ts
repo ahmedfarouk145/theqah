@@ -1,18 +1,27 @@
-// File: src/pages/api/salla/callback.ts
+
 import type { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
 import { db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { code, uid } = req.query;
+  const { code, state } = req.query;
 
   if (!code || typeof code !== 'string') {
     return res.status(400).send('Missing code');
   }
 
-  if (!uid || typeof uid !== 'string') {
-    return res.status(400).send('Missing UID');
+  // Get uid from state parameter
+  let uid: string;
+  try {
+    if (state && typeof state === 'string') {
+      const decodedState = JSON.parse(atob(state));
+      uid = decodedState.uid;
+    } else {
+      return res.status(400).send('Missing state parameter');
+    }
+  } catch (error) {
+    return res.status(400).send('Invalid state parameter');
   }
 
   try {
@@ -22,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         code,
         client_id: process.env.SALLA_CLIENT_ID,
         client_secret: process.env.SALLA_CLIENT_SECRET,
-        redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL}/api/salla/callback?uid=${uid}`,
+        redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL}/api/salla/callback`, // No uid here
       },
     });
 
