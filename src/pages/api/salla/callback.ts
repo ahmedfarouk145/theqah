@@ -1,4 +1,5 @@
 // 3. Fixed Callback Handler (api/salla/callback.ts)
+
 import type { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
 import { db } from '@/lib/firebase';
@@ -6,7 +7,7 @@ import { doc, setDoc } from 'firebase/firestore';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log('🔄 Salla callback received:', req.query);
-  
+
   const { code, state, error, error_description } = req.query;
 
   // Handle OAuth errors
@@ -20,12 +21,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).send('Missing authorization code');
   }
 
-  // Extract uid from state parameter
+  // ✅ Extract UID directly from state (no decoding needed)
   let uid: string;
   try {
     if (state && typeof state === 'string') {
-      const decodedState = JSON.parse(atob(state));
-      uid = decodedState.uid;
+      uid = state;
       console.log('✅ Extracted UID from state:', uid);
     } else {
       console.error('❌ Missing state parameter');
@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     console.log('🔄 Exchanging code for tokens...');
-    
+
     const tokenRes = await axios.post('https://accounts.salla.sa/oauth/token', null, {
       params: {
         grant_type: 'authorization_code',
@@ -73,17 +73,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.redirect('/dashboard?connected=salla');
   } catch (err: unknown) {
-  if (axios.isAxiosError(err)) {
-    console.error('❌ Salla OAuth Error:', {
-      message: err.message,
-      response: err.response?.data,
-      status: err.response?.status,
-    });
+    if (axios.isAxiosError(err)) {
+      console.error('❌ Salla OAuth Error:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+      });
 
-    const errorMessage = err.response?.data?.message || 'حدث خطأ أثناء الاتصال مع سلة';
-    res.redirect(`/signup?error=${encodeURIComponent(errorMessage)}`);
-  } else {
-    console.error('❌ Unknown Error:', err);
-    res.redirect(`/signup?error=${encodeURIComponent('حدث خطأ غير متوقع')}`);
+      const errorMessage = err.response?.data?.message || 'حدث خطأ أثناء الاتصال مع سلة';
+      res.redirect(`/signup?error=${encodeURIComponent(errorMessage)}`);
+    } else {
+      console.error('❌ Unknown Error:', err);
+      res.redirect(`/signup?error=${encodeURIComponent('حدث خطأ غير متوقع')}`);
+    }
   }
-  }}
+}
