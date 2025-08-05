@@ -14,7 +14,7 @@ const config: Config = {
   	extend: {
   		fontFamily: {
   			sans: [
-  				'Cairo"',
+  				'Cairo',
   				'ui-sans-serif',
   				'system-ui'
   			]
