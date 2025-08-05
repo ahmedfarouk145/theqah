@@ -45,11 +45,13 @@ export default function SignupPage() {
       // 3. فتح صفحة تسجيل دخول سلة في نافذة جديدة
       window.open('https://salla.sa/login', '_blank');
 
-      // 4. التوجيه إلى OAuth بعد 4 ثواني مع تمرير uid عبر state parameter
+      // 4. التوجيه إلى OAuth مع تمرير uid عبر state parameter
       setTimeout(() => {
-        const redirectUri = `${BASE_URL}/api/salla/callback`; // Remove uid from here
-        const state = btoa(JSON.stringify({ uid })); // Pass uid via state parameter
+        const redirectUri = `${BASE_URL}/api/salla/callback`;
+        const state = btoa(JSON.stringify({ uid, timestamp: Date.now() }));
         const sallaAuthUrl = `https://salla.sa/oauth/authorize?response_type=code&client_id=${SALLA_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
+        
+        console.log('🔗 Redirecting to Salla OAuth:', sallaAuthUrl);
         window.location.href = sallaAuthUrl;
       }, 4000);
     } catch (err) {

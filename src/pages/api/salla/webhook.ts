@@ -1,7 +1,15 @@
-// File: src/pages/api/salla/webhook.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import crypto from 'crypto';
+
+function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return signature === expectedSignature;
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -9,39 +17,82 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const event = req.headers['x-salla-event'] as string;
-  const payload = req.body;
+  const signature = req.headers['x-salla-signature'] as string;
+  const payload = JSON.stringify(req.body);
 
-  console.log('[SALLA EVENT]', event, JSON.stringify(payload, null, 2));
+  console.log('🔄 Salla Webhook received:', {
+    event,
+    signature: signature ? 'present' : 'missing',
+    payload: req.body,
+  });
+
+  // Verify webhook signature if secret is configured
+  if (process.env.SALLA_WEBHOOK_SECRET && signature) {
+    if (!verifyWebhookSignature(payload, signature, process.env.SALLA_WEBHOOK_SECRET)) {
+      console.error('❌ Invalid webhook signature');
+      return res.status(401).json({ message: 'Invalid signature' });
+    }
+  }
 
   try {
     switch (event) {
       case 'app.store.authorize': {
-        const { store_id, access_token, refresh_token } = payload.data;
+        const { store_id, access_token, refresh_token, expires_in } = req.body.data;
 
-        if (!store_id || !access_token || !refresh_token) break;
+        console.log('✅ Store authorization received:', { store_id });
 
-        const storeRef = doc(db, 'stores', store_id.toString());
-        await setDoc(
-          storeRef,
-          {
+        if (!store_id || !access_token || !refresh_token) {
+          console.error('❌ Missing required authorization data');
+          break;
+        }
+
+        // Find the store document by searching for matching store_id
+        const storesQuery = query(
+          collection(db, 'stores'),
+          where('salla.store_id', '==', store_id.toString())
+        );
+        
+        const storesSnapshot = await getDocs(storesQuery);
+        
+        if (!storesSnapshot.empty) {
+          // Update existing store
+          const storeDoc = storesSnapshot.docs[0];
+          await updateDoc(storeDoc.ref, {
+            'salla.access_token': access_token,
+            'salla.refresh_token': refresh_token,
+            'salla.expires_in': expires_in,
+            'salla.connected_at': new Date().toISOString(),
+            'salla.connected': true,
+            sallaConnected: true,
+          });
+          console.log('✅ Updated existing store authorization:', storeDoc.id);
+        } else {
+          // Create new store document if not found
+          await setDoc(doc(db, 'stores', store_id.toString()), {
             salla: {
+              store_id: store_id.toString(),
               access_token,
               refresh_token,
-              connectedAt: new Date().toISOString(),
+              expires_in,
+              connected_at: new Date().toISOString(),
+              connected: true,
             },
-          },
-          { merge: true }
-        );
-
-        console.log('✅ تم ربط المتجر بالتطبيق:', store_id);
+            sallaConnected: true,
+            createdAt: new Date().toISOString(),
+          });
+          console.log('✅ Created new store document:', store_id);
+        }
         break;
       }
 
       case 'orders.create': {
-        const order = payload.data;
-        const storeId = payload.store_id;
+        const order = req.body.data;
+        const storeId = req.body.store_id;
 
-        if (!storeId || !order) break;
+        if (!storeId || !order) {
+          console.error('❌ Missing order or store data');
+          break;
+        }
 
         await setDoc(doc(db, 'orders', order.id.toString()), {
           id: order.id.toString(),
@@ -59,31 +110,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           source: 'salla',
           reviewSent: false,
         });
+
+        console.log('✅ Order created:', order.id);
         break;
       }
 
       case 'orders.status_updated': {
-        const order = payload.data;
-        const orderRef = doc(db, 'orders', order.id.toString());
-        await updateDoc(orderRef, { status: order.status });
+        const order = req.body.data;
+        if (order?.id) {
+          const orderRef = doc(db, 'orders', order.id.toString());
+          await updateDoc(orderRef, { 
+            status: order.status,
+            updatedAt: new Date().toISOString(),
+          });
+          console.log('✅ Order status updated:', order.id, order.status);
+        }
         break;
       }
 
       case 'orders.refunded':
       case 'orders.cancelled': {
-        const order = payload.data;
-        const orderRef = doc(db, 'orders', order.id.toString());
-        await updateDoc(orderRef, { status: 'cancelled' });
+        const order = req.body.data;
+        if (order?.id) {
+          const orderRef = doc(db, 'orders', order.id.toString());
+          await updateDoc(orderRef, { 
+            status: 'cancelled',
+            updatedAt: new Date().toISOString(),
+          });
+          console.log('✅ Order cancelled/refunded:', order.id);
+        }
         break;
       }
 
       default:
-        console.log('❌ حدث غير مدعوم حالياً:', event);
+        console.log('ℹ️ Unhandled event:', event);
     }
 
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error('[SALLA Webhook ERROR]', error);
+    console.error('❌ Webhook handling error:', error);
     return res.status(500).json({ message: 'Webhook handling error' });
   }
 }
