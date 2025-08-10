@@ -22,17 +22,24 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [storeName, setStoreName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showSallaButton, setShowSallaButton] = useState(false);
+  const [createdUid, setCreatedUid] = useState('');
+
+  const redirectToSalla = (uid: string) => {
+    const redirectUri = `${BASE_URL}/api/salla/callback`;
+    const state = uid;
+    const sallaAuthUrl = `https://salla.sa/oauth/authorize?response_type=code&client_id=${SALLA_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
+    window.location.href = sallaAuthUrl;
+  };
 
   const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // 1. إنشاء المستخدم
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCred.user.uid;
 
-      // 2. حفظ بيانات المتجر
       await setDoc(doc(db, 'stores', uid), {
         storeName,
         email,
@@ -40,20 +47,9 @@ export default function SignupPage() {
         sallaConnected: false,
       });
 
-      toast.success('🎉 تم إنشاء الحساب بنجاح');
-
-      // 3. فتح صفحة تسجيل دخول سلة في نافذة جديدة
-      window.open('https://salla.sa/login', '_blank');
-
-      // 4. التوجيه إلى OAuth مع تمرير uid عبر state parameter
-      setTimeout(() => {
-        const redirectUri = `${BASE_URL}/api/salla/callback`;
-        const state = btoa(JSON.stringify({ uid, timestamp: Date.now() }));
-        const sallaAuthUrl = `https://salla.sa/oauth/authorize?response_type=code&client_id=${SALLA_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
-        
-        console.log('🔗 Redirecting to Salla OAuth:', sallaAuthUrl);
-        window.location.href = sallaAuthUrl;
-      }, 4000);
+      toast.success('🎉 تم إنشاء الحساب بنجاح. اضغط على الزر أدناه لربط متجر سلة');
+      setShowSallaButton(true);
+      setCreatedUid(uid);
     } catch (err) {
       const error = err as AuthError;
       const messages: Record<string, string> = {
@@ -128,6 +124,16 @@ export default function SignupPage() {
           >
             {loading ? '⏳ جاري التسجيل...' : '🚀 إنشاء الحساب'}
           </Button>
+
+          {showSallaButton && (
+            <Button
+              type="button"
+              onClick={() => redirectToSalla(createdUid)}
+              className="w-full py-2 bg-[#0d8e52] hover:bg-[#0a7342] text-white font-semibold rounded-lg transition"
+            >
+              🔗 ربط متجر سلة
+            </Button>
+          )}
 
           <p className="text-center text-sm text-gray-600 mt-2">
             لديك حساب؟{' '}
