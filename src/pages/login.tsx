@@ -3,13 +3,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { getDoc, doc } from 'firebase/firestore';
-import { app, db } from '@/lib/firebase';
 import Link from 'next/link';
+import { loginUser } from '@/lib/auth/login';
+;
 
 export default function LoginPage() {
-  const auth = getAuth(app);
   const router = useRouter();
 
   const [email, setEmail] = useState('');
@@ -23,22 +21,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // تسجيل الدخول من Firebase Auth
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const uid = userCredential.user.uid;
+      const { role } = await loginUser(email, password);
 
-      // جلب الدور من Firestore
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      const role = userDoc.exists() ? userDoc.data()?.role : 'user';
-
-      // جلب التوكين وتخزينه في localStorage
-      const token = await userCredential.user.getIdToken();
-      localStorage.setItem('token', token);
-
-      // Debug logs
-      console.log("UID:", uid);
-      console.log("Firestore role value:", `"${role}"`);
-      console.log("Token stored:", token);
+      console.log("User role:", role);
 
       // التوجيه حسب الدور
       if (role && role.trim() === 'admin') {
@@ -46,7 +31,6 @@ export default function LoginPage() {
       } else {
         router.push('/dashboard');
       }
-
     } catch (err) {
       console.error('Login error:', err);
       setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');

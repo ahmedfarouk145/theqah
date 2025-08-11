@@ -10,12 +10,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    await verifyAdmin(req); // ✅ تحقق من التوكن
+    await verifyAdmin(req); // ✅ تحقق من الصلاحيات
 
     const { storeName, stars, published } = req.query;
 
     const reviewsRef = collection(db, 'reviews');
-    const filters = [];
+     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const filters: any[] = [];
 
     if (storeName) filters.push(where('storeName', '==', storeName));
     if (stars) filters.push(where('stars', '==', Number(stars)));
@@ -29,7 +30,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         : query(reviewsRef, orderBy('createdAt', 'desc'));
 
     const snapshot = await getDocs(q);
-    const reviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const reviews = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
     return res.status(200).json({ reviews });
   } catch (error) {
