@@ -26,12 +26,21 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
 
-      // قراءة الدور (role) من Firestore
+      // جلب الدور من Firestore
       const userDoc = await getDoc(doc(db, 'users', uid));
       const role = userDoc.exists() ? userDoc.data()?.role : 'user';
 
-      // إعادة التوجيه حسب الدور
-      if (role === 'admin') {
+      // جلب التوكين وتخزينه في localStorage
+      const token = await userCredential.user.getIdToken();
+      localStorage.setItem('token', token);
+
+      // Debug logs
+      console.log("UID:", uid);
+      console.log("Firestore role value:", `"${role}"`);
+      console.log("Token stored:", token);
+
+      // التوجيه حسب الدور
+      if (role && role.trim() === 'admin') {
         router.push('/admin/dashboard');
       } else {
         router.push('/dashboard');
@@ -51,12 +60,16 @@ export default function LoginPage() {
         onSubmit={handleLogin}
         className="w-full max-w-md bg-white p-8 rounded-xl shadow-md border"
       >
-        <h1 className="text-3xl font-extrabold text-center text-green-900 mb-6">تسجيل الدخول إلى ثقة</h1>
+        <h1 className="text-3xl font-extrabold text-center text-green-900 mb-6">
+          تسجيل الدخول إلى ثقة
+        </h1>
 
         {error && <div className="mb-4 text-red-600 text-sm text-center">{error}</div>}
 
         <div className="mb-4">
-          <label className="block mb-1 text-sm font-medium text-gray-700">البريد الإلكتروني</label>
+          <label className="block mb-1 text-sm font-medium text-gray-700">
+            البريد الإلكتروني
+          </label>
           <input
             type="email"
             required
@@ -68,7 +81,9 @@ export default function LoginPage() {
         </div>
 
         <div className="mb-6">
-          <label className="block mb-1 text-sm font-medium text-gray-700">كلمة المرور</label>
+          <label className="block mb-1 text-sm font-medium text-gray-700">
+            كلمة المرور
+          </label>
           <input
             type="password"
             required
