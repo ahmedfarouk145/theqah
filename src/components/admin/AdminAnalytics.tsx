@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import axios from '@/lib/axiosInstance';
 
 export default function AdminAnalytics() {
   const [stats, setStats] = useState<{

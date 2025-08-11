@@ -1,7 +1,8 @@
+// src/components/admin/AdminReports.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import axios from '@/lib/axiosInstance';
 
 interface Report {
   id: string;
