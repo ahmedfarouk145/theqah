@@ -2,9 +2,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
-import { createShortLink } from "@/server/short-links"; // ✅ المسار الصحيح
-import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail"; // ✅ المسار الصحيح
-import { sendSms } from "@/server/messaging/send-sms"; // ✅ شيلنا واتساب
+import { createShortLink } from "@/server/short-links";
+import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
+import { sendSms } from "@/server/messaging/send-sms";
 
 export const config = { api: { bodyParser: false } };
 
@@ -54,11 +54,33 @@ function readRawBody(req: NextApiRequest): Promise<Buffer> {
   });
 }
 
+function timingSafeEq(a: string, b: string) {
+  const A = Buffer.from(a);
+  const B = Buffer.from(b);
+  if (A.length !== B.length) return false;
+  return crypto.timingSafeEqual(A, B);
+}
+
+function normalizeSig(given: string) {
+  // بعض الأنظمة ترسل "sha256=....."
+  return given.startsWith("sha256=") ? given.slice(7) : given;
+}
+
+/**
+ * يدعم التوقيع بصيغة hex أو base64 ويمنع أخطاء اختلاف الأطوال
+ */
 function validSignature(raw: Buffer, secret: string, given?: string) {
-  if (!secret) return true; // غيّرها لـ false لو عايز تجبر وجود السر
+  // لو عايز تجبر وجود السر، غيّر الشرط التالي إلى: if (!secret) return false;
+  if (!secret) return true;
   if (!given) return false;
-  const mac = crypto.createHmac("sha256", secret).update(raw).digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(given));
+
+  const sig = normalizeSig(given);
+
+  const h = crypto.createHmac("sha256", secret).update(raw);
+  const expectedHex = h.digest("hex");
+  const expectedB64 = Buffer.from(expectedHex, "hex").toString("base64");
+
+  return timingSafeEq(sig, expectedHex) || timingSafeEq(sig, expectedB64);
 }
 
 const DONE = new Set(["paid", "fulfilled", "delivered", "completed", "complete"]);
@@ -122,11 +144,7 @@ async function upsertOrderSnapshot(db: Firestore, order: SallaOrder, storeUid?: 
   );
 }
 
-async function ensureInviteForOrder(
-  db: Firestore,
-  order: SallaOrder,
-  eventRaw: UnknownRecord
-) {
+async function ensureInviteForOrder(db: Firestore, order: SallaOrder, eventRaw: UnknownRecord) {
   const orderId = String(order.id ?? order.order_id ?? "");
   if (!orderId) return;
 
@@ -170,7 +188,7 @@ async function ensureInviteForOrder(
     id: tokenId,
     platform: "salla",
     orderId,
-    storeUid,                 // ✅ توحيد التسمية
+    storeUid, // ✅ توحيد التسمية
     productId: mainProductId,
     productIds,
     createdAt: Date.now(),
@@ -186,7 +204,7 @@ async function ensureInviteForOrder(
     tokenId,
     orderId,
     platform: "salla",
-    storeUid,                 // ✅ توحيد التسمية
+    storeUid, // ✅ توحيد التسمية
     productId: mainProductId,
     productIds,
     customer: {
@@ -235,14 +253,23 @@ async function voidInvitesForOrder(db: Firestore, orderId: string, reason: strin
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
+  // 1) raw body + signature
   const raw = await readRawBody(req);
   const secret = process.env.SALLA_WEBHOOK_SECRET ?? "";
   const sig = (req.headers["x-salla-signature"] as string) ?? "";
-  if (!validSignature(raw, secret, sig)) return res.status(401).json({ error: "invalid_signature" });
 
-  const db = dbAdmin();
+  if (!validSignature(raw, secret, sig)) {
+    return res.status(401).json({ error: "invalid_signature" });
+  }
 
-  const body = JSON.parse(raw.toString("utf8") || "{}") as SallaWebhookBody;
+  // 2) parse body (آمن بعد التحقق)
+  let body: SallaWebhookBody;
+  try {
+    body = JSON.parse(raw.toString("utf8") || "{}") as SallaWebhookBody;
+  } catch {
+    return res.status(400).json({ error: "bad_json" });
+  }
+
   const event = String(body.event || "");
   const data = (body.data ?? {}) as SallaOrder;
   const orderId = String(data.id ?? data.order_id ?? "");
@@ -250,23 +277,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     data.status ?? data.order_status ?? data.new_status ?? data.shipment_status ?? ""
   );
 
-  // Idempotency
-  const idemKey = crypto.createHash("sha256").update((sig || "") + "|").update(raw).digest("hex");
+  const db = dbAdmin();
+
+  // 3) Idempotency أقوى: استخدم signature + event + orderId + raw
+  const idemKey = crypto
+    .createHash("sha256")
+    .update((sig || "") + "|")
+    .update(event + "|" + orderId + "|")
+    .update(raw)
+    .digest("hex");
+
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
-  if ((await idemRef.get()).exists) return res.status(200).json({ ok: true, deduped: true });
+  if ((await idemRef.get()).exists) {
+    return res.status(200).json({ ok: true, deduped: true });
+  }
   await idemRef.set({ at: Date.now(), event, orderId, status });
 
-  // Snapshot
+  // 4) Snapshot
   const eventRaw = (body.data ?? {}) as UnknownRecord;
   const storeUidFromEvent = pickStoreUidFromSalla(eventRaw) || null;
   await upsertOrderSnapshot(db, data, storeUidFromEvent);
 
-  // Process
+  // 5) Process by status
   if (event.includes("orders.status.update") || event.includes("orders.") || event.includes("order.")) {
-    if (DONE.has(status)) await ensureInviteForOrder(db, data, eventRaw);
-    if (CANCEL.has(status)) await voidInvitesForOrder(db, orderId, `status_${status}`);
+    if (DONE.has(status)) {
+      await ensureInviteForOrder(db, data, eventRaw);
+    }
+    if (CANCEL.has(status)) {
+      await voidInvitesForOrder(db, orderId, `status_${status}`);
+    }
   }
 
+  // 6) Log processed
   await db
     .collection("processed_events")
     .doc(keyOf(event, orderId, status))

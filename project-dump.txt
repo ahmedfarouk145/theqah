@@ -1,7 +1,7 @@
 ====[ PROJECT DUMP - METADATA ]=====================================================================
 Root   : D:\theqah
 Output : D:\theqah\project-dump.txt
-When   : 2025-08-30T03:58:15.449Z
+When   : 2025-08-30T16:39:06.772Z
 Rules  : skip binaries=true, skip .env*=true, maxBytes=1.0 MB
 
 ====[ FILE LIST ]===================================================================================
@@ -67,7 +67,7 @@ src/components/ui/select.tsx	(5.6 KB)
 src/components/ui/separator.tsx	(756 B)
 src/components/ui/sheet.tsx	(4.2 KB)
 src/components/ui/switch.tsx	(1.1 KB)
-src/components/UploadcareWidget.tsx	(2.8 KB)
+src/components/UploadcareWidget.tsx	(3.0 KB)
 src/contexts/AuthContext.tsx	(1.6 KB)
 src/get-admin-token.ts	(667 B)
 src/lib/auth/login.ts	(2.1 KB)
@@ -113,7 +113,7 @@ src/pages/api/orders/add.ts	(3.1 KB)
 src/pages/api/orders/get.ts	(2.3 KB)
 src/pages/api/orders/import.ts	(3.1 KB)
 src/pages/api/orders/index.ts	(1.6 KB)
-src/pages/api/orders/send-review.ts	(6.6 KB)
+src/pages/api/orders/send-review.ts	(10.3 KB)
 src/pages/api/public/reviews.ts	(3.8 KB)
 src/pages/api/report-review.ts	(1.1 KB)
 src/pages/api/reviews/[id]/reply.ts	(2.4 KB)
@@ -163,7 +163,7 @@ src/server/auth/requireAdmin.ts	(913 B)
 src/server/auth/requireUser.ts	(572 B)
 src/server/firebase-admin.ts	(342 B)
 src/server/idempotency.ts	(919 B)
-src/server/messaging/email-dmail.ts	(1.2 KB)
+src/server/messaging/email-dmail.ts	(1.5 KB)
 src/server/messaging/invite-text.ts	(318 B)
 src/server/messaging/phone.ts	(674 B)
 src/server/messaging/send-invite.ts	(5.2 KB)
@@ -12567,6 +12567,7 @@ Size: 128 B
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
         renderList(lastData);
+        //esli
       } catch (e) {
         list.innerHTML = "";
         list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "تعذّر التحميل" : "Failed to load"));
@@ -18065,14 +18066,14 @@ Switch.displayName = SwitchPrimitives.Root.displayName
 export { Switch }
 ====[ END FILE: src/components/ui/switch.tsx ]======================================================
 
-====[ START FILE: src/components/UploadcareWidget.tsx (2.8 KB) ]====================================
+====[ START FILE: src/components/UploadcareWidget.tsx (3.0 KB) ]====================================
 // src/components/UploadcareWidget.tsx
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { FileUploaderRegular } from "@uploadcare/react-uploader/next";
-import "@uploadcare/react-uploader/core.css";
-import Image from "next/image";
+import { useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import '@uploadcare/react-uploader/core.css';
+import Image from 'next/image';
 
 type UploadedFile = {
   cdnUrl: string;
@@ -18089,14 +18090,22 @@ type Props = {
   acceptImagesOnly?: boolean;
 };
 
-// أنواع خفيفة علشان نتجنّب any
-type UploaderFileInfo = {
-  cdnUrl?: string;
-  name?: string;
-  size?: number;
-  mimeType?: string;
-  mime?: string;
-} | null;
+// لفّ FileUploaderRegular بديناميك مع تعطيل SSR
+const FileUploaderRegular = dynamic(
+  () => import('@uploadcare/react-uploader').then((m) => m.FileUploaderRegular),
+  { ssr: false }
+);
+
+// أنواع خفيفة علشان أي تغيّرات في lib
+type UploaderFileInfo =
+  | {
+      cdnUrl?: string;
+      name?: string;
+      size?: number;
+      mimeType?: string;
+      mime?: string;
+    }
+  | null;
 
 type UploaderState = {
   allEntries?: Array<{ fileInfo?: UploaderFileInfo }>;
@@ -18109,21 +18118,30 @@ export default function UploadcareWidget({
   maxFileSizeMB = Number(process.env.NEXT_PUBLIC_UPLOADCARE_MAX_FILE_SIZE_MB || 8),
   acceptImagesOnly = true,
 }: Props) {
-  const pubkey = process.env.NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY || "";
+  const pubkey = process.env.NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY || '';
 
-  const accept = useMemo<string | undefined>(() => (acceptImagesOnly ? "image/*" : undefined), [acceptImagesOnly]);
+  const accept = useMemo<string | undefined>(
+    () => (acceptImagesOnly ? 'image/*' : undefined),
+    [acceptImagesOnly]
+  );
   const maxSize = maxFileSizeMB * 1024 * 1024;
+
+  if (!pubkey) {
+    return (
+      <div className="text-sm text-red-600">
+        ضع مفتاح Uploadcare في <code>NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY</code>.
+      </div>
+    );
+  }
 
   return (
     <div dir="rtl" className="space-y-2">
       <FileUploaderRegular
         pubkey={pubkey}
         multiple
-        // بنستخدم القيود على الحجم والنوع من خصائص المكوّن
         maxLocalFileSizeBytes={maxSize}
         sourceList="local, camera, url, dropbox, gdrive"
         accept={accept}
-        // نجمع الملفات الجاهزة (اللي لها cdnUrl) و نرمّي الباقي
         onChange={(filesState?: UploaderState) => {
           const entries = filesState?.allEntries ?? [];
           const ready = entries
@@ -18133,9 +18151,10 @@ export default function UploadcareWidget({
               cdnUrl: String(fi!.cdnUrl),
               name: fi!.name,
               size: fi!.size,
-              mime: (fi!.mimeType || fi!.mime),
+              mime: fi!.mimeType || fi!.mime,
             }))
-            .slice(0, maxFiles); // نقيّد بعدد أقصى للملفات
+            .slice(0, maxFiles);
+
           onChange(ready);
         }}
       />
@@ -20947,7 +20966,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/orders/index.ts ]=====================================================
 
-====[ START FILE: src/pages/api/orders/send-review.ts (6.6 KB) ]====================================
+====[ START FILE: src/pages/api/orders/send-review.ts (10.3 KB) ]===================================
 // src/pages/api/orders/send-review.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
@@ -20980,19 +20999,113 @@ type Ok = {
   results: ChannelResult[];
   debug?: Record<string, unknown>;
 };
-type Err = { ok: false; message: string; results?: ChannelResult[]; debug?: Record<string, unknown> };
+type Err = {
+  ok: false;
+  message: string;
+  results?: ChannelResult[];
+  debug?: Record<string, unknown>;
+};
 
 function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
-  try { return JSON.stringify(e); } catch { return String(e); }
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
+}
+
+// ✅ قالب بريد HTML مقاوم لعملاء البريد
+function buildReviewEmailHTML(customerName: string, storeName: string, reviewUrl: string) {
+  const pre = "قيّم تجربتك خلال دقيقة — اضغط الزر بالأسفل";
+  return `<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>قيّم تجربتك</title>
+</head>
+<body style="margin:0;padding:0;background:#f6f7f9;">
+  <!-- Preheader (مخفية) -->
+  <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0;">
+    ${pre} ‏‏​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7f9;">
+    <tr>
+      <td align="center" style="padding:24px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;">
+          <tr>
+            <td style="padding:20px 24px; text-align:right; font-family:Tahoma, Arial, sans-serif;">
+              <img src="https://www.theqah.com.sa/logo.png" alt="ثقة" width="28" height="28" style="vertical-align:middle;border:none;margin-left:8px;">
+              <span style="font-size:16px;font-weight:bold;color:#0f172a;">ثقة</span>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 24px 10px 24px; text-align:right; font-family:Tahoma, Arial, sans-serif;">
+              <h1 style="margin:0 0 6px 0; font-size:20px; color:#0f172a;">مرحباً ${customerName}،</h1>
+              <p style="margin:0; font-size:14px; color:#334155;">
+                قيّم تجربتك من <strong>${storeName}</strong> وساهم في إسعاد يتيم!
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="right" style="padding:18px 24px 6px 24px; font-family:Tahoma, Arial, sans-serif;">
+              <!-- زر مقاوم لـ Outlook (VML) -->
+              <!--[if mso]>
+                <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${reviewUrl}" style="height:44px;v-text-anchor:middle;width:260px;" arcsize="12%" stroke="f" fillcolor="#16a34a">
+                  <w:anchorlock/>
+                  <center style="color:#ffffff;font-family:Tahoma,Arial,sans-serif;font-size:16px;">اضغط للتقييم الآن</center>
+                </v:roundrect>
+              <![endif]-->
+              <!--[if !mso]><!-- -->
+                <a href="${reviewUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:15px;">
+                  اضغط للتقييم الآن
+                </a>
+              <!--<![endif]-->
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:10px 24px 0 24px; text-align:right; font-family:Tahoma, Arial, sans-serif;">
+              <p style="margin:0;font-size:12px;color:#64748b;">
+                أو افتح هذا الرابط: <a href="${reviewUrl}" style="color:#0ea5e9;">${reviewUrl}</a>
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px; text-align:right; font-family:Tahoma, Arial, sans-serif;">
+              <p style="margin:0;font-size:12px;color:#94a3b8;">شكراً لك — فريق ثقة</p>
+            </td>
+          </tr>
+        </table>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin-top:12px;">
+          <tr>
+            <td style="text-align:center;font-family:Tahoma, Arial, sans-serif;color:#94a3b8;font-size:11px;">
+              إذا لم تكن أنت المقصود بهذه الرسالة، يمكنك تجاهلها.
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Ok | Err>) {
   if (req.method !== "POST") {
     return res.status(405).json({ ok: false, message: "Method not allowed" });
   }
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
   const debugFlag = req.query.debug === "1" || (req.body && (req.body as any).debug === true);
 
   try {
@@ -21015,13 +21128,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       storeUid: uid,
       productId: order.productId ?? "",
       name: order.name || "عميل",
-      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 يوم
     });
 
     const base = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
     if (!base) return res.status(500).json({ ok: false, message: "BASE_URL not configured" });
 
     const reviewUrl = `${base}/review/${token.id}`;
+
+    // حاول اختصار الرابط؛ لو فشل استخدم الأصلي
     let publicUrl = reviewUrl;
     try {
       publicUrl = await createShortLink(reviewUrl);
@@ -21031,15 +21146,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const storeName = order.storeName || "متجرك";
     const customerName = order.name || "عميلنا العزيز";
+
     const smsText = `مرحباً ${customerName}، قيّم تجربتك من ${storeName}: ${publicUrl} وساهم في إسعاد يتيم!`;
-    const emailHtml = `
-      <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
-        <p>مرحباً ${customerName}،</p>
-        <p>قيّم تجربتك من <strong>${storeName}</strong> وساهم في إسعاد يتيم!</p>
-        <p><a href="${publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
-        <p style="color:#64748b">شكراً لك — فريق ثقة</p>
-      </div>
-    `;
+    const emailHtml = buildReviewEmailHTML(customerName, storeName, publicUrl);
 
     const haveSms = Boolean(order.phone);
     const haveEmail = Boolean(order.email);
@@ -21057,11 +21166,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ? {
           id,
           uid,
-          haveSms, haveEmail,
-          canSms, canEmail,
+          haveSms,
+          haveEmail,
+          canSms,
+          canEmail,
           envSeen: {
             OURSMS_API_KEY: !!process.env.OURSMS_API_KEY,
-            OURSMS_BASE_URL: !!process.env.OURSMS_BASE_URL, // مفيد لـ sendSms
+            OURSMS_BASE_URL: !!process.env.OURSMS_BASE_URL,
             DMAIL_SMTP_HOST: !!process.env.DMAIL_SMTP_HOST,
             DMAIL_SMTP_PORT: process.env.DMAIL_SMTP_PORT,
             DMAIL_SMTP_USER: !!process.env.DMAIL_SMTP_USER,
@@ -21078,8 +21189,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ok: false,
         message: "No deliverable channels",
         results: [
-          { channel: "sms",   ok: false, error: !haveSms ? "no phone" : (!canSms ? "provider not configured" : "skipped") },
-          { channel: "email", ok: false, error: !haveEmail ? "no email" : (!canEmail ? "provider not configured" : "skipped") },
+          { channel: "sms", ok: false, error: !haveSms ? "no phone" : !canSms ? "provider not configured" : "skipped" },
+          { channel: "email", ok: false, error: !haveEmail ? "no email" : !canEmail ? "provider not configured" : "skipped" },
         ],
         debug: debugInfo,
       });
@@ -21095,12 +21206,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const attempts: Array<Promise<ChannelResult>> = [];
-    if (trySms)   attempts.push(attempt("sms",   () => sendSms(String(order.phone), smsText)));
+    if (trySms) attempts.push(attempt("sms", () => sendSms(String(order.phone), smsText)));
     if (tryEmail) attempts.push(attempt("email", () => sendEmail(String(order.email), "قيّم تجربتك معنا ✨", emailHtml)));
 
     const results = await Promise.all(attempts);
-    const smsOk   = results.find(r => r.channel === "sms")?.ok   || false;
-    const emailOk = results.find(r => r.channel === "email")?.ok || false;
+    const smsOk = results.find((r) => r.channel === "sms")?.ok || false;
+    const emailOk = results.find((r) => r.channel === "email")?.ok || false;
 
     if (!(smsOk || emailOk)) {
       return res.status(502).json({ ok: false, message: "All channels failed", results, debug: debugInfo });
@@ -25272,25 +25383,39 @@ export async function ensureSingleInviteKey(storeUid: string, orderId: string): 
 }
 ====[ END FILE: src/server/idempotency.ts ]=========================================================
 
-====[ START FILE: src/server/messaging/email-dmail.ts (1.2 KB) ]====================================
+====[ START FILE: src/server/messaging/email-dmail.ts (1.5 KB) ]====================================
 // src/server/messaging/email-dmail.ts
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
 
 export type EmailSendResult =
   | { ok: true; id: string | null }
   | { ok: false; error: string };
 
 function getConfig() {
-  const host = process.env.DMAIL_SMTP_HOST || 'mailserver.dmail.sa';
+  const host = process.env.DMAIL_SMTP_HOST || "mailserver.dmail.sa";
   const port = Number(process.env.DMAIL_SMTP_PORT || 465);
-  const user = process.env.DMAIL_SMTP_USER || '';
-  const pass = process.env.DMAIL_SMTP_PASS || '';
-  const from = process.env.DMAIL_FROM || user;
-  if (!user || !pass) throw new Error('Missing DMAIL_SMTP_USER/PASS');
+  const user = process.env.DMAIL_SMTP_USER || "";
+  const pass = process.env.DMAIL_SMTP_PASS || "";
+  const from = process.env.DMAIL_FROM || user || "ثقة <no-reply@theqah.com.sa>";
+  if (!user || !pass) throw new Error("Missing DMAIL_SMTP_USER/PASS");
   return { host, port, user, pass, from };
 }
 
-export async function sendEmailDmail(to: string, subject: string, text: string): Promise<EmailSendResult> {
+function stripHtml(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export async function sendEmailDmail(
+  to: string,
+  subject: string,
+  html: string,
+  textFallback?: string
+): Promise<EmailSendResult> {
   const { host, port, user, pass, from } = getConfig();
 
   const transporter = nodemailer.createTransport({
@@ -25298,11 +25423,16 @@ export async function sendEmailDmail(to: string, subject: string, text: string):
     port,
     secure: port === 465,
     auth: { user, pass },
-    tls: { rejectUnauthorized: true },
   });
 
   try {
-    const info = await transporter.sendMail({ from, to, subject, text });
+    const info = await transporter.sendMail({
+      from,
+      to,
+      subject,
+      html,
+      text: textFallback ?? stripHtml(html),
+    });
     return { ok: true, id: info.messageId || null };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -27344,4 +27474,4 @@ function makeSeparator(title) {
 Total files seen : 197
 Included         : 185
 Skipped          : 12
-Finished at      : 2025-08-30T03:58:15.620Z
+Finished at      : 2025-08-30T16:39:07.349Z
