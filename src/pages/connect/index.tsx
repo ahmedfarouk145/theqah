@@ -15,7 +15,7 @@ export default function ConnectIndex() {
             <Link href="/connect/zid" className="rounded-xl bg-white border p-4 hover:bg-gray-50">
               زد (Zid)
             </Link>
-            <Link href="/admin/integrations/salla" className="rounded-xl bg-white border p-4 hover:bg-gray-50">
+            <Link href="/connect/salla" className="rounded-xl bg-white border p-4 hover:bg-gray-50">
               سلة (Salla)
             </Link>
           </div>
