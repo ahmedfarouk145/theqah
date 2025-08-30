@@ -1,90 +1,72 @@
-// 3. Fixed Callback Handler (api/salla/callback.ts)
-
-import type { NextApiRequest, NextApiResponse } from 'next';
-import axios from 'axios';
-import { db } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+// src/pages/api/salla/callback.ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import { getDb } from "@/server/firebase-admin";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  console.log('🔄 Salla callback received:', req.query);
-
-  const { code, state, error, error_description } = req.query;
-
-  // Handle OAuth errors
-  if (error) {
-    console.error('❌ OAuth Error:', error, error_description);
-    return res.redirect(`/signup?error=${encodeURIComponent(error_description as string || 'OAuth error')}`);
-  }
-
-  if (!code || typeof code !== 'string') {
-    console.error('❌ Missing authorization code');
-    return res.status(400).send('Missing authorization code');
-  }
-
-  // ✅ Extract UID directly from state (no decoding needed)
-  let uid: string;
   try {
-    if (state && typeof state === 'string') {
-      uid = state;
-      console.log('✅ Extracted UID from state:', uid);
-    } else {
-      console.error('❌ Missing state parameter');
-      return res.status(400).send('Missing state parameter');
+    const { code, state } = req.query as { code?: string; state?: string };
+    if (!code) return res.status(400).send("Missing code");
+
+    const tokenUrl = process.env.SALLA_TOKEN_URL!;
+    const clientId = process.env.SALLA_CLIENT_ID!;
+    const clientSecret = process.env.SALLA_CLIENT_SECRET!;
+    const appBase = process.env.APP_BASE_URL!;
+    const redirectUri = `${appBase}/api/salla/callback`;
+
+    let uid: string | null = null;
+    if (state) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(state));
+        uid = parsed?.uid || null;
+      } catch {/* ignore */}
     }
-  } catch (error) {
-    console.error('❌ Invalid state parameter:', error);
-    return res.status(400).send('Invalid state parameter');
-  }
+    if (!uid) return res.status(400).send("Missing uid in state");
 
-  try {
-    console.log('🔄 Exchanging code for tokens...');
-
-    const tokenRes = await axios.post('https://accounts.salla.sa/oauth/token', null, {
-      params: {
-        grant_type: 'authorization_code',
+    const resp = await fetch(tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
         code,
-        client_id: process.env.SALLA_CLIENT_ID,
-        client_secret: process.env.SALLA_CLIENT_SECRET,
-        redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL}/api/salla/callback`,
-      },
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+      }).toString(),
     });
+    const data = await resp.json();
 
-    console.log('✅ Token exchange successful:', tokenRes.data);
+    if (!resp.ok) return res.status(resp.status).send(`Token exchange failed: ${JSON.stringify(data)}`);
 
-    const { access_token, refresh_token, store_id, expires_in } = tokenRes.data;
+    const access = String(data.access_token || "");
+    const refresh = (data.refresh_token as string) || null;
+    const expiresIn = Number(data.expires_in || 0);
+    const expiresAt = expiresIn ? Date.now() + expiresIn * 1000 : null;
 
-    // Save tokens to Firestore
-    await setDoc(doc(db, 'stores', uid), {
-      salla: {
-        store_id: store_id?.toString(),
-        access_token,
-        refresh_token,
-        expires_in,
-        connected_at: new Date().toISOString(),
-        connected: true,
+    const db = getDb();
+    await db.collection("stores").doc(uid).set(
+      {
+        salla: {
+          connected: true,
+          tokens: {
+            access_token: access,
+            refresh_token: refresh,
+            expires_at: expiresAt,
+            obtained_at: Date.now(),
+          },
+        },
       },
-      sallaConnected: true,
-    }, { merge: true });
+      { merge: true }
+    );
 
-    console.log('✅ Store data saved to Firestore for UID:', uid);
+    // اشترك في الويبهوكس
+    await fetch(`${appBase}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }).catch(() => {});
 
-    res.redirect('/dashboard?connected=salla');
-  } catch (err: unknown) {
-    if (axios.isAxiosError(err)) {
-      console.error('❌ Salla OAuth Error:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-      });
-
-      const errorMessage = err.response?.data?.message || 'حدث خطأ أثناء الاتصال مع سلة';
-      res.redirect(`/signup?error=${encodeURIComponent(errorMessage)}`);
-    } else {
-      console.error('❌ Unknown Error:', err);
-      res.redirect(`/signup?error=${encodeURIComponent('حدث خطأ غير متوقع')}`);
-    }
+    res.status(302).setHeader("Location", "/dashboard/integrations?salla=connected").end();
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    res.status(500).send(msg);
   }
 }

@@ -8,29 +8,19 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast, Toaster } from 'sonner';
 import { motion } from 'framer-motion';
-import { Mail, Key, Store } from 'lucide-react';
+import { Mail, Key, Store, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-
-const SALLA_CLIENT_ID = process.env.NEXT_PUBLIC_SALLA_CLIENT_ID!;
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL!;
+import { useRouter } from 'next/navigation';
 
 export default function SignupPage() {
+  const router = useRouter();
   const auth = getAuth(app);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [storeName, setStoreName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showSallaButton, setShowSallaButton] = useState(false);
-  const [createdUid, setCreatedUid] = useState('');
-
-  const redirectToSalla = (uid: string) => {
-    const redirectUri = `${BASE_URL}/api/salla/callback`;
-    const state = uid;
-    const sallaAuthUrl = `https://salla.sa/oauth/authorize?response_type=code&client_id=${SALLA_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
-    window.location.href = sallaAuthUrl;
-  };
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [storeName, setStoreName] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -40,16 +30,18 @@ export default function SignupPage() {
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCred.user.uid;
 
+      // نحفظ المتجر ومعه حالات الربط المبدئية لزد وسلّة (غير متصل)
       await setDoc(doc(db, 'stores', uid), {
         storeName,
         email,
         createdAt: new Date().toISOString(),
-        sallaConnected: false,
+        zid: { connected: false, tokens: null },
+        salla: { connected: false, tokens: null },
       });
 
-      toast.success('🎉 تم إنشاء الحساب بنجاح. اضغط على الزر أدناه لربط متجر سلة');
-      setShowSallaButton(true);
-      setCreatedUid(uid);
+      toast.success('🎉 تم إنشاء الحساب — اختر منصة الربط في الخطوة التالية');
+      // بدلاً من فرض /connect/zid نحول لصفحة الاختيار
+      router.push('/connect');
     } catch (err) {
       const error = err as AuthError;
       const messages: Record<string, string> = {
@@ -72,13 +64,16 @@ export default function SignupPage() {
         transition={{ duration: 0.6 }}
         className="w-full max-w-lg bg-white border border-[#cce4d5] shadow-xl rounded-2xl p-8"
       >
+        {/* Header */}
         <div className="text-center space-y-4">
           <Image src="/logo.png" alt="Logo" width={60} height={60} className="mx-auto" />
-          <h1 className="text-2xl font-bold text-[#004225]">✨ أنشئ متجرك بسهولة</h1>
-          <p className="text-sm text-gray-600">سجّل خلال دقيقة واحدة فقط</p>
+          <h1 className="text-2xl font-bold text-[#004225]">✨ أنشئ حسابك في ثِقَة</h1>
+          <p className="text-sm text-gray-600">سجّل خلال دقيقة، ثم اختر ربط زد أو سلّة</p>
         </div>
 
+        {/* Form */}
         <form onSubmit={handleSignup} className="space-y-5 mt-6">
+          {/* Store Name */}
           <div className="relative">
             <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-[#004225]/60" />
             <Input
@@ -91,6 +86,7 @@ export default function SignupPage() {
             />
           </div>
 
+          {/* Email */}
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-[#004225]/60" />
             <Input
@@ -104,6 +100,7 @@ export default function SignupPage() {
             />
           </div>
 
+          {/* Password */}
           <div className="relative">
             <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-[#004225]/60" />
             <Input
@@ -117,24 +114,16 @@ export default function SignupPage() {
             />
           </div>
 
+          {/* Signup Button */}
           <Button
             type="submit"
             disabled={loading}
-            className="w-full py-2 bg-[#a3d9b1] hover:bg-[#93cea3] text-[#004225] font-semibold rounded-lg transition"
+            className="w-full py-2 bg-[#a3d9b1] hover:bg-[#93cea3] text-[#004225] font-semibold rounded-lg transition flex items-center justify-center gap-2"
           >
-            {loading ? '⏳ جاري التسجيل...' : '🚀 إنشاء الحساب'}
+            {loading ? <Loader2 className="animate-spin" /> : '🚀 إنشاء الحساب'}
           </Button>
 
-          {showSallaButton && (
-            <Button
-              type="button"
-              onClick={() => redirectToSalla(createdUid)}
-              className="w-full py-2 bg-[#0d8e52] hover:bg-[#0a7342] text-white font-semibold rounded-lg transition"
-            >
-              🔗 ربط متجر سلة
-            </Button>
-          )}
-
+          {/* Login Link */}
           <p className="text-center text-sm text-gray-600 mt-2">
             لديك حساب؟{' '}
             <Link href="/login" className="text-[#004225] underline hover:text-[#006e46] transition-colors">

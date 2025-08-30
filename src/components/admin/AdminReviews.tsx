@@ -1,7 +1,43 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
+import { app } from '@/lib/firebase';
 import axios from '@/lib/axiosInstance';
+import { useRouter } from 'next/navigation';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+import {
+  RefreshCw,
+  Search,
+  ChevronUp,
+  ChevronDown,
+  EyeOff,
+  Megaphone,
+  Trash2,
+  Star,
+  CalendarClock,
+  Edit3,
+  Lock,
+} from 'lucide-react';
 
 interface Review {
   id: string;
@@ -11,76 +47,451 @@ interface Review {
   storeName: string;
   published: boolean;
   createdAt?: string | Date;
+  lastModified?: string;
+}
+
+interface ReviewsResponse {
+  reviews: Review[];
+  total: number;
+  published: number;
+  pending: number;
+  averageRating: number;
+  hasMore?: boolean;
+  nextCursor?: string | null;
 }
 
 export default function AdminReviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const fetchReviews = async () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [storeFilter, setStoreFilter] = useState('');
+  const [starsFilter, setStarsFilter] = useState('all');
+  const [publishedFilter, setPublishedFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'stars' | 'name'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const [stats, setStats] = useState({
+    total: 0,
+    published: 0,
+    pending: 0,
+    averageRating: 0,
+  });
+
+  const router = useRouter();
+
+  useEffect(() => {
+    const auth = getAuth(app);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+      if (!currentUser) router.push('/login');
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  const fetchReviews = useCallback(async () => {
+    if (!user) {
+      setError('يرجى تسجيل الدخول أولاً');
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await axios.get('/api/admin/reviews');
-      setReviews(res.data.reviews);
+      setError('');
+
+      const params = new URLSearchParams();
+      if (storeFilter) params.append('storeName', storeFilter);
+      if (starsFilter && starsFilter !== 'all') params.append('stars', starsFilter);
+      if (publishedFilter !== 'all') params.append('published', publishedFilter);
+      if (sortBy) params.append('sortBy', sortBy);
+      if (sortOrder) params.append('sortOrder', sortOrder);
+      if (searchTerm) params.append('search', searchTerm);
+
+      const res = await axios.get<ReviewsResponse>(`/api/admin/reviews?${params.toString()}`);
+      const data = res.data;
+
+      setReviews(data.reviews || []);
+      setStats({
+        total: data.total ?? data.reviews.length,
+        published: data.published ?? data.reviews.filter((r) => r.published).length,
+        pending: data.pending ?? data.reviews.filter((r) => !r.published).length,
+        averageRating:
+          data.averageRating ??
+          (data.reviews.length > 0
+            ? data.reviews.reduce((acc, r) => acc + r.stars, 0) / data.reviews.length
+            : 0),
+      });
     } catch (error) {
-      console.error('Failed to load reviews', error);
-      setError('حدث خطأ أثناء تحميل التقييمات');
+      const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      if (err.response?.status === 401) {
+        setError('غير مخول للوصول. يرجى التأكد من صلاحيات المشرف.');
+        setTimeout(() => router.push('/'), 3000);
+      } else if (err.response?.status === 403) {
+        setError('ليس لديك صلاحية الوصول لهذه البيانات');
+      } else {
+        setError('حدث خطأ أثناء تحميل التقييمات: ' + (err.response?.data?.message || err.message || ''));
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, storeFilter, starsFilter, publishedFilter, sortBy, sortOrder, searchTerm, router]);
 
   const togglePublish = async (id: string, current: boolean) => {
+    if (!user) {
+      alert('يرجى تسجيل الدخول أولاً');
+      return;
+    }
     try {
+      setActionLoading(id);
       await axios.patch(`/api/admin/reviews/${id}`, {
         published: !current,
+        lastModified: new Date().toISOString(),
       });
-      fetchReviews(); // تحديث البيانات
-    } catch {
-      alert('فشل في تحديث حالة التقييم');
+      setReviews((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, published: !current, lastModified: new Date().toISOString() } : r))
+      );
+      setStats((prev) => ({
+        ...prev,
+        published: current ? prev.published - 1 : prev.published + 1,
+        pending: current ? prev.pending + 1 : prev.pending - 1,
+      }));
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      alert('فشل في تحديث حالة التقييم: ' + (err.response?.data?.message || err.message || ''));
+    } finally {
+      setActionLoading(null);
     }
   };
 
+  const deleteReview = async (id: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذا التقييم؟')) return;
+    try {
+      setActionLoading(id);
+      await axios.delete(`/api/admin/reviews/${id}`);
+      const deleted = reviews.find((r) => r.id === id);
+      setReviews((prev) => prev.filter((r) => r.id !== id));
+      setStats((prev) => ({
+        ...prev,
+        total: prev.total - 1,
+        published: deleted?.published ? prev.published - 1 : prev.published,
+        pending: !deleted?.published ? prev.pending - 1 : prev.pending,
+      }));
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      alert('فشل في حذف التقييم: ' + (err.response?.data?.message || err.message || ''));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const getStarDisplay = (rating: number) => (
+    <div className="flex items-center gap-0.5" aria-label={`Rating ${rating} of 5`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={`h-4 w-4 transition-colors duration-300 ${i < rating ? 'text-primary' : 'text-muted-foreground'}`}
+          fill={i < rating ? 'currentColor' : 'none'}
+        />
+      ))}
+    </div>
+  );
+
+  const formatDate = (dateString?: string | Date) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('ar-EG', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const filteredReviews = reviews.filter((review) => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      review.name.toLowerCase().includes(searchLower) ||
+      review.comment.toLowerCase().includes(searchLower) ||
+      review.storeName.toLowerCase().includes(searchLower)
+    );
+  });
+
   useEffect(() => {
-    fetchReviews();
-  }, []);
+    if (!authLoading && user) fetchReviews();
+  }, [fetchReviews, user, authLoading]);
+
+  const StatCard = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) => (
+    <Card className="animate-fade-in rounded-lg border border-border/60 bg-gradient-to-b from-card to-muted/30 shadow-sm transition-all duration-300 hover:shadow-md">
+      <CardContent className="pt-6">
+        <div className="flex items-center gap-3">
+          <div className="text-2xl">{icon}</div>
+          <div>
+            <p className="text-sm text-muted-foreground">{label}</p>
+            <p className="text-2xl font-semibold">{value}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const StatusBadge = ({ published }: { published: boolean }) => (
+    <Badge
+      variant={published ? 'default' : 'secondary'}
+      className={`rounded-full transition-all duration-200 ${published ? 'ring-1 ring-primary/20' : 'ring-1 ring-border/60'}`}
+    >
+      {published ? 'منشور' : 'في الانتظار'}
+    </Badge>
+  );
+
+  if (authLoading) {
+    return (
+      <Card className="min-h-[240px] flex items-center justify-center animate-fade-in">
+        <CardContent className="w-full max-w-sm text-center">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-r-2 border-primary" />
+          <p className="text-muted-foreground">جاري التحقق من الهوية...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Card className="p-8 text-center animate-fade-in border border-border/60 shadow-sm">
+        <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-secondary flex items-center justify-center">
+          <Lock className="h-6 w-6" />
+        </div>
+        <CardTitle className="mb-2">يرجى تسجيل الدخول للوصول لهذه الصفحة</CardTitle>
+        <CardDescription className="mb-6">ستتم إعادة التوجيه إلى صفحة تسجيل الدخول</CardDescription>
+        <Button onClick={() => router.push('/login')} className="transition-transform duration-200 hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+          تسجيل الدخول
+        </Button>
+      </Card>
+    );
+  }
 
   return (
-    <div>
-      <h2 className="text-xl font-bold text-green-800 mb-4">📝 مراجعة التقييمات</h2>
+    <main className="space-y-6">
+      <section className="rounded-xl border bg-gradient-to-b from-background to-muted/30 p-5 md:p-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">إدارة التقييمات</h2>
+            <p className="text-sm text-muted-foreground mt-1">مسجل باسم: {user.email}</p>
+          </div>
+          <Button
+            onClick={fetchReviews}
+            disabled={loading}
+            variant="default"
+            className="gap-2 transition-transform duration-200 hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> تحديث
+          </Button>
+        </div>
+      </section>
 
-      {loading ? (
-        <p>جاري التحميل...</p>
-      ) : error ? (
-        <p className="text-red-500">{error}</p>
-      ) : (
-        <div className="space-y-4">
-          {reviews.map((r) => (
-            <div
-              key={r.id}
-              className="border p-4 rounded-lg shadow-sm bg-white space-y-1"
-            >
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-green-700">
-                  ⭐ {r.stars} – {r.name} ({r.storeName})
-                </h3>
-                <button
-                  onClick={() => togglePublish(r.id, r.published)}
-                  className={`text-sm px-3 py-1 rounded-full ${
-                    r.published
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-green-100 text-green-700'
-                  }`}
-                >
-                  {r.published ? 'إخفاء' : 'نشر'}
-                </button>
-              </div>
-              <p className="text-sm text-gray-700">{r.comment || 'بدون تعليق'}</p>
+      <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard icon={<span>📊</span>} label="إجمالي التقييمات" value={stats.total} />
+        <StatCard icon={<span>✅</span>} label="منشور" value={stats.published} />
+        <StatCard icon={<span>⏳</span>} label="في الانتظار" value={stats.pending} />
+        <StatCard icon={<span>⭐</span>} label="متوسط التقييم" value={stats.averageRating.toFixed(1)} />
+      </section>
+
+      {/* Filters */}
+      <Card className="animate-fade-in sticky top-0 z-20 border border-border/60 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">الفلاتر</CardTitle>
+          <CardDescription>ابحث وفلتر وقم بفرز التقييمات</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="البحث في التقييمات..."
+                value={searchTerm}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                className="pr-9"
+              />
             </div>
+            <Input
+              placeholder="فلترة حسب المتجر..."
+              value={storeFilter}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStoreFilter(e.target.value)}
+            />
+            <Select value={starsFilter} onValueChange={(v: string) => setStarsFilter(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="جميع التقييمات" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع التقييمات</SelectItem>
+                <SelectItem value="5">5 نجوم</SelectItem>
+                <SelectItem value="4">4 نجوم</SelectItem>
+                <SelectItem value="3">3 نجوم</SelectItem>
+                <SelectItem value="2">2 نجمة</SelectItem>
+                <SelectItem value="1">1 نجمة</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={publishedFilter} onValueChange={(v: string) => setPublishedFilter(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="جميع الحالات" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع الحالات</SelectItem>
+                <SelectItem value="true">منشور</SelectItem>
+                <SelectItem value="false">في الانتظار</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={sortBy} onValueChange={(v: 'createdAt' | 'stars' | 'name') => setSortBy(v)}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="createdAt">تاريخ الإنشاء</SelectItem>
+                <SelectItem value="stars">التقييم</SelectItem>
+                <SelectItem value="name">الاسم</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="w-10 p-0"
+              aria-label="تبديل ترتيب الفرز"
+            >
+              {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {loading && (
+        <div className="grid gap-4">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="border border-border/60">
+              <CardContent className="pt-6">
+                <div className="animate-pulse space-y-4">
+                  <div className="h-5 w-1/3 bg-muted rounded" />
+                  <div className="h-4 w-2/3 bg-muted rounded" />
+                  <div className="h-20 w-full bg-muted rounded" />
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
-    </div>
+
+      {error && (
+        <Alert variant="destructive" className="animate-fade-in" aria-live="assertive" role="alert">
+          <AlertTitle>حدث خطأ</AlertTitle>
+          <AlertDescription className="flex items-center justify-between w-full">
+            <span>⚠️ {error}</span>
+            <Button size="sm" variant="secondary" onClick={fetchReviews}>
+              إعادة المحاولة
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!loading && !error && (
+        <div className="space-y-4">
+          {filteredReviews.length === 0 ? (
+            <Card className="p-10 text-center animate-fade-in border border-border/60">
+              <div className="text-5xl mb-3">📝</div>
+              <CardDescription className="text-lg">لا توجد تقييمات تطابق معايير البحث</CardDescription>
+              {(searchTerm || storeFilter || starsFilter || publishedFilter !== 'all') && (
+                <Button
+                  variant="link"
+                  className="mt-2"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setStoreFilter('');
+                    setStarsFilter('all');
+                    setPublishedFilter('all');
+                  }}
+                >
+                  مسح جميع الفلاتر
+                </Button>
+              )}
+            </Card>
+          ) : (
+            filteredReviews.map((review) => (
+              <Card
+                key={review.id}
+                className={`group animate-fade-in transition-all duration-200 hover:shadow-md ${
+                  !review.published ? 'ring-1 ring-amber-300/40' : 'border border-border/60'
+                }`}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                    <div className="flex-1 space-y-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="text-2xl">{getStarDisplay(review.stars)}</div>
+                        <div>
+                          <h3 className="font-semibold">{review.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            متجر: <span className="font-medium">{review.storeName}</span>
+                          </p>
+                        </div>
+                        <StatusBadge published={review.published} />
+                      </div>
+
+                      {review.comment && (
+                        <div className="rounded-lg border bg-muted/30 p-3 transition-colors duration-200 group-hover:bg-muted/50">
+                          <p className="leading-relaxed">{review.comment}</p>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <CalendarClock className="h-3.5 w-3.5" /> {formatDate(review.createdAt)}
+                        </span>
+                        {review.lastModified && (
+                          <span className="inline-flex items-center gap-1">
+                            <Edit3 className="h-3.5 w-3.5" /> آخر تعديل: {formatDate(review.lastModified)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row gap-2">
+                      <Button
+                        variant={review.published ? 'destructive' : 'default'}
+                        onClick={() => togglePublish(review.id, review.published)}
+                        disabled={actionLoading === review.id}
+                        className="gap-2 transition-transform duration-200 hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        {actionLoading === review.id
+                          ? <div className="h-4 w-4 animate-spin border-b-2 border-r-2 rounded-full" />
+                          : review.published
+                          ? <EyeOff className="h-4 w-4" />
+                          : <Megaphone className="h-4 w-4" />}
+                        {review.published ? 'إخفاء' : 'نشر'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => deleteReview(review.id)}
+                        disabled={actionLoading === review.id}
+                        className="gap-2 transition-transform duration-200 hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        {actionLoading === review.id
+                          ? <div className="h-4 w-4 animate-spin border-b-2 border-r-2 rounded-full" />
+                          : <Trash2 className="h-4 w-4" />}
+                        حذف
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
+    </main>
   );
 }

@@ -1,33 +1,77 @@
-// src/utils/verifyAdmin.ts
-import { NextApiRequest } from 'next';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initAdmin } from '@/lib/firebaseAdmin';
+import type { NextApiRequest } from 'next';
+import { authAdmin, dbAdmin } from '@/lib/firebaseAdmin';
+import type { DecodedIdToken } from 'firebase-admin/auth';
 
-initAdmin();
+type Decoded = DecodedIdToken & { role?: string };
 
-export async function verifyAdmin(req: NextApiRequest) {
-  const authHeader = req.headers.authorization;
+function getTokenFromReq(req: NextApiRequest): string | null {
+  const authHeader = (req.headers.authorization || req.headers.Authorization) as
+    | string
+    | undefined;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+  // Optional: read from cookie "token" or "session"
+  const cookie = req.headers.cookie || '';
+  const tokenMatch =
+    cookie.match(/(?:^|;\s*)(?:token|session)=([^;]+)/)?.[1] || null;
+  return tokenMatch;
+}
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Unauthorized: Missing token');
+function hasAdminClaim(decoded: DecodedIdToken): boolean {
+  // custom claim: decoded.admin === true
+  // or decoded.role === 'admin'
+  const hasura =
+    (decoded['https://hasura.io/jwt/claims'] as
+      | Record<string, unknown>
+      | undefined) ?? undefined;
+  const hasuraRole =
+    typeof hasura?.['x-hasura-default-role'] === 'string'
+      ? (hasura['x-hasura-default-role'] as string)
+      : undefined;
+
+  return (
+    (decoded as { admin?: unknown }).admin === true ||
+    (decoded as { role?: unknown }).role === 'admin' ||
+    hasuraRole === 'admin'
+  );
+}
+
+/**
+ * Throws on failure with messages:
+ *  - 'unauthenticated'
+ *  - 'permission-denied'
+ */
+export async function verifyAdmin(
+  req: NextApiRequest,
+  options?: { checkRevoked?: boolean }
+): Promise<Decoded> {
+  const { checkRevoked = false } = options || {};
+  const auth = authAdmin();
+  const db = dbAdmin();
+
+  const idToken = getTokenFromReq(req);
+  if (!idToken) {
+    throw new Error('unauthenticated: missing token');
   }
 
-  const token = authHeader.split(' ')[1];
-  const decodedToken = await getAuth().verifyIdToken(token);
-
-  // قراءة الدور من Firestore
-  const userRef = getFirestore().collection('users').doc(decodedToken.uid);
-  const userSnap = await userRef.get();
-
-  if (!userSnap.exists) {
-    throw new Error('Unauthorized: User not found');
+  let decoded: Decoded;
+  try {
+    decoded = (await auth.verifyIdToken(idToken, checkRevoked)) as Decoded;
+  } catch {
+    throw new Error('unauthenticated: invalid token');
   }
 
-  const role = userSnap.data()?.role;
-  if (role !== 'admin') {
-    throw new Error('Unauthorized: Not admin');
+  // Accept admin via custom claims or users doc
+  if (hasAdminClaim(decoded)) return decoded;
+
+  // fallback: check Firestore user doc
+  const userDoc = await db.collection('users').doc(decoded.uid).get();
+  const role = (userDoc.data() as { role?: string } | undefined)?.role;
+  if (role === 'admin') {
+    decoded.role = 'admin';
+    return decoded;
   }
 
-  return decodedToken;
+  throw new Error('permission-denied: not admin');
 }

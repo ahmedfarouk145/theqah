@@ -1,19 +1,23 @@
+// src/pages/api/store/info.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { verifyStore } from '@/utils/verifyStore';
+import { verifyStore, type AuthedRequest } from '@/utils/verifyStore';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
-// تعريف نوع مخصص يحتوي على storeId
-interface StoreRequest extends NextApiRequest {
-  storeId: string;
-}
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const error = await verifyStore(req, res);
-  if (error) return;
+  try {
+    await verifyStore(req); // ✅ وسيط واحد فقط
+  } catch (e) {
+    const err = e as Error & { status?: number };
+    return res.status(err.status ?? 401).json({ message: err.message || 'Unauthorized' });
+  }
 
   try {
-    const storeId = (req as StoreRequest).storeId;
+    const { storeId } = req as AuthedRequest;
+    if (!storeId) {
+      return res.status(400).json({ message: 'Missing storeId' });
+    }
+
     const docRef = doc(db, 'stores', storeId);
     const snapshot = await getDoc(docRef);
 

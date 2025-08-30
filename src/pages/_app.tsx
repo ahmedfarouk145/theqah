@@ -26,7 +26,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
         {/* Optional: description for SEO */}
         <meta name="description" content="theqah - Your website description here" />
       </Head>
-      <Component {...pageProps} />
+<Component {...pageProps} />
     </AuthProvider>
   );
 }

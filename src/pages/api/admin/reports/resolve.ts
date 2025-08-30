@@ -1,41 +1,49 @@
-// src/pages/api/admin/reports/resolve.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { db } from '@/lib/firebase';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { dbAdmin } from '@/lib/firebaseAdmin';
 import { verifyAdmin } from '@/utils/verifyAdmin';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
+type Body = {
+  reportId?: string;
+  action?: 'resolve' | 'delete';
+};
 
+export default async function handler(req: NextApiRequest, res: NextApiResponse<{ ok: true } | { message: string }>) {
   try {
-    await verifyAdmin(req); // ✅ تحقق من الصلاحية
+    await verifyAdmin(req);
+    if (req.method !== 'POST') return res.status(405).json({ message: 'Method not allowed' });
 
-    const { reportId, action } = req.body;
-
-    if (!reportId || typeof reportId !== 'string') {
-      return res.status(400).json({ message: 'Missing report ID' });
+    const { reportId, action } = (req.body || {}) as Body;
+    if (!reportId || (action !== 'resolve' && action !== 'delete')) {
+      return res.status(400).json({ message: 'Invalid body' });
     }
 
-    const reportRef = doc(db, 'review_reports', reportId);
-
-    if (action === 'resolve') {
-      await updateDoc(reportRef, {
-        resolved: true,
-        resolvedAt: new Date(),
-      });
-      return res.status(200).json({ message: 'Report resolved successfully' });
-    }
+    const db = dbAdmin();
+    const ref = db.collection('review_reports').doc(reportId);
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(404).json({ message: 'Report not found' });
 
     if (action === 'delete') {
-      await deleteDoc(reportRef);
-      return res.status(200).json({ message: 'Report deleted successfully' });
+      await ref.delete();
+    } else {
+      await ref.update({ resolved: true, resolvedAt: new Date() });
     }
 
-    return res.status(400).json({ message: 'Invalid action' });
+    try {
+      await db.collection('admin_audit_logs').add({
+        action: `report-${action}`,
+        reportId,
+        createdAt: new Date(),
+      });
+    } catch (e) {
+      console.warn('audit log failed', e);
+    }
+
+    return res.status(200).json({ ok: true });
   } catch (error) {
-    console.error('Resolve report error:', error);
-    return res.status(401).json({ message: (error as Error).message || 'Unauthorized' });
+    console.error('resolve report error', error);
+    const msg = (error as Error).message || '';
+    if (msg.startsWith('unauthenticated')) return res.status(401).json({ message: 'Unauthorized' });
+    if (msg.startsWith('permission-denied')) return res.status(403).json({ message: 'Forbidden' });
+    return res.status(500).json({ message: 'Server error' });
   }
 }

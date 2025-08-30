@@ -1,0 +1,75 @@
+{
+  "indexes": [
+    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeName", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "published", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stars", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+    { "collectionGroup": "orders", "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+    { "collectionGroup": "stores", "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "name_lower", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid", "order": "ASCENDING" },
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid", "order": "ASCENDING" },
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "published", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid", "order": "ASCENDING" },
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+   
+    { "collectionGroup": "review_invites", "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid", "order": "ASCENDING" },
+        { "fieldPath": "orderId", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

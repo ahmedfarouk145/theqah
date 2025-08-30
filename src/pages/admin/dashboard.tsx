@@ -1,3 +1,4 @@
+// src/app/admin/AdminDashboard.tsx أو src/pages/admin/index.tsx حسب مشروعك
 'use client';
 
 import { useState } from 'react';
@@ -5,19 +6,23 @@ import AdminReviews from '@/components/admin/AdminReviews';
 import AdminReports from '@/components/admin/AdminReports';
 import AdminStores from '@/components/admin/AdminStores';
 import AdminAnalytics from '@/components/admin/AdminAnalytics';
+import TestNotifyTab from '@/components/admin/tabs/TestNotifyTab'; // ← التاب الجديد
 
 const adminTabs = [
   'مراجعة التقييمات',
   'بلاغات التقييمات',
   'المتاجر',
   'الإحصائيات العامة',
-];
+  'اختبار القنوات', // ← جديد
+] as const;
+
+type Tab = typeof adminTabs[number];
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState(adminTabs[0]);
+  const [activeTab, setActiveTab] = useState<Tab>(adminTabs[0]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
       <h1 className="text-3xl font-bold mb-6 text-green-800">لوحة تحكم المشرف</h1>
 
       {/* التبويبات */}
@@ -43,6 +48,7 @@ export default function AdminDashboard() {
         {activeTab === 'بلاغات التقييمات' && <AdminReports />}
         {activeTab === 'المتاجر' && <AdminStores />}
         {activeTab === 'الإحصائيات العامة' && <AdminAnalytics />}
+        {activeTab === 'اختبار القنوات' && <TestNotifyTab />} {/* ← جديد */}
       </div>
     </div>
   );

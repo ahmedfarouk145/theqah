@@ -1,3 +1,4 @@
+// src/utils/apiClient.ts
 import Cookies from 'js-cookie';
 import { isServer } from './isServer';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

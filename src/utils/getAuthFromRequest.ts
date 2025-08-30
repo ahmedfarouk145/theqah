@@ -1,16 +1,19 @@
 // src/utils/getAuthFromRequest.ts
-import { getAuth } from 'firebase-admin/auth';
-import { admin } from '@/lib/firebaseAdmin';
-import { NextApiRequest } from 'next';
+import type { NextApiRequest } from "next";
+import { getAuthAdmin } from "@/server/firebase-admin";
 
+/**
+ * يقرأ Bearer ID Token من الهيدر "Authorization"
+ * ويعيد uid + الكائن المفكوك كاملًا.
+ * يرمي Error برسالة واضحة لو التوكن مفقود/غير صالح.
+ */
 export async function getAuthFromRequest(req: NextApiRequest) {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Unauthorized: Missing Bearer token');
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "");
+  if (!token) {
+    throw new Error("Unauthorized: Missing Bearer token");
   }
 
-  const token = authHeader.split('Bearer ')[1];
-const decoded = await admin.auth().verifyIdToken(token);
-  return { uid: decoded.uid };
+  const decoded = await getAuthAdmin().verifyIdToken(token);
+  return { uid: decoded.uid, decoded };
 }

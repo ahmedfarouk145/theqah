@@ -1,12 +1,14 @@
 // File: src/utils/getAuth.ts
-import { admin } from '@/lib/firebaseAdmin';
-import { NextApiRequest } from 'next';
+import { authAdmin } from '@/lib/firebaseAdmin';
+import type { NextApiRequest } from 'next';
 
 export async function getAuth(req: NextApiRequest) {
-  const token = req.headers.authorization?.split('Bearer ')[1];
+  const authz = req.headers.authorization || '';
+  const m = authz.match(/^Bearer\s+(.+)$/i);
+  const token = m?.[1];
 
-  if (!token) throw new Error('Unauthorized');
+  if (!token) throw new Error('Unauthorized: Missing token');
 
-  const decoded = await admin.auth().verifyIdToken(token);
-  return { uid: decoded.uid, email: decoded.email };
+  const decoded = await authAdmin().verifyIdToken(token);
+  return { uid: decoded.uid, email: decoded.email ?? null };
 }

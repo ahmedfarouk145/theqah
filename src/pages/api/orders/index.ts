@@ -1,31 +1,57 @@
+// src/pages/api/orders/index.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { verifyStore } from '@/utils/verifyStore';
+import { dbAdmin } from '@/lib/firebaseAdmin';
+import { requireUser } from '@/server/auth/requireUser';
 
-interface StoreRequest extends NextApiRequest {
-  storeId: string;
-}
+type OrderDoc = {
+  name?: string;
+  phone?: string;
+  email?: string;
+  createdAt?: number | string;
+  reviewSent?: boolean;
+  storeUid: string;
+};
+
+type OrderDTO = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  createdAt: number;
+  sent: boolean;
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const error = await verifyStore(req, res);
-  if (error) return;
-
-  const typedReq = req as StoreRequest;
-
-  if (typedReq.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
+  if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
   try {
-    const q = query(collection(db, 'orders'), where('storeId', '==', typedReq.storeId));
-    const snapshot = await getDocs(q);
+    const { uid } = await requireUser(req);
+    const db = dbAdmin();
 
-    const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const snap = await db.collection('orders')
+      .where('storeUid', '==', uid)
+      .orderBy('createdAt', 'desc')
+      .limit(200)
+      .get();
 
-    return res.status(200).json({ orders });
-  } catch (error) {
-    console.error('Fetch Orders Error:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    const orders: OrderDTO[] = snap.docs.map((d) => {
+      const x = d.data() as OrderDoc;
+      const created =
+        typeof x.createdAt === 'number'
+          ? x.createdAt
+          : (typeof x.createdAt === 'string' ? Date.parse(x.createdAt) : Date.now());
+      return {
+        id: d.id,
+        name: x.name || '',
+        phone: x.phone || '',
+        email: x.email || '',
+        createdAt: Number.isFinite(created) ? created : Date.now(),
+        sent: !!x.reviewSent,
+      };
+    });
+
+    res.status(200).json({ orders });
+  } catch (e) {
+    console.error('orders list error', e);
+    res.status(401).json({ message: 'Unauthorized' });
   }
 }

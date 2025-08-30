@@ -1,36 +1,31 @@
-// src/pages/login.tsx
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/router';
+import { useState, FormEvent } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/router';
+import { Loader2 } from 'lucide-react';
 import { loginUser } from '@/lib/auth/login';
-;
+
+type LoginResult = { role: 'admin' | 'user' };
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      const { role } = await loginUser(email, password);
-
-      console.log("User role:", role);
-
-      // التوجيه حسب الدور
-      if (role && role.trim() === 'admin') {
-        router.push('/admin/dashboard');
-      } else {
-        router.push('/dashboard');
-      }
+      const { role } = (await loginUser(email.trim(), password)) as LoginResult;
+      if (role === 'admin') router.push('/admin/dashboard');
+      else router.push('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
       setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
@@ -41,58 +36,65 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-green-50 to-white px-4">
-      <form
-        onSubmit={handleLogin}
-        className="w-full max-w-md bg-white p-8 rounded-xl shadow-md border"
-      >
-        <h1 className="text-3xl font-extrabold text-center text-green-900 mb-6">
-          تسجيل الدخول إلى ثقة
-        </h1>
+      <form onSubmit={handleLogin} className="w-full max-w-md bg-white p-8 rounded-xl shadow-md border" noValidate>
+        <div className="text-center space-y-3 mb-6">
+          <Image src="/logo.png" alt="ثقة" width={56} height={56} className="mx-auto rounded" />
+          <h1 className="text-2xl font-extrabold text-green-900">تسجيل الدخول إلى ثقة</h1>
+          <p className="text-sm text-gray-600">مرحبًا بك، أدخل بياناتك للمتابعة</p>
+        </div>
 
-        {error && <div className="mb-4 text-red-600 text-sm text-center">{error}</div>}
+        {error && (
+          <div role="alert" className="mb-4 text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2 text-sm text-center">
+            {error}
+          </div>
+        )}
 
         <div className="mb-4">
-          <label className="block mb-1 text-sm font-medium text-gray-700">
-            البريد الإلكتروني
-          </label>
+          <label className="block mb-1 text-sm font-medium text-gray-700">البريد الإلكتروني</label>
           <input
             type="email"
             required
+            autoComplete="email"
+            inputMode="email"
+            dir="ltr"
+            placeholder="you@example.com"
             className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            dir="ltr"
+            aria-invalid={!!error}
           />
         </div>
 
         <div className="mb-6">
-          <label className="block mb-1 text-sm font-medium text-gray-700">
-            كلمة المرور
-          </label>
+          <label className="block mb-1 text-sm font-medium text-gray-700">كلمة المرور</label>
           <input
             type="password"
             required
+            autoComplete="current-password"
+            dir="ltr"
+            placeholder="••••••••"
             className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            dir="ltr"
+            aria-invalid={!!error}
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition"
+          className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition flex items-center justify-center gap-2 disabled:opacity-70"
         >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
         </button>
 
-        <p className="text-center text-sm mt-5">
+        <div className="text-center text-sm mt-5">
           لا تملك حساب؟{' '}
           <Link href="/signup" className="text-green-700 font-medium hover:underline">
             أنشئ حساب جديد
           </Link>
-        </p>
+        </div>
       </form>
     </div>
   );

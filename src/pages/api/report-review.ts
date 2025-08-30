@@ -1,30 +1,33 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+// src/pages/api/report-review.ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import { dbAdmin } from "@/lib/firebaseAdmin";
+import withCors from "@/server/withCors";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
+type Body = {
+  reviewId?: string;
+  reason?: string;
+  name?: string;
+  email?: string;
+};
 
-  const { reviewId, name, email, reason } = req.body;
+async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") return res.status(405).json({ message: "Method Not Allowed" });
 
-  if (!reviewId || !reason || !name || !email) {
-    return res.status(400).json({ message: 'Missing required fields' });
-  }
+  const { reviewId, reason, name, email } = (req.body || {}) as Body;
+  if (!reviewId || !reason) return res.status(400).json({ message: "reviewId and reason are required" });
 
-  try {
-    await addDoc(collection(db, 'review_reports'), {
-      reviewId,
-      name,
-      email,
-      reason,
-      createdAt: new Date().toISOString(),
-    });
+  const db = dbAdmin();
+  await db.collection("review_reports").add({
+    reviewId: String(reviewId),
+    reason: String(reason).slice(0, 2000),
+    name: name ? String(name).slice(0, 200) : undefined,
+    email: email ? String(email).slice(0, 200) : undefined,
+    createdAt: Date.now(),
+    resolved: false,
+  });
 
-    return res.status(200).json({ message: 'Report submitted successfully' });
-  } catch (error) {
-    console.error('Report Error:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
-  }
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(200).json({ ok: true });
 }
+
+export default withCors(handler);

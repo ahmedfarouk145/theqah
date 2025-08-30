@@ -10,14 +10,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const docRef = doc(db, 'stores', uid);
     const snap = await getDoc(docRef);
 
-    if (!snap.exists()) return res.status(404).json({ connected: false });
+    if (!snap.exists()) {
+      return res.status(404).json({ connected: false });
+    }
 
     const salla = snap.data().salla;
     const connected = !!salla?.connected;
     const connectedAt = salla?.connected_at || null;
 
     return res.status(200).json({ connected, connectedAt });
-  } catch (err) {
+  } catch {
     return res.status(401).json({ connected: false, error: 'Unauthorized' });
   }
 }

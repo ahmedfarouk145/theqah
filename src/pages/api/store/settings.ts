@@ -1,19 +1,22 @@
+// src/pages/api/store/settings.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { verifyStore } from '@/utils/verifyStore';
+import { verifyStore, type AuthedRequest } from '@/utils/verifyStore';
 
-// Extend NextApiRequest to include storeId injected by middleware
-type CustomNextApiRequest = NextApiRequest & {
-  storeId?: string;
-};
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // ✅ verify auth (verifyStore throws on failure)
+  try {
+    await verifyStore(req);
+  } catch (e) {
+    const err = e as Error & { status?: number };
+    return res.status(err.status ?? 401).json({ message: err.message || 'Unauthorized' });
+  }
 
-export default async function handler(req: CustomNextApiRequest, res: NextApiResponse) {
-  const error = await verifyStore(req, res);
-  if (error) return;
-
-  const storeId = req.storeId;
-  if (!storeId) return res.status(400).json({ message: 'Missing storeId' });
+  const { storeId } = req as AuthedRequest;
+  if (!storeId) {
+    return res.status(400).json({ message: 'Missing storeId' });
+  }
 
   const storeRef = doc(db, 'stores', storeId);
 
@@ -28,10 +31,14 @@ export default async function handler(req: CustomNextApiRequest, res: NextApiRes
 
     if (req.method === 'POST') {
       const data = req.body;
+      if (!data || typeof data !== 'object') {
+        return res.status(400).json({ message: 'Invalid payload' });
+      }
       await setDoc(storeRef, data, { merge: true });
       return res.status(200).json({ message: 'Settings saved' });
     }
 
+    res.setHeader('Allow', ['GET', 'POST']);
     return res.status(405).json({ message: 'Method not allowed' });
   } catch (error) {
     console.error('Settings Error:', error);

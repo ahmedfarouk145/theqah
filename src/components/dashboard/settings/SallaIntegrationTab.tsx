@@ -1,65 +1,129 @@
-// src/components/dashboard/settings/SallaIntegrationTab.tsx
-'use client';
+import { useEffect, useState } from "react";
 
-import { useEffect, useState } from 'react';
-import axios from '@/lib/axiosInstance';
-import { useAuth } from '@/contexts/AuthContext';
+type SallaStatus = {
+  connected: boolean;
+  storeName?: string;
+  merchantId?: string;
+  reviewTemplate?: string;
+  updatedAt?: number;
+};
 
-export default function StoreIntegration() {
-  const { token } = useAuth();
+const DEFAULT_TEMPLATE =
+  "مرحباً [العميل]، قيم تجربتك من [المتجر]:: [الرابط] وساهم في إسعاد يتيم!";
+
+export default function SallaIntegrationTab() {
   const [loading, setLoading] = useState(true);
-  const [connected, setConnected] = useState(false);
-  const [connectedAt, setConnectedAt] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [data, setData] = useState<SallaStatus | null>(null);
+  const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
+  const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchConnectionStatus = async () => {
-      if (!token) return;
-
+    (async () => {
       try {
-        const res = await axios.get('/api/store/connection', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setConnected(res.data.connected);
-        setConnectedAt(res.data.connectedAt || null);
-      } catch (err) {
-        console.error('Connection status error:', err);
+        const r = await fetch("/api/store/settings?salla=1");
+        const j = await r.json();
+        const s: SallaStatus = j?.salla || j?.data?.salla || { connected: false };
+        setData(s);
+        if (s?.reviewTemplate) setTemplate(s.reviewTemplate);
+      } catch {
+        // ignore
       } finally {
         setLoading(false);
       }
-    };
+    })();
+  }, []);
 
-    fetchConnectionStatus();
-  }, [token]);
+  async function connect() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await fetch("/api/salla/connect", { method: "POST" });
+      const j = await r.json();
+      if (j?.ok && j?.url) location.href = j.url;
+      else setMsg(j?.error || "تعذّر بدء الاتصال.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  const handleConnect = () => {
-    window.location.href = `https://salla.sa/oauth/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_SALLA_CLIENT_ID}&redirect_uri=${process.env.NEXT_PUBLIC_BASE_URL}/api/salla/callback`;
-  };
+  async function disconnect() {
+    if (!confirm("هل تريد فصل سلة؟")) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await fetch("/api/salla/disconnect", { method: "POST" });
+      const j = await r.json();
+      if (j?.ok) {
+        setData((d) => (d ? { ...d, connected: false } : d));
+        setMsg("تم الفصل بنجاح.");
+      } else setMsg(j?.error || "تعذّر الفصل.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  if (loading) return <p>جارٍ التحقق من حالة الربط...</p>;
+  async function saveTemplate() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await fetch("/api/store/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ salla: { reviewTemplate: template } }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (j?.ok !== false) setMsg("تم الحفظ ✅");
+      else setMsg(j?.error || "تعذّر الحفظ.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) return <div className="p-4 text-sm text-gray-500">...تحميل</div>;
+  const badge = data?.connected ? (
+    <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs">متصل</span>
+  ) : (
+    <span className="px-2 py-1 rounded-full bg-rose-100 text-rose-700 text-xs">غير متصل</span>
+  );
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">الربط مع متجر سلة</h2>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <h3 className="font-semibold">سلة (Salla)</h3>
+        {badge}
+      </div>
 
-      {connected ? (
-        <div className="bg-green-50 border border-green-300 p-4 rounded-lg">
-          <p className="text-green-800 font-semibold">تم الربط بنجاح مع سلة ✅</p>
-          {connectedAt && (
-            <p className="text-sm text-gray-600 mt-1">
-              تاريخ الربط: {new Date(connectedAt).toLocaleString()}
-            </p>
-          )}
-        </div>
-      ) : (
-        <button
-          onClick={handleConnect}
-          className="px-5 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition"
-        >
-          ربط مع سلة
+      <div className="text-sm text-gray-600">
+        المتجر: <b>{data?.storeName || "—"}</b> | Merchant ID: <b>{data?.merchantId || "—"}</b>
+      </div>
+
+      <div className="flex gap-2">
+        {!data?.connected ? (
+          <button onClick={connect} disabled={busy} className="px-3 py-2 rounded-lg bg-black text-white">
+            اتصال
+          </button>
+        ) : (
+          <button onClick={disconnect} disabled={busy} className="px-3 py-2 rounded-lg bg-rose-600 text-white">
+            فصل
+          </button>
+        )}
+      </div>
+
+      <div className="border rounded-lg p-3 space-y-2">
+        <label className="text-sm">نص الرسالة</label>
+        <textarea
+          className="w-full min-h-[100px] rounded-lg border p-2"
+          value={template}
+          onChange={(e) => setTemplate(e.target.value)}
+        />
+        <div className="text-xs text-gray-500">المتغيرات: [العميل] [المتجر] [الرابط]</div>
+        <button onClick={saveTemplate} disabled={busy} className="px-3 py-2 rounded-lg bg-indigo-600 text-white">
+          حفظ
         </button>
-      )}
+      </div>
+
+      {msg && <div className="text-sm p-3 rounded-lg bg-gray-50 border">{msg}</div>}
     </div>
   );
 }

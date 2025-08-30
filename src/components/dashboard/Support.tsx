@@ -29,6 +29,7 @@ export default function SupportTab() {
 
   return (
     <div className="space-y-8">
+      {/* FAQ */}
       <div>
         <h2 className="text-xl font-semibold text-green-800 mb-4">❓ الأسئلة الشائعة</h2>
         <ul className="space-y-3">
@@ -47,6 +48,7 @@ export default function SupportTab() {
         </ul>
       </div>
 
+      {/* Support Ticket */}
       <div>
         <h2 className="text-xl font-semibold text-green-800 mb-4">📨 فتح تذكرة دعم</h2>
         {sent ? (
@@ -84,6 +86,7 @@ export default function SupportTab() {
         )}
       </div>
 
+      {/* Direct Contact */}
       <div>
         <h2 className="text-xl font-semibold text-green-800 mb-4">📞 تواصل مباشر</h2>
         <ul className="space-y-2 text-sm text-gray-700">
@@ -100,10 +103,7 @@ export default function SupportTab() {
           </li>
           <li>
             بريد الدعم:{' '}
-            <a
-              href="mailto:reviews@theqah.com.sa"
-              className="text-green-700 underline"
-            >
+            <a href="mailto:support@theqah.com.sa" className="text-green-700 underline">
               support@theqah.com.sa
             </a>
           </li>

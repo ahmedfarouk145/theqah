@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function isAdmin() {
+      // نتوقع custom claim admin=true من مسار admin/users.ts
+      return isSignedIn() && (request.auth.token.admin == true);
+    }
+
+    // عامة للقراءة فقط (لو عندك مستندات معلومات عامة)
+    match /public/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // متجر
+    match /stores/{uid} {
+      allow read, write: if isOwner(uid) || isAdmin();
+    }
+
+    // الطلبات
+    match /orders/{id} {
+      // إصلاح الأقواس لضمان الأولوية
+      allow read, update, delete: if (isSignedIn() && resource.data.storeUid == request.auth.uid) || isAdmin();
+      allow create:               if (isSignedIn() && request.resource.data.storeUid == request.auth.uid) || isAdmin();
+    }
+
+    // التقييمات
+    match /reviews/{id} {
+      // القراءة لصاحب المتجر أو الأدمن
+      allow read: if (isSignedIn() && resource.data.storeUid == request.auth.uid) || isAdmin();
+      // الإنشاء/التعديل/الحذف من السيرفر (Admin SDK) أو الأدمن فقط
+      allow create, update, delete: if isAdmin();
+    }
+
+    // دعوات التقييم (تُنشأ من السيرفر)
+    match /review_invites/{id} {
+      // قراءة للمالك (لو حبيت تعرض سجل الإرسال) أو الأدمن
+      allow read:  if (isSignedIn() && resource.data.storeUid == request.auth.uid) || isAdmin();
+      // كتابة من السيرفر فقط
+      allow create, update, delete: if isAdmin();
+    }
+
+    // توكنات الروابط (سريّة) — سيرفر فقط
+    match /review_tokens/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // روابط مختصرة — يحلّها السيرفر فقط
+    match /short_links/{code} {
+      allow read, write: if isAdmin();
+    }
+
+    // بلاغات التقييمات — السماح بإنشاء من أي مستخدم (عبر API/Client)، والباقي للأدمن
+    match /review_reports/{id} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // سجلات/تنبيهات/لوجات إدارية (أدمن فقط)
+    match /admin_audit_logs/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /admin_alerts/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // تكامل زد/سلة والتخزين الحساس — سيرفر/أدمن فقط
+    match /zid_tokens/{uid} {
+      allow read, write: if isAdmin();
+    }
+    match /zid_states/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /zid_events/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /salla_tokens/{uid} {
+      allow read, write: if isAdmin();
+    }
+
+    // مفاتيح idempotency (إن وُجدت)
+    match /idempotency_keys/{id} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

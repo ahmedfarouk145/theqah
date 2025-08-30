@@ -1,76 +1,144 @@
+/* ==== Font (Cairo) ==== */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap');
+
+/* ==== Tailwind Layers ==== */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* خط عربي ودعم RTL */
+/* ==== Base: RTL + Smoothing ==== */
+html { direction: rtl; }
+* { -webkit-tap-highlight-color: transparent; }
+html, body, #__next { height: 100%; }
 body {
-  font-family: "Cairo", sans-serif;
-  direction: rtl;
+  font-family: "Cairo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ==== Design Tokens (HSL variables) ==== */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* brand */
+    --brand: 152 63% 34%;          /* emerald-600 */
+    --brand-foreground: 0 0% 100%;
+    --brand-soft: 152 80% 95%;
+    --brand-ring: 152 63% 34%;
+
+    /* surface */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 10% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --card-foreground: 222 47% 11%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* borders/forms */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: var(--brand);
+
+    /* feedback */
+    --success: 152 63% 34%;
+    --warning: 38 92% 50%;
+    --danger: 0 72% 51%;
+
+    /* radius */
+    --radius: 14px;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 98%;
+    --muted: 222 47% 12%;
+    --muted-foreground: 217 15% 65%;
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+    --brand: 152 61% 42%;
+    --brand-soft: 152 30% 16%;
+    --brand-foreground: 0 0% 100%;
+  }
+
+  body { @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))]; }
+  * { border-color: hsl(var(--border)); }
+}
+
+/* ==== Typography ==== */
+@layer base {
+  h1 { @apply text-3xl md:text-4xl font-extrabold leading-[1.15] tracking-tight; }
+  h2 { @apply text-2xl md:text-3xl font-bold leading-snug; }
+  h3 { @apply text-xl md:text-2xl font-semibold; }
+  p  { @apply leading-8 text-[15px] md:text-[16px] text-[hsl(var(--muted-foreground))]; }
+  a  { @apply text-[hsl(var(--brand))] hover:opacity-90 transition; }
+  ::selection { background: hsl(var(--brand)/.15); }
+}
+
+/* ==== Components (utility-friendly) ==== */
+@layer components {
+  .container-pro { @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8; }
+
+  .card {
+    @apply bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))]
+           rounded-2xl border shadow-sm;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5
+           text-sm font-semibold transition focus:outline-none
+           ring-offset-2 ring-offset-[hsl(var(--background))]
+           focus-visible:ring-2;
+  }
+  .btn-primary {
+    @apply btn bg-[hsl(var(--brand))] text-[hsl(var(--brand-foreground))]
+           hover:brightness-105 active:scale-[.98]
+           focus-visible:ring-[hsl(var(--brand-ring))];
+  }
+  .btn-outline {
+    @apply btn border border-[hsl(var(--border))]
+           text-[hsl(var(--foreground))] bg-transparent
+           hover:bg-[hsl(var(--brand-soft))] focus-visible:ring-[hsl(var(--brand-ring))];
+  }
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-[hsl(var(--muted))];
+  }
+
+  .input {
+    @apply w-full rounded-xl border bg-white/80 backdrop-blur-sm
+           px-3.5 py-2.5 text-[15px]
+           focus:outline-none focus:ring-2 focus:ring-[hsl(var(--brand))]
+           border-[hsl(var(--input))] placeholder:text-[hsl(var(--muted-foreground))];
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium
+           bg-[hsl(var(--brand-soft))] text-[hsl(var(--brand))];
   }
 }
 
-@layer base {
-  * {
-    border-color: hsl(var(--border));
+/* ==== Fancy backgrounds & animations ==== */
+@layer utilities {
+  .bg-hero {
+    background-image:
+      radial-gradient(1200px 600px at 100% -10%, hsl(var(--brand)/.08), transparent 50%),
+      radial-gradient(900px 500px at -10% -10%, hsl(var(--brand)/.06), transparent 50%),
+      linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background)));
+  }
+  .shadow-smooth { box-shadow: 0 10px 30px rgba(2, 6, 23, .06); }
+  .shadow-pop   { box-shadow: 0 12px 20px rgba(16, 185, 129, .15); }
+
+  @keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+  .animate-float { animation: float 3s ease-in-out infinite; }
+
+  @keyframes shimmer { 0% { background-position: -200% 0 } 100% { background-position: 200% 0 } }
+  .animate-shimmer {
+    background: linear-gradient(90deg,#0000,rgba(255,255,255,.35),#0000);
+    background-size: 200% 100%; animation: shimmer 1.25s linear infinite;
   }
 
-  body {
-    @apply bg-background text-foreground;
-  }
+  /* Scrollbar (webkit) */
+  .nice-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+  .nice-scroll::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; }
+  .nice-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--brand)/.6); }
 }
