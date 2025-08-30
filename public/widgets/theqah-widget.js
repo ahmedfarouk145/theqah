@@ -126,6 +126,7 @@
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
         renderList(lastData);
+        //esli
       } catch (e) {
         list.innerHTML = "";
         list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "تعذّر التحميل" : "Failed to load"));

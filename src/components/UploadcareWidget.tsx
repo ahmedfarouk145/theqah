@@ -1,10 +1,10 @@
 // src/components/UploadcareWidget.tsx
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { FileUploaderRegular } from "@uploadcare/react-uploader/next";
-import "@uploadcare/react-uploader/core.css";
-import Image from "next/image";
+import { useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import '@uploadcare/react-uploader/core.css';
+import Image from 'next/image';
 
 type UploadedFile = {
   cdnUrl: string;
@@ -21,14 +21,22 @@ type Props = {
   acceptImagesOnly?: boolean;
 };
 
-// أنواع خفيفة علشان نتجنّب any
-type UploaderFileInfo = {
-  cdnUrl?: string;
-  name?: string;
-  size?: number;
-  mimeType?: string;
-  mime?: string;
-} | null;
+// لفّ FileUploaderRegular بديناميك مع تعطيل SSR
+const FileUploaderRegular = dynamic(
+  () => import('@uploadcare/react-uploader').then((m) => m.FileUploaderRegular),
+  { ssr: false }
+);
+
+// أنواع خفيفة علشان أي تغيّرات في lib
+type UploaderFileInfo =
+  | {
+      cdnUrl?: string;
+      name?: string;
+      size?: number;
+      mimeType?: string;
+      mime?: string;
+    }
+  | null;
 
 type UploaderState = {
   allEntries?: Array<{ fileInfo?: UploaderFileInfo }>;
@@ -41,21 +49,30 @@ export default function UploadcareWidget({
   maxFileSizeMB = Number(process.env.NEXT_PUBLIC_UPLOADCARE_MAX_FILE_SIZE_MB || 8),
   acceptImagesOnly = true,
 }: Props) {
-  const pubkey = process.env.NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY || "";
+  const pubkey = process.env.NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY || '';
 
-  const accept = useMemo<string | undefined>(() => (acceptImagesOnly ? "image/*" : undefined), [acceptImagesOnly]);
+  const accept = useMemo<string | undefined>(
+    () => (acceptImagesOnly ? 'image/*' : undefined),
+    [acceptImagesOnly]
+  );
   const maxSize = maxFileSizeMB * 1024 * 1024;
+
+  if (!pubkey) {
+    return (
+      <div className="text-sm text-red-600">
+        ضع مفتاح Uploadcare في <code>NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY</code>.
+      </div>
+    );
+  }
 
   return (
     <div dir="rtl" className="space-y-2">
       <FileUploaderRegular
         pubkey={pubkey}
         multiple
-        // بنستخدم القيود على الحجم والنوع من خصائص المكوّن
         maxLocalFileSizeBytes={maxSize}
         sourceList="local, camera, url, dropbox, gdrive"
         accept={accept}
-        // نجمع الملفات الجاهزة (اللي لها cdnUrl) و نرمّي الباقي
         onChange={(filesState?: UploaderState) => {
           const entries = filesState?.allEntries ?? [];
           const ready = entries
@@ -65,9 +82,10 @@ export default function UploadcareWidget({
               cdnUrl: String(fi!.cdnUrl),
               name: fi!.name,
               size: fi!.size,
-              mime: (fi!.mimeType || fi!.mime),
+              mime: fi!.mimeType || fi!.mime,
             }))
-            .slice(0, maxFiles); // نقيّد بعدد أقصى للملفات
+            .slice(0, maxFiles);
+
           onChange(ready);
         }}
       />
