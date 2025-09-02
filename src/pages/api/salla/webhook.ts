@@ -1,10 +1,9 @@
-// src/pages/api/salla/webhook.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
 import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
-import { sendSms } from "@/server/messaging/send-sms";
+import { sendSms, buildInviteSMS } from "@/server/messaging/send-sms";
 
 export const config = { api: { bodyParser: false } };
 
@@ -22,7 +21,6 @@ interface SallaOrder {
 interface SallaWebhookBody { event: string; data?: SallaOrder | UnknownRecord; }
 
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
-
 const DONE   = new Set(["paid","fulfilled","delivered","completed","complete"]);
 const CANCEL = new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
@@ -133,13 +131,11 @@ async function ensureInviteForOrder(
 
   const tokenId = crypto.randomBytes(10).toString("hex");
   const base =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_BASE_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL || "";
+    (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/,"");
   if (!base) throw new Error("BASE_URL not configured");
 
-  const reviewUrl = `${base.replace(/\/+$/,"")}/review/${tokenId}`;
-  const publicUrl = await createShortLink(reviewUrl);
+  const reviewUrl = `${base}/review/${tokenId}`;
+  const publicUrl = await createShortLink(reviewUrl).catch(() => reviewUrl);
 
   await db.collection("review_tokens").doc(tokenId).set({
     id: tokenId,
@@ -163,16 +159,16 @@ async function ensureInviteForOrder(
     sentAt: Date.now(), deliveredAt: null, clicks: 0, publicUrl,
   });
 
-  const name = buyer.name || "عميلنا العزيز";
   const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
-  const smsText = `مرحباً ${name}، قيّم تجربتك من ${storeName}: ${publicUrl}`;
+  const smsText = buildInviteSMS(storeName, publicUrl);
 
   const tasks: Array<Promise<unknown>> = [];
   if (buyer.mobile) {
     const mobile = String(buyer.mobile).replace(/\s+/g, "");
-    tasks.push(sendSms(mobile, smsText));
+    tasks.push(sendSms(mobile, smsText, { defaultCountry: "SA" }));
   }
   if (buyer.email) {
+    const name = buyer.name || "عميلنا العزيز";
     const emailHtml = `
       <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
         <p>مرحباً ${name}،</p>

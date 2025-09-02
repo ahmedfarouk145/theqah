@@ -2,36 +2,27 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
-// -------- helpers: query parsing (no any) --------
+// -------- helpers --------
 type QueryLike = NextApiRequest["query"];
-
-function pickQuery(q: QueryLike, keys: string[], fallback = ""): string {
+const getStr = (q: QueryLike, keys: string[], fallback = ""): string => {
   for (const k of keys) {
     const v = q[k];
     if (typeof v === "string") return v;
     if (Array.isArray(v) && typeof v[0] === "string") return v[0];
   }
   return fallback;
-}
+};
 
-function norm(q: QueryLike) {
-  const storeUid = pickQuery(q, ["storeUid", "storeId", "store", "s"]);
-  const productId = pickQuery(q, ["productId", "product", "p", "sku"]);
-  const limitStr = pickQuery(q, ["limit"], "20");
-  const limitNum = Math.min(100, Math.max(1, Number(limitStr || 20)));
-  return { storeUid, productId, limit: limitNum };
-}
-
-// -------- helpers: safe coercions from Firestore --------
-const asString = (v: unknown): string | null => (typeof v === "string" ? v : null);
-const asNumber = (v: unknown): number =>
-  typeof v === "number" ? v : Number(v ?? 0) || 0;
-const asBoolean = (v: unknown): boolean => (typeof v === "boolean" ? v : false);
-//eslint-disable-next-line @typescript-eslint/no-unused-vars
-function toTimestamp(v: number | string | undefined | null): number {
-  if (v == null) return 0;
-  return typeof v === "number" ? v : Date.parse(String(v));
-}
+const parseQuery = (q: QueryLike) => {
+  const storeUid = getStr(q, ["storeUid", "storeId", "store", "s"]);
+  const productId = getStr(q, ["productId", "product", "p", "sku"], "");
+  const limit = Math.min(100, Math.max(1, Number(getStr(q, ["limit"], "20")) || 20));
+  const sort = (getStr(q, ["sort", "order"], "desc").toLowerCase() === "asc" ? "asc" : "desc") as
+    | "asc"
+    | "desc";
+  const sinceDays = Math.max(0, Number(getStr(q, ["sinceDays", "days"], "")) || 0);
+  return { storeUid, productId, limit, sort, sinceDays };
+};
 
 // -------- public shape --------
 type PublicReview = {
@@ -39,73 +30,83 @@ type PublicReview = {
   productId: string | null;
   stars: number;
   text: string;
-  createdAt: number | string | null;
-  buyerVerified: boolean;
+  publishedAt: number;     // ms
+  trustedBuyer: boolean;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Optional preflight for CORS
+  // CORS / preflight
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-theqah-widget");
     res.setHeader("Access-Control-Allow-Origin", "*");
     return res.status(200).end();
   }
 
+  if (req.method !== "GET") return res.status(405).json({ error: "method_not_allowed" });
+
+  const { storeUid, productId, limit, sort, sinceDays } = parseQuery(req.query);
+  if (!storeUid) {
+    return res.status(400).json({ error: "MISSING_PARAMS", need: ["storeUid"] });
+  }
+
   try {
-    if (req.method !== "GET") return res.status(405).end();
-
-    const { storeUid, productId, limit } = norm(req.query);
-    if (!storeUid || !productId) {
-      return res
-        .status(400)
-        .json({ error: "MISSING_PARAMS", need: ["storeUid", "productId"] });
-    }
-
     const db = dbAdmin();
-    const qRef = db
+
+    // بناء الاستعلام ديناميكياً
+    let q = db
       .collection("reviews")
       .where("storeUid", "==", storeUid)
-      .where("productId", "==", productId)
-      .where("status", "==", "published")
-      .orderBy("createdAt", "desc")
-      .limit(limit);
+      .where("status", "==", "published");
 
-    const snap = await qRef.get();
+    if (productId) q = q.where("productId", "==", productId);
+
+    // sinceDays => فلترة على publishedAt (لو فيه)
+    const now = Date.now();
+    const cutoff = sinceDays > 0 ? now - sinceDays * 24 * 60 * 60 * 1000 : 0;
+    if (cutoff > 0) {
+      q = q.where("publishedAt", ">=", cutoff);
+    }
+
+    q = q.orderBy("publishedAt", sort as FirebaseFirestore.OrderByDirection).limit(limit);
+
+    // ملاحظة: أول مرة ممكن يطلب منك Firestore تعمل index مركّب للاستعلام ده.
+    const snap = await q.get();
 
     const items: PublicReview[] = snap.docs.map((d) => {
       const data = d.data() as Record<string, unknown>;
+      const stars = Math.max(0, Math.min(5, Number(data["stars"] ?? 0)));
+      const text =
+        (typeof data["text"] === "string" && data["text"]) ||
+        (typeof data["comment"] === "string" && data["comment"]) ||
+        "";
+      const publishedAt =
+        (typeof data["publishedAt"] === "number" && data["publishedAt"]) ||
+        (typeof data["createdAt"] === "number" && data["createdAt"]) ||
+        (data["createdAt"] ? Date.parse(String(data["createdAt"])) : 0);
 
-      const productIdVal = asString(data["productId"]);
-      const starsVal = Math.max(0, Math.min(5, asNumber(data["stars"])));
-      const textVal =
-        asString(data["text"]) ??
-        (asString(data["comment"]) ?? "");
-      const createdRaw =
-        (data["createdAt"] as number | string | undefined) ??
-        (data["created"] as number | string | undefined) ??
-        null;
-      const buyerVerifiedVal =
-        asBoolean(data["buyerVerified"]) || asBoolean(data["trustedBuyer"]);
+      const trustedBuyer = Boolean(
+        (typeof data["trustedBuyer"] === "boolean" && data["trustedBuyer"]) ||
+          (typeof data["buyerVerified"] === "boolean" && data["buyerVerified"])
+      );
 
       return {
         id: d.id,
-        productId: productIdVal,
-        stars: starsVal,
-        text: textVal,
-        createdAt: createdRaw,
-        buyerVerified: buyerVerifiedVal,
+        productId: typeof data["productId"] === "string" ? data["productId"] : null,
+        stars,
+        text,
+        publishedAt,
+        trustedBuyer,
       };
     });
 
-    // CORS (allow-list domains في الإنتاج بدلاً من *)
+    // CORS (في الإنتاج بدّل * بقائمة دوميناتك)
     res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300"); // اختياري: كاش بسيط
     return res.status(200).json({ items });
-  } catch (e: unknown) {
+  } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error(e);
-    return res
-      .status(500)
-      .json({ error: "PUBLIC_LIST_FAILED", message });
+    console.error("public/reviews error:", message);
+    return res.status(500).json({ error: "PUBLIC_LIST_FAILED", message });
   }
 }

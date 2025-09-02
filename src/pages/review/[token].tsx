@@ -22,12 +22,18 @@ type SubmitBody = {
   text?: string;
   images?: string[];
   tokenId?: string;
-  platform?: "salla" | "zid" | "manual";
+  platform?: "salla" | "zid" | "manual" | "web";
 };
 
 export default function ReviewByTokenPage() {
   const router = useRouter();
-  const { token } = router.query as { token?: string };
+  const isReady = router.isReady;
+
+  // read token safely (could be string | string[] | undefined)
+  const token = useMemo(() => {
+    const t = router.query.token;
+    return typeof t === "string" ? t : Array.isArray(t) ? t[0] : undefined;
+  }, [router.query.token]);
 
   const [stars, setStars] = useState<number>(0);
   const [text, setText] = useState<string>("");
@@ -39,32 +45,35 @@ export default function ReviewByTokenPage() {
   const [loadingToken, setLoadingToken] = useState(true);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
 
-  // جلب معلومات التوكن إن كانت API متاحة (نتجاهل لو مش موجودة)
+  // load token meta
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      if (!token) return;
+      if (!isReady) return;
+      if (!token) {
+        setLoadingToken(false);
+        setTokenInfo(null);
+        return;
+      }
       setLoadingToken(true);
       setError(null);
       try {
-        // حاول API قياسي بسيط: /api/review-token?token=<id>
         const r = await fetch(`/api/review-token?token=${encodeURIComponent(token)}`);
         if (!r.ok) {
-          // مش مشكلة لو 404 — هنكمل بالـ token كـ orderId fallback
-          setTokenInfo({ tokenId: token });
+          // 404 = مش مشكلة؛ هنشتغل بالتوكن فقط
+          if (!cancelled) setTokenInfo({ tokenId: token });
           return;
         }
         const j = await r.json();
         if (!cancelled) {
-          const info: TokenInfo = {
+          setTokenInfo({
             tokenId: token,
             orderId: j?.orderId || undefined,
             storeName: j?.storeName || undefined,
             customerName: j?.customer?.name || undefined,
             expired: Boolean(j?.expired),
             voided: Boolean(j?.voided),
-          };
-          setTokenInfo(info);
+          });
         }
       } catch {
         if (!cancelled) setTokenInfo({ tokenId: token });
@@ -72,17 +81,24 @@ export default function ReviewByTokenPage() {
         if (!cancelled) setLoadingToken(false);
       }
     }
-    if (token) load();
+    load();
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [isReady, token]);
 
-  // لو الـ API مش بتدي orderId، نستخدم التوكن كـ fallback (السيرفر هيتحقق)
+  // fallback: استخدم token كـ orderId لو API ماقدّمش orderId
   const orderId = useMemo(() => tokenInfo?.orderId || token || "", [tokenInfo?.orderId, token]);
 
   async function submit() {
-    if (!token) return;
+    if (!token) {
+      setError("الرابط غير صالح.");
+      return;
+    }
+    if (!orderId) {
+      setError("رقم الطلب غير موجود في الرابط.");
+      return;
+    }
     if (stars < 1 || stars > 5) {
       setError("اختر تقييمًا من 1 إلى 5 نجوم");
       return;
@@ -105,7 +121,7 @@ export default function ReviewByTokenPage() {
         text,
         images: attachments.map((f) => f.cdnUrl),
         tokenId: token,
-        platform: "salla", // عدّلها لو عندك تمييز للمنصة
+        platform: "web",
       };
 
       const res = await fetch("/api/reviews/submit", {
@@ -116,18 +132,14 @@ export default function ReviewByTokenPage() {
       const data = await res.json();
 
       if (!res.ok || data?.error) {
-        // خرائط رسائل ألطف
         const msg =
           data?.message ||
-          (data?.error === "duplicate_review"
-            ? "تم استلام تقييم لهذا الطلب بالفعل."
-            : data?.error === "token_order_mismatch"
-            ? "الرمز لا يطابق رقم الطلب."
-            : data?.error === "token_expired"
-            ? "انتهت صلاحية الرمز."
-            : data?.error === "token_voided"
-            ? "تم إلغاء الرمز."
-            : "تعذر إرسال التقييم.");
+          (data?.error === "missing_orderId" ? "رقم الطلب مفقود."
+          : data?.error === "duplicate_review" ? "تم استلام تقييم لهذا الطلب بالفعل."
+          : data?.error === "token_order_mismatch" ? "الرمز لا يطابق رقم الطلب."
+          : data?.error === "token_expired" ? "انتهت صلاحية الرمز."
+          : data?.error === "token_voided" ? "تم إلغاء الرمز."
+          : data?.error || "تعذّر إرسال التقييم.");
         throw new Error(msg);
       }
 
@@ -140,8 +152,8 @@ export default function ReviewByTokenPage() {
     }
   }
 
-  // شاشة التحميل الأولي
-  if (!token || loadingToken) {
+  // waiting for router/query
+  if (!isReady) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6">
         <p className="text-gray-600">جارٍ التحميل…</p>
@@ -149,22 +161,37 @@ export default function ReviewByTokenPage() {
     );
   }
 
-  // شاشة بعد الإرسال
+  // invalid link (no token)
+  if (!token) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white border rounded-2xl p-8 shadow" dir="rtl">
+          <h1 className="text-xl font-bold text-red-700 mb-2">الرابط غير صالح</h1>
+          <p className="text-gray-600">يرجى التأكد من فتح الرابط الكامل المرسل إليك.</p>
+        </div>
+      </main>
+    );
+  }
+
+  // initial token meta loading
+  if (loadingToken) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6">
+        <p className="text-gray-600">جارٍ التحقق من الرابط…</p>
+      </main>
+    );
+  }
+
+  // success page
   if (done) {
     return (
       <>
-        <Head>
-          <title>شكرًا لتقييمك | ثقة</title>
-        </Head>
+        <Head><title>شكرًا لتقييمك | ثقة</title></Head>
         <main className="min-h-screen flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white border rounded-2xl p-8 shadow">
+          <div className="max-w-md w-full bg-white border rounded-2xl p-8 shadow" dir="rtl">
             <h1 className="text-2xl font-bold text-green-700 mb-2">شكرًا لتقييمك! ✅</h1>
-            <p className="text-gray-600 mb-6">
-              تم استلام تقييمك بنجاح{done.id ? ` (#${done.id})` : ""}.
-            </p>
-            <Link href="/" className="inline-block px-4 py-2 rounded bg-green-600 text-white">
-              العودة للصفحة الرئيسية
-            </Link>
+            <p className="text-gray-600 mb-6">تم استلام تقييمك بنجاح{done.id ? ` (#${done.id})` : ""}.</p>
+            <Link href="/" className="inline-block px-4 py-2 rounded bg-green-600 text-white">العودة للصفحة الرئيسية</Link>
           </div>
         </main>
       </>
@@ -181,14 +208,11 @@ export default function ReviewByTokenPage() {
         <div className="max-w-2xl w-full bg-white border rounded-2xl p-6 shadow" dir="rtl">
           <h1 className="text-2xl font-bold text-emerald-800 mb-1">قيّم تجربتك</h1>
           <p className="text-gray-600 mb-6">
-            {tokenInfo?.storeName ? (
-              <>من فضلك قيّم تجربتك مع <b>{tokenInfo.storeName}</b>{tokenInfo.customerName ? <> — {tokenInfo.customerName}</> : null}</>
-            ) : (
-              "الرجاء مشاركة رأيك لتحسين الخدمة"
-            )}
+            {tokenInfo?.storeName
+              ? <>من فضلك قيّم تجربتك مع <b>{tokenInfo.storeName}</b>{tokenInfo.customerName ? <> — {tokenInfo.customerName}</> : null}</>
+              : "الرجاء مشاركة رأيك لتحسين الخدمة"}
           </p>
 
-          {/* النجوم */}
           <div className="mb-5">
             <div className="flex gap-2" role="radiogroup" aria-label="تقييم النجوم">
               {[1, 2, 3, 4, 5].map((n) => (
@@ -208,7 +232,6 @@ export default function ReviewByTokenPage() {
             <p className="text-sm text-gray-500 mt-1">اختر من 1 إلى 5 نجوم</p>
           </div>
 
-          {/* التعليق */}
           <div className="mb-5">
             <label className="block text-sm text-gray-700 mb-1">ملاحظاتك (اختياري)</label>
             <textarea
@@ -221,7 +244,6 @@ export default function ReviewByTokenPage() {
             <p className="text-xs text-gray-400 mt-1">{text.length}/3000</p>
           </div>
 
-          {/* المرفقات — Uploadcare */}
           <div className="mb-6">
             <label className="block text-sm text-gray-700 mb-2">صور التجربة (اختياري)</label>
             <UploadcareWidget value={attachments} onChange={setAttachments} />
@@ -249,8 +271,10 @@ export default function ReviewByTokenPage() {
             {submitting ? "جارٍ الإرسال…" : "إرسال التقييم"}
           </button>
 
-          <p className="text-xs text-gray-400 mt-4">رمز التوكن: {token}</p>
-          {orderId && <p className="text-xs text-gray-400">رقم الطلب: {orderId}</p>}
+          <div className="mt-4 text-xs text-gray-400">
+            <div>رمز التوكن: {token ?? "—"}</div>
+            <div>رقم الطلب: {orderId || "—"}</div>
+          </div>
         </div>
       </main>
     </>

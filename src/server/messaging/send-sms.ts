@@ -1,64 +1,211 @@
 // src/server/messaging/send-sms.ts
-import { normalizeMsisdn, isOptedOut } from './phone';
-import { info, warn, error } from '@/lib/logger';
+// عميل إرسال SMS عبر OurSMS + قالب الرسالة الموحد + رابر sendSms(to, text, opts?)
 
-type SmsResult = { ok: boolean; provider?: string; id?: string | null; error?: string };
+type MsgClass = "transactional" | "promotional" | "";
 
-const BASE   = process.env.OURSMS_BASE_URL || 'https://oursms.app/api/v1';
-const KEY    = process.env.OURSMS_API_KEY || '';
-const SENDER = process.env.OURSMS_SENDER || ''; // اختياري حسب حسابك
+export type SendSMSParams = {
+  to: string | string[];         // رقم واحد أو مجموعة أرقام (E.164 مفضل)
+  text: string;                  // نص الرسالة
+  customId?: string | null;      // معرف خاص بك يظهر في تقاريرهم (اختياري)
+  priority?: 0 | 1 | 2 | 3 | 4;  // 1 أعلى أولوية - 0 = تلقائي (افتراضي)
+  delayMinutes?: number;         // تأخير بالدقائق (افتراضي 0)
+  validityMinutes?: number;      // صلاحية بالدقائق (افتراضي 0 = أقصى مدة)
+  msgClass?: MsgClass;           // "transactional" | "promotional" | ""
+  requestDlr?: boolean;          // DLR لو مدعوم (افتراضي false)
+};
 
-async function sendOnce(to: string, body: string): Promise<SmsResult> {
-  if (!KEY) return { ok:false, provider:'oursms', error:'Missing OURSMS_API_KEY' };
-  // بعض الحسابات تحتاج sender
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const payload: Record<string, any> = { phoneNumber: to, body };
-  if (SENDER) payload.sender = SENDER;
+export type OursmsSendResult = {
+  jobId: string;
+  customId: string | null;
+  total: number;
+  rejected: number;
+  accepted: number;
+  duplicates: number;
+  cost: number;
+  acceptedMsgs?: unknown;
+  rejectedMsgs?: unknown;
+  statusCode?: number | null;
+  statusDesc?: string | null;
+  message?: string | null;
+};
 
-  const resp = await fetch(`${BASE}/SMS/Add/SendOneSms`, {
-    method: 'POST',
+export type SendSmsOptions = {
+  defaultCountry?: "SA" | "EG";
+  msgClass?: MsgClass;
+  requestDlr?: boolean;
+  priority?: 0 | 1 | 2 | 3 | 4;
+  delayMinutes?: number;
+  validityMinutes?: number;
+};
+
+function env(name: string, fallback?: string) {
+  const v = process.env[name];
+  return (v && v.trim()) || fallback || "";
+}
+
+// ---------- القالب الموحّد ----------
+export function buildInviteSMS(storeName: string | null | undefined, link: string) {
+  const s = (storeName || "").trim() || "متجرك";
+
+  // قابل للتخصيص من ENV (اختياري):
+  // INVITE_SMS_TEMPLATE="مرحباً، قيّم تجربتك من {{store}}: {{link}} وساهم في إسعاد يتيم!"
+  const tpl = env("INVITE_SMS_TEMPLATE");
+  if (tpl) {
+    return tpl.replace(/\{\{store\}\}/g, s).replace(/\{\{link\}\}/g, link);
+  }
+
+  // الافتراضي المطلوب
+  return `مرحباً، قيّم تجربتك من ${s}: ${link} وساهم في إسعاد يتيم!`;
+}
+
+// ---------- تطبيع رقم الهاتف إلى E.164 (مبسّط لـ SA/EG) ----------
+function normalizePhone(raw: string, def?: "SA" | "EG"): string {
+  const digits = String(raw).replace(/[^\d+]/g, "");
+  if (digits.startsWith("+")) return digits;
+  if (digits.startsWith("00")) return `+${digits.slice(2)}`;
+  if (digits.startsWith("0")) {
+    if (def === "SA") return `+966${digits.slice(1)}`;
+    if (def === "EG") return `+20${digits.slice(1)}`;
+  }
+  if (def === "SA") return `+966${digits}`;
+  if (def === "EG") return `+20${digits}`;
+  return digits;
+}
+
+// ---------- الإرسال عبر OurSMS ----------
+export async function sendSMSViaOursms(params: SendSMSParams) {
+  const API_KEY = env("OURSMS_API_KEY");
+  if (!API_KEY) {
+    throw new Error("OURSMS_API_KEY is missing");
+  }
+
+  const BASE = env("OURSMS_BASE_URL", "https://api.oursms.com");
+  const SENDER = env("OURSMS_SENDER"); // يجب أن يكون مُعتمد في بعض الدول
+
+  const {
+    to,
+    text,
+    //eslint-disable-next-line @typescript-eslint/no-unused-vars
+    customId = null,
+    priority = 0,
+    delayMinutes = 0,
+    validityMinutes = 0,
+    msgClass = "",
+    requestDlr = false,
+  } = params;
+
+  const dests = Array.isArray(to) ? to : [to];
+
+  const url = `${BASE.replace(/\/+$/, "")}/msgs/sms`;
+
+  const body = {
+    src: SENDER || "oursms",
+    dests,
+    body: text,
+    priority,
+    delay: delayMinutes,
+    validity: validityMinutes,
+    maxParts: 0,
+    dlr: requestDlr ? 1 : 0,
+    prevDups: 0,
+    msgClass: msgClass || undefined,
+    // customId: يمكن إضافته إذا كان حسابك يدعمه في هذا المسار
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
     headers: {
-      Authorization: `Bearer ${KEY}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      Authorization: `Bearer ${API_KEY}`,
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 
-  const text = await resp.text();
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let data: any = null;
-  try { data = JSON.parse(text); } catch { /* مش مشكلة لو مش JSON */ }
-
-  // نجاح HTTP لا يعني نجاح الإرسال عند بعض المزودين
-  if (!resp.ok) {
-    return { ok:false, provider:'oursms', error:`HTTP ${resp.status} ${text.slice(0,300)}` };
+  if (!res.ok) {
+    const textErr = await res.text().catch(() => "");
+    throw new Error(`oursms_http_${res.status}${textErr ? `: ${textErr}` : ""}`);
   }
 
-  // لو فيه هيكل بيانات يوحي بالنجاح/الفشل، افحصه
-  // أمثلة افتراضية: { isSuccessful: true, data: { messageId: '...' } }
-  const isSuccessful = data?.isSuccessful ?? data?.success ?? true; // fallback → true لو مش عارفين
-  if (!isSuccessful) {
-    const msg = data?.message || data?.errorMessage || text.slice(0,300) || 'Unknown provider error';
-    return { ok:false, provider:'oursms', error: msg };
-  }
+  const json = (await res.json().catch(() => ({}))) as Partial<OursmsSendResult>;
 
-  const id = data?.data?.messageId || data?.messageId || null;
-  return { ok:true, provider:'oursms', id };
+  return {
+    ok: true as const,
+    result: {
+      jobId: String(json.jobId || ""),
+      customId: (json.customId ?? null) as string | null,
+      total: Number(json.total ?? 0),
+      rejected: Number(json.rejected ?? 0),
+      accepted: Number(json.accepted ?? 0),
+      duplicates: Number(json.duplicates ?? 0),
+      cost: Number(json.cost ?? 0),
+      acceptedMsgs: json.acceptedMsgs ?? null,
+      rejectedMsgs: json.rejectedMsgs ?? null,
+      statusCode: (json.statusCode ?? null) as number | null,
+      statusDesc: (json.statusDesc ?? null) as string | null,
+      message: (json.message ?? null) as string | null,
+    } as OursmsSendResult,
+  };
 }
 
-export async function sendSms(rawTo: string, message: string): Promise<SmsResult> {
-  const to = normalizeMsisdn(rawTo); // تأكد إنها بترجع E.164 (+966...)
-  if (!to || !message) return { ok:false, error:'Missing to/message' };
-  if (await isOptedOut(to)) { warn('sms.optout', { to }); return { ok:false, error:'Opted-out' }; }
+// ---------- (اختياري) رصيد الحساب ----------
+export async function getOursmsCredits() {
+  const API_KEY = env("OURSMS_API_KEY");
+  const BASE = env("OURSMS_BASE_URL", "https://api.oursms.com");
+  if (!API_KEY) throw new Error("OURSMS_API_KEY is missing");
 
-  const max = 3;
-  for (let i=1;i<=max;i++){
-    const r = await sendOnce(to, message);
-    if (r.ok) { info('sms.sent', { to, provider:r.provider, id:r.id }); return r; }
-    warn('sms.retry', { to, attempt:i, error:r.error?.slice(0,300) });
-    await new Promise(res=>setTimeout(res, 400 * i)); // backoff بسيط
+  const url = `${BASE.replace(/\/+$/, "")}/billing/credits`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`oursms_http_${res.status}${t ? `: ${t}` : ""}`);
   }
-  error('sms.failed', { to });
-  return { ok:false, error:'Failed after retries' };
+  return res.json();
 }
+
+// ---------- (اختياري) سحب DLRs ----------
+export async function getOursmsDlrs(count = 100) {
+  const API_KEY = env("OURSMS_API_KEY");
+  const BASE = env("OURSMS_BASE_URL", "https://api.oursms.com");
+  if (!API_KEY) throw new Error("OURSMS_API_KEY is missing");
+
+  const url = `${BASE.replace(/\/+$/, "")}/inbox/dlrs?count=${Math.min(
+    Math.max(1, count),
+    500
+  )}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`oursms_http_${res.status}${t ? `: ${t}` : ""}`);
+  }
+  return res.json();
+}
+
+// ---------- الرابر الموحّد المطلوب من بقية المشروع ----------
+export async function sendSms(
+  to: string | string[],
+  text: string,
+  opts?: SendSmsOptions
+): Promise<{ ok: boolean }> {
+  const dests = (Array.isArray(to) ? to : [to]).map((n) =>
+    normalizePhone(n, opts?.defaultCountry)
+  );
+
+  const res = await sendSMSViaOursms({
+    to: dests,
+    text,
+    msgClass: opts?.msgClass ?? "",
+    requestDlr: !!opts?.requestDlr,
+    priority: opts?.priority ?? 0,
+    delayMinutes: opts?.delayMinutes ?? 0,
+    validityMinutes: opts?.validityMinutes ?? 0,
+  });
+
+  return { ok: !!res?.ok };
+}
+
+// اجعل الرابر هو الـ default export أيضاً
+export default sendSms;

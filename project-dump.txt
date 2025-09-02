@@ -1,20 +1,21 @@
 ====[ PROJECT DUMP - METADATA ]=====================================================================
 Root   : D:\theqah
 Output : D:\theqah\project-dump.txt
-When   : 2025-08-30T19:57:26.847Z
+When   : 2025-09-02T10:25:38.502Z
 Rules  : skip binaries=true, skip .env*=true, maxBytes=1.0 MB
 
 ====[ FILE LIST ]===================================================================================
 .gitignore	(480 B)
 components.json	(449 B)
 eslint.config.mjs	(393 B)
-firestore.indexes.json	(2.5 KB)
+firebase.json	(103 B)
+firestore.indexes.json	(4.7 KB)
 firestore.rules	(3.2 KB)
 middleware.ts	(2.7 KB)
 next-env.d.ts	(213 B)
 next.config.ts	(1.1 KB)
-package-lock.json	(413.9 KB)
-package.json	(2.1 KB)
+package-lock.json	(414.4 KB)
+package.json	(2.2 KB)
 postcss.config.js	(93 B)
 public/android-chrome-192x192.png	(27.5 KB)
 public/android-chrome-512x512.png	(151.3 KB)
@@ -91,8 +92,6 @@ src/middleware.ts	(946 B)
 src/pages/_app.tsx	(1.0 KB)
 src/pages/admin/dashboard.tsx	(2.1 KB)
 src/pages/api/_admin/ping.ts	(1.1 KB)
-src/pages/api/_test/email.ts	(610 B)
-src/pages/api/_test/sms.ts	(630 B)
 src/pages/api/admin/alerts.ts	(1.7 KB)
 src/pages/api/admin/bootstrap.ts	(393 B)
 src/pages/api/admin/dashboard.ts	(2.7 KB)
@@ -103,6 +102,7 @@ src/pages/api/admin/reviews/bulk.ts	(6.3 KB)
 src/pages/api/admin/reviews/hide.ts	(1.0 KB)
 src/pages/api/admin/reviews/index.ts	(4.8 KB)
 src/pages/api/admin/salla/register-webhooks.ts	(1.9 KB)
+src/pages/api/admin/sms-credits.ts	(1.1 KB)
 src/pages/api/admin/stats.ts	(5.1 KB)
 src/pages/api/admin/stores.ts	(4.6 KB)
 src/pages/api/admin/test-notify.ts	(2.3 KB)
@@ -113,21 +113,22 @@ src/pages/api/orders/add.ts	(3.1 KB)
 src/pages/api/orders/get.ts	(2.3 KB)
 src/pages/api/orders/import.ts	(3.1 KB)
 src/pages/api/orders/index.ts	(1.6 KB)
-src/pages/api/orders/send-review.ts	(10.3 KB)
-src/pages/api/public/reviews.ts	(3.8 KB)
+src/pages/api/orders/send-review.ts	(9.5 KB)
+src/pages/api/public/reviews.ts	(4.2 KB)
 src/pages/api/report-review.ts	(1.1 KB)
+src/pages/api/review-token.ts	(1.4 KB)
 src/pages/api/reviews/[id]/reply.ts	(2.4 KB)
 src/pages/api/reviews/export-csv.ts	(5.2 KB)
 src/pages/api/reviews/export-pdf.ts	(5.5 KB)
 src/pages/api/reviews/list.ts	(1.4 KB)
 src/pages/api/reviews/moderate.ts	(6.2 KB)
-src/pages/api/reviews/submit.ts	(7.3 KB)
+src/pages/api/reviews/submit.ts	(6.1 KB)
 src/pages/api/salla/callback.ts	(5.5 KB)
 src/pages/api/salla/connect.ts	(2.6 KB)
 src/pages/api/salla/disconnect.ts	(1.0 KB)
 src/pages/api/salla/refresh.ts	(2.3 KB)
 src/pages/api/salla/subscribe.ts	(1.7 KB)
-src/pages/api/salla/webhook.ts	(8.9 KB)
+src/pages/api/salla/webhook.ts	(9.5 KB)
 src/pages/api/settings/validate.ts	(1.4 KB)
 src/pages/api/sms/inbound.ts	(653 B)
 src/pages/api/sms/status.ts	(4.6 KB)
@@ -138,6 +139,7 @@ src/pages/api/store/info.ts	(1.1 KB)
 src/pages/api/store/settings.ts	(1.6 KB)
 src/pages/api/store/update-info.ts	(986 B)
 src/pages/api/support-ticket.ts	(1.3 KB)
+src/pages/api/test/sms.ts	(3.0 KB)
 src/pages/api/zid/callback.ts	(3.0 KB)
 src/pages/api/zid/disconnect.ts	(835 B)
 src/pages/api/zid/refresh.ts	(2.7 KB)
@@ -155,7 +157,7 @@ src/pages/login.tsx	(3.9 KB)
 src/pages/privacy-policy.tsx	(3.6 KB)
 src/pages/r/[id].tsx	(973 B)
 src/pages/report.tsx	(4.3 KB)
-src/pages/review/[token].tsx	(9.2 KB)
+src/pages/review/[token].tsx	(9.9 KB)
 src/pages/reviews.tsx	(3.9 KB)
 src/pages/signup.tsx	(5.6 KB)
 src/pages/support.tsx	(5.4 KB)
@@ -169,7 +171,7 @@ src/server/messaging/invite-text.ts	(318 B)
 src/server/messaging/phone.ts	(674 B)
 src/server/messaging/send-invite.ts	(5.2 KB)
 src/server/messaging/send-rejection.ts	(1.9 KB)
-src/server/messaging/send-sms.ts	(2.8 KB)
+src/server/messaging/send-sms.ts	(7.0 KB)
 src/server/messaging/sms-length.ts	(755 B)
 src/server/messaging/templates.ts	(437 B)
 src/server/messaging/texts.ts	(929 B)
@@ -292,77 +294,178 @@ const eslintConfig = [
 export default eslintConfig;
 ====[ END FILE: eslint.config.mjs ]=================================================================
 
-====[ START FILE: firestore.indexes.json (2.5 KB) ]=================================================
+====[ START FILE: firebase.json (103 B) ]===========================================================
+{
+  "firestore": {
+    "indexes": "firestore.indexes.json",
+    "rules": "firestore.rules"
+  }
+}
+====[ END FILE: firebase.json ]=====================================================================
+
+====[ START FILE: firestore.indexes.json (4.7 KB) ]=================================================
 {
   "indexes": [
-    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
+   
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "storeUid", "order": "ASCENDING" },
+        { "fieldPath": "storeUid",  "order": "ASCENDING" },
+        { "fieldPath": "productId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
-    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid",    "order": "ASCENDING" },
+        { "fieldPath": "productId",   "order": "ASCENDING" },
+        { "fieldPath": "status",      "order": "ASCENDING" },
+        { "fieldPath": "createdAt",   "order": "DESCENDING" }
+      ]
+    },
+    
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "status",    "order": "ASCENDING" },
+        { "fieldPath": "storeUid",  "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+  
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid",   "order": "ASCENDING" },
+        { "fieldPath": "productId",  "order": "ASCENDING" },
+        { "fieldPath": "published",  "order": "ASCENDING" },
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
+      ]
+    },
+  
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid",     "order": "ASCENDING" },
+        { "fieldPath": "productId",    "order": "ASCENDING" },
+        { "fieldPath": "publishedAt",  "order": "DESCENDING" }
+      ]
+    },
+    
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid",  "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+
+  
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "storeName", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
-    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
+   
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stars",     "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+   
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "published", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
-    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
+   
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "stars", "order": "ASCENDING" },
+        { "fieldPath": "storeName", "order": "ASCENDING" },
+        { "fieldPath": "published", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeName", "order": "ASCENDING" },
+        { "fieldPath": "stars",     "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stars",     "order": "ASCENDING" },
+        { "fieldPath": "published", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+ 
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stars",     "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stars",     "order": "DESCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
 
-    { "collectionGroup": "orders", "queryScope": "COLLECTION",
+    {
+      "collectionGroup": "orders",
+      "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "storeUid", "order": "ASCENDING" },
+        { "fieldPath": "storeUid",  "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
 
-    { "collectionGroup": "stores", "queryScope": "COLLECTION",
+    {
+      "collectionGroup": "stores",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "name_lower", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-
-    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "storeUid", "order": "ASCENDING" },
-        { "fieldPath": "productId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "storeUid", "order": "ASCENDING" },
-        { "fieldPath": "productId", "order": "ASCENDING" },
-        { "fieldPath": "published", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    { "collectionGroup": "reviews", "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "storeUid", "order": "ASCENDING" },
-        { "fieldPath": "productId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
       ]
     },
 
    
-    { "collectionGroup": "review_invites", "queryScope": "COLLECTION",
+    {
+      "collectionGroup": "review_invites",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "storeUid", "order": "ASCENDING" },
-        { "fieldPath": "orderId", "order": "ASCENDING" }
+        { "fieldPath": "orderId",  "order": "ASCENDING" }
       ]
     }
   ],
@@ -604,7 +707,7 @@ const nextConfig = {
 module.exports = nextConfig;
 ====[ END FILE: next.config.ts ]====================================================================
 
-====[ START FILE: package-lock.json (413.9 KB) ]====================================================
+====[ START FILE: package-lock.json (414.4 KB) ]====================================================
 {
   "name": "theqah",
   "version": "0.1.0",
@@ -666,6 +769,7 @@ module.exports = nextConfig;
         "@types/formidable": "^3.4.5",
         "@types/js-cookie": "^3.0.6",
         "@types/node": "^20",
+        "@types/node-fetch": "^2.6.13",
         "@types/nodemailer": "^6.4.17",
         "@types/pdfkit": "^0.17.2",
         "@types/react": "^19",
@@ -3972,6 +4076,17 @@ module.exports = nextConfig;
       "license": "MIT",
       "dependencies": {
         "undici-types": "~6.21.0"
+      }
+    },
+    "node_modules/@types/node-fetch": {
+      "version": "2.6.13",
+      "resolved": "https://registry.npmjs.org/@types/node-fetch/-/node-fetch-2.6.13.tgz",
+      "integrity": "sha512-QGpRVpzSaUs30JBSGPjOg4Uveu384erbHBoT1zeONvyCfwQxIkUshLAOqN/k9EjGviPRmWTTe6aH2qySWKTVSw==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "@types/node": "*",
+        "form-data": "^4.0.4"
       }
     },
     "node_modules/@types/nodemailer": {
@@ -12289,7 +12404,7 @@ module.exports = nextConfig;
 }
 ====[ END FILE: package-lock.json ]=================================================================
 
-====[ START FILE: package.json (2.1 KB) ]===========================================================
+====[ START FILE: package.json (2.2 KB) ]===========================================================
 {
   "name": "theqah",
   "version": "0.1.0",
@@ -12352,6 +12467,7 @@ module.exports = nextConfig;
     "@types/formidable": "^3.4.5",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
+    "@types/node-fetch": "^2.6.13",
     "@types/nodemailer": "^6.4.17",
     "@types/pdfkit": "^0.17.2",
     "@types/react": "^19",
@@ -12440,10 +12556,21 @@ Size: 1.3 KB
 Size: 128 B
 
 ====[ START FILE: public/widgets/theqah-widget.js (8.2 KB) ]========================================
+// public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "1.1.0";
+  const SCRIPT_VERSION = "1.1.1";
 
-  // --- Helpers ---
+  // اكتشف أصل السكربت عشان نستخدمه للـ API واللوجو
+  const CURRENT_SCRIPT = document.currentScript;
+  const SCRIPT_ORIGIN = (() => {
+    try { return new URL(CURRENT_SCRIPT?.src || location.href).origin; }
+    catch { return location.origin; }
+  })();
+
+  const API_BASE = `${SCRIPT_ORIGIN}/api/public/reviews`;
+  const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png`; // ضع logo.png داخل public/widgets/
+
+  // Helpers
   const h = (tag, attrs = {}, children = []) => {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -12463,67 +12590,56 @@ Size: 128 B
     return wrap;
   };
 
-  // --- Renderer for a single placeholder ---
   async function mountOne(hostEl) {
     const store = hostEl.dataset.store?.trim();
     const product = hostEl.dataset.product?.trim() || "";
     const limit = Number(hostEl.dataset.limit || 10);
-    const lang = (hostEl.dataset.lang || "ar").toLowerCase(); // ar | en
+    const lang = (hostEl.dataset.lang || "ar").toLowerCase();   // ar | en
     const theme = (hostEl.dataset.theme || "light").toLowerCase(); // light | dark
 
-    if (!store) {
-      hostEl.textContent = "Missing data-store";
-      return;
-    }
+    if (!store) { hostEl.textContent = "Missing data-store"; return; }
 
-    // Shadow DOM (falls back to light DOM if not supported)
     const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
 
-    // Styles
     const style = h("style", {
       html: `
         :host { all: initial; }
         * { box-sizing: border-box; }
-        .wrap { font-family: system-ui, -apple-system, Segoe UI, Tahoma, Arial, sans-serif; direction: ${
-          lang === "ar" ? "rtl" : "ltr"
-        }; }
-        .section { background: ${theme === "dark" ? "#0b1324" : "#fff"};
-                   color: ${theme === "dark" ? "#e2e8f0" : "#0f172a"};
-                   border: 1px solid ${theme === "dark" ? "#24304a" : "#e5e7eb"};
-                   border-radius: 14px; padding: 14px; margin: 10px 0; }
+        .wrap { font-family: system-ui,-apple-system,Segoe UI,Tahoma,Arial,sans-serif; direction: ${lang === "ar" ? "rtl" : "ltr"}; }
+        .section { background:${theme === "dark" ? "#0b1324" : "#fff"};
+                   color:${theme === "dark" ? "#e2e8f0" : "#0f172a"};
+                   border:1px solid ${theme === "dark" ? "#24304a" : "#e5e7eb"};
+                   border-radius:14px; padding:14px; margin:10px 0; }
         .header { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
         .logo { width:20px; height:20px; }
         .title { font-weight:700; font-size:14px; margin:0; }
-        .meta { font-size:12px; opacity:.75; margin: 0 0 8px 0; }
-        .stars { color: #f59e0b; letter-spacing: 2px; font-size: 14px; }
-        .star { opacity: .35; }
-        .star.filled { opacity: 1; }
-        .badge { display:inline-flex; align-items:center; gap:6px; background: #e6f4ea; color:#166534; border:1px solid #86efac;
-                 font-size:11px; padding: 3px 8px; border-radius: 999px; }
+        .meta { font-size:12px; opacity:.75; margin:0 0 8px 0; }
+        .stars { color:#f59e0b; letter-spacing:2px; font-size:14px; }
+        .star { opacity:.35; } .star.filled { opacity:1; }
+        .badge { display:inline-flex; align-items:center; gap:6px; background:#e6f4ea; color:#166534; border:1px solid #86efac;
+                 font-size:11px; padding:3px 8px; border-radius:999px; }
         .badge.dark { background:#064e3b; color:#bbf7d0; border-color:#10b981; }
-        .text { white-space: pre-wrap; line-height:1.6; font-size: 13px; margin:8px 0 0 0; }
-        .empty { padding:12px; border:1px dashed ${theme === "dark" ? "#374151" : "#94a3b8"}; border-radius: 12px; font-size:13px; opacity:.8; }
-        .row { display:flex; align-items:center; gap:8px; justify-content: space-between; }
+        .text { white-space:pre-wrap; line-height:1.6; font-size:13px; margin:8px 0 0 0; }
+        .empty { padding:12px; border:1px dashed ${theme === "dark" ? "#374151" : "#94a3b8"}; border-radius:12px; font-size:13px; opacity:.8; }
+        .row { display:flex; align-items:center; gap:8px; justify-content:space-between; }
         .left { display:flex; align-items:center; gap:8px; }
-        .item { background: ${theme === "dark" ? "#0f172a" : "#fff"};
-                color: inherit; border: 1px solid ${theme === "dark" ? "#334155" : "#e2e8f0"};
-                border-radius: 14px; padding: 14px; margin: 10px 0; }
-        .filter { display:flex; align-items:center; gap:8px; margin: 10px 0 0; font-size: 12px; opacity: .8 }
-        .filter button { padding: 6px 10px; border-radius: 8px; border: 1px solid ${theme === "dark" ? "#334155" : "#cbd5e1"};
-                         background: transparent; color: inherit; cursor: pointer; }
-        .filter button.active { background: ${theme === "dark" ? "#1f2937" : "#f1f5f9"}; }
+        .item { background:${theme === "dark" ? "#0f172a" : "#fff"};
+                color:inherit; border:1px solid ${theme === "dark" ? "#334155" : "#e2e8f0"};
+                border-radius:14px; padding:14px; margin:10px 0; }
+        .filter { display:flex; align-items:center; gap:8px; margin:10px 0 0; font-size:12px; opacity:.8 }
+        .filter button { padding:6px 10px; border-radius:8px; border:1px solid ${theme === "dark" ? "#334155" : "#cbd5e1"};
+                         background:transparent; color:inherit; cursor:pointer; }
+        .filter button.active { background:${theme === "dark" ? "#1f2937" : "#f1f5f9"}; }
       `,
     });
 
-    // Shell
     const titleText =
       lang === "ar" ? (product ? "آراء المشترين" : "تقييمات المتجر") : product ? "Customer Reviews" : "Store Reviews";
 
     const container = h("div", { class: "wrap" });
     const section = h("div", { class: "section" }, [
       h("div", { class: "header" }, [
-        // غيّر مسار اللوجو لو عندك ملف آخر
-        h("img", { class: "logo", src: "./logo.png", alt: "Theqah" }),
+        h("img", { class: "logo", src: LOGO_URL, alt: "Theqah" }),
         h("p", { class: "title" }, titleText),
       ]),
       product ? h("p", { class: "meta" }, `${lang === "ar" ? "منتج" : "Product"}: ${product}`) : null,
@@ -12536,29 +12652,26 @@ Size: 128 B
     ]);
 
     container.appendChild(section);
-
     root.appendChild(style);
     root.appendChild(container);
 
-    // Events (sort toggle)
     const filterEl = section.querySelector(".filter");
+    const list = section.querySelector(".list");
     let currentSort = "desc";
+    let lastData = null;
+
     filterEl.addEventListener("click", (e) => {
       const btn = e.target.closest("button");
       if (!btn) return;
       currentSort = btn.getAttribute("data-sort") || "desc";
       filterEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      renderList(lastData); // re-render with new sort
+      renderList(lastData);
     });
 
-    // Fetch data
-    const base = `/api/public/reviews?storeUid=${encodeURIComponent(store)}&limit=${limit}&sinceDays=365`;
-    const endpoint = product ? `${base}&productId=${encodeURIComponent(product)}` : base;
-
-    let lastData = null;
-
-    const list = section.querySelector(".list");
+    const endpointBase =
+      `${API_BASE}?storeUid=${encodeURIComponent(store)}&limit=${limit}&sinceDays=365}`.replace(/}$/, "");
+    const endpoint = product ? `${endpointBase}&productId=${encodeURIComponent(product)}` : endpointBase;
 
     const fetchData = async () => {
       try {
@@ -12568,7 +12681,6 @@ Size: 128 B
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
         renderList(lastData);
-        //esli
       } catch (e) {
         list.innerHTML = "";
         list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "تعذّر التحميل" : "Failed to load"));
@@ -12582,37 +12694,26 @@ Size: 128 B
         list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "لا توجد تقييمات بعد" : "No reviews yet"));
         return;
       }
-
-      // Optional re-sort on client if the API ignores query param
       items.sort((a, b) =>
-        String(currentSort) === "asc"
+        currentSort === "asc"
           ? Number(a.publishedAt || 0) - Number(b.publishedAt || 0)
           : Number(b.publishedAt || 0) - Number(a.publishedAt || 0)
       );
 
       for (const r of items) {
-        const when = r.publishedAt
-          ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en")
-          : "";
+        const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
         const trusted = !!r.trustedBuyer;
 
         const row = h("div", { class: "row" }, [
           h("div", { class: "left" }, [
             Stars(Number(r.stars || 0)),
-            trusted
-              ? h(
-                  "span",
-                  { class: "badge" + (theme === "dark" ? " dark" : "") },
-                  lang === "ar" ? ["✅ ", "مشتري موثّق"] : ["✅ ", "Verified Buyer"]
-                )
-              : null,
+            trusted ? h("span", { class: "badge" + (theme === "dark" ? " dark" : "") }, lang === "ar" ? "مشتري موثّق" : "Verified Buyer") : null,
           ]),
           h("small", { class: "meta" }, when),
         ]);
 
         const text = h("p", { class: "text" }, String(r.text || "").trim());
         const item = h("div", { class: "item" }, [row, text]);
-
         list.appendChild(item);
       }
     };
@@ -12620,12 +12721,13 @@ Size: 128 B
     await fetchData();
   }
 
-  // Mount all placeholders
+  // يدعم إما id أو class
   function mountAll() {
-    document.querySelectorAll('#theqah-reviews:not([data-mounted="1"])').forEach((el) => {
-      el.setAttribute("data-mounted", "1");
-      mountOne(el);
-    });
+    const nodes = [
+      ...document.querySelectorAll('#theqah-reviews:not([data-mounted="1"])'),
+      ...document.querySelectorAll('.theqah-reviews:not([data-mounted="1"])'),
+    ];
+    nodes.forEach((el) => { el.setAttribute("data-mounted", "1"); mountOne(el); });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountAll);
@@ -19114,42 +19216,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/_admin/ping.ts ]======================================================
 
-====[ START FILE: src/pages/api/_test/email.ts (610 B) ]============================================
-// src/pages/api/_test/email.ts
-import type { NextApiRequest, NextApiResponse } from "next";
-import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
-
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    const to = (req.query.to as string) || "you@yourdomain.com";
-    const r = await sendEmail(to, "Test from Theqah", "<b>Hello</b>");
-    res.status(200).json(r);
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    res.status(500).json({ ok: false, error: e?.message || String(e) });
-  }
-}
-====[ END FILE: src/pages/api/_test/email.ts ]======================================================
-
-====[ START FILE: src/pages/api/_test/sms.ts (630 B) ]==============================================
-// src/pages/api/_test/sms.ts
-import type { NextApiRequest, NextApiResponse } from "next";
-import { sendSms } from "@/server/messaging/send-sms";
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    const to = (req.query.to as string) || "+201234567890";
-    const text = (req.query.text as string) || "Test SMS from Theqah";
-    const r = await sendSms(to, text);
-    res.status(r.ok ? 200 : 502).json(r);
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    res.status(500).json({ ok:false, error: e?.message || String(e) });
-  }
-}
-====[ END FILE: src/pages/api/_test/sms.ts ]========================================================
-
 ====[ START FILE: src/pages/api/admin/alerts.ts (1.7 KB) ]==========================================
 // src/pages/api/admin/alerts.ts
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -20020,6 +20086,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   return res.status(200).json({ ok: true, results });
 }
 ====[ END FILE: src/pages/api/admin/salla/register-webhooks.ts ]====================================
+
+====[ START FILE: src/pages/api/admin/sms-credits.ts (1.1 KB) ]=====================================
+// src/pages/api/admin/sms-credits.ts
+import type { NextApiRequest, NextApiResponse } from "next";
+
+export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
+  const base = (process.env.OURSMS_BASE_URL || "").replace(/\/+$/, "");
+  const url  = `${base}/billing/credits`;
+  const token = process.env.OURSMS_API_KEY;
+
+  try {
+    if (!token) throw new Error("Missing OURSMS_API_KEY");
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const text = await r.text();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let json: any = null; try { json = JSON.parse(text); } catch {}
+
+    if (!r.ok) {
+      return res.status(r.status).json({ ok:false, error:`oursms_http_${r.status}`, debug:{ url, status:r.status, responseText:text, responseJson:json }});
+    }
+    return res.status(200).json({ ok:true, data: json ?? text });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (e: any) {
+    return res.status(500).json({ ok:false, error:e?.message||"credits_failed" });
+  }
+}
+====[ END FILE: src/pages/api/admin/sms-credits.ts ]================================================
 
 ====[ START FILE: src/pages/api/admin/stats.ts (5.1 KB) ]===========================================
 // src/pages/api/admin/stats.ts
@@ -20967,15 +21060,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/orders/index.ts ]=====================================================
 
-====[ START FILE: src/pages/api/orders/send-review.ts (10.3 KB) ]===================================
-// src/pages/api/orders/send-review.ts
+====[ START FILE: src/pages/api/orders/send-review.ts (9.5 KB) ]====================================
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { verifyUser } from "@/utils/verifyUser";
 import { createShortLink } from "@/server/short-links";
 import { createReviewToken } from "@/server/review-tokens";
 import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
-import { sendSms } from "@/server/messaging/send-sms";
+import { sendSms, buildInviteSMS } from "@/server/messaging/send-sms";
 
 type OrderDoc = {
   storeUid: string;
@@ -21010,14 +21102,9 @@ type Err = {
 function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
-  try {
-    return JSON.stringify(e);
-  } catch {
-    return String(e);
-  }
+  try { return JSON.stringify(e); } catch { return String(e); }
 }
 
-// ✅ قالب بريد HTML مقاوم لعملاء البريد
 function buildReviewEmailHTML(customerName: string, storeName: string, reviewUrl: string) {
   const pre = "قيّم تجربتك خلال دقيقة — اضغط الزر بالأسفل";
   return `<!doctype html>
@@ -21029,11 +21116,9 @@ function buildReviewEmailHTML(customerName: string, storeName: string, reviewUrl
   <title>قيّم تجربتك</title>
 </head>
 <body style="margin:0;padding:0;background:#f6f7f9;">
-  <!-- Preheader (مخفية) -->
   <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0;">
     ${pre} ‏‏​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
   </div>
-
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7f9;">
     <tr>
       <td align="center" style="padding:24px;">
@@ -21044,33 +21129,21 @@ function buildReviewEmailHTML(customerName: string, storeName: string, reviewUrl
               <span style="font-size:16px;font-weight:bold;color:#0f172a;">ثقة</span>
             </td>
           </tr>
-
           <tr>
             <td style="padding:0 24px 10px 24px; text-align:right; font-family:Tahoma, Arial, sans-serif;">
-              <h1 style="margin:0 0 6px 0; font-size:20px; color:#0f172a;">مرحباً ${customerName}،</h1>
+              <h1 style="margin:0 0 6px 0; font-size:20px; color:#0f172a;">مرحباً ${customerName || "عميلنا العزيز"}،</h1>
               <p style="margin:0; font-size:14px; color:#334155;">
                 قيّم تجربتك من <strong>${storeName}</strong> وساهم في إسعاد يتيم!
               </p>
             </td>
           </tr>
-
           <tr>
             <td align="right" style="padding:18px 24px 6px 24px; font-family:Tahoma, Arial, sans-serif;">
-              <!-- زر مقاوم لـ Outlook (VML) -->
-              <!--[if mso]>
-                <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${reviewUrl}" style="height:44px;v-text-anchor:middle;width:260px;" arcsize="12%" stroke="f" fillcolor="#16a34a">
-                  <w:anchorlock/>
-                  <center style="color:#ffffff;font-family:Tahoma,Arial,sans-serif;font-size:16px;">اضغط للتقييم الآن</center>
-                </v:roundrect>
-              <![endif]-->
-              <!--[if !mso]><!-- -->
-                <a href="${reviewUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:15px;">
-                  اضغط للتقييم الآن
-                </a>
-              <!--<![endif]-->
+              <a href="${reviewUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:15px;">
+                اضغط للتقييم الآن
+              </a>
             </td>
           </tr>
-
           <tr>
             <td style="padding:10px 24px 0 24px; text-align:right; font-family:Tahoma, Arial, sans-serif;">
               <p style="margin:0;font-size:12px;color:#64748b;">
@@ -21078,14 +21151,12 @@ function buildReviewEmailHTML(customerName: string, storeName: string, reviewUrl
               </p>
             </td>
           </tr>
-
           <tr>
             <td style="padding:24px; text-align:right; font-family:Tahoma, Arial, sans-serif;">
               <p style="margin:0;font-size:12px;color:#94a3b8;">شكراً لك — فريق ثقة</p>
             </td>
           </tr>
         </table>
-
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin-top:12px;">
           <tr>
             <td style="text-align:center;font-family:Tahoma, Arial, sans-serif;color:#94a3b8;font-size:11px;">
@@ -21093,7 +21164,6 @@ function buildReviewEmailHTML(customerName: string, storeName: string, reviewUrl
             </td>
           </tr>
         </table>
-
       </td>
     </tr>
   </table>
@@ -21129,15 +21199,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       storeUid: uid,
       productId: order.productId ?? "",
       name: order.name || "عميل",
-      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 يوم
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
     });
 
-    const base = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+    const base = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
     if (!base) return res.status(500).json({ ok: false, message: "BASE_URL not configured" });
 
     const reviewUrl = `${base}/review/${token.id}`;
 
-    // حاول اختصار الرابط؛ لو فشل استخدم الأصلي
     let publicUrl = reviewUrl;
     try {
       publicUrl = await createShortLink(reviewUrl);
@@ -21148,7 +21217,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const storeName = order.storeName || "متجرك";
     const customerName = order.name || "عميلنا العزيز";
 
-    const smsText = `مرحباً ${customerName}، قيّم تجربتك من ${storeName}: ${publicUrl} وساهم في إسعاد يتيم!`;
+    const smsText = buildInviteSMS(storeName, publicUrl);
     const emailHtml = buildReviewEmailHTML(customerName, storeName, publicUrl);
 
     const haveSms = Boolean(order.phone);
@@ -21165,23 +21234,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const debugInfo: Record<string, unknown> = debugFlag
       ? {
-          id,
-          uid,
-          haveSms,
-          haveEmail,
-          canSms,
-          canEmail,
+          id, uid, haveSms, haveEmail, canSms, canEmail,
           envSeen: {
             OURSMS_API_KEY: !!process.env.OURSMS_API_KEY,
-            OURSMS_BASE_URL: !!process.env.OURSMS_BASE_URL,
+            OURSMS_BASE_URL: process.env.OURSMS_BASE_URL,
+            OURSMS_SENDER: process.env.OURSMS_SENDER,
             DMAIL_SMTP_HOST: !!process.env.DMAIL_SMTP_HOST,
             DMAIL_SMTP_PORT: process.env.DMAIL_SMTP_PORT,
             DMAIL_SMTP_USER: !!process.env.DMAIL_SMTP_USER,
             DMAIL_FROM: process.env.DMAIL_FROM,
           },
-          base,
-          reviewUrl,
-          publicUrl,
+          base, reviewUrl, publicUrl,
         }
       : {};
 
@@ -21190,7 +21253,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ok: false,
         message: "No deliverable channels",
         results: [
-          { channel: "sms", ok: false, error: !haveSms ? "no phone" : !canSms ? "provider not configured" : "skipped" },
+          { channel: "sms",   ok: false, error: !haveSms ? "no phone" : !canSms ? "provider not configured" : "skipped" },
           { channel: "email", ok: false, error: !haveEmail ? "no email" : !canEmail ? "provider not configured" : "skipped" },
         ],
         debug: debugInfo,
@@ -21207,7 +21270,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const attempts: Array<Promise<ChannelResult>> = [];
-    if (trySms) attempts.push(attempt("sms", () => sendSms(String(order.phone), smsText)));
+    if (trySms)   attempts.push(attempt("sms",   () => sendSms(String(order.phone), smsText, { defaultCountry: "SA" })));
     if (tryEmail) attempts.push(attempt("email", () => sendEmail(String(order.email), "قيّم تجربتك معنا ✨", emailHtml)));
 
     const results = await Promise.all(attempts);
@@ -21233,47 +21296,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       debug: debugInfo,
     });
   } catch (e: unknown) {
-    const status = 401;
-    return res.status(status).json({ ok: false, message: errMsg(e) });
+    return res.status(401).json({ ok: false, message: errMsg(e) });
   }
 }
 ====[ END FILE: src/pages/api/orders/send-review.ts ]===============================================
 
-====[ START FILE: src/pages/api/public/reviews.ts (3.8 KB) ]========================================
+====[ START FILE: src/pages/api/public/reviews.ts (4.2 KB) ]========================================
 // src/pages/api/public/reviews.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
-// -------- helpers: query parsing (no any) --------
+// -------- helpers --------
 type QueryLike = NextApiRequest["query"];
-
-function pickQuery(q: QueryLike, keys: string[], fallback = ""): string {
+const getStr = (q: QueryLike, keys: string[], fallback = ""): string => {
   for (const k of keys) {
     const v = q[k];
     if (typeof v === "string") return v;
     if (Array.isArray(v) && typeof v[0] === "string") return v[0];
   }
   return fallback;
-}
+};
 
-function norm(q: QueryLike) {
-  const storeUid = pickQuery(q, ["storeUid", "storeId", "store", "s"]);
-  const productId = pickQuery(q, ["productId", "product", "p", "sku"]);
-  const limitStr = pickQuery(q, ["limit"], "20");
-  const limitNum = Math.min(100, Math.max(1, Number(limitStr || 20)));
-  return { storeUid, productId, limit: limitNum };
-}
-
-// -------- helpers: safe coercions from Firestore --------
-const asString = (v: unknown): string | null => (typeof v === "string" ? v : null);
-const asNumber = (v: unknown): number =>
-  typeof v === "number" ? v : Number(v ?? 0) || 0;
-const asBoolean = (v: unknown): boolean => (typeof v === "boolean" ? v : false);
-//eslint-disable-next-line @typescript-eslint/no-unused-vars
-function toTimestamp(v: number | string | undefined | null): number {
-  if (v == null) return 0;
-  return typeof v === "number" ? v : Date.parse(String(v));
-}
+const parseQuery = (q: QueryLike) => {
+  const storeUid = getStr(q, ["storeUid", "storeId", "store", "s"]);
+  const productId = getStr(q, ["productId", "product", "p", "sku"], "");
+  const limit = Math.min(100, Math.max(1, Number(getStr(q, ["limit"], "20")) || 20));
+  const sort = (getStr(q, ["sort", "order"], "desc").toLowerCase() === "asc" ? "asc" : "desc") as
+    | "asc"
+    | "desc";
+  const sinceDays = Math.max(0, Number(getStr(q, ["sinceDays", "days"], "")) || 0);
+  return { storeUid, productId, limit, sort, sinceDays };
+};
 
 // -------- public shape --------
 type PublicReview = {
@@ -21281,74 +21334,84 @@ type PublicReview = {
   productId: string | null;
   stars: number;
   text: string;
-  createdAt: number | string | null;
-  buyerVerified: boolean;
+  publishedAt: number;     // ms
+  trustedBuyer: boolean;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Optional preflight for CORS
+  // CORS / preflight
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-theqah-widget");
     res.setHeader("Access-Control-Allow-Origin", "*");
     return res.status(200).end();
   }
 
+  if (req.method !== "GET") return res.status(405).json({ error: "method_not_allowed" });
+
+  const { storeUid, productId, limit, sort, sinceDays } = parseQuery(req.query);
+  if (!storeUid) {
+    return res.status(400).json({ error: "MISSING_PARAMS", need: ["storeUid"] });
+  }
+
   try {
-    if (req.method !== "GET") return res.status(405).end();
-
-    const { storeUid, productId, limit } = norm(req.query);
-    if (!storeUid || !productId) {
-      return res
-        .status(400)
-        .json({ error: "MISSING_PARAMS", need: ["storeUid", "productId"] });
-    }
-
     const db = dbAdmin();
-    const qRef = db
+
+    // بناء الاستعلام ديناميكياً
+    let q = db
       .collection("reviews")
       .where("storeUid", "==", storeUid)
-      .where("productId", "==", productId)
-      .where("status", "==", "published")
-      .orderBy("createdAt", "desc")
-      .limit(limit);
+      .where("status", "==", "published");
 
-    const snap = await qRef.get();
+    if (productId) q = q.where("productId", "==", productId);
+
+    // sinceDays => فلترة على publishedAt (لو فيه)
+    const now = Date.now();
+    const cutoff = sinceDays > 0 ? now - sinceDays * 24 * 60 * 60 * 1000 : 0;
+    if (cutoff > 0) {
+      q = q.where("publishedAt", ">=", cutoff);
+    }
+
+    q = q.orderBy("publishedAt", sort as FirebaseFirestore.OrderByDirection).limit(limit);
+
+    // ملاحظة: أول مرة ممكن يطلب منك Firestore تعمل index مركّب للاستعلام ده.
+    const snap = await q.get();
 
     const items: PublicReview[] = snap.docs.map((d) => {
       const data = d.data() as Record<string, unknown>;
+      const stars = Math.max(0, Math.min(5, Number(data["stars"] ?? 0)));
+      const text =
+        (typeof data["text"] === "string" && data["text"]) ||
+        (typeof data["comment"] === "string" && data["comment"]) ||
+        "";
+      const publishedAt =
+        (typeof data["publishedAt"] === "number" && data["publishedAt"]) ||
+        (typeof data["createdAt"] === "number" && data["createdAt"]) ||
+        (data["createdAt"] ? Date.parse(String(data["createdAt"])) : 0);
 
-      const productIdVal = asString(data["productId"]);
-      const starsVal = Math.max(0, Math.min(5, asNumber(data["stars"])));
-      const textVal =
-        asString(data["text"]) ??
-        (asString(data["comment"]) ?? "");
-      const createdRaw =
-        (data["createdAt"] as number | string | undefined) ??
-        (data["created"] as number | string | undefined) ??
-        null;
-      const buyerVerifiedVal =
-        asBoolean(data["buyerVerified"]) || asBoolean(data["trustedBuyer"]);
+      const trustedBuyer = Boolean(
+        (typeof data["trustedBuyer"] === "boolean" && data["trustedBuyer"]) ||
+          (typeof data["buyerVerified"] === "boolean" && data["buyerVerified"])
+      );
 
       return {
         id: d.id,
-        productId: productIdVal,
-        stars: starsVal,
-        text: textVal,
-        createdAt: createdRaw,
-        buyerVerified: buyerVerifiedVal,
+        productId: typeof data["productId"] === "string" ? data["productId"] : null,
+        stars,
+        text,
+        publishedAt,
+        trustedBuyer,
       };
     });
 
-    // CORS (allow-list domains في الإنتاج بدلاً من *)
+    // CORS (في الإنتاج بدّل * بقائمة دوميناتك)
     res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300"); // اختياري: كاش بسيط
     return res.status(200).json({ items });
-  } catch (e: unknown) {
+  } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error(e);
-    return res
-      .status(500)
-      .json({ error: "PUBLIC_LIST_FAILED", message });
+    console.error("public/reviews error:", message);
+    return res.status(500).json({ error: "PUBLIC_LIST_FAILED", message });
   }
 }
 ====[ END FILE: src/pages/api/public/reviews.ts ]===================================================
@@ -21388,6 +21451,46 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
 export default withCors(handler);
 ====[ END FILE: src/pages/api/report-review.ts ]====================================================
+
+====[ START FILE: src/pages/api/review-token.ts (1.4 KB) ]==========================================
+// src/pages/api/review-token.ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import { dbAdmin } from "@/lib/firebaseAdmin";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    const token = String(req.query.token || "").trim();
+    if (!token) return res.status(400).json({ error: "missing_token" });
+
+    const db = dbAdmin();
+    const snap = await db.collection("review_tokens").doc(token).get();
+    if (!snap.exists) return res.status(404).json({ error: "not_found" });
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const t = snap.data() as any;
+    // (اختياري) حاول تجيب اسم المتجر
+    let storeName: string | undefined;
+    if (t?.storeUid) {
+      try {
+        const s = await db.collection("stores").doc(String(t.storeUid)).get();
+        storeName = (s.data()?.name as string) || undefined;
+      } catch {}
+    }
+
+    return res.status(200).json({
+      tokenId: token,
+      orderId: t?.orderId ?? null,
+      storeName: storeName ?? t?.storeName ?? null,
+      customer: t?.customer ?? null,
+      expired: t?.expiresAt ? Date.now() > Number(t.expiresAt) : false,
+      voided: Boolean(t?.voidedAt),
+    });
+  }
+  //eslint-disable-next-line @typescript-eslint/no-unused-vars 
+  catch (e) {
+    return res.status(500).json({ error: "server_error" });
+  }
+}
+====[ END FILE: src/pages/api/review-token.ts ]=====================================================
 
 ====[ START FILE: src/pages/api/reviews/[id]/reply.ts (2.4 KB) ]====================================
 // src/pages/api/reviews/[id]/reply.ts
@@ -22058,185 +22161,150 @@ export default async function handler(
 }
 ====[ END FILE: src/pages/api/reviews/moderate.ts ]=================================================
 
-====[ START FILE: src/pages/api/reviews/submit.ts (7.3 KB) ]========================================
+====[ START FILE: src/pages/api/reviews/submit.ts (6.1 KB) ]========================================
 // src/pages/api/reviews/submit.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDb } from "@/server/firebase-admin";
-import { moderateReview } from "@/server/moderation";
-//eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { getReviewTokenById } from "@/server/review-tokens";
+import { dbAdmin } from "@/lib/firebaseAdmin"; // استخدم نفس util المؤكد عندك
+// لو عندك getDb ويشتغل تمام استخدمه بدل dbAdmin().firestore()
+import { moderateReview } from "@/server/moderation"; // هنخليها اختيارية
 
 type ReviewBody = {
-  orderId: string;
-  stars: number;
+  orderId?: string;
+  stars?: number;
   text?: string;
-  images?: string[]; // Uploadcare CDN URLs
-  tokenId?: string;  // توكن الدعوة (اختياري، لكن لو موجود لازم يتحقق)
+  images?: string[];
+  tokenId?: string;
+  platform?: "salla" | "zid" | "manual" | "web";
 };
 
-function isNonEmptyString(v: unknown): v is string {
-  return typeof v === "string" && v.trim().length > 0;
-}
-function isImagesArray(v: unknown): v is string[] {
-  return Array.isArray(v) && v.every((u) => typeof u === "string" && u.length > 0);
-}
+const isNonEmptyString = (v: unknown): v is string =>
+  typeof v === "string" && v.trim().length > 0;
+
+const isImagesArray = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every((u) => typeof u === "string" && u.length > 0);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+  if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
 
   try {
-    const raw = req.body as Partial<ReviewBody>;
-    if (typeof raw !== "object" || raw === null) return res.status(400).json({ error: "Invalid body" });
+    const body: ReviewBody = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
+    const { orderId, stars, text, images, tokenId, platform } = body;
 
-    const { orderId, stars, text, images, tokenId } = raw;
-
-    if (!isNonEmptyString(orderId)) return res.status(400).json({ error: "orderId is required" });
-
+    if (!isNonEmptyString(orderId)) return res.status(400).json({ error: "missing_orderId" });
     const s = Number(stars);
-    if (!Number.isFinite(s) || s < 1 || s > 5) return res.status(400).json({ error: "stars must be 1..5" });
-
-    if (images !== undefined && !isImagesArray(images)) return res.status(400).json({ error: "images must be string[]" });
+    if (!Number.isFinite(s) || s < 1 || s > 5) return res.status(400).json({ error: "invalid_stars" });
+    if (images !== undefined && !isImagesArray(images)) return res.status(400).json({ error: "images_must_be_array" });
 
     const imgs = isImagesArray(images) ? images : [];
-    const UCARE = /^https:\/\/ucarecdn\.com\//;
-    const safeImages = imgs.filter((u) => UCARE.test(u));
+    const safeImages = imgs.filter((u) => /^https:\/\/ucarecdn\.com\//.test(u)).slice(0, 10);
+    const now = Date.now();
 
-    // قيم افتراضية لو مفيش توكن
-    let storeUid: string | null = null;
-    let productId: string | null = null;
-    let trustedBuyer = false;
+    const db = dbAdmin(); // Firestore Admin instance
 
-    const db = getDb();
-    const nowMs = Date.now();
-
-    // هنكتب التقييم ونعلم usedAt داخل Transaction لضمان one-time use
     const result = await db.runTransaction(async (tx) => {
-      // لو مفيش tokenId: اسمح بالتقييم (غير موثق) بدون ربط دعوة
+      // لو مفيش tokenId: نسجّل تقييم غير موثّق (trustedBuyer=false)
       if (!isNonEmptyString(tokenId)) {
-        const reviewId = db.collection("reviews").doc().id;
-        tx.set(db.collection("reviews").doc(reviewId), {
-          id: reviewId,
+        const reviewRef = db.collection("reviews").doc();
+        tx.set(reviewRef, {
+          id: reviewRef.id,
           orderId,
           stars: s,
-          text: isNonEmptyString(text) ? String(text) : "",
+          text: isNonEmptyString(text) ? text : "",
           images: safeImages,
           tokenId: null,
           storeUid: null,
           productId: null,
+          platform: platform || "web",
+          trustedBuyer: false,
           status: "published",
           published: true,
-          publishedAt: nowMs,
-          trustedBuyer: false,
-          platform: "web",          // بدل "salla" الثابتة
-          createdAt: nowMs,
-          moderation: null,         // هنحدّثها بعد الموديريشن تحت
-        }, { merge: false });
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return { reviewId, usedToken: false, tok: null as any };
+          publishedAt: now,
+          createdAt: now,
+          moderation: null,
+        });
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return { reviewId: reviewRef.id, tok: null as any };
       }
 
-      // لو فيه tokenId: لازم نتحقق منه ومن حالته ونقفل السباق
-      const tokenRef = db.collection("review_tokens").doc(String(tokenId));
-      const tokenSnap = await tx.get(tokenRef);
-      if (!tokenSnap.exists) {
-        throw new Error("token_not_found");
-      }
+      // مع وجود tokenId: تحقق صارم
+      const tokRef = db.collection("review_tokens").doc(String(tokenId));
+      const tokSnap = await tx.get(tokRef);
+      if (!tokSnap.exists) throw new Error("token_not_found");
       //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tok = tokenSnap.data() as any;
+      const tok = tokSnap.data() as any;
 
-      // حقل expiry/voided/usedAt
       if (tok.usedAt) throw new Error("token_already_used");
-      if (tok.voided) throw new Error("token_voided");
-      if (tok.expiresAt && nowMs > Number(tok.expiresAt)) throw new Error("token_expired");
+      if (tok.voidedAt || tok.voided) throw new Error("token_voided");
+      if (tok.expiresAt && now > Number(tok.expiresAt)) throw new Error("token_expired");
 
-      // توافق البيانات: اربط الدعوة بالاوردر والمنتج والمتجر
       if (tok.orderId && String(tok.orderId) !== String(orderId)) {
         throw new Error("token_order_mismatch");
       }
 
-      storeUid = tok.storeUid ?? null;
-      productId = tok.productId ?? null;
-      trustedBuyer = true;
+      // منع تكرار تقييم لنفس orderId (اختياري لكن مفيد)
+      const dup = await db.collection("reviews").where("orderId", "==", String(orderId)).limit(1).get();
+      if (!dup.empty) throw new Error("duplicate_review");
 
-      // أنشئ review داخل نفس الـ TX
-      const reviewId = db.collection("reviews").doc().id;
-      tx.set(db.collection("reviews").doc(reviewId), {
-        id: reviewId,
+      const reviewRef = db.collection("reviews").doc();
+      tx.set(reviewRef, {
+        id: reviewRef.id,
         orderId,
         stars: s,
-        text: isNonEmptyString(text) ? String(text) : "",
+        text: isNonEmptyString(text) ? text : "",
         images: safeImages,
         tokenId: String(tokenId),
-        storeUid,
-        productId,
+        storeUid: tok.storeUid ?? null,
+        productId: tok.productId ?? null,
+        productIds: tok.productIds ?? [],
+        platform: platform || tok.platform || "web",
+        trustedBuyer: true,
         status: "published",
         published: true,
-        publishedAt: nowMs,
-        trustedBuyer,
-        platform: "web",           // أو "salla"/"zid" لو بتعرفها من السياق
-        createdAt: nowMs,
-        moderation: null,          // هنحدّثها بعد الموديريشن تحت
-      }, { merge: false });
+        publishedAt: now,
+        createdAt: now,
+        moderation: null,
+      });
+      tx.update(tokRef, { usedAt: now });
 
-      // علّم التوكن مستخدم داخل نفس الـ TX لمنع أي سباق
-      tx.update(tokenRef, { usedAt: nowMs });
-
-      // ممكن تحدّث order كمان لو محتاج (اختياري):
-      // if (tok.orderId) tx.update(db.collection('orders').doc(String(tok.orderId)), { reviewSubmitted: true });
-
-      return { reviewId, usedToken: true, tok };
+      return { reviewId: reviewRef.id, tok };
     });
 
-    // ★ الموديريشن بعد إنشاء/تأمين الـ TX (لتقليل زمن القفل)
-    const mod = await moderateReview({
-      text: isNonEmptyString(text) ? String(text) : "",
-      images: safeImages,
-      stars: s,
-    });
-
-    if (!mod.ok) {
-      // لو عايز تعتبرها مرفوضة: تحدث التقييم وتخلي status=rejected (بدل حذف)
-      await db.collection("reviews").doc(result.reviewId).set({
-        status: "rejected",
-        published: false,
-        moderation: {
-          model: mod.model,
-          score: mod.score,
-          flags: mod.flags,
-          reason: mod.reason || "review_rejected",
-        },
-      }, { merge: true });
-
-      return res.status(400).json({ ok: false, rejected: true, reason: mod.reason || "review_rejected" });
+    // الموديريشن — خليها “لا تمنع” لو وقعت
+    try {
+      const mod = await moderateReview({
+        text: isNonEmptyString(body.text) ? body.text : "",
+        images: safeImages,
+        stars: s,
+      });
+      await db.collection("reviews").doc(result.reviewId).set(
+        mod?.ok
+          ? { moderation: { model: mod.model, score: mod.score, flags: mod.flags } }
+          : { moderation: { model: mod?.model || "none", score: mod?.score ?? 0, flags: mod?.flags ?? ["failed"], reason: mod?.reason || "moderation_failed" } },
+        { merge: true }
+      );
+      // لو عايز تمنع بدل ما تسجل، رجّع 400 هنا بدل set فقط.
+    } catch {
+      await db.collection("reviews").doc(result.reviewId).set(
+        { moderation: { model: "none", score: 0, flags: ["moderation_error"] } },
+        { merge: true }
+      );
     }
 
-    // تحديث بيانات الموديريشن على التقييم
-    await db.collection("reviews").doc(result.reviewId).set({
-      moderation: {
-        model: mod.model,
-        score: mod.score,
-        flags: mod.flags,
-      },
-    }, { merge: true });
-
-    return res.status(201).json({
-      ok: true,
-      id: result.reviewId,
-      published: true,
-      trustedBuyer,
-    });
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return res.status(201).json({ ok: true, id: result.reviewId, published: true });
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
-    const msg = typeof e?.message === "string" ? e.message : String(e);
+    const msg = String(e?.message || e || "error");
 
-    // خرائط أخطاء مفهومة للفرونت
-    if (msg === "token_not_found")       return res.status(400).json({ ok: false, error: "token_not_found" });
-    if (msg === "token_already_used")    return res.status(409).json({ ok: false, error: "token_already_used" });
-    if (msg === "token_expired")         return res.status(410).json({ ok: false, error: "token_expired" });
-    if (msg === "token_voided")          return res.status(410).json({ ok: false, error: "token_voided" });
-    if (msg === "token_order_mismatch")  return res.status(400).json({ ok: false, error: "token_order_mismatch" });
+    // خريطة أخطاء واضحة للفورنت
+    if (msg === "token_not_found")       return res.status(400).json({ error: "token_not_found" });
+    if (msg === "token_already_used")    return res.status(409).json({ error: "token_already_used" });
+    if (msg === "token_expired")         return res.status(410).json({ error: "token_expired" });
+    if (msg === "token_voided")          return res.status(410).json({ error: "token_voided" });
+    if (msg === "token_order_mismatch")  return res.status(400).json({ error: "token_order_mismatch" });
+    if (msg === "duplicate_review")      return res.status(409).json({ error: "duplicate_review" });
 
-    return res.status(500).json({ error: "internal_error", message: msg });
+    console.error("reviews/submit error:", e);
+    return res.status(500).json({ error: "internal_error" });
   }
 }
 ====[ END FILE: src/pages/api/reviews/submit.ts ]===================================================
@@ -22603,14 +22671,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/salla/subscribe.ts ]==================================================
 
-====[ START FILE: src/pages/api/salla/webhook.ts (8.9 KB) ]=========================================
-// src/pages/api/salla/webhook.ts
+====[ START FILE: src/pages/api/salla/webhook.ts (9.5 KB) ]=========================================
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
 import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
-import { sendSms } from "@/server/messaging/send-sms";
+import { sendSms, buildInviteSMS } from "@/server/messaging/send-sms";
 
 export const config = { api: { bodyParser: false } };
 
@@ -22627,8 +22694,7 @@ interface SallaOrder {
 }
 interface SallaWebhookBody { event: string; data?: SallaOrder | UnknownRecord; }
 
-const WEBHOOK_TOKEN = process.env.SALLA_WEBHOOK_TOKEN || "";
-
+const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
 const DONE   = new Set(["paid","fulfilled","delivered","completed","complete"]);
 const CANCEL = new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
@@ -22643,10 +22709,25 @@ function readRawBody(req: NextApiRequest): Promise<Buffer> {
     req.on("error", reject);
   });
 }
-function safeEq(a: string, b: string) {
-  const A = Buffer.from(a); const B = Buffer.from(b);
+function timingSafeEq(a: string, b: string) {
+  const A = Buffer.from(a);
+  const B = Buffer.from(b);
   if (A.length !== B.length) return false;
   return crypto.timingSafeEqual(A, B);
+}
+function getHeader(req: NextApiRequest, name: string): string {
+  const v = req.headers[name.toLowerCase()];
+  return Array.isArray(v) ? v[0] || "" : (v || "");
+}
+function extractProvidedToken(req: NextApiRequest): string {
+  const auth = getHeader(req, "authorization").trim();
+  if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+  const h1 = getHeader(req, "x-webhook-token").trim();
+  if (h1) return h1;
+  const h2 = getHeader(req, "x-salla-token").trim();
+  if (h2) return h2;
+  const q = typeof req.query.t === "string" ? req.query.t.trim() : "";
+  return q;
 }
 function pickName(obj: unknown): string | undefined {
   if (obj && typeof obj === "object" && "name" in obj) {
@@ -22656,8 +22737,7 @@ function pickName(obj: unknown): string | undefined {
   return undefined;
 }
 function getStoreOrMerchantName(ev: UnknownRecord): string | undefined {
-  const store = ev["store"]; const merchant = ev["merchant"];
-  return pickName(store) ?? pickName(merchant);
+  return pickName(ev["store"]) ?? pickName(ev["merchant"]);
 }
 function pickStoreUidFromSalla(o: UnknownRecord): string | undefined {
   const store = o["store"] as UnknownRecord | undefined;
@@ -22725,14 +22805,11 @@ async function ensureInviteForOrder(
 
   const tokenId = crypto.randomBytes(10).toString("hex");
   const base =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_BASE_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    "";
+    (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/,"");
   if (!base) throw new Error("BASE_URL not configured");
 
-  const reviewUrl = `${base.replace(/\/+$/,"")}/review/${tokenId}`;
-  const publicUrl = await createShortLink(reviewUrl);
+  const reviewUrl = `${base}/review/${tokenId}`;
+  const publicUrl = await createShortLink(reviewUrl).catch(() => reviewUrl);
 
   await db.collection("review_tokens").doc(tokenId).set({
     id: tokenId,
@@ -22756,16 +22833,16 @@ async function ensureInviteForOrder(
     sentAt: Date.now(), deliveredAt: null, clicks: 0, publicUrl,
   });
 
-  const name = buyer.name || "عميلنا العزيز";
   const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
-  const smsText = `مرحباً ${name}، قيّم تجربتك من ${storeName}: ${publicUrl}`;
+  const smsText = buildInviteSMS(storeName, publicUrl);
 
   const tasks: Array<Promise<unknown>> = [];
   if (buyer.mobile) {
     const mobile = String(buyer.mobile).replace(/\s+/g, "");
-    tasks.push(sendSms(mobile, smsText));
+    tasks.push(sendSms(mobile, smsText, { defaultCountry: "SA" }));
   }
   if (buyer.email) {
+    const name = buyer.name || "عميلنا العزيز";
     const emailHtml = `
       <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
         <p>مرحباً ${name}،</p>
@@ -22789,18 +22866,22 @@ async function voidInvitesForOrder(db: FirebaseFirestore.Firestore, orderId: str
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
-  // ✅ تحقق عبر Webhook Token بدل التوقيع
-  const tokenFromHeader = (req.headers["x-webhook-token"] as string) || "";
-  const tokenFromQuery = typeof req.query.t === "string" ? req.query.t : "";
-  const provided = tokenFromHeader || tokenFromQuery;
-  if (!WEBHOOK_TOKEN || !provided || !safeEq(provided, WEBHOOK_TOKEN)) {
+  // ✅ يقبل Bearer / x-webhook-token / x-salla-token / ?t=
+  const provided = extractProvidedToken(req);
+  if (!WEBHOOK_TOKEN || !provided || !timingSafeEq(provided, WEBHOOK_TOKEN)) {
     return res.status(401).json({ error: "invalid_webhook_token" });
   }
 
   const raw = await readRawBody(req);
   const db = dbAdmin();
 
-  const body = JSON.parse(raw.toString("utf8") || "{}") as SallaWebhookBody;
+  let body: SallaWebhookBody = { event: "" };
+  try {
+    body = JSON.parse(raw.toString("utf8") || "{}") as SallaWebhookBody;
+  } catch {
+    return res.status(400).json({ error: "invalid_json" });
+  }
+
   const event = String(body.event || "");
   const data = (body.data ?? {}) as SallaOrder;
   const orderId = String(data.id ?? data.order_id ?? "");
@@ -22821,7 +22902,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (CANCEL.has(status)) await voidInvitesForOrder(db, orderId, `status_${status}`);
   }
 
-  await db.collection("processed_events").doc(keyOf(event, orderId, status))
+  await db.collection("processed_events")
+    .doc(keyOf(event, orderId, status))
     .set({ at: Date.now(), event, processed: true, status }, { merge: true });
 
   return res.status(200).json({ ok: true });
@@ -23366,6 +23448,88 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 ====[ END FILE: src/pages/api/support-ticket.ts ]===================================================
+
+====[ START FILE: src/pages/api/test/sms.ts (3.0 KB) ]==============================================
+import type { NextApiRequest, NextApiResponse } from "next";
+import { buildInviteSMS, sendSMSViaOursms } from "@/server/messaging/send-sms"; // لو عندك الموديولات دي
+
+type AnyBody = Record<string, unknown> | null | undefined;
+
+function parseBody(req: NextApiRequest): AnyBody {
+  try {
+    if (typeof req.body === "string") return JSON.parse(req.body || "{}");
+    if (req.body && typeof req.body === "object") return req.body as Record<string, unknown>;
+  } catch {}
+  return {};
+}
+
+function grabStrings(x: unknown): string[] {
+  if (typeof x === "string" && x.trim()) return [x.trim()];
+  if (Array.isArray(x)) return x.map(String).map(s => s.trim()).filter(Boolean);
+  return [];
+}
+
+function normalizeRecipients(req: NextApiRequest): string[] {
+  const b = parseBody(req) || {};
+  const q = req.query || {};
+  const candidates = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (b as any).to, (b as any).dest, (b as any).dests,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (b as any).phone, (b as any).phones, (b as any).msisdn,
+    q.to, q.dest, q.dests, q.phone, q.phones, q.msisdn
+  ];
+  const out = new Set<string>();
+  for (const c of candidates) grabStrings(c).forEach(v => out.add(v));
+  return Array.from(out);
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ ok: false, error: "method_not_allowed" });
+  }
+
+  try {
+    const body = parseBody(req) || {};
+    const recipients = normalizeRecipients(req);
+
+    if (recipients.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        error: "missing_to",
+        hint: "أرسل الحقل to كنص أو مصفوفة. مقبولة أيضاً: dest, dests, phone, phones, msisdn. تأكد من Content-Type: application/json"
+      });
+    }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const storeName = String((body as any).store ?? "") || undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const link = String((body as any).link ?? "") || "https://example.com/review";
+    const text: string =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (typeof (body as any).text === "string" && (body as any).text.trim())
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? String((body as any).text)
+        : buildInviteSMS(storeName, link); // رسالتك الموحّدة
+
+    const result = await sendSMSViaOursms({
+      to: recipients,               // يقبل مصفوفة
+      text,
+      msgClass: "transactional",
+      priority: 0,
+      requestDlr: false,
+    });
+
+    return res.status(200).json(result);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (e: any) {
+    return res.status(500).json({
+      ok: false,
+      error: "sms_failed",
+      message: e?.message || String(e),
+    });
+  }
+}
+====[ END FILE: src/pages/api/test/sms.ts ]=========================================================
 
 ====[ START FILE: src/pages/api/zid/callback.ts (3.0 KB) ]==========================================
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -24683,7 +24847,7 @@ export default function ReportPage() {
 }
 ====[ END FILE: src/pages/report.tsx ]==============================================================
 
-====[ START FILE: src/pages/review/[token].tsx (9.2 KB) ]===========================================
+====[ START FILE: src/pages/review/[token].tsx (9.9 KB) ]===========================================
 // src/pages/review/[token].tsx
 import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
@@ -24708,12 +24872,18 @@ type SubmitBody = {
   text?: string;
   images?: string[];
   tokenId?: string;
-  platform?: "salla" | "zid" | "manual";
+  platform?: "salla" | "zid" | "manual" | "web";
 };
 
 export default function ReviewByTokenPage() {
   const router = useRouter();
-  const { token } = router.query as { token?: string };
+  const isReady = router.isReady;
+
+  // read token safely (could be string | string[] | undefined)
+  const token = useMemo(() => {
+    const t = router.query.token;
+    return typeof t === "string" ? t : Array.isArray(t) ? t[0] : undefined;
+  }, [router.query.token]);
 
   const [stars, setStars] = useState<number>(0);
   const [text, setText] = useState<string>("");
@@ -24725,32 +24895,35 @@ export default function ReviewByTokenPage() {
   const [loadingToken, setLoadingToken] = useState(true);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
 
-  // جلب معلومات التوكن إن كانت API متاحة (نتجاهل لو مش موجودة)
+  // load token meta
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      if (!token) return;
+      if (!isReady) return;
+      if (!token) {
+        setLoadingToken(false);
+        setTokenInfo(null);
+        return;
+      }
       setLoadingToken(true);
       setError(null);
       try {
-        // حاول API قياسي بسيط: /api/review-token?token=<id>
         const r = await fetch(`/api/review-token?token=${encodeURIComponent(token)}`);
         if (!r.ok) {
-          // مش مشكلة لو 404 — هنكمل بالـ token كـ orderId fallback
-          setTokenInfo({ tokenId: token });
+          // 404 = مش مشكلة؛ هنشتغل بالتوكن فقط
+          if (!cancelled) setTokenInfo({ tokenId: token });
           return;
         }
         const j = await r.json();
         if (!cancelled) {
-          const info: TokenInfo = {
+          setTokenInfo({
             tokenId: token,
             orderId: j?.orderId || undefined,
             storeName: j?.storeName || undefined,
             customerName: j?.customer?.name || undefined,
             expired: Boolean(j?.expired),
             voided: Boolean(j?.voided),
-          };
-          setTokenInfo(info);
+          });
         }
       } catch {
         if (!cancelled) setTokenInfo({ tokenId: token });
@@ -24758,17 +24931,24 @@ export default function ReviewByTokenPage() {
         if (!cancelled) setLoadingToken(false);
       }
     }
-    if (token) load();
+    load();
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [isReady, token]);
 
-  // لو الـ API مش بتدي orderId، نستخدم التوكن كـ fallback (السيرفر هيتحقق)
+  // fallback: استخدم token كـ orderId لو API ماقدّمش orderId
   const orderId = useMemo(() => tokenInfo?.orderId || token || "", [tokenInfo?.orderId, token]);
 
   async function submit() {
-    if (!token) return;
+    if (!token) {
+      setError("الرابط غير صالح.");
+      return;
+    }
+    if (!orderId) {
+      setError("رقم الطلب غير موجود في الرابط.");
+      return;
+    }
     if (stars < 1 || stars > 5) {
       setError("اختر تقييمًا من 1 إلى 5 نجوم");
       return;
@@ -24791,7 +24971,7 @@ export default function ReviewByTokenPage() {
         text,
         images: attachments.map((f) => f.cdnUrl),
         tokenId: token,
-        platform: "salla", // عدّلها لو عندك تمييز للمنصة
+        platform: "web",
       };
 
       const res = await fetch("/api/reviews/submit", {
@@ -24802,18 +24982,14 @@ export default function ReviewByTokenPage() {
       const data = await res.json();
 
       if (!res.ok || data?.error) {
-        // خرائط رسائل ألطف
         const msg =
           data?.message ||
-          (data?.error === "duplicate_review"
-            ? "تم استلام تقييم لهذا الطلب بالفعل."
-            : data?.error === "token_order_mismatch"
-            ? "الرمز لا يطابق رقم الطلب."
-            : data?.error === "token_expired"
-            ? "انتهت صلاحية الرمز."
-            : data?.error === "token_voided"
-            ? "تم إلغاء الرمز."
-            : "تعذر إرسال التقييم.");
+          (data?.error === "missing_orderId" ? "رقم الطلب مفقود."
+          : data?.error === "duplicate_review" ? "تم استلام تقييم لهذا الطلب بالفعل."
+          : data?.error === "token_order_mismatch" ? "الرمز لا يطابق رقم الطلب."
+          : data?.error === "token_expired" ? "انتهت صلاحية الرمز."
+          : data?.error === "token_voided" ? "تم إلغاء الرمز."
+          : data?.error || "تعذّر إرسال التقييم.");
         throw new Error(msg);
       }
 
@@ -24826,8 +25002,8 @@ export default function ReviewByTokenPage() {
     }
   }
 
-  // شاشة التحميل الأولي
-  if (!token || loadingToken) {
+  // waiting for router/query
+  if (!isReady) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6">
         <p className="text-gray-600">جارٍ التحميل…</p>
@@ -24835,22 +25011,37 @@ export default function ReviewByTokenPage() {
     );
   }
 
-  // شاشة بعد الإرسال
+  // invalid link (no token)
+  if (!token) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white border rounded-2xl p-8 shadow" dir="rtl">
+          <h1 className="text-xl font-bold text-red-700 mb-2">الرابط غير صالح</h1>
+          <p className="text-gray-600">يرجى التأكد من فتح الرابط الكامل المرسل إليك.</p>
+        </div>
+      </main>
+    );
+  }
+
+  // initial token meta loading
+  if (loadingToken) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6">
+        <p className="text-gray-600">جارٍ التحقق من الرابط…</p>
+      </main>
+    );
+  }
+
+  // success page
   if (done) {
     return (
       <>
-        <Head>
-          <title>شكرًا لتقييمك | ثقة</title>
-        </Head>
+        <Head><title>شكرًا لتقييمك | ثقة</title></Head>
         <main className="min-h-screen flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white border rounded-2xl p-8 shadow">
+          <div className="max-w-md w-full bg-white border rounded-2xl p-8 shadow" dir="rtl">
             <h1 className="text-2xl font-bold text-green-700 mb-2">شكرًا لتقييمك! ✅</h1>
-            <p className="text-gray-600 mb-6">
-              تم استلام تقييمك بنجاح{done.id ? ` (#${done.id})` : ""}.
-            </p>
-            <Link href="/" className="inline-block px-4 py-2 rounded bg-green-600 text-white">
-              العودة للصفحة الرئيسية
-            </Link>
+            <p className="text-gray-600 mb-6">تم استلام تقييمك بنجاح{done.id ? ` (#${done.id})` : ""}.</p>
+            <Link href="/" className="inline-block px-4 py-2 rounded bg-green-600 text-white">العودة للصفحة الرئيسية</Link>
           </div>
         </main>
       </>
@@ -24867,14 +25058,11 @@ export default function ReviewByTokenPage() {
         <div className="max-w-2xl w-full bg-white border rounded-2xl p-6 shadow" dir="rtl">
           <h1 className="text-2xl font-bold text-emerald-800 mb-1">قيّم تجربتك</h1>
           <p className="text-gray-600 mb-6">
-            {tokenInfo?.storeName ? (
-              <>من فضلك قيّم تجربتك مع <b>{tokenInfo.storeName}</b>{tokenInfo.customerName ? <> — {tokenInfo.customerName}</> : null}</>
-            ) : (
-              "الرجاء مشاركة رأيك لتحسين الخدمة"
-            )}
+            {tokenInfo?.storeName
+              ? <>من فضلك قيّم تجربتك مع <b>{tokenInfo.storeName}</b>{tokenInfo.customerName ? <> — {tokenInfo.customerName}</> : null}</>
+              : "الرجاء مشاركة رأيك لتحسين الخدمة"}
           </p>
 
-          {/* النجوم */}
           <div className="mb-5">
             <div className="flex gap-2" role="radiogroup" aria-label="تقييم النجوم">
               {[1, 2, 3, 4, 5].map((n) => (
@@ -24894,7 +25082,6 @@ export default function ReviewByTokenPage() {
             <p className="text-sm text-gray-500 mt-1">اختر من 1 إلى 5 نجوم</p>
           </div>
 
-          {/* التعليق */}
           <div className="mb-5">
             <label className="block text-sm text-gray-700 mb-1">ملاحظاتك (اختياري)</label>
             <textarea
@@ -24907,7 +25094,6 @@ export default function ReviewByTokenPage() {
             <p className="text-xs text-gray-400 mt-1">{text.length}/3000</p>
           </div>
 
-          {/* المرفقات — Uploadcare */}
           <div className="mb-6">
             <label className="block text-sm text-gray-700 mb-2">صور التجربة (اختياري)</label>
             <UploadcareWidget value={attachments} onChange={setAttachments} />
@@ -24935,8 +25121,10 @@ export default function ReviewByTokenPage() {
             {submitting ? "جارٍ الإرسال…" : "إرسال التقييم"}
           </button>
 
-          <p className="text-xs text-gray-400 mt-4">رمز التوكن: {token}</p>
-          {orderId && <p className="text-xs text-gray-400">رقم الطلب: {orderId}</p>}
+          <div className="mt-4 text-xs text-gray-400">
+            <div>رمز التوكن: {token ?? "—"}</div>
+            <div>رقم الطلب: {orderId || "—"}</div>
+          </div>
         </div>
       </main>
     </>
@@ -25796,71 +25984,218 @@ export async function notifyRejection({
 }
 ====[ END FILE: src/server/messaging/send-rejection.ts ]============================================
 
-====[ START FILE: src/server/messaging/send-sms.ts (2.8 KB) ]=======================================
+====[ START FILE: src/server/messaging/send-sms.ts (7.0 KB) ]=======================================
 // src/server/messaging/send-sms.ts
-import { normalizeMsisdn, isOptedOut } from './phone';
-import { info, warn, error } from '@/lib/logger';
+// عميل إرسال SMS عبر OurSMS + قالب الرسالة الموحد + رابر sendSms(to, text, opts?)
 
-type SmsResult = { ok: boolean; provider?: string; id?: string | null; error?: string };
+type MsgClass = "transactional" | "promotional" | "";
 
-const BASE   = process.env.OURSMS_BASE_URL || 'https://oursms.app/api/v1';
-const KEY    = process.env.OURSMS_API_KEY || '';
-const SENDER = process.env.OURSMS_SENDER || ''; // اختياري حسب حسابك
+export type SendSMSParams = {
+  to: string | string[];         // رقم واحد أو مجموعة أرقام (E.164 مفضل)
+  text: string;                  // نص الرسالة
+  customId?: string | null;      // معرف خاص بك يظهر في تقاريرهم (اختياري)
+  priority?: 0 | 1 | 2 | 3 | 4;  // 1 أعلى أولوية - 0 = تلقائي (افتراضي)
+  delayMinutes?: number;         // تأخير بالدقائق (افتراضي 0)
+  validityMinutes?: number;      // صلاحية بالدقائق (افتراضي 0 = أقصى مدة)
+  msgClass?: MsgClass;           // "transactional" | "promotional" | ""
+  requestDlr?: boolean;          // DLR لو مدعوم (افتراضي false)
+};
 
-async function sendOnce(to: string, body: string): Promise<SmsResult> {
-  if (!KEY) return { ok:false, provider:'oursms', error:'Missing OURSMS_API_KEY' };
-  // بعض الحسابات تحتاج sender
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const payload: Record<string, any> = { phoneNumber: to, body };
-  if (SENDER) payload.sender = SENDER;
+export type OursmsSendResult = {
+  jobId: string;
+  customId: string | null;
+  total: number;
+  rejected: number;
+  accepted: number;
+  duplicates: number;
+  cost: number;
+  acceptedMsgs?: unknown;
+  rejectedMsgs?: unknown;
+  statusCode?: number | null;
+  statusDesc?: string | null;
+  message?: string | null;
+};
 
-  const resp = await fetch(`${BASE}/SMS/Add/SendOneSms`, {
-    method: 'POST',
+export type SendSmsOptions = {
+  defaultCountry?: "SA" | "EG";
+  msgClass?: MsgClass;
+  requestDlr?: boolean;
+  priority?: 0 | 1 | 2 | 3 | 4;
+  delayMinutes?: number;
+  validityMinutes?: number;
+};
+
+function env(name: string, fallback?: string) {
+  const v = process.env[name];
+  return (v && v.trim()) || fallback || "";
+}
+
+// ---------- القالب الموحّد ----------
+export function buildInviteSMS(storeName: string | null | undefined, link: string) {
+  const s = (storeName || "").trim() || "متجرك";
+
+  // قابل للتخصيص من ENV (اختياري):
+  // INVITE_SMS_TEMPLATE="مرحباً، قيّم تجربتك من {{store}}: {{link}} وساهم في إسعاد يتيم!"
+  const tpl = env("INVITE_SMS_TEMPLATE");
+  if (tpl) {
+    return tpl.replace(/\{\{store\}\}/g, s).replace(/\{\{link\}\}/g, link);
+  }
+
+  // الافتراضي المطلوب
+  return `مرحباً، قيّم تجربتك من ${s}: ${link} وساهم في إسعاد يتيم!`;
+}
+
+// ---------- تطبيع رقم الهاتف إلى E.164 (مبسّط لـ SA/EG) ----------
+function normalizePhone(raw: string, def?: "SA" | "EG"): string {
+  const digits = String(raw).replace(/[^\d+]/g, "");
+  if (digits.startsWith("+")) return digits;
+  if (digits.startsWith("00")) return `+${digits.slice(2)}`;
+  if (digits.startsWith("0")) {
+    if (def === "SA") return `+966${digits.slice(1)}`;
+    if (def === "EG") return `+20${digits.slice(1)}`;
+  }
+  if (def === "SA") return `+966${digits}`;
+  if (def === "EG") return `+20${digits}`;
+  return digits;
+}
+
+// ---------- الإرسال عبر OurSMS ----------
+export async function sendSMSViaOursms(params: SendSMSParams) {
+  const API_KEY = env("OURSMS_API_KEY");
+  if (!API_KEY) {
+    throw new Error("OURSMS_API_KEY is missing");
+  }
+
+  const BASE = env("OURSMS_BASE_URL", "https://api.oursms.com");
+  const SENDER = env("OURSMS_SENDER"); // يجب أن يكون مُعتمد في بعض الدول
+
+  const {
+    to,
+    text,
+    //eslint-disable-next-line @typescript-eslint/no-unused-vars
+    customId = null,
+    priority = 0,
+    delayMinutes = 0,
+    validityMinutes = 0,
+    msgClass = "",
+    requestDlr = false,
+  } = params;
+
+  const dests = Array.isArray(to) ? to : [to];
+
+  const url = `${BASE.replace(/\/+$/, "")}/msgs/sms`;
+
+  const body = {
+    src: SENDER || "oursms",
+    dests,
+    body: text,
+    priority,
+    delay: delayMinutes,
+    validity: validityMinutes,
+    maxParts: 0,
+    dlr: requestDlr ? 1 : 0,
+    prevDups: 0,
+    msgClass: msgClass || undefined,
+    // customId: يمكن إضافته إذا كان حسابك يدعمه في هذا المسار
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
     headers: {
-      Authorization: `Bearer ${KEY}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      Authorization: `Bearer ${API_KEY}`,
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 
-  const text = await resp.text();
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let data: any = null;
-  try { data = JSON.parse(text); } catch { /* مش مشكلة لو مش JSON */ }
-
-  // نجاح HTTP لا يعني نجاح الإرسال عند بعض المزودين
-  if (!resp.ok) {
-    return { ok:false, provider:'oursms', error:`HTTP ${resp.status} ${text.slice(0,300)}` };
+  if (!res.ok) {
+    const textErr = await res.text().catch(() => "");
+    throw new Error(`oursms_http_${res.status}${textErr ? `: ${textErr}` : ""}`);
   }
 
-  // لو فيه هيكل بيانات يوحي بالنجاح/الفشل، افحصه
-  // أمثلة افتراضية: { isSuccessful: true, data: { messageId: '...' } }
-  const isSuccessful = data?.isSuccessful ?? data?.success ?? true; // fallback → true لو مش عارفين
-  if (!isSuccessful) {
-    const msg = data?.message || data?.errorMessage || text.slice(0,300) || 'Unknown provider error';
-    return { ok:false, provider:'oursms', error: msg };
-  }
+  const json = (await res.json().catch(() => ({}))) as Partial<OursmsSendResult>;
 
-  const id = data?.data?.messageId || data?.messageId || null;
-  return { ok:true, provider:'oursms', id };
+  return {
+    ok: true as const,
+    result: {
+      jobId: String(json.jobId || ""),
+      customId: (json.customId ?? null) as string | null,
+      total: Number(json.total ?? 0),
+      rejected: Number(json.rejected ?? 0),
+      accepted: Number(json.accepted ?? 0),
+      duplicates: Number(json.duplicates ?? 0),
+      cost: Number(json.cost ?? 0),
+      acceptedMsgs: json.acceptedMsgs ?? null,
+      rejectedMsgs: json.rejectedMsgs ?? null,
+      statusCode: (json.statusCode ?? null) as number | null,
+      statusDesc: (json.statusDesc ?? null) as string | null,
+      message: (json.message ?? null) as string | null,
+    } as OursmsSendResult,
+  };
 }
 
-export async function sendSms(rawTo: string, message: string): Promise<SmsResult> {
-  const to = normalizeMsisdn(rawTo); // تأكد إنها بترجع E.164 (+966...)
-  if (!to || !message) return { ok:false, error:'Missing to/message' };
-  if (await isOptedOut(to)) { warn('sms.optout', { to }); return { ok:false, error:'Opted-out' }; }
+// ---------- (اختياري) رصيد الحساب ----------
+export async function getOursmsCredits() {
+  const API_KEY = env("OURSMS_API_KEY");
+  const BASE = env("OURSMS_BASE_URL", "https://api.oursms.com");
+  if (!API_KEY) throw new Error("OURSMS_API_KEY is missing");
 
-  const max = 3;
-  for (let i=1;i<=max;i++){
-    const r = await sendOnce(to, message);
-    if (r.ok) { info('sms.sent', { to, provider:r.provider, id:r.id }); return r; }
-    warn('sms.retry', { to, attempt:i, error:r.error?.slice(0,300) });
-    await new Promise(res=>setTimeout(res, 400 * i)); // backoff بسيط
+  const url = `${BASE.replace(/\/+$/, "")}/billing/credits`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`oursms_http_${res.status}${t ? `: ${t}` : ""}`);
   }
-  error('sms.failed', { to });
-  return { ok:false, error:'Failed after retries' };
+  return res.json();
 }
+
+// ---------- (اختياري) سحب DLRs ----------
+export async function getOursmsDlrs(count = 100) {
+  const API_KEY = env("OURSMS_API_KEY");
+  const BASE = env("OURSMS_BASE_URL", "https://api.oursms.com");
+  if (!API_KEY) throw new Error("OURSMS_API_KEY is missing");
+
+  const url = `${BASE.replace(/\/+$/, "")}/inbox/dlrs?count=${Math.min(
+    Math.max(1, count),
+    500
+  )}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`oursms_http_${res.status}${t ? `: ${t}` : ""}`);
+  }
+  return res.json();
+}
+
+// ---------- الرابر الموحّد المطلوب من بقية المشروع ----------
+export async function sendSms(
+  to: string | string[],
+  text: string,
+  opts?: SendSmsOptions
+): Promise<{ ok: boolean }> {
+  const dests = (Array.isArray(to) ? to : [to]).map((n) =>
+    normalizePhone(n, opts?.defaultCountry)
+  );
+
+  const res = await sendSMSViaOursms({
+    to: dests,
+    text,
+    msgClass: opts?.msgClass ?? "",
+    requestDlr: !!opts?.requestDlr,
+    priority: opts?.priority ?? 0,
+    delayMinutes: opts?.delayMinutes ?? 0,
+    validityMinutes: opts?.validityMinutes ?? 0,
+  });
+
+  return { ok: !!res?.ok };
+}
+
+// اجعل الرابر هو الـ default export أيضاً
+export default sendSms;
 ====[ END FILE: src/server/messaging/send-sms.ts ]==================================================
 
 ====[ START FILE: src/server/messaging/sms-length.ts (755 B) ]======================================
@@ -27599,7 +27934,7 @@ function makeSeparator(title) {
 ====[ END FILE: tsconfig.json ]=====================================================================
 
 ====[ SUMMARY ]=====================================================================================
-Total files seen : 198
-Included         : 186
+Total files seen : 200
+Included         : 188
 Skipped          : 12
-Finished at      : 2025-08-30T19:57:26.983Z
+Finished at      : 2025-09-02T10:25:39.034Z
