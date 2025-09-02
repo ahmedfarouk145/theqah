@@ -1,7 +1,7 @@
 ====[ PROJECT DUMP - METADATA ]=====================================================================
 Root   : D:\theqah
 Output : D:\theqah\project-dump.txt
-When   : 2025-09-02T10:25:38.502Z
+When   : 2025-09-02T12:51:48.085Z
 Rules  : skip binaries=true, skip .env*=true, maxBytes=1.0 MB
 
 ====[ FILE LIST ]===================================================================================
@@ -155,6 +155,7 @@ src/pages/embedded/reviews.tsx	(4.8 KB)
 src/pages/index.tsx	(5.6 KB)
 src/pages/login.tsx	(3.9 KB)
 src/pages/privacy-policy.tsx	(3.6 KB)
+src/pages/r/[code].ts	(700 B)
 src/pages/r/[id].tsx	(973 B)
 src/pages/report.tsx	(4.3 KB)
 src/pages/review/[token].tsx	(9.9 KB)
@@ -185,7 +186,7 @@ src/server/review-tokens.ts	(2.1 KB)
 src/server/reviews/invites.ts	(1.2 KB)
 src/server/salla/oauth.ts	(3.1 KB)
 src/server/salla/webhook-verify.ts	(950 B)
-src/server/short-links.ts	(1.1 KB)
+src/server/short-links.ts	(3.0 KB)
 src/server/withCors.ts	(1.1 KB)
 src/server/zid/state.ts	(979 B)
 src/server/zid/tokens.ts	(883 B)
@@ -24678,6 +24679,28 @@ export default function PrivacyPolicyPage() {
 }
 ====[ END FILE: src/pages/privacy-policy.tsx ]======================================================
 
+====[ START FILE: src/pages/r/[code].ts (700 B) ]===================================================
+// src/pages/r/[code].ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import { expandShortLink } from "@/server/short-links";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const code = String(req.query.code || "").trim();
+  if (!code) return res.status(400).send("missing_code");
+
+  try {
+    const dest = await expandShortLink(code);
+    if (!dest) return res.status(404).send("short_link_not_found_or_invalid");
+
+    res.writeHead(302, { Location: dest });
+    res.end();
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (e: any) {
+    res.status(500).send(e?.message || "internal_error");
+  }
+}
+====[ END FILE: src/pages/r/[code].ts ]=============================================================
+
 ====[ START FILE: src/pages/r/[id].tsx (973 B) ]====================================================
 import type { GetServerSideProps } from 'next';
 import { dbAdmin } from '@/lib/firebaseAdmin';
@@ -26992,13 +27015,15 @@ export function makeIdemKey(signature: string | undefined, rawBody: Buffer) {
 }
 ====[ END FILE: src/server/salla/webhook-verify.ts ]================================================
 
-====[ START FILE: src/server/short-links.ts (1.1 KB) ]==============================================
+====[ START FILE: src/server/short-links.ts (3.0 KB) ]==============================================
 // src/server/short-links.ts
 import { getDb } from "@/server/firebase-admin";
 
 export type ShortLinkDoc = {
-  id: string;              // كود قصير
-  url: string;             // الرابط الأصلي
+  id: string;              // الكود القصير
+  code: string;            // نفس id لسهولة القراءة
+  targetUrl: string;       // الرابط النهائي (الموصى به)
+  url?: string;            // للتوافق الخلفي
   createdAt: number;
   lastHitAt?: number | null;
   hits?: number;
@@ -27006,26 +27031,97 @@ export type ShortLinkDoc = {
 
 const COLL = "short_links";
 
-export async function createShortLink(url: string): Promise<string> {
-  const db = getDb();
-  const id = db.collection(COLL).doc().id.slice(0, 8); // كود قصير
-  const doc: ShortLinkDoc = { id, url, createdAt: Date.now(), hits: 0, lastHitAt: null };
-  await db.collection(COLL).doc(id).set(doc);
-
-  const base = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || "";
-  return `${base}/r/${id}`; // ← توحيد على /r/<id>
+// مولّد كود 8 حروف [a-z0-9]
+function genCode(len = 8) {
+  return Math.random().toString(36).slice(2, 2 + len);
 }
 
-export async function expandShortLink(id: string): Promise<string | null> {
+function sanitizeBase(url: string) {
+  return url.replace(/\/+$/, "");
+}
+
+function isValidTarget(u: string) {
+  if (!u) return false;
+  if (/undefined/i.test(u)) return false;
+  try {
+    const x = new URL(u);
+    // لازم http/https فقط
+    if (!/^https?:$/.test(x.protocol)) return false;
+    // ما يبقاش /review/ بس من غير توكن
+    if (/\/review\/?$/.test(x.pathname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * أنشئ رابط مختصر يعيد التوجيه إلى `targetUrl`
+ * يرجّع /r/<code>
+ */
+export async function createShortLink(targetUrl: string): Promise<string> {
   const db = getDb();
-  const snap = await db.collection(COLL).doc(id).get();
+
+  // تحقّق قوي قبل التخزين
+  if (!isValidTarget(targetUrl)) {
+    throw new Error("invalid_target_url");
+  }
+
+  // ولّد كود فريد (جرّب مرّة أو اتنين لتجنّب الاصطدام)
+  let code = genCode(8);
+  const ref = db.collection(COLL).doc(code);
+  const snap = await ref.get();
+  if (snap.exists) {
+    code = genCode(8);
+  }
+
+  const doc: ShortLinkDoc = {
+    id: code,
+    code,
+    targetUrl,
+    url: targetUrl,         // للتوافق مع أي كود قديم يعتمد على 'url'
+    createdAt: Date.now(),
+    hits: 0,
+    lastHitAt: null,
+  };
+
+  await db.collection(COLL).doc(code).set(doc);
+
+  const base =
+    process.env.APP_BASE_URL ||
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    "";
+
+  if (!base) {
+    // نسمح بإنشاء الدوكيومنت حتى لو الـ BASE فاضي، لكن نوقف الرابط الراجع
+    throw new Error("BASE_URL not configured");
+  }
+
+  return `${sanitizeBase(base)}/r/${code}`;
+}
+
+/**
+ * يعيد الوجهة النهائية أو null لو غير موجود/غير صالح
+ * ويحدّث العداد ووقت آخر زيارة
+ */
+export async function expandShortLink(code: string): Promise<string | null> {
+  const db = getDb();
+  const snap = await db.collection(COLL).doc(code).get();
   if (!snap.exists) return null;
-  const data = snap.data() as ShortLinkDoc;
-  await snap.ref.update({
-    hits: (data.hits || 0) + 1,
-    lastHitAt: Date.now(),
-  });
-  return data.url;
+
+  const data = snap.data() as ShortLinkDoc | undefined;
+  const dest = (data?.targetUrl || data?.url || "").trim();
+
+  if (!isValidTarget(dest)) {
+    // ما نرجّعش لينك بايظ
+    return null;
+  }
+
+  // زيادات آمنة
+  const hits = (data?.hits || 0) + 1;
+  await snap.ref.set({ hits, lastHitAt: Date.now() }, { merge: true });
+
+  return dest;
 }
 ====[ END FILE: src/server/short-links.ts ]=========================================================
 
@@ -27934,7 +28030,7 @@ function makeSeparator(title) {
 ====[ END FILE: tsconfig.json ]=====================================================================
 
 ====[ SUMMARY ]=====================================================================================
-Total files seen : 200
-Included         : 188
+Total files seen : 201
+Included         : 189
 Skipped          : 12
-Finished at      : 2025-09-02T10:25:39.034Z
+Finished at      : 2025-09-02T12:51:48.359Z
