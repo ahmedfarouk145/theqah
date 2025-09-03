@@ -1,3 +1,4 @@
+// src/pages/api/salla/webhook.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
@@ -7,6 +8,7 @@ import { sendSms, buildInviteSMS } from "@/server/messaging/send-sms";
 
 export const config = { api: { bodyParser: false } };
 
+// -------------------- Types --------------------
 type UnknownRecord = Record<string, unknown>;
 
 interface SallaCustomer { name?: string; email?: string; mobile?: string; }
@@ -18,8 +20,28 @@ interface SallaOrder {
   store?: { id?: string|number; name?: string } | null;
   merchant?: { id?: string|number; name?: string } | null;
 }
-interface SallaWebhookBody { event: string; data?: SallaOrder | UnknownRecord; }
+interface SallaWebhookBody {
+  event: string;
+  merchant?: string | number;     // لأحداث app.*
+  data?: SallaOrder | UnknownRecord;
+}
 
+type SallaAppEvent =
+  | "app.store.authorize"
+  | "app.installed"
+  | "app.updated"
+  | "app.uninstalled"
+  | "app.trial.started"
+  | "app.trial.expired"
+  | "app.trial.canceled"
+  | "app.subscription.started"
+  | "app.subscription.expired"
+  | "app.subscription.canceled"
+  | "app.subscription.renewed"
+  | "app.feedback.created"
+  | "app.settings.updated";
+
+// -------------------- Consts & helpers --------------------
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
 const DONE   = new Set(["paid","fulfilled","delivered","completed","complete"]);
 const CANCEL = new Set(["canceled","cancelled","refunded","returned"]);
@@ -80,7 +102,10 @@ function extractProductIds(items?: SallaItem[]): string[] {
   }
   return [...ids];
 }
+const normalizeUid = (merchant?: string | number) =>
+  merchant != null ? `salla:${String(merchant)}` : null;
 
+// -------------------- Order snapshot & invites --------------------
 async function upsertOrderSnapshot(
   db: FirebaseFirestore.Firestore,
   order: SallaOrder,
@@ -189,6 +214,112 @@ async function voidInvitesForOrder(db: FirebaseFirestore.Firestore, orderId: str
   await batch.commit();
 }
 
+// -------------------- Handle app.* events --------------------
+async function handleAppEvent(
+  db: FirebaseFirestore.Firestore,
+  event: SallaAppEvent,
+  merchant: string | number | undefined,
+  data: UnknownRecord
+) {
+  const uid = normalizeUid(merchant) || "salla:unknown";
+
+  // احتفظ بنسخة من الحدث (للدعم/المراجعة)
+  await db.collection("salla_app_events").add({
+    uid,
+    event,
+    merchant: merchant ?? null,
+    data,
+    at: Date.now(),
+  });
+
+  if (event === "app.store.authorize") {
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const access_token  = String((data as any)?.access_token || "");
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const refresh_token = ((data as any)?.refresh_token as string) || null;
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const expires       = Number((data as any)?.expires || 0); // seconds (حسب مثال سلة)
+    const expires_at    = expires ? expires * 1000 : null;
+
+    if (access_token) {
+      await db.collection("salla_tokens").doc(uid).set({
+        uid,
+        provider: "salla",
+        storeId: merchant ?? null,
+        accessToken: access_token,
+        refreshToken: refresh_token,
+        expiresAt: expires_at,
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        scope: (data as any)?.scope || null,
+        obtainedAt: Date.now(),
+      }, { merge: true });
+    }
+
+    await db.collection("stores").doc(uid).set({
+      uid,
+      platform: "salla",
+      salla: { storeId: merchant ?? null, connected: true },
+      updatedAt: Date.now(),
+    }, { merge: true });
+  }
+
+  if (event === "app.installed") {
+    await db.collection("stores").doc(uid).set({
+      uid,
+      platform: "salla",
+      salla: { storeId: merchant ?? null, installed: true, installedAt: Date.now() },
+      updatedAt: Date.now(),
+    }, { merge: true });
+  }
+
+  if (event === "app.uninstalled") {
+    await db.collection("stores").doc(uid).set({
+      uid,
+      platform: "salla",
+      salla: { storeId: merchant ?? null, installed: false, connected: false, uninstalledAt: Date.now() },
+      updatedAt: Date.now(),
+    }, { merge: true });
+    // (اختياري) تعطيل webhooks أو تنظيف مفاتيح
+  }
+
+  if (event.startsWith("app.trial.") || event.startsWith("app.subscription.")) {
+    await db.collection("stores").doc(uid).set({
+      uid,
+      platform: "salla",
+      salla: {
+        storeId: merchant ?? null,
+        subscription: {
+          lastEvent: event,
+          data,
+          updatedAt: Date.now(),
+        },
+      },
+      updatedAt: Date.now(),
+    }, { merge: true });
+  }
+
+  if (event === "app.settings.updated") {
+    await db.collection("stores").doc(uid).set({
+      uid,
+      platform: "salla",
+      salla: {
+        storeId: merchant ?? null,
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        settings: (data as any)?.settings ?? {},
+      },
+      updatedAt: Date.now(),
+    }, { merge: true });
+  }
+
+  if (event === "app.feedback.created") {
+    await db.collection("stores").doc(uid).collection("app_feedback").add({
+      at: Date.now(),
+      data,
+    });
+  }
+}
+
+// -------------------- Handler --------------------
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
@@ -209,22 +340,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const event = String(body.event || "");
-  const data = (body.data ?? {}) as SallaOrder;
-  const orderId = String(data.id ?? data.order_id ?? "");
-  const status = lc(data.status ?? data.order_status ?? data.new_status ?? data.shipment_status ?? "");
+  const asOrder = (body.data ?? {}) as SallaOrder;
 
-  // Idempotency
+  // Idempotency (يشمل كل الأحداث: app.* و orders.*)
   const idemKey = crypto.createHash("sha256").update(provided + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
   if ((await idemRef.get()).exists) return res.status(200).json({ ok: true, deduped: true });
-  await idemRef.set({ at: Date.now(), event, orderId, status });
+  await idemRef.set({
+    at: Date.now(),
+    event,
+    // لو كان أمر: خزن orderId/status كجزء من اللوج
+    orderId: String(asOrder.id ?? asOrder.order_id ?? "") || null,
+    status: lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? ""),
+    merchant: body.merchant ?? null,
+  });
 
+  // فرع أحداث Partner Portal (app.*)
+  if (event.startsWith("app.")) {
+    await handleAppEvent(db, event as SallaAppEvent, body.merchant, (body.data ?? {}) as UnknownRecord);
+    await db.collection("processed_events")
+      .doc(keyOf(event, undefined, undefined))
+      .set({ at: Date.now(), event, processed: true }, { merge: true });
+    return res.status(200).json({ ok: true });
+  }
+
+  // فرع أوامر الطلبات
+  const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
+  const status = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
   const eventRaw = (body.data ?? {}) as UnknownRecord;
   const storeUidFromEvent = pickStoreUidFromSalla(eventRaw) || null;
-  await upsertOrderSnapshot(db, data, storeUidFromEvent);
+
+  await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
 
   if (event.includes("orders.status.update") || event.includes("orders.") || event.includes("order.")) {
-    if (DONE.has(status))   await ensureInviteForOrder(db, data, eventRaw);
+    if (DONE.has(status))   await ensureInviteForOrder(db, asOrder, eventRaw);
     if (CANCEL.has(status)) await voidInvitesForOrder(db, orderId, `status_${status}`);
   }
 
