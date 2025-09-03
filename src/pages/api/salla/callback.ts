@@ -3,7 +3,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 const SALLA_TOKEN_URL = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
-const SALLA_API_BASE  = process.env.SALLA_API_BASE  || "https://api.salla.dev";
+
+const SALLA_API_BASE  = process.env.SALLA_API_BASE  || "https://api.salla.sa";
+
 const CLIENT_ID       = process.env.SALLA_CLIENT_ID!;
 const CLIENT_SECRET   = process.env.SALLA_CLIENT_SECRET!;
 const REDIRECT_URI    = process.env.SALLA_REDIRECT_URI!;
