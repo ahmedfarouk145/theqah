@@ -1,10 +1,11 @@
 ====[ PROJECT DUMP - METADATA ]=====================================================================
 Root   : D:\theqah
 Output : D:\theqah\project-dump.txt
-When   : 2025-09-02T14:30:19.692Z
+When   : 2025-09-03T18:37:06.027Z
 Rules  : skip binaries=true, skip .env*=true, maxBytes=1.0 MB
 
 ====[ FILE LIST ]===================================================================================
+.firebase/logs/vsce-debug.log	(1.9 KB)
 .gitignore	(480 B)
 components.json	(449 B)
 eslint.config.mjs	(393 B)
@@ -30,7 +31,7 @@ public/next.svg	(1.3 KB)
 public/site.webmanifest	(263 B)
 public/test-widget.html	(560 B)
 public/vercel.svg	(128 B)
-public/widgets/theqah-widget.js	(8.2 KB)
+public/widgets/theqah-widget.js	(11.3 KB)
 public/window.svg	(385 B)
 quick-smtp-check.mjs	(409 B)
 README.md	(1.4 KB)
@@ -123,7 +124,7 @@ src/pages/api/reviews/export-pdf.ts	(5.5 KB)
 src/pages/api/reviews/list.ts	(1.4 KB)
 src/pages/api/reviews/moderate.ts	(6.2 KB)
 src/pages/api/reviews/submit.ts	(6.1 KB)
-src/pages/api/salla/callback.ts	(5.5 KB)
+src/pages/api/salla/callback.ts	(6.1 KB)
 src/pages/api/salla/connect.ts	(2.6 KB)
 src/pages/api/salla/disconnect.ts	(1.0 KB)
 src/pages/api/salla/refresh.ts	(2.3 KB)
@@ -155,7 +156,7 @@ src/pages/embedded/reviews.tsx	(4.8 KB)
 src/pages/index.tsx	(5.6 KB)
 src/pages/login.tsx	(3.9 KB)
 src/pages/privacy-policy.tsx	(3.6 KB)
-src/pages/r/[id].tsx	(6.2 KB)
+src/pages/r/[id].tsx	(4.3 KB)
 src/pages/report.tsx	(4.3 KB)
 src/pages/review/[token].tsx	(9.9 KB)
 src/pages/reviews.tsx	(3.9 KB)
@@ -185,7 +186,7 @@ src/server/review-tokens.ts	(2.1 KB)
 src/server/reviews/invites.ts	(1.2 KB)
 src/server/salla/oauth.ts	(3.1 KB)
 src/server/salla/webhook-verify.ts	(950 B)
-src/server/short-links.ts	(3.0 KB)
+src/server/short-links.ts	(2.0 KB)
 src/server/withCors.ts	(1.1 KB)
 src/server/zid/state.ts	(979 B)
 src/server/zid/tokens.ts	(883 B)
@@ -207,6 +208,28 @@ tools/dump-project.mjs	(6.5 KB)
 tsconfig.json	(602 B)
 
 ====[ FILE CONTENTS ]===============================================================================
+====[ START FILE: .firebase/logs/vsce-debug.log (1.9 KB) ]==========================================
+[debug] [2025-09-03T18:32:43.144Z] [Firebase Plugin] Activating Firebase extension.
+[info] [Firebase Plugin] Checked firebase-tools, is up to date!
+[debug] [2025-09-03T18:33:06.664Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-09-03T18:33:06.665Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-09-03T18:33:06.666Z] > authorizing via signed-in user (farwqahmd118@gmail.com)
+[debug] [2025-09-03T18:33:06.669Z] Checked if tokens are valid: false, expires at: 1756689448426
+[debug] [2025-09-03T18:33:06.670Z] Checked if tokens are valid: false, expires at: 1756689448426
+[debug] [2025-09-03T18:33:06.670Z] > refreshing access token with scopes: []
+[debug] [2025-09-03T18:33:06.672Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-09-03T18:33:06.672Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-03T18:33:06.681Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[debug] [2025-09-03T18:33:07.306Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-09-03T18:33:07.307Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-03T18:33:07.320Z] [Firebase Plugin] User found:  farwqahmd118@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-09-03T18:33:07.321Z] Checked if tokens are valid: true, expires at: 1756927986307
+[debug] [2025-09-03T18:33:07.322Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2025-09-03T18:33:07.882Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-09-03T18:33:07.882Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+====[ END FILE: .firebase/logs/vsce-debug.log ]=====================================================
+
 ====[ START FILE: .gitignore (480 B) ]==============================================================
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
@@ -12555,12 +12578,11 @@ Size: 1.3 KB
 ====[ SKIP (binary): public/vercel.svg ]============================================================
 Size: 128 B
 
-====[ START FILE: public/widgets/theqah-widget.js (8.2 KB) ]========================================
-// public/widgets/theqah-widget.js
+====[ START FILE: public/widgets/theqah-widget.js (11.3 KB) ]=======================================
 (() => {
-  const SCRIPT_VERSION = "1.1.1";
+  const SCRIPT_VERSION = "1.2.0";
 
-  // اكتشف أصل السكربت عشان نستخدمه للـ API واللوجو
+  // ——— اكتشاف السكربت والمصدر ———
   const CURRENT_SCRIPT = document.currentScript;
   const SCRIPT_ORIGIN = (() => {
     try { return new URL(CURRENT_SCRIPT?.src || location.href).origin; }
@@ -12568,9 +12590,9 @@ Size: 128 B
   })();
 
   const API_BASE = `${SCRIPT_ORIGIN}/api/public/reviews`;
-  const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png`; // ضع logo.png داخل public/widgets/
+  const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png`;
 
-  // Helpers
+  // ——— Helpers ———
   const h = (tag, attrs = {}, children = []) => {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -12583,22 +12605,93 @@ Size: 128 B
       .forEach((c) => (typeof c === "string" ? el.appendChild(document.createTextNode(c)) : el.appendChild(c)));
     return el;
   };
-
   const Stars = (n = 0) => {
     const wrap = h("div", { class: "stars", role: "img", "aria-label": `${n} stars` });
     for (let i = 1; i <= 5; i++) wrap.appendChild(h("span", { class: "star" + (i <= n ? " filled" : "") }, "★"));
     return wrap;
   };
 
-  async function mountOne(hostEl) {
-    const store = hostEl.dataset.store?.trim();
-    const product = hostEl.dataset.product?.trim() || "";
-    const limit = Number(hostEl.dataset.limit || 10);
-    const lang = (hostEl.dataset.lang || "ar").toLowerCase();   // ar | en
-    const theme = (hostEl.dataset.theme || "light").toLowerCase(); // light | dark
+  // ——— اكتشاف Product ID من الصفحة (بدون تعديل القالب) ———
+  function detectProductId() {
+    // 1) JSON-LD: ابحث عن @type:Product
+    try {
+      const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
+      for (const s of scripts) {
+        try {
+          const json = JSON.parse(s.textContent || "null");
+          const arr = Array.isArray(json) ? json : [json];
+          for (const node of arr) {
+            if (!node) continue;
+            if (node["@type"] === "Product" || (Array.isArray(node["@type"]) && node["@type"].includes("Product"))) {
+              // productID أو sku أو url به id
+              const pid = node.productID || node.productId || node.sku || null;
+              if (pid) return String(pid);
+              if (node.url) {
+                const m = String(node.url).match(/(\d{5,})/);
+                if (m) return m[1];
+              }
+            }
+          }
+        } catch {}
+      }
+    } catch {}
 
-    if (!store) { hostEl.textContent = "Missing data-store"; return; }
+    // 2) عناصر DOM شائعة
+    const domHints = [
+      "[data-product-id]",
+      "[data-productid]",
+      '[itemtype*="Product"] [itemprop="sku"]',
+      '[itemtype*="Product"] [itemprop="productID"]',
+      ".product-id",
+      "#product-id",
+    ];
+    for (const sel of domHints) {
+      const el = document.querySelector(sel);
+      const v = el?.getAttribute?.("data-product-id")
+        || el?.getAttribute?.("data-productid")
+        || el?.textContent
+        || el?.getAttribute?.("content");
+      if (v && /\S/.test(v)) return String(v).trim();
+    }
 
+    // 3) URL Heuristics (لو سلة بتضيف رقم المنتج في اللينك)
+    const url = location.pathname;
+    const matchers = [
+      /-(\d{5,})$/,                // ...-123456
+      /\/p\/(\d{5,})(?:\/|$)/,     // /p/123456
+      /\/products\/(\d{5,})/,      // /products/123456
+    ];
+    for (const rgx of matchers) {
+      const m = url.match(rgx);
+      if (m) return m[1];
+    }
+
+    // لم نجد شيء
+    return null;
+  }
+
+  // ——— إيجاد مكان مناسب أسفل صفحة المنتج ———
+  function findProductMountPoint() {
+    // حاول بعد صندوق التفاصيل/الوصف
+    const candidates = [
+      ".product-details",
+      ".product-show",
+      ".product-single",
+      ".product__details",
+      ".product-info",
+      ".product-main",
+      "#product-show",
+      "#product",
+      "main .container"
+    ];
+    for (const sel of candidates) {
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+    return document.body; // fallback
+  }
+
+  async function mountOne(hostEl, store, productId, limit, lang, theme) {
     const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
 
     const style = h("style", {
@@ -12633,8 +12726,9 @@ Size: 128 B
       `,
     });
 
-    const titleText =
-      lang === "ar" ? (product ? "آراء المشترين" : "تقييمات المتجر") : product ? "Customer Reviews" : "Store Reviews";
+    const titleText = productId
+      ? (lang === "ar" ? "آراء المشترين" : "Customer Reviews")
+      : (lang === "ar" ? "تقييمات المتجر" : "Store Reviews");
 
     const container = h("div", { class: "wrap" });
     const section = h("div", { class: "section" }, [
@@ -12642,7 +12736,7 @@ Size: 128 B
         h("img", { class: "logo", src: LOGO_URL, alt: "Theqah" }),
         h("p", { class: "title" }, titleText),
       ]),
-      product ? h("p", { class: "meta" }, `${lang === "ar" ? "منتج" : "Product"}: ${product}`) : null,
+      productId ? h("p", { class: "meta" }, `${lang === "ar" ? "رقم المنتج" : "Product"}: ${productId}`) : null,
       h("div", { class: "list" }, lang === "ar" ? "…جاري التحميل" : "Loading…"),
       h("div", { class: "filter" }, [
         h("span", {}, lang === "ar" ? "الترتيب:" : "Sort:"),
@@ -12671,7 +12765,7 @@ Size: 128 B
 
     const endpointBase =
       `${API_BASE}?storeUid=${encodeURIComponent(store)}&limit=${limit}&sinceDays=365}`.replace(/}$/, "");
-    const endpoint = product ? `${endpointBase}&productId=${encodeURIComponent(product)}` : endpointBase;
+    const endpoint = productId ? `${endpointBase}&productId=${encodeURIComponent(productId)}` : endpointBase;
 
     const fetchData = async () => {
       try {
@@ -12703,7 +12797,6 @@ Size: 128 B
       for (const r of items) {
         const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
         const trusted = !!r.trustedBuyer;
-
         const row = h("div", { class: "row" }, [
           h("div", { class: "left" }, [
             Stars(Number(r.stars || 0)),
@@ -12711,28 +12804,46 @@ Size: 128 B
           ]),
           h("small", { class: "meta" }, when),
         ]);
-
         const text = h("p", { class: "text" }, String(r.text || "").trim());
-        const item = h("div", { class: "item" }, [row, text]);
-        list.appendChild(item);
+        list.appendChild(h("div", { class: "item" }, [row, text]));
       }
     };
 
     await fetchData();
   }
 
-  // يدعم إما id أو class
   function mountAll() {
-    const nodes = [
-      ...document.querySelectorAll('#theqah-reviews:not([data-mounted="1"])'),
-      ...document.querySelectorAll('.theqah-reviews:not([data-mounted="1"])'),
-    ];
-    nodes.forEach((el) => { el.setAttribute("data-mounted", "1"); mountOne(el); });
+    // اقرأ الإعدادات من الوسوم / أو استخرج المنتج
+    const store = CURRENT_SCRIPT?.dataset.store?.trim();
+    const lang  = (CURRENT_SCRIPT?.dataset.lang || "ar").toLowerCase();
+    const theme = (CURRENT_SCRIPT?.dataset.theme || "light").toLowerCase();
+    const limit = Number(CURRENT_SCRIPT?.dataset.limit || 10);
+
+    if (!store) return;
+
+    // اكتشف إن كانت الصفحة صفحة منتج
+    const pid = detectProductId();
+
+    // ابحث عن مكان مناسب داخل صفحة المنتج؛ إن لم يوجد، استخدم body
+    const host = document.querySelector("#theqah-reviews, .theqah-reviews") || findProductMountPoint();
+    const mountEl = host === document.body ? h("div", { class: "theqah-reviews" }) : host;
+    if (host === document.body) {
+      const target = findProductMountPoint();
+      target.appendChild(mountEl);
+    }
+
+    // ! لا تكرار
+    if (mountEl.getAttribute("data-mounted") === "1") return;
+    mountEl.setAttribute("data-mounted", "1");
+
+    // نفّذ
+    mountOne(mountEl, store, pid, limit, lang, theme);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountAll);
   else mountAll();
 
+  // لو الصفحة SPA أو فيها تحميل ديناميكي
   const obs = new MutationObserver(() => mountAll());
   obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
 })();
@@ -22309,140 +22420,164 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/reviews/submit.ts ]===================================================
 
-====[ START FILE: src/pages/api/salla/callback.ts (5.5 KB) ]========================================
+====[ START FILE: src/pages/api/salla/callback.ts (6.1 KB) ]========================================
 // src/pages/api/salla/callback.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { dbAdmin } from "@/lib/firebaseAdmin"; // لو عندك getDb في مسار مختلف، بدّل الاستيراد accordingly.
+import { dbAdmin } from "@/lib/firebaseAdmin";
+
+const SALLA_TOKEN_URL   = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
+const SALLA_API_BASE    = process.env.SALLA_API_BASE   || "https://api.salla.dev";
+const CLIENT_ID         = process.env.SALLA_CLIENT_ID!;
+const CLIENT_SECRET     = process.env.SALLA_CLIENT_SECRET!;
+const REDIRECT_URI      = process.env.SALLA_REDIRECT_URI!; // must match exactly in Salla console
+const APP_BASE          =
+  (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+
+type TokenResp = {
+  token_type: "Bearer";
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+  scope?: string;
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    if (req.method !== "GET") {
-      return res.status(405).send("Method Not Allowed");
-    }
+    if (req.method !== "GET") return res.status(405).send("Method Not Allowed");
 
-    const code = typeof req.query.code === "string" ? req.query.code : undefined;
+    // 1) استلام كود الأثر
+    const code  = typeof req.query.code  === "string" ? req.query.code  : undefined;
     const state = typeof req.query.state === "string" ? req.query.state : undefined;
     if (!code) return res.status(400).send("Missing code");
-    if (!state) return res.status(400).send("Missing state");
 
-    const tokenUrl = process.env.SALLA_TOKEN_URL;
-    const clientId = process.env.SALLA_CLIENT_ID;
-    const clientSecret = process.env.SALLA_CLIENT_SECRET;
-    const redirectUri = process.env.SALLA_REDIRECT_URI; // لازم يطابق المسجّل في لوحة سلة حرفيًا
-
-    if (!tokenUrl || !clientId || !clientSecret || !redirectUri) {
+    if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
       return res.status(500).send("Salla OAuth env vars are not configured");
     }
-
-    const appBase =
-      process.env.APP_BASE_URL ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      "";
+    if (!APP_BASE) {
+      // مش هنوقف الفلو، بس يفضّل ضبطه لاشتراك الويبهوكس والتحويل النهائي
+      console.warn("[salla/callback] APP_BASE not configured; some redirects/webhook setup may fail.");
+    }
 
     const db = dbAdmin();
 
-    // --- تحقق state (الطريقة الأساسية: مستند Firestore أنشأناه في /api/salla/connect)
-    const stateRef = db.collection("salla_oauth_state").doc(state);
-    const snap = await stateRef.get();
-
-    // بيانات التوجيه الافتراضية
-    let uid: string | null = null;
-    let returnTo = "/admin"; // fallback افتراضي
-
-    if (snap.exists) {
-      const st = snap.data() as { uid?: string; returnTo?: string; createdAt?: number } | undefined;
-      uid = st?.uid || null;
-      if (st?.returnTo) returnTo = st.returnTo;
-      // صلاحية state (مثلاً 20 دقيقة) — اختياري
-      // if (st?.createdAt && Date.now() - st.createdAt > 20 * 60 * 1000) { ... }
-      await stateRef.delete().catch(() => {}); // تنظيف state بعد الاستخدام
-    } else {
-      // --- Fallback: لو كنت بترسل state كـ JSON فيه uid
-      try {
-        const parsed = JSON.parse(decodeURIComponent(state));
-        uid = typeof parsed?.uid === "string" ? parsed.uid : null;
-        if (typeof parsed?.returnTo === "string") returnTo = parsed.returnTo;
-      } catch {
-        // ignore
+    // 2) (اختياري) حاول تقرأ state من Firestore لو أنت بتولّده مسبقًا
+    let presetUid: string | null = null;
+    let returnTo: string | null = null;
+    if (state) {
+      const stRef = db.collection("salla_oauth_state").doc(state);
+      const stSnap = await stRef.get();
+      if (stSnap.exists) {
+        const st = stSnap.data() as { uid?: string; returnTo?: string; createdAt?: number } | undefined;
+        presetUid = typeof st?.uid === "string" ? st!.uid! : null;
+        returnTo = typeof st?.returnTo === "string" ? st!.returnTo! : null;
+        await stRef.delete().catch(() => {});
+      } else {
+        // دعم state مشفّر/JSON (fallback)
+        try {
+          const parsed = JSON.parse(decodeURIComponent(state));
+          if (typeof parsed?.uid === "string") presetUid = parsed.uid;
+          if (typeof parsed?.returnTo === "string") returnTo = parsed.returnTo;
+        } catch { /* ignore */ }
       }
     }
 
-    if (!uid) return res.status(400).send("Invalid state (uid not found)");
-
-    // --- تبادل الكود بالتوكن
-    const resp = await fetch(tokenUrl, {
+    // 3) بدّل الكود بالتوكنات
+    const tokenRes = await fetch(SALLA_TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri, // لازم يطابق نفس القيمة المستخدمة في خطوة التفويض
-      }).toString(),
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
+        redirect_uri: REDIRECT_URI, // لازم يطابق المسجّل في سلة حرفيًا
+      }),
     });
-
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
+    const tokens = (await tokenRes.json().catch(() => ({}))) as Partial<TokenResp>;
+    if (!tokenRes.ok || !tokens.access_token) {
       return res
-        .status(resp.status)
-        .send(`Token exchange failed: ${typeof data === "object" ? JSON.stringify(data) : String(data)}`);
+        .status(tokenRes.status || 502)
+        .send(`token_exchange_failed: ${JSON.stringify(tokens)}`);
     }
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const access = String((data as any).access_token || "");
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const refresh = ((data as any).refresh_token as string) || null;
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const expiresIn = Number((data as any).expires_in || 0);
+
+    // 4) هات هوية المتجر: /admin/v2/stores/me
+    const meRes = await fetch(`${SALLA_API_BASE}/admin/v2/stores/me`, {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    const meJson = await meRes.json().catch(() => ({}));
+    if (!meRes.ok) {
+      return res.status(meRes.status).send(`fetch_store_failed: ${JSON.stringify(meJson)}`);
+    }
+
+    // استخرج storeId بحسب الاستجابة الفعلية (جرّب الحقول الشائعة)
+    const storeId =
+      meJson?.data?.id ??
+      meJson?.store?.id ??
+      meJson?.id ??
+      null;
+
+    if (!storeId) {
+      return res.status(500).send("cannot_resolve_store_id");
+    }
+
+    // 5) حدّد uid النهائي (لو state عطانا uid استخدمه، وإلا استخدم salla:<storeId>)
+    const uid = presetUid || `salla:${storeId}`;
+
+    // 6) خزّن أو عدّل سجلاتك
+    const expiresIn = Number(tokens.expires_in || 0);
     const expiresAt = expiresIn ? Date.now() + expiresIn * 1000 : null;
+    await db.collection("salla_tokens").doc(uid).set(
+      {
+        uid,
+        provider: "salla",
+        storeId,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token || null,
+        expiresIn: expiresIn || null,
+        expiresAt,
+        scope: tokens.scope || null,
+        obtainedAt: Date.now(),
+      },
+      { merge: true }
+    );
 
-    if (!access) {
-      return res.status(500).send("Missing access_token in Salla response");
-    }
-
-    // --- حفظ التوكنات في stores/{uid}
     await db.collection("stores").doc(uid).set(
       {
+        uid,
+        platform: "salla",
         salla: {
+          storeId,
           connected: true,
-          tokens: {
-            access_token: access,
-            refresh_token: refresh,
-            expires_at: expiresAt,
-            obtained_at: Date.now(),
-          },
         },
+        connectedAt: Date.now(),
         updatedAt: Date.now(),
       },
       { merge: true }
     );
 
-    // --- (اختياري قوي) الاشتراك في الويبهوكات مباشرة بعد الربط
-    // لو عندك راوت اشتراك داخلي، استدعيه مع Secret لمنع إساءة الاستخدام
-    const subscribeUrl = `${appBase.replace(/\/+$/, "")}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`;
-    try {
-      await fetch(subscribeUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-cron-secret": process.env.CRON_SECRET || "", // لو راوت الاشتراك بيتحقق من ده
-        },
-      });
-    } catch {
-      // تجاهل الخطأ — ممكن تعيد المحاولة في Job لاحقًا
+    // 7) (اختياري) اشترك في الويبهوكس فورًا
+    // يفضل تتحقق داخل /api/salla/subscribe من صلاحية الطلب (هيدر سري)
+    if (APP_BASE) {
+      try {
+        await fetch(`${APP_BASE}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-cron-secret": process.env.CRON_SECRET || "",
+          },
+        });
+      } catch (e) {
+        console.warn("[salla/callback] webhook subscribe failed (will ignore):", e);
+      }
     }
 
-    // --- التحويل لواجهة النجاح (من state) أو لمسار افتراضي
-    const redirectTo =
-      typeof returnTo === "string" && returnTo
-        ? returnTo
-        : "/dashboard/integrations?salla=connected";
-    res.status(302).setHeader("Location", redirectTo).end();
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("Salla callback error:", msg);
-    res.status(500).send(msg);
+    // 8) رجّع المستخدم لواجهة النجاح
+    const dest = returnTo || "/dashboard/integrations?salla=connected";
+    return res.redirect(302, dest);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (e: any) {
+    console.error("salla_callback_error", e?.message || e);
+    return res.status(500).send(e?.message || "internal_error");
   }
 }
 ====[ END FILE: src/pages/api/salla/callback.ts ]===================================================
@@ -24678,17 +24813,12 @@ export default function PrivacyPolicyPage() {
 }
 ====[ END FILE: src/pages/privacy-policy.tsx ]======================================================
 
-====[ START FILE: src/pages/r/[id].tsx (6.2 KB) ]===================================================
-// صفحة ريدرِكت تعمل بعدّاد لطيف قبل التحويل
-// - تقرأ short_links/<code> من السيرفر عبر expandShortLink
-// - تمرر redirect للـUI؛ لو ناقص → تعرض رسالة خطأ
-
+====[ START FILE: src/pages/r/[id].tsx (4.3 KB) ]===================================================
+// src/pages/r/[id].tsx
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import { useEffect, useState } from "react";
 import { expandShortLink } from "@/server/short-links";
-
-// أيقونات/أزرار (لو مش مستخدم shadcn/ui احذفهم أو بدّلهم)
 import { Loader2, ExternalLink, AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24699,64 +24829,44 @@ export default function RedirectPage({
   redirect,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [countdown, setCountdown] = useState(3);
-  const [isRedirecting, setIsRedirecting] = useState(!!redirect);
-
-  useEffect(() => {
-    if (redirect) setIsRedirecting(true);
-  }, [redirect]);
 
   useEffect(() => {
     if (!redirect) return;
-    if (countdown > 0) {
-      const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
-      return () => clearTimeout(t);
+    if (countdown === 0) {
+      window.location.href = redirect;
+      return;
     }
-    window.location.href = redirect!;
+    const t = setTimeout(() => setCountdown((n) => n - 1), 1000);
+    return () => clearTimeout(t);
   }, [redirect, countdown]);
 
-  if (isRedirecting && redirect) {
+  if (redirect) {
     return (
-      <div
-        className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4"
-        dir="rtl"
-      >
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4" dir="rtl">
         <Head>
           <title>إعادة توجيه…</title>
           <meta name="robots" content="noindex, nofollow" />
         </Head>
-
         <Card className="w-full max-w-md mx-auto shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardContent className="p-8 text-center">
             <div className="mb-6">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
                 <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-2">
-                جاري إعادة التوجيه…
-              </h1>
-              <p className="text-gray-600 mb-4">
-                سيتم تحويلك خلال {countdown} ثانية
-              </p>
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">جاري إعادة التوجيه…</h1>
+              <p className="text-gray-600 mb-4">سيتم تحويلك خلال {countdown} ثانية</p>
             </div>
 
             <div className="space-y-4">
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-1000 ease-out"
-                  style={{ width: `${((3 - countdown) / 3) * 100}%` }}
-                />
-              </div>
-
               <div className="flex items-center justify-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
                 <ExternalLink className="w-4 h-4" />
                 <span className="truncate max-w-xs" title={redirect}>
                   {redirect}
                 </span>
               </div>
-
               <Button
                 onClick={() => (window.location.href = redirect)}
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="w-full"
               >
                 الانتقال الآن
                 <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
@@ -24768,47 +24878,32 @@ export default function RedirectPage({
     );
   }
 
-  // حالة رابط غير صالح
+  // ❌ رابط غير صالح
   return (
-    <div
-      className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center p-4"
-      dir="rtl"
-    >
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center p-4" dir="rtl">
       <Head>
         <title>رابط غير صالح</title>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
-
       <Card className="w-full max-w-md mx-auto shadow-xl border-0 bg-white/80 backdrop-blur-sm">
         <CardContent className="p-8 text-center">
           <div className="mb-6">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
               <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">
-              رابط غير صالح
-            </h1>
-            <p className="text-gray-600 leading-relaxed">
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">رابط غير صالح</h1>
+            <p className="text-gray-600">
               الرابط الذي تحاول الوصول إليه غير موجود أو انتهت صلاحيته
             </p>
           </div>
-
-          <div className="space-y-4">
-            <div className="bg-red-50 border border-red-100 rounded-lg p-4">
-              <p className="text-sm text-red-700">
-                تأكد من صحة الرابط أو تواصل مع الشخص الذي أرسله إليك
-              </p>
-            </div>
-
-            <Button
-              onClick={() => (window.location.href = "/")}
-              variant="outline"
-              className="w-full border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-800 font-medium py-2 px-4 rounded-lg transition-all duration-200"
-            >
-              العودة إلى الصفحة الرئيسية
-              <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => (window.location.href = "/")}
+          >
+            العودة إلى الصفحة الرئيسية
+            <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
+          </Button>
         </CardContent>
       </Card>
     </div>
@@ -24816,20 +24911,15 @@ export default function RedirectPage({
 }
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
-  // لا نستعمل Redirect من السيرفر عشان نعرض العدّاد الجميل
-  const code = typeof ctx.params?.code === "string" ? ctx.params.code.trim() : "";
-  if (!code) {
-    // لا كاش للرابط (روابط قصيرة تختلف)
-    ctx.res.setHeader("Cache-Control", "no-store");
-    return { props: {} };
-  }
+  const id = typeof ctx.params?.id === "string" ? ctx.params.id.trim() : "";
+  ctx.res.setHeader("Cache-Control", "no-store");
+  if (!id) return { props: {} };
 
   try {
-    const dest = await expandShortLink(code); // ترجع targetUrl/url أو null
-    ctx.res.setHeader("Cache-Control", "no-store");
+    const dest = await expandShortLink(id);
     return { props: dest ? { redirect: dest } : {} };
-  } catch {
-    ctx.res.setHeader("Cache-Control", "no-store");
+  } catch (e) {
+    console.error("[r/[id]] error:", e);
     return { props: {} };
   }
 };
@@ -27117,15 +27207,14 @@ export function makeIdemKey(signature: string | undefined, rawBody: Buffer) {
 }
 ====[ END FILE: src/server/salla/webhook-verify.ts ]================================================
 
-====[ START FILE: src/server/short-links.ts (3.0 KB) ]==============================================
-// src/server/short-links.ts
+====[ START FILE: src/server/short-links.ts (2.0 KB) ]==============================================
 import { getDb } from "@/server/firebase-admin";
 
 export type ShortLinkDoc = {
-  id: string;              // الكود القصير
-  code: string;            // نفس id لسهولة القراءة
-  targetUrl: string;       // الرابط النهائي (الموصى به)
-  url?: string;            // للتوافق الخلفي
+  id: string;       // الكود القصير
+  code: string;     // نفس id لسهولة القراءة
+  targetUrl: string;
+  url?: string;     // للتوافق الخلفي
   createdAt: number;
   lastHitAt?: number | null;
   hits?: number;
@@ -27133,23 +27222,18 @@ export type ShortLinkDoc = {
 
 const COLL = "short_links";
 
-// مولّد كود 8 حروف [a-z0-9]
 function genCode(len = 8) {
   return Math.random().toString(36).slice(2, 2 + len);
 }
-
 function sanitizeBase(url: string) {
   return url.replace(/\/+$/, "");
 }
-
 function isValidTarget(u: string) {
   if (!u) return false;
   if (/undefined/i.test(u)) return false;
   try {
     const x = new URL(u);
-    // لازم http/https فقط
     if (!/^https?:$/.test(x.protocol)) return false;
-    // ما يبقاش /review/ بس من غير توكن
     if (/\/review\/?$/.test(x.pathname)) return false;
     return true;
   } catch {
@@ -27157,31 +27241,19 @@ function isValidTarget(u: string) {
   }
 }
 
-/**
- * أنشئ رابط مختصر يعيد التوجيه إلى `targetUrl`
- * يرجّع /r/<code>
- */
 export async function createShortLink(targetUrl: string): Promise<string> {
   const db = getDb();
+  if (!isValidTarget(targetUrl)) throw new Error("invalid_target_url");
 
-  // تحقّق قوي قبل التخزين
-  if (!isValidTarget(targetUrl)) {
-    throw new Error("invalid_target_url");
-  }
-
-  // ولّد كود فريد (جرّب مرّة أو اتنين لتجنّب الاصطدام)
   let code = genCode(8);
   const ref = db.collection(COLL).doc(code);
-  const snap = await ref.get();
-  if (snap.exists) {
-    code = genCode(8);
-  }
+  if ((await ref.get()).exists) code = genCode(8);
 
   const doc: ShortLinkDoc = {
     id: code,
     code,
     targetUrl,
-    url: targetUrl,         // للتوافق مع أي كود قديم يعتمد على 'url'
+    url: targetUrl,
     createdAt: Date.now(),
     hits: 0,
     lastHitAt: null,
@@ -27189,23 +27261,12 @@ export async function createShortLink(targetUrl: string): Promise<string> {
 
   await db.collection(COLL).doc(code).set(doc);
 
-  const base =
-    process.env.APP_BASE_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    "";
-
-  if (!base) {
-    // نسمح بإنشاء الدوكيومنت حتى لو الـ BASE فاضي، لكن نوقف الرابط الراجع
-    throw new Error("BASE_URL not configured");
-  }
+  const base = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || "";
+  if (!base) throw new Error("BASE_URL not configured");
 
   return `${sanitizeBase(base)}/r/${code}`;
 }
 
-/**
- * يعيد الوجهة النهائية أو null لو غير موجود/غير صالح
- * ويحدّث العداد ووقت آخر زيارة
- */
 export async function expandShortLink(code: string): Promise<string | null> {
   const db = getDb();
   const snap = await db.collection(COLL).doc(code).get();
@@ -27214,14 +27275,12 @@ export async function expandShortLink(code: string): Promise<string | null> {
   const data = snap.data() as ShortLinkDoc | undefined;
   const dest = (data?.targetUrl || data?.url || "").trim();
 
-  if (!isValidTarget(dest)) {
-    // ما نرجّعش لينك بايظ
-    return null;
-  }
+  if (!isValidTarget(dest)) return null;
 
-  // زيادات آمنة
-  const hits = (data?.hits || 0) + 1;
-  await snap.ref.set({ hits, lastHitAt: Date.now() }, { merge: true });
+  await snap.ref.set(
+    { hits: (data?.hits || 0) + 1, lastHitAt: Date.now() },
+    { merge: true }
+  );
 
   return dest;
 }
@@ -28132,7 +28191,7 @@ function makeSeparator(title) {
 ====[ END FILE: tsconfig.json ]=====================================================================
 
 ====[ SUMMARY ]=====================================================================================
-Total files seen : 200
-Included         : 188
+Total files seen : 201
+Included         : 189
 Skipped          : 12
-Finished at      : 2025-09-02T14:30:19.866Z
+Finished at      : 2025-09-03T18:37:06.416Z

@@ -2,13 +2,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
-const SALLA_TOKEN_URL   = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
-const SALLA_API_BASE    = process.env.SALLA_API_BASE   || "https://api.salla.dev";
-const CLIENT_ID         = process.env.SALLA_CLIENT_ID!;
-const CLIENT_SECRET     = process.env.SALLA_CLIENT_SECRET!;
-const REDIRECT_URI      = process.env.SALLA_REDIRECT_URI!; // must match exactly in Salla console
-const APP_BASE          =
-  (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+const SALLA_TOKEN_URL = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
+const SALLA_API_BASE  = process.env.SALLA_API_BASE  || "https://api.salla.dev";
+const CLIENT_ID       = process.env.SALLA_CLIENT_ID!;
+const CLIENT_SECRET   = process.env.SALLA_CLIENT_SECRET!;
+const REDIRECT_URI    = process.env.SALLA_REDIRECT_URI!;
+const APP_BASE = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
 
 type TokenResp = {
   token_type: "Bearer";
@@ -18,11 +17,16 @@ type TokenResp = {
   scope?: string;
 };
 
+function withTimeout(ms: number) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  return { signal: controller.signal, cancel: () => clearTimeout(t) };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method !== "GET") return res.status(405).send("Method Not Allowed");
 
-    // 1) استلام كود الأثر
     const code  = typeof req.query.code  === "string" ? req.query.code  : undefined;
     const state = typeof req.query.state === "string" ? req.query.state : undefined;
     if (!code) return res.status(400).send("Missing code");
@@ -31,13 +35,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).send("Salla OAuth env vars are not configured");
     }
     if (!APP_BASE) {
-      // مش هنوقف الفلو، بس يفضّل ضبطه لاشتراك الويبهوكس والتحويل النهائي
-      console.warn("[salla/callback] APP_BASE not configured; some redirects/webhook setup may fail.");
+      console.warn("[salla/callback] APP_BASE not configured; redirects/webhook setup may fail.");
     }
 
     const db = dbAdmin();
 
-    // 2) (اختياري) حاول تقرأ state من Firestore لو أنت بتولّده مسبقًا
+    // (اختياري) قراءة state مسبقًا إن لقيّناه
     let presetUid: string | null = null;
     let returnTo: string | null = null;
     if (state) {
@@ -49,7 +52,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         returnTo = typeof st?.returnTo === "string" ? st!.returnTo! : null;
         await stRef.delete().catch(() => {});
       } else {
-        // دعم state مشفّر/JSON (fallback)
         try {
           const parsed = JSON.parse(decodeURIComponent(state));
           if (typeof parsed?.uid === "string") presetUid = parsed.uid;
@@ -58,51 +60,66 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // 3) بدّل الكود بالتوكنات
-    const tokenRes = await fetch(SALLA_TOKEN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        redirect_uri: REDIRECT_URI, // لازم يطابق المسجّل في سلة حرفيًا
-      }),
-    });
-    const tokens = (await tokenRes.json().catch(() => ({}))) as Partial<TokenResp>;
-    if (!tokenRes.ok || !tokens.access_token) {
-      return res
-        .status(tokenRes.status || 502)
-        .send(`token_exchange_failed: ${JSON.stringify(tokens)}`);
+    // 1) تبادل الكود بالتوكنات
+    let tokens: Partial<TokenResp> = {};
+    try {
+      const { signal, cancel } = withTimeout(15000);
+      const tokenRes = await fetch(SALLA_TOKEN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET,
+          redirect_uri: REDIRECT_URI,
+        }),
+        signal,
+      });
+      cancel();
+      tokens = (await tokenRes.json().catch(() => ({}))) as Partial<TokenResp>;
+      if (!tokenRes.ok || !tokens.access_token) {
+        console.error("[salla/callback] token_exchange_failed", tokenRes.status, tokens);
+        return res.status(tokenRes.status || 502).send(`token_exchange_failed`);
+      }
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      console.error("[salla/callback] token_exchange_network_error:", e?.message || e);
+      return res.status(502).send("token_exchange_network_error");
     }
 
-    // 4) هات هوية المتجر: /admin/v2/stores/me
-    const meRes = await fetch(`${SALLA_API_BASE}/admin/v2/stores/me`, {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-    });
-    const meJson = await meRes.json().catch(() => ({}));
-    if (!meRes.ok) {
-      return res.status(meRes.status).send(`fetch_store_failed: ${JSON.stringify(meJson)}`);
+    // 2) جلب بيانات المتجر
+    let storeId: string | number | null = null;
+    try {
+      const { signal, cancel } = withTimeout(15000);
+      const meRes = await fetch(`${SALLA_API_BASE}/admin/v2/stores/me`, {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+        signal,
+      });
+      cancel();
+      const meJson = await meRes.json().catch(() => ({}));
+      if (!meRes.ok) {
+        console.error("[salla/callback] fetch_store_failed", meRes.status, meJson);
+        return res.status(meRes.status || 502).send("fetch_store_failed");
+      }
+      storeId = meJson?.data?.id ?? meJson?.store?.id ?? meJson?.id ?? null;
+      if (!storeId) {
+        console.error("[salla/callback] cannot_resolve_store_id", meJson);
+        return res.status(500).send("cannot_resolve_store_id");
+      }
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      console.error("[salla/callback] fetch_store_network_error:", e?.message || e);
+      return res.status(502).send("fetch_store_network_error");
     }
 
-    // استخرج storeId بحسب الاستجابة الفعلية (جرّب الحقول الشائعة)
-    const storeId =
-      meJson?.data?.id ??
-      meJson?.store?.id ??
-      meJson?.id ??
-      null;
-
-    if (!storeId) {
-      return res.status(500).send("cannot_resolve_store_id");
-    }
-
-    // 5) حدّد uid النهائي (لو state عطانا uid استخدمه، وإلا استخدم salla:<storeId>)
+    // 3) uid النهائي
     const uid = presetUid || `salla:${storeId}`;
 
-    // 6) خزّن أو عدّل سجلاتك
+    // 4) تخزين التوكنات والربط
     const expiresIn = Number(tokens.expires_in || 0);
     const expiresAt = expiresIn ? Date.now() + expiresIn * 1000 : null;
+
     await db.collection("salla_tokens").doc(uid).set(
       {
         uid,
@@ -122,36 +139,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         uid,
         platform: "salla",
-        salla: {
-          storeId,
-          connected: true,
-        },
+        salla: { storeId, connected: true },
         connectedAt: Date.now(),
         updatedAt: Date.now(),
       },
       { merge: true }
     );
 
-    // 7) (اختياري) اشترك في الويبهوكس فورًا
-    // يفضل تتحقق داخل /api/salla/subscribe من صلاحية الطلب (هيدر سري)
+    // 5) الاشتراك في الويبهوكس (اختياري)
     if (APP_BASE) {
       try {
+        const { signal, cancel } = withTimeout(10000);
         await fetch(`${APP_BASE}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "x-cron-secret": process.env.CRON_SECRET || "",
           },
+          signal,
         });
+        cancel();
       } catch (e) {
-        console.warn("[salla/callback] webhook subscribe failed (will ignore):", e);
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        console.warn("[salla/callback] webhook subscribe failed:", (e as any)?.message || e);
       }
     }
 
-    // 8) رجّع المستخدم لواجهة النجاح
     const dest = returnTo || "/dashboard/integrations?salla=connected";
     return res.redirect(302, dest);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     console.error("salla_callback_error", e?.message || e);
     return res.status(500).send(e?.message || "internal_error");
