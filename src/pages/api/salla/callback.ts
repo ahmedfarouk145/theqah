@@ -3,7 +3,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 const SALLA_TOKEN_URL = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
-const SALLA_API_BASE  = (process.env.SALLA_API_BASE || "https://api.salla.sa").replace(/\/+$/,"");
+// 👇 لاحظ التغيير هنا: الافتراضي .dev
+const SALLA_API_BASE  = (process.env.SALLA_API_BASE || "https://api.salla.dev").replace(/\/+$/,"");
+
 const CLIENT_ID       = process.env.SALLA_CLIENT_ID!;
 const CLIENT_SECRET   = process.env.SALLA_CLIENT_SECRET!;
 const REDIRECT_URI    = process.env.SALLA_REDIRECT_URI!;
@@ -105,10 +107,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn("[salla/callback] APP_BASE not configured; redirects/webhook setup may fail.");
     }
 
-    // استخدم نفس instancia من البداية لتجنب إعادة تعريف db
     const db = dbAdmin();
 
-    // (اختياري) قراءة state
+    // (اختياري) state handling
     let presetUid: string | null = null;
     let returnTo: string | null = null;
     if (state) {
@@ -132,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // 1) تبادل الكود بالتوكنات
+    // 1) token exchange
     const tokenForm = new URLSearchParams({
       grant_type: "authorization_code",
       code,
@@ -167,8 +168,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).send("missing_access_token");
     }
 
-    // 2) /admin/v2/stores/me — مع retry/backoff + trace
-    const meUrl = `${SALLA_API_BASE}/admin/v2/stores/me`;
+    // 2) store info call (بدل stores/me)
+    const meUrl = `${SALLA_API_BASE}/admin/v2/store/info`;
     let meJson: unknown = null;
     let storeId: string | number | null = null;
 
@@ -177,7 +178,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const meTrace = await fetchWithTrace(
         meUrl,
         { method: "GET", headers: { Authorization: `Bearer ${tokens.access_token}` } },
-        { label: `stores_me_attempt_${i}`, timeoutMs: 15000 }
+        { label: `store_info_attempt_${i}`, timeoutMs: 15000 }
       );
 
       if (meTrace.ok) {
@@ -188,15 +189,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(502).send("fetch_store_parse_error");
         }
         storeId = pickStoreId(meJson);
-        console.error("[salla/callback] me_ok", { storeId, hasData: !!meJson });
+        console.error("[salla/callback] store_info_ok", { storeId, hasData: !!meJson });
         break;
       } else {
         if (meTrace.status === 401 || meTrace.status === 403) {
-          console.error("[salla/callback] me_auth_error", { status: meTrace.status, body: meTrace.text, token: tokRedacted, SALLA_API_BASE });
+          console.error("[salla/callback] store_info_auth_error", { status: meTrace.status, body: meTrace.text, token: tokRedacted, SALLA_API_BASE });
           return res.status(meTrace.status).send("fetch_store_auth_error");
         }
         const delay = 400 * i;
-        console.error(`[salla/callback] me_failed_attempt_${i}/${attempts} status=${meTrace.status} will_retry_in=${delay}ms`);
+        console.error(`[salla/callback] store_info_failed_attempt_${i}/${attempts} status=${meTrace.status} will_retry_in=${delay}ms`);
         await new Promise((r) => setTimeout(r, delay));
       }
     }
@@ -209,7 +210,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 3) uid النهائي
     const uid = presetUid || `salla:${storeId}`;
 
-    // 4) تخزين التوكنات
+    // 4) حفظ التوكنات
     const expiresIn = Number(tokens.expires_in || 0);
     const expiresAt = expiresIn ? Date.now() + expiresIn * 1000 : null;
 
@@ -239,7 +240,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { merge: true }
     );
 
-    // 5) الاشتراك في الويبهوكس (اختياري)
+    // 5) الاشتراك في webhooks
     if (APP_BASE) {
       try {
         const subUrl = `${APP_BASE}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`;

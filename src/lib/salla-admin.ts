@@ -1,5 +1,5 @@
 // src/lib/salla-admin.ts
-const SALLA_API_BASE = process.env.SALLA_API_BASE || "https://api.salla.sa";
+const SALLA_API_BASE = process.env.SALLA_API_BASE || "https://api.salla.dev";
 
 type AdminRequestOpts = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
