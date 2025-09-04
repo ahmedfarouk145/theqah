@@ -16,6 +16,7 @@ interface SallaItem { id?: string|number; product?: { id?: string|number }|null;
 interface SallaOrder {
   id?: string|number; order_id?: string|number; number?: string|number;
   status?: string; order_status?: string; new_status?: string; shipment_status?: string;
+  payment_status?: string;
   customer?: SallaCustomer; items?: SallaItem[];
   store?: { id?: string|number; name?: string } | null;
   merchant?: { id?: string|number; name?: string } | null;
@@ -43,8 +44,8 @@ type SallaAppEvent =
 
 // -------------------- Consts & helpers --------------------
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
-const DONE   = new Set(["paid","fulfilled","delivered","completed","complete"]);
-const CANCEL = new Set(["canceled","cancelled","refunded","returned"]);
+const DONE  = new Set(["paid","fulfilled","delivered","completed","complete"]);
+const CANCEL= new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const keyOf = (event: string, orderId?: string, status?: string) =>
   `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
@@ -91,7 +92,7 @@ function pickStoreUidFromSalla(o: UnknownRecord): string | undefined {
   const store = o["store"] as UnknownRecord | undefined;
   const merchant = o["merchant"] as UnknownRecord | undefined;
   const sid = store?.["id"] ?? merchant?.["id"];
-  return sid !== undefined ? String(sid) : undefined;
+  return sid !== undefined ? `salla:${String(sid)}` : undefined;
 }
 function extractProductIds(items?: SallaItem[]): string[] {
   if (!Array.isArray(items)) return [];
@@ -102,8 +103,6 @@ function extractProductIds(items?: SallaItem[]): string[] {
   }
   return [...ids];
 }
-const normalizeUid = (merchant?: string | number) =>
-  merchant != null ? `salla:${String(merchant)}` : null;
 
 // -------------------- Order snapshot & invites --------------------
 async function upsertOrderSnapshot(
@@ -117,6 +116,7 @@ async function upsertOrderSnapshot(
     id: orderId,
     number: order.number ?? null,
     status: lc(order.status ?? order.order_status ?? order.new_status ?? order.shipment_status ?? ""),
+    paymentStatus: lc(order.payment_status ?? ""),
     customer: {
       name: order.customer?.name ?? null,
       email: order.customer?.email ?? null,
@@ -136,7 +136,9 @@ async function ensureInviteForOrder(
   const orderId = String(order.id ?? order.order_id ?? "");
   if (!orderId) return;
 
-  const invitesSnap = await db.collection("review_invites").where("orderId","==",orderId).limit(1).get();
+  // idempotency على دعوات الطلب
+  const invitesSnap = await db.collection("review_invites")
+    .where("orderId","==",orderId).limit(1).get();
   if (!invitesSnap.empty) return;
 
   let storeUid: string | null = pickStoreUidFromSalla(eventRaw) || null;
@@ -148,10 +150,6 @@ async function ensureInviteForOrder(
   }
 
   const productIds = extractProductIds((order as SallaOrder).items);
-  if (productIds.length === 0) {
-    const rawItems = (eventRaw["items"] as SallaItem[] | undefined) ?? [];
-    productIds.push(...extractProductIds(rawItems));
-  }
   const mainProductId = productIds[0] || orderId;
 
   const tokenId = crypto.randomBytes(10).toString("hex");
@@ -221,16 +219,9 @@ async function handleAppEvent(
   merchant: string | number | undefined,
   data: UnknownRecord
 ) {
-  const uid = normalizeUid(merchant) || "salla:unknown";
+  const uid = merchant != null ? `salla:${String(merchant)}` : "salla:unknown";
 
-  // احتفظ بنسخة من الحدث (للدعم/المراجعة)
-  await db.collection("salla_app_events").add({
-    uid,
-    event,
-    merchant: merchant ?? null,
-    data,
-    at: Date.now(),
-  });
+  await db.collection("salla_app_events").add({ uid, event, merchant: merchant ?? null, data, at: Date.now() });
 
   if (event === "app.store.authorize") {
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -238,8 +229,8 @@ async function handleAppEvent(
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
     const refresh_token = ((data as any)?.refresh_token as string) || null;
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const expires       = Number((data as any)?.expires || 0); // seconds (حسب مثال سلة)
-    const expires_at    = expires ? expires * 1000 : null;
+    const expires       = Number((data as any)?.expires || 0);
+    const expiresAt     = expires ? Date.now() + expires * 1000 : null;
 
     if (access_token) {
       await db.collection("salla_tokens").doc(uid).set({
@@ -248,7 +239,7 @@ async function handleAppEvent(
         storeId: merchant ?? null,
         accessToken: access_token,
         refreshToken: refresh_token,
-        expiresAt: expires_at,
+        expiresAt,
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         scope: (data as any)?.scope || null,
         obtainedAt: Date.now(),
@@ -279,21 +270,13 @@ async function handleAppEvent(
       salla: { storeId: merchant ?? null, installed: false, connected: false, uninstalledAt: Date.now() },
       updatedAt: Date.now(),
     }, { merge: true });
-    // (اختياري) تعطيل webhooks أو تنظيف مفاتيح
   }
 
   if (event.startsWith("app.trial.") || event.startsWith("app.subscription.")) {
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
-      salla: {
-        storeId: merchant ?? null,
-        subscription: {
-          lastEvent: event,
-          data,
-          updatedAt: Date.now(),
-        },
-      },
+      salla: { storeId: merchant ?? null, subscription: { lastEvent: event, data, updatedAt: Date.now() } },
       updatedAt: Date.now(),
     }, { merge: true });
   }
@@ -302,20 +285,14 @@ async function handleAppEvent(
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
-      salla: {
-        storeId: merchant ?? null,
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        settings: (data as any)?.settings ?? {},
-      },
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      salla: { storeId: merchant ?? null, settings: (data as any)?.settings ?? {} },
       updatedAt: Date.now(),
     }, { merge: true });
   }
 
   if (event === "app.feedback.created") {
-    await db.collection("stores").doc(uid).collection("app_feedback").add({
-      at: Date.now(),
-      data,
-    });
+    await db.collection("stores").doc(uid).collection("app_feedback").add({ at: Date.now(), data });
   }
 }
 
@@ -340,41 +317,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const event = String(body.event || "");
-  const asOrder = (body.data ?? {}) as SallaOrder;
+  const dataRaw = (body.data ?? {}) as UnknownRecord;
+  const asOrder = dataRaw as SallaOrder;
 
-  // Idempotency (يشمل كل الأحداث: app.* و orders.*)
+  // Idempotency (يشمل كل الأحداث)
   const idemKey = crypto.createHash("sha256").update(provided + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
   if ((await idemRef.get()).exists) return res.status(200).json({ ok: true, deduped: true });
   await idemRef.set({
     at: Date.now(),
     event,
-    // لو كان أمر: خزن orderId/status كجزء من اللوج
     orderId: String(asOrder.id ?? asOrder.order_id ?? "") || null,
     status: lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? ""),
+    paymentStatus: lc(asOrder.payment_status ?? ""),
     merchant: body.merchant ?? null,
   });
 
   // فرع أحداث Partner Portal (app.*)
   if (event.startsWith("app.")) {
-    await handleAppEvent(db, event as SallaAppEvent, body.merchant, (body.data ?? {}) as UnknownRecord);
-    await db.collection("processed_events")
-      .doc(keyOf(event, undefined, undefined))
-      .set({ at: Date.now(), event, processed: true }, { merge: true });
+    await handleAppEvent(db, event as SallaAppEvent, body.merchant, dataRaw);
+    await db.collection("processed_events").doc(keyOf(event)).set({ at: Date.now(), event, processed: true }, { merge: true });
     return res.status(200).json({ ok: true });
   }
 
-  // فرع أوامر الطلبات
+  // أوامر الطلبات / الشحن
   const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
   const status = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
-  const eventRaw = (body.data ?? {}) as UnknownRecord;
-  const storeUidFromEvent = pickStoreUidFromSalla(eventRaw) || null;
+  const paymentStatus = lc(asOrder.payment_status ?? "");
+  const storeUidFromEvent = pickStoreUidFromSalla(dataRaw) || null;
 
   await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
 
-  if (event.includes("orders.status.update") || event.includes("orders.") || event.includes("order.")) {
-    if (DONE.has(status))   await ensureInviteForOrder(db, asOrder, eventRaw);
-    if (CANCEL.has(status)) await voidInvitesForOrder(db, orderId, `status_${status}`);
+  // القواعد:
+  // - after_payment: عبر order.payment.updated بحالة paid/authorized/captured
+  // - after_delivery: عبر shipment.updated (delivered) أو order.status.updated (completed)
+  // - أي cancel/refund قبل الإرسال ⇒ void
+  if (event === "order.payment.updated") {
+    if (["paid","authorized","captured"].includes(paymentStatus)) {
+      await ensureInviteForOrder(db, asOrder, dataRaw);
+    }
+  } else if (event === "shipment.updated") {
+    if (DONE.has(status) || ["delivered","completed"].includes(status)) {
+      await ensureInviteForOrder(db, asOrder, dataRaw);
+    }
+  } else if (event === "order.status.updated") {
+    if (DONE.has(status)) {
+      await ensureInviteForOrder(db, asOrder, dataRaw);
+    }
+  } else if (event === "order.cancelled") {
+    await voidInvitesForOrder(db, orderId, "order_cancelled");
+  } else if (event === "order.refunded") {
+    await voidInvitesForOrder(db, orderId, "order_refunded");
   }
 
   await db.collection("processed_events")
