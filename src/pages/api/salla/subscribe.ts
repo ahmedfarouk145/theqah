@@ -5,7 +5,7 @@ import { dbAdmin } from "@/lib/firebaseAdmin";
 const SALLA_API_BASE = (process.env.SALLA_API_BASE || "https://api.salla.dev").replace(/\/+$/, "");
 const CRON_SECRET = process.env.CRON_SECRET || "";
 
-// ✅ قائمة رغبات “صحيحة” (مفرد)، غطّي بها احتياجك لإرسال التقييم
+// ✅ قائمة رغبات “صحيحة” (صيغة المفرد كما في مستندات سلة)
 const DESIRED_EVENTS = [
   // دفع/حالات طلب
   "order.payment.updated",
@@ -23,9 +23,9 @@ const DESIRED_EVENTS = [
   // "review.added",
 
   // إن أردت متابعة تثبيت/إلغاء التطبيق من Partner Portal
-   "app.installed",
-   "app.uninstalled",
-   "app.settings.updated",
+  "app.installed",
+  "app.uninstalled",
+  "app.settings.updated",
 ] as const;
 
 type Desired = typeof DESIRED_EVENTS[number];
@@ -62,7 +62,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const base = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/,"");
     if (!base) return res.status(500).json({ error: "APP_BASE_URL not configured" });
-    const sinkUrl = `${base}/api/salla/webhook`;
+
+    // ✅ مرِّر التوكن كـ query للتعامل مع نداءات بلا هيدرز
+    const token = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
+    const sinkUrl = `${base}/api/salla/webhook${token ? `?t=${encodeURIComponent(token)}` : ""}`;
 
     // 1) جلب الأحداث المتاحة فعليًا
     const list = await sallaFetch<{ status: number; success: boolean; data: Array<{ event: string }> }>(
@@ -92,6 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             headers: [
               { key: "x-webhook-source", value: "theqah" },
               { key: "Authorization", value: `Bearer ${process.env.SALLA_WEBHOOK_TOKEN || ""}` }, // علشان يقبل التوكين في webhook.ts
+              { key: "x-webhook-token", value: `${process.env.SALLA_WEBHOOK_TOKEN || ""}` },      // احتياطي
             ],
           }),
         }

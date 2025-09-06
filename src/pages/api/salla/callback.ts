@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 const SALLA_TOKEN_URL = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
-// 👇 لاحظ التغيير هنا: الافتراضي .dev
+// 👇 الافتراضي .dev (بيئة المتجر التجريبي)
 const SALLA_API_BASE  = (process.env.SALLA_API_BASE || "https://api.salla.dev").replace(/\/+$/,"");
 
 const CLIENT_ID       = process.env.SALLA_CLIENT_ID!;
@@ -264,7 +264,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    const dest = returnTo || "/dashboard/integrations?salla=connected";
+    // ✅ مسار الريدايركت قابل للتهيئة، مع مسار افتراضي موجود
+    const DEFAULT_DEST = process.env.SALLA_AFTER_CONNECT_PATH || "/?salla=connected";
+    const dest = returnTo || DEFAULT_DEST;
 
     if (debugRequested) {
       return res.status(200).json({

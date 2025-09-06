@@ -303,6 +303,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // ✅ يقبل Bearer / x-webhook-token / x-salla-token / ?t=
   const provided = extractProvidedToken(req);
   if (!WEBHOOK_TOKEN || !provided || !timingSafeEq(provided, WEBHOOK_TOKEN)) {
+    // لوج تشخيصي آمن (اختياري)
+    // console.warn("[webhook auth fail]", {
+    //   auth: getHeader(req,"authorization") ? "auth" : "",
+    //   xwt:  getHeader(req,"x-webhook-token") ? "x-webhook-token" : "",
+    //   xst:  getHeader(req,"x-salla-token") ? "x-salla-token" : "",
+    //   q:    typeof req.query.t === "string" && req.query.t ? "query" : "",
+    // });
     return res.status(401).json({ error: "invalid_webhook_token" });
   }
 
