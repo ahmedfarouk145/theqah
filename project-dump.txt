@@ -1,7 +1,7 @@
 ====[ PROJECT DUMP - METADATA ]=====================================================================
 Root   : D:\theqah
 Output : D:\theqah\project-dump.txt
-When   : 2025-09-07T03:49:57.327Z
+When   : 2025-09-07T12:05:50.982Z
 Rules  : skip binaries=true, skip .env*=true, maxBytes=1.0 MB
 
 ====[ FILE LIST ]===================================================================================
@@ -14,7 +14,7 @@ firestore.indexes.json	(4.7 KB)
 firestore.rules	(3.2 KB)
 middleware.ts	(2.7 KB)
 next-env.d.ts	(213 B)
-next.config.ts	(1.1 KB)
+next.config.ts	(1.9 KB)
 package-lock.json	(414.4 KB)
 package.json	(2.2 KB)
 postcss.config.js	(93 B)
@@ -726,20 +726,40 @@ export const config = {
 // see https://nextjs.org/docs/pages/api-reference/config/typescript for more information.
 ====[ END FILE: next-env.d.ts ]=====================================================================
 
-====[ START FILE: next.config.ts (1.1 KB) ]=========================================================
+====[ START FILE: next.config.ts (1.9 KB) ]=========================================================
 /** @type {import('next').NextConfig} */
+const isProd = process.env.NODE_ENV === "production";
+
+// 🧱 الدومينات المسموح لها تعمل embed (iframe) لصفحاتك
 const ALLOWED_ANCESTORS = [
   "'self'",
+  // متاجر زد:
   "https://*.zid.sa",
   "https://*.zid.store",
-  // زوّد نطاقات أخرى حسب الحاجة:
-  // "https://*.salla.sa",
+  // متاجر سلة (الإنتاج + بيئة الديمو):
+  "https://*.salla.sa",
+  "https://*.salla.dev",
+  // لو هتعمل embed داخل موقعك نفسه (اختياري):
+  "https://www.theqah.com.sa",
+  "https://theqah.com.sa",
+  // معاينات Vercel (اختياري أثناء التطوير):
+  "https://*.vercel.app",
 ];
 
-if (process.env.NODE_ENV !== "production") {
+if (!isProd) {
   ALLOWED_ANCESTORS.push("http://localhost:3000");
-  // أو اسم الدومين المحلي لو بتستخدم hosts:
+  // مثال لو بتستخدم دومين محلي:
   // ALLOWED_ANCESTORS.push("http://dev.theqah.test:3000");
+}
+
+// 👇 تقدر تزود سماحيات من متغير بيئة (قائمة مفصولة بفواصل)
+if (process.env.CSP_EXTRA_ANCESTORS) {
+  ALLOWED_ANCESTORS.push(
+    ...process.env.CSP_EXTRA_ANCESTORS
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean)
+  );
 }
 
 const cspFrameAncestors = `frame-ancestors ${ALLOWED_ANCESTORS.join(" ")};`;
@@ -747,12 +767,12 @@ const cspFrameAncestors = `frame-ancestors ${ALLOWED_ANCESTORS.join(" ")};`;
 const nextConfig = {
   async headers() {
     return [
-      // يطبّق على صفحة /embedded نفسها
+      // يطبّق على /embedded مباشرة
       {
         source: "/embedded",
         headers: [
           { key: "Content-Security-Policy", value: cspFrameAncestors },
-          // متعمد: لا نضيف X-Frame-Options هنا
+          // لا تضيف X-Frame-Options هنا — CSP كافي
         ],
       },
       // ويطبّق على أي مسارات فرعية تحت /embedded
@@ -762,6 +782,11 @@ const nextConfig = {
           { key: "Content-Security-Policy", value: cspFrameAncestors },
         ],
       },
+      // (اختياري) لو عندك مسار تاني للودجت:
+      // {
+      //   source: "/widget/:path*",
+      //   headers: [{ key: "Content-Security-Policy", value: cspFrameAncestors }],
+      // },
     ];
   },
 };
@@ -22531,14 +22556,22 @@ import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 const SALLA_TOKEN_URL = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
-// نبدأ بـ sa كافتراضي آمن، ثم نقرر .dev لو المتجر Demo
+// نبدأ بـ .sa كافتراضي آمن، ونستخدم .dev للمتجر الديمو لاحقًا
 const DEFAULT_API_BASE = (process.env.SALLA_API_BASE || "https://api.salla.sa").replace(/\/+$/, "");
 
 const CLIENT_ID     = process.env.SALLA_CLIENT_ID!;
 const CLIENT_SECRET = process.env.SALLA_CLIENT_SECRET!;
 const REDIRECT_URI  = process.env.SALLA_REDIRECT_URI!;
-const APP_BASE      = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
-const AFTER_PATH    = process.env.SALLA_AFTER_CONNECT_PATH || "/dashboard/integrations?salla=connected";
+
+const APP_BASE = (
+  process.env.APP_BASE_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_BASE_URL ||
+  ""
+).replace(/\/+$/, "");
+
+// مهم: غيرنا الديفولت لمسار موجود فعلاً لتفادي 404
+const AFTER_PATH = process.env.SALLA_AFTER_CONNECT_PATH || "/dashboard?salla=connected";
 
 type TokenResp = {
   token_type: "Bearer";
@@ -22560,7 +22593,7 @@ type SallaStoreInfo = {
     status?: string;
     description?: string;
     email?: string;
-    type?: "demo" | "real" | string; // مهم لاختيار apiBase
+    type?: "demo" | "real" | string; // لتحديد apiBase المناسب
   };
 };
 
@@ -22612,7 +22645,6 @@ async function fetchWithTrace(
   error=${errMsg || "none"}
   body_snippet=${text ? JSON.stringify(text) : "none"}`);
 
-  // نرجّع res كـ any لتجنّب تحذير TS بلا حاجة
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { ok, status, headers, text, res: null as any, elapsed, error: errMsg || null };
 }
@@ -22620,11 +22652,11 @@ async function fetchWithTrace(
 function decideApiBase(info: SallaStoreInfo | null | undefined): string {
   const type = (info?.data?.type || "").toLowerCase();
   const domain = String(info?.data?.domain || "");
-  // لو النوع demo → استخدم api.salla.dev
-  // بعض الديمو دومينهم salla.sa لكن فيه مسار /dev-…، لذلك فحص النوع أدق.
+  // لو المتجر Demo → api.salla.dev
   if (type === "demo") return "https://api.salla.dev";
-  // fallback: لو ظهر domain يحوي ".dev" لأي سبب
+  // fallback احتياطي: لو ظهر domain يشير لبيئة الديف
   if (domain.includes("salla.dev")) return "https://api.salla.dev";
+  // غير كده → api.salla.sa
   return "https://api.salla.sa";
 }
 
@@ -22716,7 +22748,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).send("missing_access_token");
     }
 
-    // 2) store info باستخدام DEFAULT_API_BASE (يعمل لكلا البيئتين)
+    // 2) store info باستخدام DEFAULT_API_BASE (يشغّل الديمو واللايف)
     const meUrl = `${DEFAULT_API_BASE}/admin/v2/store/info`;
     const meTrace = await fetchWithTrace(
       meUrl,
@@ -22782,7 +22814,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { merge: true }
     );
 
-    // 5) الاشتراك في webhooks عبر API داخلي يقرأ apiBase من Firestore
+    // 5) الاشتراك في webhooks عبر API داخلي (هيقرأ apiBase من Firestore)
     if (APP_BASE) {
       try {
         const subUrl = `${APP_BASE}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`;
@@ -22805,7 +22837,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // 6) إنشاء Onboarding Token للتحويل إلى صفحة تعيين كلمة المرور
+    // 6) إنشاء Onboarding Token للتحويل لصفحة تعيين كلمة المرور
     let onboardingUrl: string | null = null;
     try {
       const tokenId = randHex(16);
@@ -22824,6 +22856,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn("[salla/callback] onboarding_token_error", toErr(e));
     }
 
+    // المسار النهائي
     const dest = onboardingUrl || returnTo || AFTER_PATH;
 
     if (debugRequested) {
@@ -28776,4 +28809,4 @@ function makeSeparator(title) {
 Total files seen : 203
 Included         : 191
 Skipped          : 12
-Finished at      : 2025-09-07T03:49:57.672Z
+Finished at      : 2025-09-07T12:05:51.244Z
