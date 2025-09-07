@@ -1,11 +1,11 @@
 ====[ PROJECT DUMP - METADATA ]=====================================================================
 Root   : D:\theqah
 Output : D:\theqah\project-dump.txt
-When   : 2025-09-03T21:56:01.363Z
+When   : 2025-09-06T12:19:27.815Z
 Rules  : skip binaries=true, skip .env*=true, maxBytes=1.0 MB
 
 ====[ FILE LIST ]===================================================================================
-.firebase/logs/vsce-debug.log	(1.9 KB)
+.firebase/logs/vsce-debug.log	(5.8 KB)
 .gitignore	(480 B)
 components.json	(449 B)
 eslint.config.mjs	(393 B)
@@ -109,6 +109,7 @@ src/pages/api/admin/stores.ts	(4.6 KB)
 src/pages/api/admin/test-notify.ts	(2.3 KB)
 src/pages/api/admin/users.ts	(1.8 KB)
 src/pages/api/ai/insights.ts	(2.3 KB)
+src/pages/api/auth/exchange-onboarding.ts	(2.5 KB)
 src/pages/api/auth/session.ts	(5.1 KB)
 src/pages/api/orders/add.ts	(3.1 KB)
 src/pages/api/orders/get.ts	(2.3 KB)
@@ -124,12 +125,12 @@ src/pages/api/reviews/export-pdf.ts	(5.5 KB)
 src/pages/api/reviews/list.ts	(1.4 KB)
 src/pages/api/reviews/moderate.ts	(6.2 KB)
 src/pages/api/reviews/submit.ts	(6.1 KB)
-src/pages/api/salla/callback.ts	(9.9 KB)
+src/pages/api/salla/callback.ts	(11.2 KB)
 src/pages/api/salla/connect.ts	(2.6 KB)
 src/pages/api/salla/disconnect.ts	(1.0 KB)
 src/pages/api/salla/refresh.ts	(2.3 KB)
-src/pages/api/salla/subscribe.ts	(2.0 KB)
-src/pages/api/salla/webhook.ts	(14.3 KB)
+src/pages/api/salla/subscribe.ts	(4.5 KB)
+src/pages/api/salla/webhook.ts	(14.9 KB)
 src/pages/api/settings/validate.ts	(1.4 KB)
 src/pages/api/sms/inbound.ts	(653 B)
 src/pages/api/sms/status.ts	(4.6 KB)
@@ -155,6 +156,7 @@ src/pages/embedded/index.tsx	(293 B)
 src/pages/embedded/reviews.tsx	(4.8 KB)
 src/pages/index.tsx	(5.6 KB)
 src/pages/login.tsx	(3.9 KB)
+src/pages/onboarding/set-password.tsx	(3.2 KB)
 src/pages/privacy-policy.tsx	(3.6 KB)
 src/pages/r/[id].tsx	(4.3 KB)
 src/pages/report.tsx	(4.3 KB)
@@ -208,7 +210,7 @@ tools/dump-project.mjs	(6.5 KB)
 tsconfig.json	(602 B)
 
 ====[ FILE CONTENTS ]===============================================================================
-====[ START FILE: .firebase/logs/vsce-debug.log (1.9 KB) ]==========================================
+====[ START FILE: .firebase/logs/vsce-debug.log (5.8 KB) ]==========================================
 [debug] [2025-09-03T18:32:43.144Z] [Firebase Plugin] Activating Firebase extension.
 [info] [Firebase Plugin] Checked firebase-tools, is up to date!
 [debug] [2025-09-03T18:33:06.664Z] [Firebase Plugin] requireAuthWrapper
@@ -228,6 +230,43 @@ tsconfig.json	(602 B)
 [debug] [2025-09-03T18:33:07.322Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
 [debug] [2025-09-03T18:33:07.882Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
 [debug] [2025-09-03T18:33:07.882Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[debug] [2025-09-04T14:44:26.428Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-09-04T14:44:50.713Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-09-04T14:44:50.717Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-09-04T14:44:50.717Z] > authorizing via signed-in user (farwqahmd118@gmail.com)
+[debug] [2025-09-04T14:44:50.723Z] Checked if tokens are valid: false, expires at: 1756927986307
+[debug] [2025-09-04T14:44:50.724Z] Checked if tokens are valid: false, expires at: 1756927986307
+[debug] [2025-09-04T14:44:50.724Z] > refreshing access token with scopes: []
+[debug] [2025-09-04T14:44:50.727Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-09-04T14:44:50.728Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-04T14:44:50.748Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[debug] [2025-09-04T14:44:51.712Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-09-04T14:44:51.713Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-04T14:44:51.747Z] [Firebase Plugin] User found:  farwqahmd118@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-09-04T14:44:51.749Z] Checked if tokens are valid: true, expires at: 1757000690713
+[debug] [2025-09-04T14:44:51.751Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2025-09-04T14:44:52.712Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-09-04T14:44:52.713Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] [Firebase Plugin] Stopping Data Connect toolkit
+[debug] [2025-09-06T09:38:08.782Z] [Firebase Plugin] Activating Firebase extension.
+[debug] [2025-09-06T09:38:36.242Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2025-09-06T09:38:36.249Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-09-06T09:38:36.251Z] > authorizing via signed-in user (farwqahmd118@gmail.com)
+[debug] [2025-09-06T09:38:36.264Z] Checked if tokens are valid: false, expires at: 1757000690713
+[debug] [2025-09-06T09:38:36.266Z] Checked if tokens are valid: false, expires at: 1757000690713
+[debug] [2025-09-06T09:38:36.268Z] > refreshing access token with scopes: []
+[debug] [2025-09-06T09:38:36.274Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-09-06T09:38:36.275Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-06T09:38:36.311Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[debug] [2025-09-06T09:38:37.494Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-09-06T09:38:37.500Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-09-06T09:38:37.544Z] [Firebase Plugin] User found:  farwqahmd118@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2025-09-06T09:38:37.549Z] Checked if tokens are valid: true, expires at: 1757155116501
+[debug] [2025-09-06T09:38:37.556Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2025-09-06T09:38:39.657Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-09-06T09:38:39.658Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
 ====[ END FILE: .firebase/logs/vsce-debug.log ]=====================================================
 
 ====[ START FILE: .gitignore (480 B) ]==============================================================
@@ -18904,7 +18943,7 @@ export async function sendOneSMS({ to, body }: SmsPayload) {
 
 ====[ START FILE: src/lib/salla-admin.ts (1.0 KB) ]=================================================
 // src/lib/salla-admin.ts
-const SALLA_API_BASE = process.env.SALLA_API_BASE || "https://api.salla.sa";
+const SALLA_API_BASE = process.env.SALLA_API_BASE || "https://api.salla.dev";
 
 type AdminRequestOpts = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -20711,6 +20750,68 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/ai/insights.ts ]======================================================
 
+====[ START FILE: src/pages/api/auth/exchange-onboarding.ts (2.5 KB) ]==============================
+// src/pages/api/auth/exchange-onboarding.ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import { dbAdmin, authAdmin } from "@/lib/firebaseAdmin";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+    const { tokenId, password, email } = req.body || {};
+    if (!tokenId) return res.status(400).json({ error: "missing_token" });
+
+    const db = dbAdmin();
+    const ref = db.collection("onboarding_tokens").doc(String(tokenId));
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(400).json({ error: "invalid_token" });
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tok = snap.data() as any;
+    if (tok.usedAt) return res.status(400).json({ error: "token_used" });
+    if (Date.now() > Number(tok.expiresAt)) return res.status(400).json({ error: "token_expired" });
+
+    const storeUid: string = String(tok.uid); // salla:...
+    const fallbackEmail = `owner+${storeUid.replace(":", "_")}@theqah.local`;
+    const userEmail: string = (typeof email === "string" && email) || tok.store?.email || fallbackEmail;
+
+    // أنشئ/أحضر المستخدم
+    let userRecord;
+    try {
+      userRecord = await authAdmin().getUserByEmail(userEmail);
+    } catch {
+      userRecord = await authAdmin().createUser({
+        email: userEmail,
+        emailVerified: false,
+        password: password && String(password).length >= 6 ? String(password) : undefined,
+        displayName: tok.store?.name || "TheQah Merchant",
+      });
+    }
+
+    // حدّث الباسورد لو أُرسل
+    if (password && String(password).length >= 6) {
+      await authAdmin().updateUser(userRecord.uid, { password: String(password) });
+    }
+
+    // اربط حساب المستخدم بالمتجر
+    await db.collection("stores").doc(storeUid).set(
+      { ownerUid: userRecord.uid, updatedAt: Date.now() },
+      { merge: true }
+    );
+
+    // علّم التوكين مستخدم
+    await ref.update({ usedAt: Date.now() });
+
+    // أعمل Custom Token
+    const customToken = await authAdmin().createCustomToken(userRecord.uid, { theqahStoreUid: storeUid });
+
+    return res.status(200).json({ ok: true, customToken, userEmail });
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (e: any) {
+    return res.status(500).json({ error: "internal", message: e?.message || String(e) });
+  }
+}
+====[ END FILE: src/pages/api/auth/exchange-onboarding.ts ]=========================================
+
 ====[ START FILE: src/pages/api/auth/session.ts (5.1 KB) ]==========================================
 // File: src/pages/api/auth/session.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -22423,17 +22524,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/reviews/submit.ts ]===================================================
 
-====[ START FILE: src/pages/api/salla/callback.ts (9.9 KB) ]========================================
+====[ START FILE: src/pages/api/salla/callback.ts (11.2 KB) ]=======================================
 // src/pages/api/salla/callback.ts
 import type { NextApiRequest, NextApiResponse } from "next";
+import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 const SALLA_TOKEN_URL = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
-const SALLA_API_BASE  = (process.env.SALLA_API_BASE || "https://api.salla.sa").replace(/\/+$/,"");
-const CLIENT_ID       = process.env.SALLA_CLIENT_ID!;
-const CLIENT_SECRET   = process.env.SALLA_CLIENT_SECRET!;
-const REDIRECT_URI    = process.env.SALLA_REDIRECT_URI!;
-const APP_BASE        = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/,"");
+// نبدأ بـ sa كافتراضي آمن، ثم نقرر .dev لو المتجر Demo
+const DEFAULT_API_BASE = (process.env.SALLA_API_BASE || "https://api.salla.sa").replace(/\/+$/, "");
+
+const CLIENT_ID     = process.env.SALLA_CLIENT_ID!;
+const CLIENT_SECRET = process.env.SALLA_CLIENT_SECRET!;
+const REDIRECT_URI  = process.env.SALLA_REDIRECT_URI!;
+const APP_BASE      = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+const AFTER_PATH    = process.env.SALLA_AFTER_CONNECT_PATH || "/dashboard/integrations?salla=connected";
 
 type TokenResp = {
   token_type: "Bearer";
@@ -22443,10 +22548,20 @@ type TokenResp = {
   scope?: string;
 };
 
-type SallaMe = {
-  data?: { id?: string | number };
-  store?: { id?: string | number };
-  id?: string | number;
+type SallaStoreInfo = {
+  status?: number;
+  success?: boolean;
+  data?: {
+    id?: number | string;
+    name?: string;
+    domain?: string;
+    currency?: string;
+    plan?: string;
+    status?: string;
+    description?: string;
+    email?: string;
+    type?: "demo" | "real" | string; // مهم لاختيار apiBase
+  };
 };
 
 function withTimeout(ms: number) {
@@ -22455,20 +22570,10 @@ function withTimeout(ms: number) {
   return { signal: controller.signal, cancel: () => clearTimeout(t) };
 }
 
-function redactToken(tok?: string | null) {
-  if (!tok) return null;
-  if (tok.length <= 12) return `${tok.length}ch:${tok}`;
-  return `${tok.length}ch:${tok.slice(0,6)}…${tok.slice(-6)}`;
-}
-
-function pickStoreId(meJson: unknown) {
-  const j = meJson as SallaMe | null | undefined;
-  return j?.data?.id ?? j?.store?.id ?? j?.id ?? null;
-}
-
-function toErrorMessage(e: unknown) {
-  return e instanceof Error ? e.message : String(e);
-}
+const toErr = (e: unknown) => (e instanceof Error ? e.message : String(e));
+const redact = (tok?: string | null) =>
+  !tok ? null : tok.length <= 12 ? `${tok.length}ch:${tok}` : `${tok.length}ch:${tok.slice(0, 6)}…${tok.slice(-6)}`;
+const randHex = (len = 16) => crypto.randomBytes(len).toString("hex");
 
 async function fetchWithTrace(
   url: string,
@@ -22480,36 +22585,47 @@ async function fetchWithTrace(
   const { signal, cancel } = withTimeout(timeoutMs);
 
   const startedAt = Date.now();
-  let res: Response | null = null;
   let text = "";
   let ok = false;
   let status = 0;
-
   const headers: Record<string, string> = {};
   let errMsg = "";
 
   try {
-    res = await fetch(url, { ...init, signal });
-    status = res.status;
-    res.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; });
-    text = await res.text();
+    const r = await fetch(url, { ...init, signal });
+    status = r.status;
+    r.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; });
+    text = await r.text();
     if (text.length > 1024) text = text.slice(0, 1024) + "…[truncated]";
-    ok = res.ok;
-  } catch (e: unknown) {
-    errMsg = toErrorMessage(e);
+    ok = r.ok;
+  } catch (e) {
+    errMsg = toErr(e);
   } finally {
     cancel();
   }
 
   const elapsed = Date.now() - startedAt;
   console.error(`[salla/callback][${label}] url=${url}
-  method=${(init.method || "GET")}
+  method=${init.method || "GET"}
   status=${status} ok=${ok} elapsed_ms=${elapsed}
   headers=${JSON.stringify(headers)}
   error=${errMsg || "none"}
   body_snippet=${text ? JSON.stringify(text) : "none"}`);
 
-  return { ok, status, headers, text, res, elapsed, error: errMsg || null };
+  // نرجّع res كـ any لتجنّب تحذير TS بلا حاجة
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return { ok, status, headers, text, res: null as any, elapsed, error: errMsg || null };
+}
+
+function decideApiBase(info: SallaStoreInfo | null | undefined): string {
+  const type = (info?.data?.type || "").toLowerCase();
+  const domain = String(info?.data?.domain || "");
+  // لو النوع demo → استخدم api.salla.dev
+  // بعض الديمو دومينهم salla.sa لكن فيه مسار /dev-…، لذلك فحص النوع أدق.
+  if (type === "demo") return "https://api.salla.dev";
+  // fallback: لو ظهر domain يحوي ".dev" لأي سبب
+  if (domain.includes("salla.dev")) return "https://api.salla.dev";
+  return "https://api.salla.sa";
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -22523,7 +22639,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!code) return res.status(400).send("Missing code");
 
     if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
-      console.error("[salla/callback] missing_oauth_env", { hasClientId: !!CLIENT_ID, hasSecret: !!CLIENT_SECRET, hasRedirect: !!REDIRECT_URI });
+      console.error("[salla/callback] missing_oauth_env", {
+        hasClientId: !!CLIENT_ID,
+        hasSecret: !!CLIENT_SECRET,
+        hasRedirect: !!REDIRECT_URI,
+      });
       return res.status(500).send("Salla OAuth env vars are not configured");
     }
 
@@ -22531,10 +22651,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn("[salla/callback] APP_BASE not configured; redirects/webhook setup may fail.");
     }
 
-    // استخدم نفس instancia من البداية لتجنب إعادة تعريف db
+    // ✅ عرّف db مرّة واحدة
     const db = dbAdmin();
 
-    // (اختياري) قراءة state
+    // (اختياري) state handling
     let presetUid: string | null = null;
     let returnTo: string | null = null;
     if (state) {
@@ -22553,12 +22673,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (typeof parsed?.returnTo === "string") returnTo = parsed.returnTo;
           } catch { /* ignore */ }
         }
-      } catch (e: unknown) {
-        console.error("[salla/callback] state_read_error", toErrorMessage(e));
+      } catch (e) {
+        console.error("[salla/callback] state_read_error", toErr(e));
       }
     }
 
-    // 1) تبادل الكود بالتوكنات
+    // 1) token exchange
     const tokenForm = new URLSearchParams({
       grant_type: "authorization_code",
       code,
@@ -22586,56 +22706,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(502).send("token_parse_error");
     }
 
-    const tokRedacted = redactToken(tokens.access_token);
-    console.error("[salla/callback] token_ok", { token: tokRedacted, scope: tokens.scope, expires_in: tokens.expires_in });
+    console.error("[salla/callback] token_ok", {
+      token: redact(tokens.access_token),
+      scope: tokens.scope,
+      expires_in: tokens.expires_in,
+    });
 
     if (!tokens.access_token) {
       return res.status(500).send("missing_access_token");
     }
 
-    // 2) /admin/v2/stores/me — مع retry/backoff + trace
-    const meUrl = `${SALLA_API_BASE}/admin/v2/stores/me`;
-    let meJson: unknown = null;
-    let storeId: string | number | null = null;
+    // 2) store info باستخدام DEFAULT_API_BASE (يعمل لكلا البيئتين)
+    const meUrl = `${DEFAULT_API_BASE}/admin/v2/store/info`;
+    const meTrace = await fetchWithTrace(
+      meUrl,
+      { method: "GET", headers: { Authorization: `Bearer ${tokens.access_token}` } },
+      { label: "store_info", timeoutMs: 15000 }
+    );
 
-    const attempts = 3;
-    for (let i = 1; i <= attempts; i++) {
-      const meTrace = await fetchWithTrace(
-        meUrl,
-        { method: "GET", headers: { Authorization: `Bearer ${tokens.access_token}` } },
-        { label: `stores_me_attempt_${i}`, timeoutMs: 15000 }
-      );
-
-      if (meTrace.ok) {
-        try {
-          meJson = JSON.parse(meTrace.text || "{}") as unknown;
-        } catch {
-          console.error("[salla/callback] me_parse_error");
-          return res.status(502).send("fetch_store_parse_error");
-        }
-        storeId = pickStoreId(meJson);
-        console.error("[salla/callback] me_ok", { storeId, hasData: !!meJson });
-        break;
-      } else {
-        if (meTrace.status === 401 || meTrace.status === 403) {
-          console.error("[salla/callback] me_auth_error", { status: meTrace.status, body: meTrace.text, token: tokRedacted, SALLA_API_BASE });
-          return res.status(meTrace.status).send("fetch_store_auth_error");
-        }
-        const delay = 400 * i;
-        console.error(`[salla/callback] me_failed_attempt_${i}/${attempts} status=${meTrace.status} will_retry_in=${delay}ms`);
-        await new Promise((r) => setTimeout(r, delay));
+    if (!meTrace.ok) {
+      if (meTrace.status === 401 || meTrace.status === 403) {
+        return res.status(meTrace.status).send("fetch_store_auth_error");
       }
+      return res.status(meTrace.status || 502).send("fetch_store_network_error");
     }
 
-    if (!storeId) {
-      console.error("[salla/callback] cannot_resolve_store_id_final", { meJson });
-      return res.status(502).send("fetch_store_network_error");
-    }
+    const info = JSON.parse(meTrace.text || "{}") as SallaStoreInfo;
+    const storeId     = info?.data?.id;
+    const storeName   = info?.data?.name || null;
+    const storeDomain = info?.data?.domain || null;
+    if (!storeId) return res.status(502).send("cannot_resolve_store_id");
+
+    // 2.1) حدد الـ apiBase للمتجر واحفظه
+    const apiBaseForStore = decideApiBase(info);
 
     // 3) uid النهائي
     const uid = presetUid || `salla:${storeId}`;
 
-    // 4) تخزين التوكنات
+    // 4) حفظ التوكنات + بيانات المتجر
     const expiresIn = Number(tokens.expires_in || 0);
     const expiresAt = expiresIn ? Date.now() + expiresIn * 1000 : null;
 
@@ -22650,6 +22758,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         expiresAt,
         scope: tokens.scope || null,
         obtainedAt: Date.now(),
+        storeName,
+        storeDomain,
+        apiBase: apiBaseForStore,
       },
       { merge: true }
     );
@@ -22658,14 +22769,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         uid,
         platform: "salla",
-        salla: { storeId, connected: true },
+        salla: {
+          storeId,
+          connected: true,
+          storeName,
+          domain: storeDomain,
+          apiBase: apiBaseForStore,
+        },
         connectedAt: Date.now(),
         updatedAt: Date.now(),
       },
       { merge: true }
     );
 
-    // 5) الاشتراك في الويبهوكس (اختياري)
+    // 5) الاشتراك في webhooks عبر API داخلي يقرأ apiBase من Firestore
     if (APP_BASE) {
       try {
         const subUrl = `${APP_BASE}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`;
@@ -22680,33 +22797,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
           { label: "webhooks_subscribe", timeoutMs: 10000 }
         );
-
         if (!trace.ok) {
           console.warn("[salla/callback] webhook_subscribe_failed", { status: trace.status, body: trace.text });
         }
-      } catch (e: unknown) {
-        console.warn("[salla/callback] webhook_subscribe_exception", toErrorMessage(e));
+      } catch (e) {
+        console.warn("[salla/callback] webhook_subscribe_exception", toErr(e));
       }
     }
 
-    const dest = returnTo || "/dashboard/integrations?salla=connected";
+    // 6) إنشاء Onboarding Token للتحويل إلى صفحة تعيين كلمة المرور
+    let onboardingUrl: string | null = null;
+    try {
+      const tokenId = randHex(16);
+      const now = Date.now();
+      await db.collection("onboarding_tokens").doc(tokenId).set({
+        id: tokenId,
+        uid,
+        createdAt: now,
+        expiresAt: now + 15 * 60 * 1000, // 15 دقيقة
+        usedAt: null,
+        store: { id: storeId, name: storeName, domain: storeDomain },
+        purpose: "set_password_after_salla_connect",
+      });
+      if (APP_BASE) onboardingUrl = `${APP_BASE}/onboarding/set-password?t=${tokenId}`;
+    } catch (e) {
+      console.warn("[salla/callback] onboarding_token_error", toErr(e));
+    }
+
+    const dest = onboardingUrl || returnTo || AFTER_PATH;
 
     if (debugRequested) {
       return res.status(200).json({
         ok: true,
         uid,
         storeId,
-        apiBase: SALLA_API_BASE,
-        token_preview: tokRedacted,
+        apiBase: apiBaseForStore,
+        token_preview: redact(tokens.access_token),
         scope: tokens.scope,
         expires_in: tokens.expires_in || null,
+        storeName,
+        storeDomain,
+        redirect_to: dest,
       });
     }
 
     return res.redirect(302, dest);
-  } catch (e: unknown) {
-    console.error("salla_callback_error", toErrorMessage(e));
-    return res.status(500).send(toErrorMessage(e) || "internal_error");
+  } catch (e) {
+    console.error("salla_callback_error", toErr(e));
+    return res.status(500).send(toErr(e) || "internal_error");
   }
 }
 ====[ END FILE: src/pages/api/salla/callback.ts ]===================================================
@@ -22888,56 +23026,119 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/salla/refresh.ts ]====================================================
 
-====[ START FILE: src/pages/api/salla/subscribe.ts (2.0 KB) ]=======================================
+====[ START FILE: src/pages/api/salla/subscribe.ts (4.5 KB) ]=======================================
 // src/pages/api/salla/subscribe.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getDb } from "@/server/firebase-admin";
-import { sallaAdminClient } from "@/lib/salla-admin";
+import { dbAdmin } from "@/lib/firebaseAdmin";
+
+const CRON_SECRET = process.env.CRON_SECRET || "";
+const DEFAULT_API_BASE = (process.env.SALLA_API_BASE || "https://api.salla.sa").replace(/\/+$/, "");
+
+// صيغة المفرد كما في مستندات سلة
+const DESIRED_EVENTS = [
+  "order.payment.updated",
+  "order.status.updated",
+  "order.cancelled",
+  "order.refunded",
+  "shipment.updated",
+  "shipment.created",
+  "product.updated",
+  "app.installed",
+  "app.uninstalled",
+  "app.settings.updated",
+] as const;
+
+type Desired = typeof DESIRED_EVENTS[number];
+
+async function sallaFetch<T>(apiBase: string, path: string, token: string, init: RequestInit = {}) {
+  const r = await fetch(`${apiBase}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(init.headers || {}),
+    },
+  });
+  const text = await r.text();
+  let json: T | null = null;
+  try { json = text ? JSON.parse(text) as T : null; } catch {}
+  return { ok: r.ok, status: r.status, json, text };
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
-
   try {
-    const uid = (req.query.uid as string) || (req.body?.uid as string);
+    if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+    if (!CRON_SECRET || req.headers["x-cron-secret"] !== CRON_SECRET) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const uid = typeof req.query.uid === "string" ? req.query.uid : (req.body?.uid as string | undefined);
     if (!uid) return res.status(400).json({ error: "missing_uid" });
 
-    const db = getDb();
+    const db = dbAdmin();
 
-    // ✅ اقرأ التوكن من salla_tokens/{uid} (نفس ما يحفظه callback)
+    // اقرأ access token + apiBase المخزّنين في Firestore
     const tokSnap = await db.collection("salla_tokens").doc(uid).get();
-    const access = tokSnap.data()?.accessToken as string | undefined;
-    if (!access) return res.status(401).json({ error: "no_access_token_for_uid" });
+    const accessToken = tokSnap.data()?.accessToken as string | undefined;
 
-    const callbackUrl =
-      `${(process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "")
-        .replace(/\/+$/,"")}/api/salla/webhook`;
+    const storeSnap = await db.collection("stores").doc(uid).get();
+    const apiBase =
+      (storeSnap.data()?.salla?.apiBase as string | undefined) ||
+      (tokSnap.data()?.apiBase as string | undefined) ||
+      DEFAULT_API_BASE;
 
-    // ✅ تأكد من أسماء الأحداث (كلها جمع shipments.*)
-    const events = [
-      "orders.paid",
-      "orders.fulfilled",
-      "orders.delivered",
-      "orders.status.update",
-      "orders.cancelled",
-      "orders.refunded",
-      "shipments.creating",
-      "shipments.created",
-      "shipments.updated",
-      "shipments.cancelled",
-      "app.uninstalled",
-      "app.store.authorize",
-      "app.installed",
-      "app.updated",
-      "app.settings.updated"
-    ];
+    if (!accessToken) return res.status(401).json({ error: "no_access_token_for_uid" });
 
-    const admin = sallaAdminClient(access);
-    const resp = await admin<{ data?: unknown }>("webhooks/subscribe", {
-      method: "POST",
-      body: JSON.stringify({ url: callbackUrl, events }),
+    const base = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/,"");
+    if (!base) return res.status(500).json({ error: "APP_BASE_URL not configured" });
+
+    // مرّر التوكين كـ query + احتفظ برؤوس بديلة
+    const hookToken = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
+    const sinkUrl = `${base}/api/salla/webhook${hookToken ? `?t=${encodeURIComponent(hookToken)}` : ""}`;
+
+    // 1) جلب الأحداث المتاحة
+    const list = await sallaFetch<{ data: Array<{ event: string }> }>(apiBase, "/admin/v2/webhooks/events", accessToken);
+    if (!list.ok) {
+      return res.status(list.status || 502).json({ error: "list_events_failed", body: list.text, apiBaseUsed: apiBase });
+    }
+    const available = new Set((list.json?.data || []).map(e => e.event));
+
+    const toSubscribe = DESIRED_EVENTS.filter(e => available.has(e)) as Desired[];
+    const skipped = DESIRED_EVENTS.filter(e => !available.has(e));
+
+    // 2) الاشتراك لكل حدث
+    const results: Array<{ event: string; ok: boolean; status: number; id?: number; body?: unknown }> = [];
+    for (const ev of toSubscribe) {
+      const sub = await sallaFetch<{ data?: { id: number } }>(apiBase, "/admin/v2/webhooks/subscribe", accessToken, {
+        method: "POST",
+        body: JSON.stringify({
+          name: `TheQah ${ev}`,
+          event: ev,
+          url: sinkUrl,
+          version: 2,
+          headers: [
+            { key: "x-webhook-source", value: "theqah" },
+            { key: "Authorization", value: `Bearer ${hookToken}` }, // احتياطي
+            { key: "x-webhook-token", value: hookToken },           // احتياطي
+          ],
+        }),
+      });
+
+      if (sub.ok) {
+        results.push({ event: ev, ok: true, status: 200, id: sub.json?.data?.id });
+      } else {
+        results.push({ event: ev, ok: false, status: sub.status, body: sub.text });
+      }
+    }
+
+    return res.status(200).json({
+      ok: true,
+      sinkUrl,
+      subscribed: results,
+      skipped,
+      available: [...available],
+      apiBaseUsed: apiBase,
     });
-
-    return res.status(200).json({ ok: true, callbackUrl, events, resp });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return res.status(500).json({ error: "internal", message: msg });
@@ -22945,7 +23146,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/salla/subscribe.ts ]==================================================
 
-====[ START FILE: src/pages/api/salla/webhook.ts (14.3 KB) ]========================================
+====[ START FILE: src/pages/api/salla/webhook.ts (14.9 KB) ]========================================
 // src/pages/api/salla/webhook.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
@@ -22964,6 +23165,7 @@ interface SallaItem { id?: string|number; product?: { id?: string|number }|null;
 interface SallaOrder {
   id?: string|number; order_id?: string|number; number?: string|number;
   status?: string; order_status?: string; new_status?: string; shipment_status?: string;
+  payment_status?: string;
   customer?: SallaCustomer; items?: SallaItem[];
   store?: { id?: string|number; name?: string } | null;
   merchant?: { id?: string|number; name?: string } | null;
@@ -22991,8 +23193,8 @@ type SallaAppEvent =
 
 // -------------------- Consts & helpers --------------------
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
-const DONE   = new Set(["paid","fulfilled","delivered","completed","complete"]);
-const CANCEL = new Set(["canceled","cancelled","refunded","returned"]);
+const DONE  = new Set(["paid","fulfilled","delivered","completed","complete"]);
+const CANCEL= new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const keyOf = (event: string, orderId?: string, status?: string) =>
   `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
@@ -23039,7 +23241,7 @@ function pickStoreUidFromSalla(o: UnknownRecord): string | undefined {
   const store = o["store"] as UnknownRecord | undefined;
   const merchant = o["merchant"] as UnknownRecord | undefined;
   const sid = store?.["id"] ?? merchant?.["id"];
-  return sid !== undefined ? String(sid) : undefined;
+  return sid !== undefined ? `salla:${String(sid)}` : undefined;
 }
 function extractProductIds(items?: SallaItem[]): string[] {
   if (!Array.isArray(items)) return [];
@@ -23050,8 +23252,6 @@ function extractProductIds(items?: SallaItem[]): string[] {
   }
   return [...ids];
 }
-const normalizeUid = (merchant?: string | number) =>
-  merchant != null ? `salla:${String(merchant)}` : null;
 
 // -------------------- Order snapshot & invites --------------------
 async function upsertOrderSnapshot(
@@ -23065,6 +23265,7 @@ async function upsertOrderSnapshot(
     id: orderId,
     number: order.number ?? null,
     status: lc(order.status ?? order.order_status ?? order.new_status ?? order.shipment_status ?? ""),
+    paymentStatus: lc(order.payment_status ?? ""),
     customer: {
       name: order.customer?.name ?? null,
       email: order.customer?.email ?? null,
@@ -23084,7 +23285,9 @@ async function ensureInviteForOrder(
   const orderId = String(order.id ?? order.order_id ?? "");
   if (!orderId) return;
 
-  const invitesSnap = await db.collection("review_invites").where("orderId","==",orderId).limit(1).get();
+  // idempotency على دعوات الطلب
+  const invitesSnap = await db.collection("review_invites")
+    .where("orderId","==",orderId).limit(1).get();
   if (!invitesSnap.empty) return;
 
   let storeUid: string | null = pickStoreUidFromSalla(eventRaw) || null;
@@ -23096,10 +23299,6 @@ async function ensureInviteForOrder(
   }
 
   const productIds = extractProductIds((order as SallaOrder).items);
-  if (productIds.length === 0) {
-    const rawItems = (eventRaw["items"] as SallaItem[] | undefined) ?? [];
-    productIds.push(...extractProductIds(rawItems));
-  }
   const mainProductId = productIds[0] || orderId;
 
   const tokenId = crypto.randomBytes(10).toString("hex");
@@ -23169,16 +23368,9 @@ async function handleAppEvent(
   merchant: string | number | undefined,
   data: UnknownRecord
 ) {
-  const uid = normalizeUid(merchant) || "salla:unknown";
+  const uid = merchant != null ? `salla:${String(merchant)}` : "salla:unknown";
 
-  // احتفظ بنسخة من الحدث (للدعم/المراجعة)
-  await db.collection("salla_app_events").add({
-    uid,
-    event,
-    merchant: merchant ?? null,
-    data,
-    at: Date.now(),
-  });
+  await db.collection("salla_app_events").add({ uid, event, merchant: merchant ?? null, data, at: Date.now() });
 
   if (event === "app.store.authorize") {
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -23186,8 +23378,8 @@ async function handleAppEvent(
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
     const refresh_token = ((data as any)?.refresh_token as string) || null;
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const expires       = Number((data as any)?.expires || 0); // seconds (حسب مثال سلة)
-    const expires_at    = expires ? expires * 1000 : null;
+    const expires       = Number((data as any)?.expires || 0);
+    const expiresAt     = expires ? Date.now() + expires * 1000 : null;
 
     if (access_token) {
       await db.collection("salla_tokens").doc(uid).set({
@@ -23196,7 +23388,7 @@ async function handleAppEvent(
         storeId: merchant ?? null,
         accessToken: access_token,
         refreshToken: refresh_token,
-        expiresAt: expires_at,
+        expiresAt,
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         scope: (data as any)?.scope || null,
         obtainedAt: Date.now(),
@@ -23227,21 +23419,13 @@ async function handleAppEvent(
       salla: { storeId: merchant ?? null, installed: false, connected: false, uninstalledAt: Date.now() },
       updatedAt: Date.now(),
     }, { merge: true });
-    // (اختياري) تعطيل webhooks أو تنظيف مفاتيح
   }
 
   if (event.startsWith("app.trial.") || event.startsWith("app.subscription.")) {
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
-      salla: {
-        storeId: merchant ?? null,
-        subscription: {
-          lastEvent: event,
-          data,
-          updatedAt: Date.now(),
-        },
-      },
+      salla: { storeId: merchant ?? null, subscription: { lastEvent: event, data, updatedAt: Date.now() } },
       updatedAt: Date.now(),
     }, { merge: true });
   }
@@ -23250,20 +23434,14 @@ async function handleAppEvent(
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
-      salla: {
-        storeId: merchant ?? null,
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        settings: (data as any)?.settings ?? {},
-      },
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      salla: { storeId: merchant ?? null, settings: (data as any)?.settings ?? {} },
       updatedAt: Date.now(),
     }, { merge: true });
   }
 
   if (event === "app.feedback.created") {
-    await db.collection("stores").doc(uid).collection("app_feedback").add({
-      at: Date.now(),
-      data,
-    });
+    await db.collection("stores").doc(uid).collection("app_feedback").add({ at: Date.now(), data });
   }
 }
 
@@ -23274,6 +23452,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // ✅ يقبل Bearer / x-webhook-token / x-salla-token / ?t=
   const provided = extractProvidedToken(req);
   if (!WEBHOOK_TOKEN || !provided || !timingSafeEq(provided, WEBHOOK_TOKEN)) {
+    // لوج تشخيصي آمن (اختياري)
+    // console.warn("[webhook auth fail]", {
+    //   auth: getHeader(req,"authorization") ? "auth" : "",
+    //   xwt:  getHeader(req,"x-webhook-token") ? "x-webhook-token" : "",
+    //   xst:  getHeader(req,"x-salla-token") ? "x-salla-token" : "",
+    //   q:    typeof req.query.t === "string" && req.query.t ? "query" : "",
+    // });
     return res.status(401).json({ error: "invalid_webhook_token" });
   }
 
@@ -23288,41 +23473,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const event = String(body.event || "");
-  const asOrder = (body.data ?? {}) as SallaOrder;
+  const dataRaw = (body.data ?? {}) as UnknownRecord;
+  const asOrder = dataRaw as SallaOrder;
 
-  // Idempotency (يشمل كل الأحداث: app.* و orders.*)
+  // Idempotency (يشمل كل الأحداث)
   const idemKey = crypto.createHash("sha256").update(provided + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
   if ((await idemRef.get()).exists) return res.status(200).json({ ok: true, deduped: true });
   await idemRef.set({
     at: Date.now(),
     event,
-    // لو كان أمر: خزن orderId/status كجزء من اللوج
     orderId: String(asOrder.id ?? asOrder.order_id ?? "") || null,
     status: lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? ""),
+    paymentStatus: lc(asOrder.payment_status ?? ""),
     merchant: body.merchant ?? null,
   });
 
   // فرع أحداث Partner Portal (app.*)
   if (event.startsWith("app.")) {
-    await handleAppEvent(db, event as SallaAppEvent, body.merchant, (body.data ?? {}) as UnknownRecord);
-    await db.collection("processed_events")
-      .doc(keyOf(event, undefined, undefined))
-      .set({ at: Date.now(), event, processed: true }, { merge: true });
+    await handleAppEvent(db, event as SallaAppEvent, body.merchant, dataRaw);
+    await db.collection("processed_events").doc(keyOf(event)).set({ at: Date.now(), event, processed: true }, { merge: true });
     return res.status(200).json({ ok: true });
   }
 
-  // فرع أوامر الطلبات
+  // أوامر الطلبات / الشحن
   const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
   const status = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
-  const eventRaw = (body.data ?? {}) as UnknownRecord;
-  const storeUidFromEvent = pickStoreUidFromSalla(eventRaw) || null;
+  const paymentStatus = lc(asOrder.payment_status ?? "");
+  const storeUidFromEvent = pickStoreUidFromSalla(dataRaw) || null;
 
   await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
 
-  if (event.includes("orders.status.update") || event.includes("orders.") || event.includes("order.")) {
-    if (DONE.has(status))   await ensureInviteForOrder(db, asOrder, eventRaw);
-    if (CANCEL.has(status)) await voidInvitesForOrder(db, orderId, `status_${status}`);
+  // القواعد:
+  // - after_payment: عبر order.payment.updated بحالة paid/authorized/captured
+  // - after_delivery: عبر shipment.updated (delivered) أو order.status.updated (completed)
+  // - أي cancel/refund قبل الإرسال ⇒ void
+  if (event === "order.payment.updated") {
+    if (["paid","authorized","captured"].includes(paymentStatus)) {
+      await ensureInviteForOrder(db, asOrder, dataRaw);
+    }
+  } else if (event === "shipment.updated") {
+    if (DONE.has(status) || ["delivered","completed"].includes(status)) {
+      await ensureInviteForOrder(db, asOrder, dataRaw);
+    }
+  } else if (event === "order.status.updated") {
+    if (DONE.has(status)) {
+      await ensureInviteForOrder(db, asOrder, dataRaw);
+    }
+  } else if (event === "order.cancelled") {
+    await voidInvitesForOrder(db, orderId, "order_cancelled");
+  } else if (event === "order.refunded") {
+    await voidInvitesForOrder(db, orderId, "order_refunded");
   }
 
   await db.collection("processed_events")
@@ -25014,6 +25215,99 @@ export default function LoginPage() {
   );
 }
 ====[ END FILE: src/pages/login.tsx ]===============================================================
+
+====[ START FILE: src/pages/onboarding/set-password.tsx (3.2 KB) ]==================================
+// src/pages/onboarding/set-password.tsx
+import { useRouter } from "next/router";
+import { useState } from "react";
+import Head from "next/head";
+// لو بتستخدم Firebase Client SDK:
+import { getAuth, signInWithCustomToken } from "firebase/auth";
+
+export default function SetPasswordPage() {
+  const router = useRouter();
+  const t = typeof router.query.t === "string" ? router.query.t : "";
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(null);
+    setSubmitting(true);
+    try {
+      const r = await fetch("/api/auth/exchange-onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tokenId: t, password, email: email || undefined }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error || j?.message || "Failed");
+
+      // سجّل دخول بالـ Custom Token (Firebase)
+      const auth = getAuth();
+      await signInWithCustomToken(auth, j.customToken);
+
+      // روح الداشبورد
+      router.replace("/dashboard/integrations?salla=connected");
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      setErr(e?.message || String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <Head><title>Set Password</title></Head>
+      <main className="min-h-screen flex items-center justify-center p-6">
+        <form onSubmit={onSubmit} className="w-full max-w-md space-y-4 border rounded-xl p-6">
+          <h1 className="text-2xl font-semibold">إنشاء/تعيين كلمة المرور</h1>
+          {!t && <p className="text-red-600">Token مفقود في الرابط.</p>}
+
+          <label className="block">
+            <span className="block text-sm mb-1">الإيميل (اختياري)</span>
+            <input
+              type="email"
+              className="w-full border rounded-md p-2"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+          </label>
+
+          <label className="block">
+            <span className="block text-sm mb-1">كلمة المرور</span>
+            <input
+              type="password"
+              className="w-full border rounded-md p-2"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={6}
+              required
+            />
+          </label>
+
+          {err && <p className="text-red-600 text-sm">{err}</p>}
+
+          <button
+            type="submit"
+            disabled={!t || submitting}
+            className="w-full rounded-md bg-black text-white py-2 disabled:opacity-60"
+          >
+            {submitting ? "جاري الحفظ..." : "حفظ ومتابعة"}
+          </button>
+        </form>
+      </main>
+    </>
+  );
+}
+====[ END FILE: src/pages/onboarding/set-password.tsx ]=============================================
 
 ====[ START FILE: src/pages/privacy-policy.tsx (3.6 KB) ]===========================================
 'use client';
@@ -28479,7 +28773,7 @@ function makeSeparator(title) {
 ====[ END FILE: tsconfig.json ]=====================================================================
 
 ====[ SUMMARY ]=====================================================================================
-Total files seen : 201
-Included         : 189
+Total files seen : 203
+Included         : 191
 Skipped          : 12
-Finished at      : 2025-09-03T21:56:02.042Z
+Finished at      : 2025-09-06T12:19:28.227Z
