@@ -1,42 +1,43 @@
-// src/pages/api/zid/status.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getFirestore } from "firebase-admin/firestore";
-import { getAuth } from "firebase-admin/auth";
-import { initFirebaseAdminIfNeeded } from "@/server/firebase-admin";
-
-type StoreDoc = {
-  zid?: {
-    connected?: boolean;
-    tokens?: {
-      access_token?: string;
-      expires_at?: number;
-      refresh_token?: string;
-    };
-  };
-};
+import { dbAdmin } from "@/lib/firebaseAdmin";
+import { verifyStore, type AuthedRequest } from "@/utils/verifyStore";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") return res.status(405).json({ error: "Method Not Allowed" });
   try {
-    initFirebaseAdminIfNeeded();
+    if (req.method !== "GET") return res.status(405).json({ ok: false, error: "Method Not Allowed" });
 
-    const idToken = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-    if (!idToken) return res.status(401).json({ error: "unauthenticated" });
+    try {
+      await verifyStore(req);
+    } catch (e) {
+      const err = e as Error & { status?: number };
+      return res.status(err.status ?? 401).json({ ok: false, error: err.message || "Unauthorized" });
+    }
 
-    const decoded = await getAuth().verifyIdToken(idToken).catch(() => null);
-    if (!decoded?.uid) return res.status(401).json({ error: "invalid_token" });
+    const { storeId } = req as AuthedRequest;
+    if (!storeId) return res.status(400).json({ ok: false, error: "Missing storeId" });
 
-    const db = getFirestore();
-    const storeRef = db.collection("stores").doc(decoded.uid);
-    const snap = await storeRef.get();
-    const store = (snap.data() || {}) as StoreDoc;
+    const db = dbAdmin();
+    const snap = await db
+      .collection("stores")
+      .where("platform", "==", "zid")
+      .where("ownerUid", "==", storeId)
+      .limit(1)
+      .get();
 
-    const connected = Boolean(store?.zid?.connected);
-    const expiresAt = store?.zid?.tokens?.expires_at ?? null;
+    if (snap.empty) return res.status(200).json({ ok: true, connected: false });
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = snap.docs[0].data() as any;
+    const zid = data?.zid || {};
 
-    return res.status(200).json({ connected, expiresAt });
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return res.status(500).json({ error: "internal_error", message: msg });
+    return res.status(200).json({
+      ok: true,
+      connected: !!zid.connected,
+      storeName: zid.storeName || null,
+      merchantId: zid.merchantId || null,
+      updatedAt: data?.updatedAt || null,
+    });
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
   }
 }
