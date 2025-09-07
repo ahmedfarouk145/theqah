@@ -11,7 +11,7 @@ const CLIENT_ID     = process.env.SALLA_CLIENT_ID!;
 const CLIENT_SECRET = process.env.SALLA_CLIENT_SECRET!;
 const REDIRECT_URI  = process.env.SALLA_REDIRECT_URI!;
 const APP_BASE      = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
-const AFTER_PATH    = process.env.SALLA_AFTER_CONNECT_PATH || "/dashboard/integrations?salla=connected";
+const AFTER_PATH = "/dashboard?salla=connected";
 
 type TokenResp = {
   token_type: "Bearer";
