@@ -1,14 +1,12 @@
-// components/SallaIntegrationTab.tsx
 import { useEffect, useState } from "react";
 
 type SallaStatus = {
   connected: boolean;
   storeName?: string | null;
-  merchantId?: string;     // stringified storeId
-  domain?: string;
-  apiBase?: string;
+  merchantId?: string | null;
+  updatedAt?: number | null;
+  apiBase?: string | null;
   reviewTemplate?: string;
-  updatedAt?: number;
 };
 
 const DEFAULT_TEMPLATE =
@@ -24,22 +22,18 @@ export default function SallaIntegrationTab() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch("/api/store/settings?salla=1");
-        const j = await r.json();
-        const raw = j?.salla || j?.data?.salla || {};
-        const s: SallaStatus = {
-          connected: !!raw.connected,
-          storeName: raw.storeName ?? null,
-          merchantId: raw.merchantId ?? (raw.storeId ? String(raw.storeId) : undefined),
-          domain: raw.domain ?? undefined,
-          apiBase: raw.apiBase ?? undefined,
-          reviewTemplate: raw.reviewTemplate ?? undefined,
-          updatedAt: raw.updatedAt ?? undefined,
-        };
+        // ✅ نقرأ حالة الربط من API مخصص
+        const r = await fetch("/api/salla/status");
+        const j = await r.json().catch(() => ({}));
+        const s: SallaStatus = j?.data || { connected: false };
         setData(s);
-        if (s?.reviewTemplate) setTemplate(s.reviewTemplate);
+
+        // (اختياري) لو سبق وخزّنت القالب في مستند إعدادات عام:
+        // const r2 = await fetch("/api/store/settings?salla=1");
+        // const j2 = await r2.json().catch(() => ({}));
+        // if (j2?.salla?.reviewTemplate) setTemplate(j2.salla.reviewTemplate);
       } catch {
-        // ignore network/parse errors
+        // ignore
       } finally {
         setLoading(false);
       }
@@ -52,13 +46,8 @@ export default function SallaIntegrationTab() {
     try {
       const r = await fetch("/api/salla/connect", { method: "POST" });
       const j = await r.json();
-      if (j?.ok && j?.url) {
-        location.href = j.url;
-      } else {
-        setMsg(j?.error || "تعذّر بدء الاتصال.");
-      }
-    } catch (e) {
-      setMsg("تعذّر بدء الاتصال.");
+      if (j?.ok && j?.url) location.href = j.url;
+      else setMsg(j?.error || "تعذّر بدء الاتصال.");
     } finally {
       setBusy(false);
     }
@@ -75,8 +64,6 @@ export default function SallaIntegrationTab() {
         setData((d) => (d ? { ...d, connected: false } : d));
         setMsg("تم الفصل بنجاح.");
       } else setMsg(j?.error || "تعذّر الفصل.");
-    } catch {
-      setMsg("تعذّر الفصل.");
     } finally {
       setBusy(false);
     }
@@ -94,15 +81,12 @@ export default function SallaIntegrationTab() {
       const j = await r.json().catch(() => ({}));
       if (j?.ok !== false) setMsg("تم الحفظ ✅");
       else setMsg(j?.error || "تعذّر الحفظ.");
-    } catch {
-      setMsg("تعذّر الحفظ.");
     } finally {
       setBusy(false);
     }
   }
 
   if (loading) return <div className="p-4 text-sm text-gray-500">...تحميل</div>;
-
   const badge = data?.connected ? (
     <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs">متصل</span>
   ) : (
@@ -116,17 +100,8 @@ export default function SallaIntegrationTab() {
         {badge}
       </div>
 
-      <div className="text-sm text-gray-600 space-y-1">
-        <div>
-          المتجر: <b>{data?.storeName || "—"}</b> | Merchant ID: <b>{data?.merchantId || "—"}</b>
-        </div>
-        {data?.domain && (
-          <div>
-            الدومين: <a className="text-indigo-600 hover:underline" href={data.domain} target="_blank" rel="noreferrer">
-              {data.domain}
-            </a>
-          </div>
-        )}
+      <div className="text-sm text-gray-600">
+        المتجر: <b>{data?.storeName || "—"}</b> | Merchant ID: <b>{data?.merchantId || "—"}</b>
       </div>
 
       <div className="flex gap-2">
@@ -144,7 +119,7 @@ export default function SallaIntegrationTab() {
       <div className="border rounded-lg p-3 space-y-2">
         <label className="text-sm">نص الرسالة</label>
         <textarea
-          className="w-full min-h-[120px] rounded-lg border p-2"
+          className="w-full min-h-[100px] rounded-lg border p-2"
           value={template}
           onChange={(e) => setTemplate(e.target.value)}
         />

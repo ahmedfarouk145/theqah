@@ -1,4 +1,3 @@
-// src/pages/api/salla/callback.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
@@ -18,7 +17,7 @@ const APP_BASE = (
   ""
 ).replace(/\/+$/, "");
 
-// مهم: غيرنا الديفولت لمسار موجود فعلاً لتفادي 404
+// مسار موجود فعلاً لتفادي 404
 const AFTER_PATH = process.env.SALLA_AFTER_CONNECT_PATH || "/dashboard?salla=connected";
 
 type TokenResp = {
@@ -41,7 +40,7 @@ type SallaStoreInfo = {
     status?: string;
     description?: string;
     email?: string;
-    type?: "demo" | "real" | string; // لتحديد apiBase المناسب
+    type?: "demo" | "real" | string;
   };
 };
 
@@ -100,11 +99,8 @@ async function fetchWithTrace(
 function decideApiBase(info: SallaStoreInfo | null | undefined): string {
   const type = (info?.data?.type || "").toLowerCase();
   const domain = String(info?.data?.domain || "");
-  // لو المتجر Demo → api.salla.dev
   if (type === "demo") return "https://api.salla.dev";
-  // fallback احتياطي: لو ظهر domain يشير لبيئة الديف
   if (domain.includes("salla.dev")) return "https://api.salla.dev";
-  // غير كده → api.salla.sa
   return "https://api.salla.sa";
 }
 
@@ -131,26 +127,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn("[salla/callback] APP_BASE not configured; redirects/webhook setup may fail.");
     }
 
-    // ✅ عرّف db مرّة واحدة
+    // db مرّة واحدة
     const db = dbAdmin();
 
-    // (اختياري) state handling
+    // (اختياري) state handling — نقرأ ownerUid
     let presetUid: string | null = null;
     let returnTo: string | null = null;
+    let ownerUid: string | null = null;
+
     if (state) {
       try {
         const stRef = db.collection("salla_oauth_state").doc(state);
         const stSnap = await stRef.get();
         if (stSnap.exists) {
-          const st = stSnap.data() as { uid?: string; returnTo?: string; createdAt?: number } | undefined;
+          const st = stSnap.data() as { uid?: string; returnTo?: string; ownerUid?: string; createdAt?: number } | undefined;
           presetUid = typeof st?.uid === "string" ? st.uid : null;
-          returnTo = typeof st?.returnTo === "string" ? st.returnTo : null;
+          returnTo  = typeof st?.returnTo === "string" ? st.returnTo : null;
+          ownerUid  = typeof st?.ownerUid === "string" ? st.ownerUid : null;
           await stRef.delete().catch(() => {});
         } else {
           try {
-            const parsed = JSON.parse(decodeURIComponent(state)) as { uid?: string; returnTo?: string };
+            const parsed = JSON.parse(decodeURIComponent(state)) as { uid?: string; returnTo?: string; ownerUid?: string };
             if (typeof parsed?.uid === "string") presetUid = parsed.uid;
             if (typeof parsed?.returnTo === "string") returnTo = parsed.returnTo;
+            if (typeof parsed?.ownerUid === "string") ownerUid = parsed.ownerUid;
           } catch { /* ignore */ }
         }
       } catch (e) {
@@ -196,7 +196,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).send("missing_access_token");
     }
 
-    // 2) store info باستخدام DEFAULT_API_BASE (يشغّل الديمو واللايف)
+    // 2) store info
     const meUrl = `${DEFAULT_API_BASE}/admin/v2/store/info`;
     const meTrace = await fetchWithTrace(
       meUrl,
@@ -217,13 +217,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const storeDomain = info?.data?.domain || null;
     if (!storeId) return res.status(502).send("cannot_resolve_store_id");
 
-    // 2.1) حدد الـ apiBase للمتجر واحفظه
     const apiBaseForStore = decideApiBase(info);
-
-    // 3) uid النهائي
     const uid = presetUid || `salla:${storeId}`;
 
-    // 4) حفظ التوكنات + بيانات المتجر
     const expiresIn = Number(tokens.expires_in || 0);
     const expiresAt = expiresIn ? Date.now() + expiresIn * 1000 : null;
 
@@ -249,9 +245,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         uid,
         platform: "salla",
+        ownerUid: ownerUid || null, // 👈 مهم جداً لربط المستند بمالك المتجر
         salla: {
           storeId,
           connected: true,
+          installed: true,
+          installedAt: Date.now(),
           storeName,
           domain: storeDomain,
           apiBase: apiBaseForStore,
@@ -262,7 +261,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { merge: true }
     );
 
-    // 5) الاشتراك في webhooks عبر API داخلي (هيقرأ apiBase من Firestore)
+    // 5) الاشتراك في webhooks
     if (APP_BASE) {
       try {
         const subUrl = `${APP_BASE}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`;
@@ -285,7 +284,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // 6) إنشاء Onboarding Token للتحويل لصفحة تعيين كلمة المرور
+    // 6) Onboarding Token → تعيين كلمة مرور
     let onboardingUrl: string | null = null;
     try {
       const tokenId = randHex(16);
@@ -294,7 +293,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         id: tokenId,
         uid,
         createdAt: now,
-        expiresAt: now + 15 * 60 * 1000, // 15 دقيقة
+        expiresAt: now + 15 * 60 * 1000,
         usedAt: null,
         store: { id: storeId, name: storeName, domain: storeDomain },
         purpose: "set_password_after_salla_connect",
@@ -304,13 +303,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn("[salla/callback] onboarding_token_error", toErr(e));
     }
 
-    // المسار النهائي
     const dest = onboardingUrl || returnTo || AFTER_PATH;
 
     if (debugRequested) {
       return res.status(200).json({
         ok: true,
         uid,
+        ownerUid,
         storeId,
         apiBase: apiBaseForStore,
         token_preview: redact(tokens.access_token),
