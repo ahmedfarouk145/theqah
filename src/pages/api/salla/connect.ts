@@ -1,71 +1,38 @@
-// src/pages/api/salla/connect.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
-import { verifyStore } from "@/utils/verifyStore";
 
-// ملاحظات بيئة التشغيل:
-// SALLA_AUTHORIZE_URL: للإنتاج accounts.salla.com أو للاختبار accounts.salla.dev
-// SALLA_CLIENT_ID
-// SALLA_REDIRECT_URI: لازم يطابق المسجل في لوحة مطوري سلة بالحرف
-// APP_BASE_URL أو NEXT_PUBLIC_BASE_URL: لاستخدامه كـ return افتراضي لو حبيت
-
+const AUTH_URL   = process.env.SALLA_AUTHORIZE_URL || "https://accounts.salla.sa/oauth2/authorize";
+const CLIENT_ID  = process.env.SALLA_CLIENT_ID!;
+const REDIRECT   = process.env.SALLA_REDIRECT_URI!;
 const SCOPES = [
-  // عدّل السكوبات حسب احتياجك الفعلي
-  "read:orders",
-  "read:products",
-  "read:store",
+  "settings.read", "customers.read", "orders.read",
+  "products.read", "webhooks.read_write", "offline_access",
 ].join(" ");
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+
   try {
-    if (req.method !== "GET") {
-      return res.status(405).json({ message: "Method Not Allowed" });
-    }
-
-    // تحقّق هوية المتجر (نفس أسلوب بقية API عندك)
-    const { uid } = await verifyStore(req);
-
-    const authUrl =
-      process.env.SALLA_AUTHORIZE_URL ||
-      "https://accounts.salla.com/oauth2/authorize"; // للإنتاج، بدّل لـ .dev لو بيئة اختبار
-
-    const clientId = process.env.SALLA_CLIENT_ID;
-    const redirectUri = process.env.SALLA_REDIRECT_URI;
-
-    if (!clientId || !redirectUri) {
-      return res.status(500).json({ message: "Salla client or redirect not configured" });
-    }
-
-    // state للـ CSRF + الربط بين المتجر والجلسة
-    const state = crypto.randomBytes(16).toString("hex");
-    const returnTo =
-      (typeof req.query.return === "string" && req.query.return) ||
-      process.env.APP_BASE_URL ||
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      "/";
-
-    // خزّن الـ state مؤقتًا للتحقق في الكولباك
     const db = dbAdmin();
-    await db.collection("salla_oauth_state").doc(state).set({
-      id: state,
-      uid,
-      returnTo,
+
+    // (اختياري) لو عندك uid/returnTo من الواجهة احفظه في state
+    const stateId = Math.random().toString(36).slice(2);
+    await db.collection("salla_oauth_state").doc(stateId).set({
       createdAt: Date.now(),
-    });
+      // ownerUid: <ضع هوية المستخدم لو عندك سيشن>,
+      returnTo: "/dashboard/integrations?salla=connected",
+    }, { merge: true });
 
-    const url =
-      authUrl +
-      `?response_type=code` +
-      `&client_id=${encodeURIComponent(clientId)}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&scope=${encodeURIComponent(SCOPES)}` +
-      `&state=${encodeURIComponent(state)}`;
+    const url = new URL(AUTH_URL);
+    url.searchParams.set("client_id", CLIENT_ID);
+    url.searchParams.set("redirect_uri", REDIRECT);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", SCOPES);
+    url.searchParams.set("state", stateId);
 
-    // ارجع بالـ URL كـ JSON عشان الفرونت يحوّل المتصفح
-    return res.status(200).json({ url });
+    return res.status(200).json({ ok: true, url: url.toString() });
   } catch (e) {
-    console.error("Salla connect error:", e);
-    return res.status(500).json({ message: "Internal Server Error" });
+    const msg = e instanceof Error ? e.message : String(e);
+    return res.status(500).json({ ok: false, error: msg });
   }
 }
