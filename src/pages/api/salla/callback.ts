@@ -4,14 +4,22 @@ import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 const SALLA_TOKEN_URL = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
-// نبدأ بـ sa كافتراضي آمن، ثم نقرر .dev لو المتجر Demo
+// نبدأ بـ .sa كافتراضي آمن، ونستخدم .dev للمتجر الديمو لاحقًا
 const DEFAULT_API_BASE = (process.env.SALLA_API_BASE || "https://api.salla.sa").replace(/\/+$/, "");
 
 const CLIENT_ID     = process.env.SALLA_CLIENT_ID!;
 const CLIENT_SECRET = process.env.SALLA_CLIENT_SECRET!;
 const REDIRECT_URI  = process.env.SALLA_REDIRECT_URI!;
-const APP_BASE      = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
-const AFTER_PATH = "/dashboard?salla=connected";
+
+const APP_BASE = (
+  process.env.APP_BASE_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_BASE_URL ||
+  ""
+).replace(/\/+$/, "");
+
+// مهم: غيرنا الديفولت لمسار موجود فعلاً لتفادي 404
+const AFTER_PATH = process.env.SALLA_AFTER_CONNECT_PATH || "/dashboard?salla=connected";
 
 type TokenResp = {
   token_type: "Bearer";
@@ -33,7 +41,7 @@ type SallaStoreInfo = {
     status?: string;
     description?: string;
     email?: string;
-    type?: "demo" | "real" | string; // مهم لاختيار apiBase
+    type?: "demo" | "real" | string; // لتحديد apiBase المناسب
   };
 };
 
@@ -85,7 +93,6 @@ async function fetchWithTrace(
   error=${errMsg || "none"}
   body_snippet=${text ? JSON.stringify(text) : "none"}`);
 
-  // نرجّع res كـ any لتجنّب تحذير TS بلا حاجة
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { ok, status, headers, text, res: null as any, elapsed, error: errMsg || null };
 }
@@ -93,11 +100,11 @@ async function fetchWithTrace(
 function decideApiBase(info: SallaStoreInfo | null | undefined): string {
   const type = (info?.data?.type || "").toLowerCase();
   const domain = String(info?.data?.domain || "");
-  // لو النوع demo → استخدم api.salla.dev
-  // بعض الديمو دومينهم salla.sa لكن فيه مسار /dev-…، لذلك فحص النوع أدق.
+  // لو المتجر Demo → api.salla.dev
   if (type === "demo") return "https://api.salla.dev";
-  // fallback: لو ظهر domain يحوي ".dev" لأي سبب
+  // fallback احتياطي: لو ظهر domain يشير لبيئة الديف
   if (domain.includes("salla.dev")) return "https://api.salla.dev";
+  // غير كده → api.salla.sa
   return "https://api.salla.sa";
 }
 
@@ -189,7 +196,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).send("missing_access_token");
     }
 
-    // 2) store info باستخدام DEFAULT_API_BASE (يعمل لكلا البيئتين)
+    // 2) store info باستخدام DEFAULT_API_BASE (يشغّل الديمو واللايف)
     const meUrl = `${DEFAULT_API_BASE}/admin/v2/store/info`;
     const meTrace = await fetchWithTrace(
       meUrl,
@@ -255,7 +262,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { merge: true }
     );
 
-    // 5) الاشتراك في webhooks عبر API داخلي يقرأ apiBase من Firestore
+    // 5) الاشتراك في webhooks عبر API داخلي (هيقرأ apiBase من Firestore)
     if (APP_BASE) {
       try {
         const subUrl = `${APP_BASE}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`;
@@ -278,7 +285,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // 6) إنشاء Onboarding Token للتحويل إلى صفحة تعيين كلمة المرور
+    // 6) إنشاء Onboarding Token للتحويل لصفحة تعيين كلمة المرور
     let onboardingUrl: string | null = null;
     try {
       const tokenId = randHex(16);
@@ -297,6 +304,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn("[salla/callback] onboarding_token_error", toErr(e));
     }
 
+    // المسار النهائي
     const dest = onboardingUrl || returnTo || AFTER_PATH;
 
     if (debugRequested) {
