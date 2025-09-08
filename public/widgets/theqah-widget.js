@@ -1,5 +1,5 @@
 (() => {
-  const SCRIPT_VERSION = "1.2.0";
+  const SCRIPT_VERSION = "1.3.0";
 
   // ——— اكتشاف السكربت والمصدر ———
   const CURRENT_SCRIPT = document.currentScript;
@@ -30,9 +30,14 @@
     return wrap;
   };
 
-  // ——— اكتشاف Product ID من الصفحة (بدون تعديل القالب) ———
+  // ——— اكتشاف Product ID من الصفحة ———
   function detectProductId() {
-    // 1) JSON-LD: ابحث عن @type:Product
+    // 0) من المضيف لو محدد
+    const host = document.querySelector("#theqah-reviews, .theqah-reviews");
+    const hostPid = host?.getAttribute("data-product") || host?.dataset?.product;
+    if (hostPid && /\S/.test(hostPid)) return String(hostPid).trim();
+
+    // 1) JSON-LD: Product
     try {
       const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
       for (const s of scripts) {
@@ -42,7 +47,6 @@
           for (const node of arr) {
             if (!node) continue;
             if (node["@type"] === "Product" || (Array.isArray(node["@type"]) && node["@type"].includes("Product"))) {
-              // productID أو sku أو url به id
               const pid = node.productID || node.productId || node.sku || null;
               if (pid) return String(pid);
               if (node.url) {
@@ -55,14 +59,11 @@
       }
     } catch {}
 
-    // 2) عناصر DOM شائعة
+    // 2) DOM hints
     const domHints = [
-      "[data-product-id]",
-      "[data-productid]",
-      '[itemtype*="Product"] [itemprop="sku"]',
-      '[itemtype*="Product"] [itemprop="productID"]',
-      ".product-id",
-      "#product-id",
+      "[data-product-id]","[data-productid]",
+      '[itemtype*="Product"] [itemprop="sku"]','[itemtype*="Product"] [itemprop="productID"]',
+      ".product-id","#product-id"
     ];
     for (const sel of domHints) {
       const el = document.querySelector(sel);
@@ -73,35 +74,30 @@
       if (v && /\S/.test(v)) return String(v).trim();
     }
 
-    // 3) URL Heuristics (لو سلة بتضيف رقم المنتج في اللينك)
+    // 3) URL Heuristics
     const url = location.pathname;
     const matchers = [
-      /-(\d{5,})$/,                // ...-123456
-      /\/p\/(\d{5,})(?:\/|$)/,     // /p/123456
-      /\/products\/(\d{5,})/,      // /products/123456
+      /-(\d{5,})$/,            // ...-123456
+      /\/p-?(\d{5,})(?:\/|$)/, // /p/123456 أو /p123456
+      /\/products\/(\d{5,})/,
     ];
     for (const rgx of matchers) {
       const m = url.match(rgx);
       if (m) return m[1];
     }
-
-    // لم نجد شيء
     return null;
   }
 
-  // ——— إيجاد مكان مناسب أسفل صفحة المنتج ———
-  function findProductMountPoint() {
-    // حاول بعد صندوق التفاصيل/الوصف
+  // ——— إيجاد سكشن المنتج لحقن الحاوية أسفله ———
+  function findProductAnchor() {
+    const fromData = document.querySelector("[data-product-id], [data-productid]");
+    if (fromData) {
+      const sec = fromData.closest("section, .product, .product-page, .product__details, .product-single, .product-show");
+      if (sec) return sec;
+    }
     const candidates = [
-      ".product-details",
-      ".product-show",
-      ".product-single",
-      ".product__details",
-      ".product-info",
-      ".product-main",
-      "#product-show",
-      "#product",
-      "main .container"
+      ".product__details",".product-show",".product-single",".product-details",
+      ".product-info",".product-main","#product-show","#product","main .container"
     ];
     for (const sel of candidates) {
       const el = document.querySelector(sel);
@@ -110,9 +106,31 @@
     return document.body; // fallback
   }
 
-  async function mountOne(hostEl, store, productId, limit, lang, theme) {
-    const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
+  function ensureHostUnderProduct() {
+    // لو فيه مضيف جاهز، استخدمه
+    let host = document.querySelector("#theqah-reviews, .theqah-reviews");
+    if (host) return host;
 
+    // وإلا: أنشئ حاوية جديدة تحت سكشن المنتج مباشرة
+    const anchor = findProductAnchor();
+    host = document.createElement("div");
+    host.className = "theqah-reviews";
+    // تنسيق لطيف
+    host.style.marginTop = "24px";
+    if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(host, anchor.nextSibling);
+    } else {
+      document.body.appendChild(host);
+    }
+    return host;
+  }
+
+  async function mountOne(hostEl, store, productId, limit, lang, theme) {
+    // نضمن إننا ما نكرر
+    if (hostEl.getAttribute("data-mounted") === "1") return;
+    hostEl.setAttribute("data-mounted", "1");
+
+    const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
     const style = h("style", {
       html: `
         :host { all: initial; }
@@ -182,9 +200,9 @@
       renderList(lastData);
     });
 
-    const endpointBase =
-      `${API_BASE}?storeUid=${encodeURIComponent(store)}&limit=${limit}&sinceDays=365}`.replace(/}$/, "");
-    const endpoint = productId ? `${endpointBase}&productId=${encodeURIComponent(productId)}` : endpointBase;
+    // ✅ لا تستخدم قوس زائد ثم replace — فقط ابني الـ URL مباشرة
+    const base = `${API_BASE}?storeUid=${encodeURIComponent(store)}&limit=${encodeURIComponent(String(limit))}&sinceDays=365`;
+    const endpoint = productId ? `${base}&productId=${encodeURIComponent(productId)}` : base;
 
     const fetchData = async () => {
       try {
@@ -204,7 +222,7 @@
       list.innerHTML = "";
       const items = Array.isArray(data?.items) ? data.items : [];
       if (!items.length) {
-        list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "لا توجد تقييمات بعد" : "No reviews yet"));
+        list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "لا توجد تقييمات بعد — كن أول من يقيّم!" : "No reviews yet — be the first!"));
         return;
       }
       items.sort((a, b) =>
@@ -212,7 +230,6 @@
           ? Number(a.publishedAt || 0) - Number(b.publishedAt || 0)
           : Number(b.publishedAt || 0) - Number(a.publishedAt || 0)
       );
-
       for (const r of items) {
         const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
         const trusted = !!r.trustedBuyer;
@@ -231,38 +248,70 @@
     await fetchData();
   }
 
+  // ——— القراءة الذكية للاعدادات + التركيب أسفل المنتج ———
   function mountAll() {
-    // اقرأ الإعدادات من الوسوم / أو استخرج المنتج
-    const store = CURRENT_SCRIPT?.dataset.store?.trim();
-    const lang  = (CURRENT_SCRIPT?.dataset.lang || "ar").toLowerCase();
-    const theme = (CURRENT_SCRIPT?.dataset.theme || "light").toLowerCase();
-    const limit = Number(CURRENT_SCRIPT?.dataset.limit || 10);
+    // المضيف (إن وُجد مسبقًا)
+    const existingHost = document.querySelector("#theqah-reviews, .theqah-reviews");
 
-    if (!store) return;
+    // القراءة من المضيف أولاً
+    let store =
+      existingHost?.getAttribute("data-store") ||
+      existingHost?.dataset?.store ||
+      CURRENT_SCRIPT?.dataset?.store ||
+      "";
 
-    // اكتشف إن كانت الصفحة صفحة منتج
-    const pid = detectProductId();
+    const lang =
+      existingHost?.getAttribute?.("data-lang") ||
+      existingHost?.dataset?.lang ||
+      CURRENT_SCRIPT?.dataset?.lang ||
+      "ar";
 
-    // ابحث عن مكان مناسب داخل صفحة المنتج؛ إن لم يوجد، استخدم body
-    const host = document.querySelector("#theqah-reviews, .theqah-reviews") || findProductMountPoint();
-    const mountEl = host === document.body ? h("div", { class: "theqah-reviews" }) : host;
-    if (host === document.body) {
-      const target = findProductMountPoint();
-      target.appendChild(mountEl);
+    const theme =
+      existingHost?.getAttribute?.("data-theme") ||
+      existingHost?.dataset?.theme ||
+      CURRENT_SCRIPT?.dataset?.theme ||
+      "light";
+
+    const limit = Number(
+      existingHost?.getAttribute?.("data-limit") ||
+      existingHost?.dataset?.limit ||
+      CURRENT_SCRIPT?.dataset?.limit ||
+      10
+    ) || 10;
+
+    // لو store فاضي: يفضّل حلّ عندك (resolve-store) — لكن عالأقل اعرض بلوك فارغ للتشخيص
+    if (!store) {
+      // حاول استنتاجه مستقبلًا لو عندك endpoint: /api/public/resolve-store?domain=…
+      // هنا نعرض placeholder بدل السكوت:
+      const host = ensureHostUnderProduct();
+      if (host && host.getAttribute("data-mounted") !== "1") {
+        const msg = document.createElement("div");
+        msg.className = "theqah-widget-empty";
+        msg.style.cssText = "padding:12px;border:1px dashed #94a3b8;border-radius:12px;opacity:.8;font:13px system-ui;";
+        msg.textContent = (lang === "ar")
+          ? "لم يتم تهيئة معرف المتجر للودجت (data-store)."
+          : "Widget store id (data-store) is missing.";
+        host.appendChild(msg);
+        host.setAttribute("data-mounted", "1");
+      }
+      return;
     }
 
-    // ! لا تكرار
-    if (mountEl.getAttribute("data-mounted") === "1") return;
-    mountEl.setAttribute("data-mounted", "1");
+    // أنشئ أو استخدم المضيف، واحقنه تحت المنتج
+    const host = existingHost || ensureHostUnderProduct();
 
-    // نفّذ
-    mountOne(mountEl, store, pid, limit, lang, theme);
+    // حدّد productId (مع أخذ قيمة المضيف لو موجودة)
+    const pidFromHost = host?.getAttribute("data-product") || host?.dataset?.product || null;
+    const pid = pidFromHost || detectProductId();
+
+    // نفذ
+    mountOne(host, store, pid, limit, String(lang).toLowerCase(), String(theme).toLowerCase());
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountAll);
   else mountAll();
 
-  // لو الصفحة SPA أو فيها تحميل ديناميكي
+  // دعم SPA
   const obs = new MutationObserver(() => mountAll());
   obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
 })();
