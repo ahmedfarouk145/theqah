@@ -1,6 +1,7 @@
 // src/pages/api/salla/callback.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
+import cookie from "cookie";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 const SALLA_TOKEN_URL = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
@@ -17,8 +18,8 @@ const APP_BASE = (
   ""
 ).replace(/\/+$/, "");
 
-// مسار موجود فعلاً لتفادي 404 بعد الربط
-const AFTER_PATH = process.env.SALLA_AFTER_CONNECT_PATH || "/dashboard?salla=connected";
+// مسار موجود فعلاً (لو فاضي هنضيف عليه كويري)
+const AFTER_PATH = process.env.SALLA_AFTER_CONNECT_PATH || "/dashboard";
 
 type TokenResp = {
   token_type: "Bearer";
@@ -122,10 +123,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn("[salla/callback] APP_BASE not configured; redirects/webhook setup may fail.");
     }
 
-    // Firestore (admin)
     const db = dbAdmin();
 
-    // (اختياري) state → نقرأ ownerUid / returnTo / uid
+    // (اختياري) state → ownerUid/returnTo/presetUid
     let presetUid: string | null = null;
     let returnTo: string | null = null;
     let ownerUid: string | null = null;
@@ -141,7 +141,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ownerUid  = typeof st?.ownerUid === "string" ? st.ownerUid : null;
           await stRef.delete().catch(() => {});
         } else {
-          // دعم state المشفّر JSON
           try {
             const parsed = JSON.parse(decodeURIComponent(state)) as { uid?: string; returnTo?: string; ownerUid?: string };
             if (typeof parsed?.uid === "string") presetUid = parsed.uid;
@@ -168,7 +167,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: tokenForm },
       { label: "token_exchange", timeoutMs: 15000 }
     );
-
     if (!tokenTrace.ok) {
       console.error("[salla/callback] token_exchange_failed_details", { status: tokenTrace.status, body: tokenTrace.text });
       return res.status(tokenTrace.status || 502).send("token_exchange_failed");
@@ -181,16 +179,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error("[salla/callback] token_parse_error");
       return res.status(502).send("token_parse_error");
     }
-
-    console.error("[salla/callback] token_ok", {
-      token: redact(tokens.access_token),
-      scope: tokens.scope,
-      expires_in: tokens.expires_in,
-    });
-
-    if (!tokens.access_token) {
-      return res.status(500).send("missing_access_token");
-    }
+    if (!tokens.access_token) return res.status(500).send("missing_access_token");
 
     // 2) معلومات المتجر
     const meUrl = `${DEFAULT_API_BASE}/admin/v2/store/info`;
@@ -199,7 +188,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { method: "GET", headers: { Authorization: `Bearer ${tokens.access_token}` } },
       { label: "store_info", timeoutMs: 15000 }
     );
-
     if (!meTrace.ok) {
       if (meTrace.status === 401 || meTrace.status === 403) {
         return res.status(meTrace.status).send("fetch_store_auth_error");
@@ -255,7 +243,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         connectedAt: Date.now(),
         updatedAt: Date.now(),
-        uninstalledAt: null, // 👈 صفّر أي قيمة إزالة قديمة
+        uninstalledAt: null, // صفّر أي إزالة قديمة
       },
       { merge: true }
     );
@@ -266,7 +254,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         {
           ownerUid,
           platform: "salla",
-          storeUid: uid,   // يشير إلى stores/salla:{STORE_ID}
+          storeUid: uid,
           storeName,
           updatedAt: Date.now(),
         },
@@ -278,7 +266,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (APP_BASE) {
       try {
         const subUrl = `${APP_BASE}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`;
-        const trace = await fetchWithTrace(
+        await fetchWithTrace(
           subUrl,
           {
             method: "POST",
@@ -289,35 +277,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
           { label: "webhooks_subscribe", timeoutMs: 10000 }
         );
-        if (!trace.ok) {
-          console.warn("[salla/callback] webhook_subscribe_failed", { status: trace.status, body: trace.text });
-        }
       } catch (e) {
         console.warn("[salla/callback] webhook_subscribe_exception", toErr(e));
       }
     }
 
-    // 7) Onboarding token (يحمل storeUid) — لو حابب تستخدم صفحة تعيين كلمة المرور
-    let onboardingUrl: string | null = null;
+    // 7) Onboarding token (يحمل storeUid) — للتمكن من إنشاء حساب مالك
+    let onboardingToken: string | null = null;
     try {
       const tokenId = randHex(16);
       const now = Date.now();
       await db.collection("onboarding_tokens").doc(tokenId).set({
         id: tokenId,
-        storeUid: uid, // مهم عشان الـ frontend يقدر يسحب المتجر حتى لو لسه مفيش ownerUid
-        uid,           // للتوافق مع إصدارات قديمة
+        storeUid: uid,
+        uid, // للتوافق
         createdAt: now,
         expiresAt: now + 15 * 60 * 1000,
         usedAt: null,
         store: { id: storeId, name: storeName, domain: storeDomain },
         purpose: "set_password_after_salla_connect",
       });
-      if (APP_BASE) onboardingUrl = `${APP_BASE}/onboarding/set-password?t=${tokenId}`;
+      onboardingToken = tokenId;
     } catch (e) {
       console.warn("[salla/callback] onboarding_token_error", toErr(e));
     }
 
-    const dest = onboardingUrl || returnTo || AFTER_PATH;
+    // 8) سلّم الواجهة: كوكي + كويري
+    const cookieStr = cookie.serialize("salla_store_uid", uid, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24, // 1 يوم
+    });
+    res.setHeader("Set-Cookie", cookieStr);
+
+    // نكوّن رابط الوجهة
+    // - لو فيه returnTo من state استخدمه كأساس
+    // - وإلا AFTER_PATH (عادة /dashboard)
+    const base = returnTo
+      ? (returnTo.startsWith("http") ? returnTo : `${APP_BASE}${returnTo}`)
+      : `${APP_BASE}${AFTER_PATH}`;
+
+    const qs = new URLSearchParams();
+    qs.set("salla", "connected");
+    qs.set("uid", uid);
+    if (onboardingToken) qs.set("t", onboardingToken);
+
+    const dest = `${base}${base.includes("?") ? "&" : "?"}${qs.toString()}`;
 
     if (debugRequested) {
       return res.status(200).json({
@@ -327,8 +334,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         storeId,
         apiBase: apiBaseForStore,
         token_preview: redact(tokens.access_token),
-        scope: tokens.scope,
-        expires_in: tokens.expires_in || null,
         storeName,
         storeDomain,
         redirect_to: dest,

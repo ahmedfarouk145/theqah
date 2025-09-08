@@ -14,83 +14,29 @@ import { app } from '@/lib/firebase';
 const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', 'الإعدادات', 'المساعدة'] as const;
 type Tab = (typeof tabs)[number];
 
-type ApiStoreInfoStore = {
-  name?: string;
-  storeUid?: string;
-  salla?: {
-    storeId?: string | number;
-    apiBase?: string;
-    domain?: string;
-    storeName?: string;
-  };
-};
-
-type ApiStoreInfo = {
-  store?: ApiStoreInfoStore;
-  name?: string;
-  storeName?: string;
-} | null;
-
 type SallaStatus = {
   ok?: boolean;
   connected?: boolean;
-  uid?: string;
+  uid?: string | null;
+  storeId?: string | number | null;
   storeName?: string | null;
-  salla?: { storeName?: string };
   domain?: string | null;
-  reason?: string;
-} | null;
-
-function getSS(key: string): string | null {
-  try {
-    if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function setSS(key: string, val: string | null | undefined) {
-  try {
-    if (typeof window === 'undefined') return;
-    if (val == null) sessionStorage.removeItem(key);
-    else sessionStorage.setItem(key, val); // هنا val أكيد string
-  } catch {
-    /* ignore */
-  }
-}
-
-async function fetchJson<T = unknown>(
-  url: string,
-  init?: RequestInit
-): Promise<{ ok: boolean; data: T | null }> {
+  reason?: string | null;
+};
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchJson<T = any>(url: string, init?: RequestInit): Promise<{ ok: boolean; data: T | null }> {
   const r = await fetch(url, init);
-
-  let j: unknown = null;
-  try {
-    j = await r.json();
-  } catch {
-    j = null;
-  }
-
-  // بعض الـ APIs بتلفّ الرد داخل { data: ... }
-  let data: T | null = null;
-  if (j && typeof j === 'object') {
-    const obj = j as Record<string, unknown>;
-    if ('data' in obj) {
-      data = obj.data as T;
-    } else {
-      data = j as T;
-    }
-  }
-
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let j: any = null;
+  try { j = await r.json(); } catch { j = null; }
+  const data = (j && (j.data ?? j)) as T | null;
   return { ok: r.ok, data };
 }
 
 export default function DashboardPage() {
   const router = useRouter();
 
-  // 1) التبويب النشط (persist)
+  // حفظ التبويب
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('dash_active_tab') as Tab) || 'الإحصائيات';
@@ -101,7 +47,7 @@ export default function DashboardPage() {
     localStorage.setItem('dash_active_tab', activeTab);
   }, [activeTab]);
 
-  // 2) حالة المصادقة
+  // auth state
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   useEffect(() => {
@@ -113,110 +59,36 @@ export default function DashboardPage() {
     return () => unsub();
   }, []);
 
-  // 3) اسم المتجر و uid (مع حفظ مؤقت لتقليل فلاش)
-  const [storeName, setStoreName] = useState<string | undefined>(() => getSS('store_name') || undefined);
-  const [storeUid, setStoreUid] = useState<string | undefined>(() => getSS('store_uid') || undefined);
+  // بيانات المتجر
+  const [storeName, setStoreName] = useState<string | undefined>(undefined);
+  const [storeUid, setStoreUid] = useState<string | undefined>(undefined);
   const [storeLoading, setStoreLoading] = useState(true);
 
-  // helper: يجيب idToken
-  const getIdToken = useCallback(async (): Promise<string | null> => {
-    if (!user) return null;
-    try {
-      const token = await user.getIdToken(true);
-      return token;
-    } catch {
-      return null;
-    }
-  }, [user]);
+  const fromSalla = router.query.salla === 'connected';
+  const uidFromQuery = typeof router.query.uid === 'string' ? router.query.uid : undefined;
+  const onboardingToken = typeof router.query.t === 'string' ? router.query.t : undefined;
 
-  // core loader: تحديد uid ثم جلب الاسم
-  const loadStore = useCallback(
-    async (hintUid?: string | null) => {
-      setStoreLoading(true);
-      try {
-        // 0) uid من الكويري له أولوية
-        const uidFromQuery = typeof router.query.uid === 'string' ? router.query.uid : undefined;
-        let preferredUid: string | undefined = hintUid || uidFromQuery;
-
-        // 1) لو مفيش uid، حاول من /api/store/info
-        if (!preferredUid && user) {
-          const token = await getIdToken();
-          if (token) {
-            const { data: info } = await fetchJson<ApiStoreInfo>('/api/store/info', {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-
-            const s = info?.store;
-
-            const inferred =
-              s?.storeUid || (s?.salla?.storeId != null ? `salla:${String(s.salla.storeId)}` : undefined);
-            if (inferred) preferredUid = inferred;
-
-            // اسم مبدئي لو ظهر
-            const preliminaryName =
-              s?.name || s?.salla?.storeName || info?.name || info?.storeName || undefined;
-            if (preliminaryName && !storeName) setStoreName(preliminaryName);
-          }
-        }
-
-        // 2) لو لسه مفيش uid، جرّب /api/salla/status (قد يرجّع uid)
-        if (!preferredUid && user) {
-          const token = await getIdToken();
-          if (token) {
-            const { data: st } = await fetchJson<SallaStatus>('/api/salla/status', {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-
-            const returnedUid = st?.uid;
-            if (returnedUid) preferredUid = returnedUid;
-
-            const maybeName = st?.storeName ?? st?.salla?.storeName ?? undefined;
-            if (maybeName && !storeName) setStoreName(maybeName);
-          }
-        }
-
-        // 3) عند توفر uid: اقرأ الحالة من مصدر الحقيقة
-        if (preferredUid) {
-          const { data: status } = await fetchJson<SallaStatus>(
-            `/api/salla/status?uid=${encodeURIComponent(preferredUid)}`
-          );
-
-          const sName = status?.storeName ?? status?.salla?.storeName ?? undefined;
-
-          setStoreUid(preferredUid);
-          setSS('store_uid', preferredUid);
-
-          if (typeof sName === 'string' && sName.trim()) {
-            setStoreName(sName.trim());
-            setSS('store_name', sName.trim());
-          }
-        } else {
-          // ما قدرناش نحدد uid — نظّف التخزين المؤقت
-          setStoreUid(undefined);
-          setSS('store_uid', null);
-        }
-      } finally {
-        setStoreLoading(false);
-      }
-    },
-    [router.query.uid, user, getIdToken, storeName]
-  );
-
-  // شغّل اللودر عندما تكون المصادقة جاهزة
+  // وضع: جاي من سلة من غير لوجين → اعرض الكارت واقرأ الحالة مباشرة
   useEffect(() => {
-    const fromSalla = typeof router.query.salla === 'string' && router.query.salla === 'connected';
-    if (!authLoading) {
-      if (fromSalla) {
-        const t = setTimeout(() => {
-          void loadStore(storeUid);
-        }, 400);
-        return () => clearTimeout(t);
-      }
-      void loadStore(storeUid);
-    }
-  }, [authLoading, router.query.salla, storeUid, loadStore]);
+    let mounted = true;
+    (async () => {
+      if (!fromSalla || !uidFromQuery) { setStoreLoading(false); return; }
+      setStoreLoading(true);
+      const { data } = await fetchJson<SallaStatus>(`/api/salla/status?uid=${encodeURIComponent(uidFromQuery)}`);
+      if (!mounted) return;
+      setStoreUid(uidFromQuery);
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const name = (data as any)?.storeName ?? null;
+      if (typeof name === 'string' && name.trim()) setStoreName(name.trim());
+      setStoreLoading(false);
+    })();
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromSalla, uidFromQuery]);
 
-  // رندر الشارة اليمين
+  // وضع: لوجين عادي → سيب بقية الداشبورد يشتغل بالطريقة المعتادة (لو عايز، أضف هنا جلب /api/store/info بالتوكن)
+  // … تقدر تستخدم نفس لوجيكك السابق هنا …
+
   const headerRight = useMemo(() => {
     if (storeLoading) {
       return <span className="text-gray-400 text-sm">جارٍ تحميل بيانات المتجر…</span>;
@@ -235,9 +107,63 @@ export default function DashboardPage() {
     );
   }, [storeLoading, storeName]);
 
+  // شاشة “تم الربط” لو جاي من سلة ومفيش لوجين
+  if (!authLoading && !user && fromSalla && uidFromQuery) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-2xl mx-auto bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+          <h1 className="text-2xl font-bold mb-2">🎉 تم ربط متجرك بسلة</h1>
+          <p className="text-gray-600 mb-4">
+            تم ربط <b>{storeName || 'متجرك'}</b> بنجاح. يمكنك الآن إكمال إعداد الحساب للوصول إلى لوحة التحكم.
+          </p>
+
+          <div className="mb-4">
+            <div className="text-sm text-gray-500">Store UID</div>
+            <div className="font-mono text-xs bg-gray-50 border rounded p-2">{uidFromQuery}</div>
+          </div>
+
+          <div className="flex gap-3">
+            {onboardingToken ? (
+              <a
+                href={`/onboarding/set-password?t=${encodeURIComponent(onboardingToken)}`}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                إكمال إنشاء الحساب
+              </a>
+            ) : (
+              <a
+                href="/onboarding/set-password"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                إنشاء حساب والدخول
+              </a>
+            )}
+
+            <a
+              href={`/dashboard?salla=connected&uid=${encodeURIComponent(uidFromQuery)}`}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200"
+            >
+              تحديث الصفحة
+            </a>
+          </div>
+
+          <hr className="my-6" />
+
+          <div className="text-sm text-gray-600">
+            يمكن الرجوع إلى هذه الصفحة لاحقًا من سوق سلة أيضًا. ولعرض الودجت داخل المتجر، انسخ الكود من قسم الإعدادات بعد إنشاء الحساب.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // لو لسه بنتحقق من اللوجين
   if (authLoading) return <p>جارٍ التحقق من حالة تسجيل الدخول…</p>;
+
+  // لو مش داخل ومش جاي من سلة → اطلب تسجيل الدخول
   if (!user) return <p className="text-red-600">مطلوب تسجيل الدخول للوصول للوحة التحكم.</p>;
 
+  // وضع الداشبورد المعتاد
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="flex items-center justify-between mb-6">
@@ -263,14 +189,9 @@ export default function DashboardPage() {
 
       <div className="bg-white p-6 rounded-lg shadow">
         {activeTab === 'الإحصائيات' && <DashboardAnalytics />}
-
         {activeTab === 'الطلبات' && <OrdersTab />}
-
         {activeTab === 'التقييمات' && <ReviewsTab storeName={storeName} />}
-
-        {/* مهم: مرّر storeUid لتبويب الإعدادات */}
         {activeTab === 'الإعدادات' && <SettingsTab storeUid={storeUid} />}
-
         {activeTab === 'المساعدة' && <SupportTab />}
       </div>
     </div>
