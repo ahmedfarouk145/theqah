@@ -1,4 +1,3 @@
-// src/pages/api/salla/status.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
@@ -20,9 +19,8 @@ function asMsg(e: unknown) {
 function normalizeConnected(d: Record<string, unknown> | undefined) {
   const s = (d?.salla || {}) as Record<string, unknown>;
   const connected = Boolean(s.connected);
-  const installedAt = Number(s.installedAt ?? d?.installedAt ?? 0);
-  const uninstalledAt = Number(d?.uninstalledAt ?? 0);
-  // متصل إذا متوسمين connected=true ولم تُسجَّل عملية إزالة أحدث من التثبيت
+  const installedAt = Number(s.installedAt ?? (d as Record<string, unknown> | undefined)?.installedAt ?? 0);
+  const uninstalledAt = Number((d as Record<string, unknown> | undefined)?.uninstalledAt ?? 0);
   return connected && (!uninstalledAt || uninstalledAt < installedAt);
 }
 
@@ -35,24 +33,23 @@ export default async function handler(
     const uidParam = typeof req.query.uid === "string" ? req.query.uid : undefined;
     const ownerUid = typeof req.query.ownerUid === "string" ? req.query.ownerUid : undefined;
 
-    // 1) القراءة بالـ uid مباشرة (أقوى طريق)
+    // 1) القراءة بالـ uid مباشرة (أفضل طريق)
     if (uidParam) {
       const doc = await db.collection("stores").doc(uidParam).get();
       if (doc.exists) {
         const data = doc.data() || {};
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const s = (data as any).salla || {};
+        const s = (data as { salla?: Record<string, unknown> }).salla || {};
         return res.status(200).json({
           ok: true,
           connected: normalizeConnected(data),
           uid: doc.id,
-          storeId: s.storeId ?? null,
-          storeName: s.storeName ?? null,
-          domain: s.domain ?? null,
+          storeId: (s.storeId as string | number | null) ?? null,
+          storeName: (s.storeName as string | null) ?? null,
+          domain: (s.domain as string | null) ?? null,
           reason: "read_by_uid",
         });
       }
-      // fallback: لو عندك توكنات مخزّنة بنفس الـ uid نعدّها “متصل”
+      // fallback: التوكنات
       const tok = await db.collection("salla_tokens").doc(uidParam).get();
       if (tok.exists) {
         const t = tok.data() || {};
@@ -60,19 +57,16 @@ export default async function handler(
           ok: true,
           connected: true,
           uid: uidParam,
-          //eslint-disable-next-line @typescript-eslint/no-explicit-any
-          storeId: (t as any).storeId ?? null,
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
-          storeName: (t as any).storeName ?? null,
-          //eslint-disable-next-line @typescript-eslint/no-explicit-any
-          domain: (t as any).storeDomain ?? null,
+          storeId: (t.storeId as string | number | null) ?? null,
+          storeName: (t.storeName as string | null) ?? null,
+          domain: (t.storeDomain as string | null) ?? null,
           reason: "fallback_by_tokens",
         });
       }
       return res.status(200).json({ ok: true, connected: false, uid: uidParam, reason: "not_found" });
     }
 
-    // 2) الطريقة القديمة (لو لسه محتاجها): platform + ownerUid
+    // 2) للتوافق: platform + ownerUid (لو واجهتك القديمة تبعته)
     if (!ownerUid) {
       return res.status(400).json({ ok: false, error: "Missing uid or ownerUid" });
     }
@@ -87,15 +81,14 @@ export default async function handler(
     if (!q.empty) {
       const doc = q.docs[0];
       const data = doc.data() || {};
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const s = (data as any).salla || {};
+      const s = (data as { salla?: Record<string, unknown> }).salla || {};
       return res.status(200).json({
         ok: true,
         connected: normalizeConnected(data),
         uid: doc.id,
-        storeId: s.storeId ?? null,
-        storeName: s.storeName ?? null,
-        domain: s.domain ?? null,
+        storeId: (s.storeId as string | number | null) ?? null,
+        storeName: (s.storeName as string | null) ?? null,
+        domain: (s.domain as string | null) ?? null,
         reason: "query_by_ownerUid",
       });
     }

@@ -1,9 +1,8 @@
-// src/pages/onboarding/set-password.tsx
 import { useRouter } from "next/router";
 import { useState, useMemo } from "react";
 import Head from "next/head";
 import { auth } from "@/lib/firebase";
-import { signInWithEmailAndPassword, signInWithCustomToken } from "firebase/auth";
+import { setPersistence, browserLocalPersistence, signInWithEmailAndPassword, signInWithCustomToken } from "firebase/auth";
 
 export default function SetPasswordPage() {
   const router = useRouter();
@@ -30,27 +29,23 @@ export default function SetPasswordPage() {
       const r = await fetch("/api/auth/exchange-onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tokenId: tokenFromQuery,
-          password,
-          email: email || undefined,
-        }),
+        body: JSON.stringify({ tokenId: tokenFromQuery, password, email: email || undefined }),
       });
       const j = await r.json();
       if (!r.ok || !j?.ok) throw new Error(j?.error || "فشل في الاستبدال");
 
-      // ✅ الأولوية: سجّل دخول بالإيميل/الباس (عشان تختبر بيانات الاعتماد فورًا وتظهر في Users)
+      await setPersistence(auth, browserLocalPersistence);
+
       if (email) {
         await signInWithEmailAndPassword(auth, email, password);
       } else if (j.customToken) {
-        // لو مفيش إيميل، لسه بنقدر ندخل بالتوكن
         await signInWithCustomToken(auth, j.customToken);
       }
 
-      router.replace("/dashboard/integrations?salla=connected");
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      setErr(e?.message || String(e));
+      const dest = `/dashboard/integrations?salla=connected${j.storeUid ? `&uid=${encodeURIComponent(j.storeUid)}` : ""}`;
+      router.replace(dest);
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(false);
     }

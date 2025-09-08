@@ -3,7 +3,6 @@ import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 const SALLA_TOKEN_URL = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
-// نبدأ بـ .sa كافتراضي آمن، ونستخدم .dev للمتجر الديمو لاحقًا
 const DEFAULT_API_BASE = (process.env.SALLA_API_BASE || "https://api.salla.sa").replace(/\/+$/, "");
 
 const CLIENT_ID     = process.env.SALLA_CLIENT_ID!;
@@ -17,7 +16,6 @@ const APP_BASE = (
   ""
 ).replace(/\/+$/, "");
 
-// مسار موجود فعلاً لتفادي 404
 const AFTER_PATH = process.env.SALLA_AFTER_CONNECT_PATH || "/dashboard?salla=connected";
 
 type TokenResp = {
@@ -38,7 +36,6 @@ type SallaStoreInfo = {
     currency?: string;
     plan?: string;
     status?: string;
-    description?: string;
     email?: string;
     type?: "demo" | "real" | string;
   };
@@ -55,11 +52,7 @@ const redact = (tok?: string | null) =>
   !tok ? null : tok.length <= 12 ? `${tok.length}ch:${tok}` : `${tok.length}ch:${tok.slice(0, 6)}…${tok.slice(-6)}`;
 const randHex = (len = 16) => crypto.randomBytes(len).toString("hex");
 
-async function fetchWithTrace(
-  url: string,
-  init: RequestInit,
-  opts?: { label?: string; timeoutMs?: number }
-) {
+async function fetchWithTrace(url: string, init: RequestInit, opts?: { label?: string; timeoutMs?: number }) {
   const label = opts?.label || "fetch";
   const timeoutMs = opts?.timeoutMs ?? 15000;
   const { signal, cancel } = withTimeout(timeoutMs);
@@ -127,10 +120,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.warn("[salla/callback] APP_BASE not configured; redirects/webhook setup may fail.");
     }
 
-    // db مرّة واحدة
     const db = dbAdmin();
 
-    // (اختياري) state handling — نقرأ ownerUid
     let presetUid: string | null = null;
     let returnTo: string | null = null;
     let ownerUid: string | null = null;
@@ -245,7 +236,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         uid,
         platform: "salla",
-        ownerUid: ownerUid || null, // 👈 مهم جداً لربط المستند بمالك المتجر
+        ownerUid: ownerUid || null,
         salla: {
           storeId,
           connected: true,
@@ -261,37 +252,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { merge: true }
     );
 
-    // 5) الاشتراك في webhooks
+    // 5) webhooks
     if (APP_BASE) {
       try {
         const subUrl = `${APP_BASE}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`;
-        const trace = await fetchWithTrace(
+        await fetchWithTrace(
           subUrl,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-cron-secret": process.env.CRON_SECRET || "",
-            },
-          },
+          { method: "POST", headers: { "Content-Type": "application/json", "x-cron-secret": process.env.CRON_SECRET || "" } },
           { label: "webhooks_subscribe", timeoutMs: 10000 }
         );
-        if (!trace.ok) {
-          console.warn("[salla/callback] webhook_subscribe_failed", { status: trace.status, body: trace.text });
-        }
       } catch (e) {
         console.warn("[salla/callback] webhook_subscribe_exception", toErr(e));
       }
     }
 
-    // 6) Onboarding Token → تعيين كلمة مرور
+    // 6) Onboarding Token → set-password (أضفنا storeUid)
     let onboardingUrl: string | null = null;
     try {
       const tokenId = randHex(16);
       const now = Date.now();
       await db.collection("onboarding_tokens").doc(tokenId).set({
         id: tokenId,
-        uid,
+        storeUid: uid,                    // 👈 مهم
+        uid,                              // للتوافق
         createdAt: now,
         expiresAt: now + 15 * 60 * 1000,
         usedAt: null,
