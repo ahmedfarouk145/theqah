@@ -1,7 +1,7 @@
 ====[ PROJECT DUMP - METADATA ]=====================================================================
 Root   : D:\theqah
 Output : D:\theqah\project-dump.txt
-When   : 2025-09-08T12:05:00.229Z
+When   : 2025-09-08T14:41:16.410Z
 Rules  : skip binaries=true, skip .env*=true, maxBytes=1.0 MB
 
 ====[ FILE LIST ]===================================================================================
@@ -40,16 +40,16 @@ src/components/admin/AdminReports.tsx	(8.2 KB)
 src/components/admin/AdminReviews.tsx	(20.4 KB)
 src/components/admin/AdminStores.tsx	(11.8 KB)
 src/components/admin/tabs/TestNotifyTab.tsx	(7.6 KB)
-src/components/dashboard/Analytics.tsx	(40.0 KB)
+src/components/dashboard/Analytics.tsx	(38.1 KB)
 src/components/dashboard/OrdersTab.tsx	(16.9 KB)
 src/components/dashboard/Reviews.tsx	(28.6 KB)
 src/components/dashboard/reviews/RepliesTab.tsx	(3.6 KB)
-src/components/dashboard/settings/MessageSettings.tsx	(4.3 KB)
+src/components/dashboard/settings/MessageSettings.tsx	(5.9 KB)
 src/components/dashboard/settings/SallaIntegrationTab.tsx	(10.5 KB)
 src/components/dashboard/settings/StoreInfoTab.tsx	(2.9 KB)
 src/components/dashboard/settings/WidgetEmbedTab.tsx	(4.0 KB)
 src/components/dashboard/settings/ZidIntegrationTab.tsx	(1.9 KB)
-src/components/dashboard/StoreSettings.tsx	(18.7 KB)
+src/components/dashboard/StoreSettings.tsx	(19.5 KB)
 src/components/dashboard/Support.tsx	(4.0 KB)
 src/components/layout/admin/AdminLayout.tsx	(478 B)
 src/components/layout/admin/AdminNavbar.tsx	(525 B)
@@ -72,14 +72,14 @@ src/components/ui/separator.tsx	(756 B)
 src/components/ui/sheet.tsx	(4.2 KB)
 src/components/ui/switch.tsx	(1.1 KB)
 src/components/UploadcareWidget.tsx	(3.0 KB)
-src/contexts/AuthContext.tsx	(1.6 KB)
+src/contexts/AuthContext.tsx	(3.1 KB)
 src/get-admin-token.ts	(667 B)
 src/lib/auth/login.ts	(2.1 KB)
 src/lib/auth/tokenManager.ts	(738 B)
 src/lib/axiosInstance.ts	(2.4 KB)
 src/lib/env.ts	(2.0 KB)
-src/lib/firebase.ts	(1.4 KB)
-src/lib/firebaseAdmin.ts	(2.5 KB)
+src/lib/firebase.ts	(838 B)
+src/lib/firebaseAdmin.ts	(2.1 KB)
 src/lib/logger.ts	(1.0 KB)
 src/lib/oursms.ts	(935 B)
 src/lib/salla-admin.ts	(1.0 KB)
@@ -111,7 +111,7 @@ src/pages/api/admin/stores.ts	(4.6 KB)
 src/pages/api/admin/test-notify.ts	(2.3 KB)
 src/pages/api/admin/users.ts	(1.8 KB)
 src/pages/api/ai/insights.ts	(2.3 KB)
-src/pages/api/auth/exchange-onboarding.ts	(3.7 KB)
+src/pages/api/auth/exchange-onboarding.ts	(4.0 KB)
 src/pages/api/auth/session.ts	(5.1 KB)
 src/pages/api/orders/add.ts	(3.1 KB)
 src/pages/api/orders/get.ts	(2.3 KB)
@@ -129,11 +129,11 @@ src/pages/api/reviews/export-pdf.ts	(5.5 KB)
 src/pages/api/reviews/list.ts	(1.4 KB)
 src/pages/api/reviews/moderate.ts	(6.2 KB)
 src/pages/api/reviews/submit.ts	(6.1 KB)
-src/pages/api/salla/callback.ts	(10.5 KB)
+src/pages/api/salla/callback.ts	(9.5 KB)
 src/pages/api/salla/connect.ts	(2.2 KB)
 src/pages/api/salla/disconnect.ts	(5.1 KB)
 src/pages/api/salla/refresh.ts	(2.3 KB)
-src/pages/api/salla/status.ts	(3.6 KB)
+src/pages/api/salla/status.ts	(4.1 KB)
 src/pages/api/salla/subscribe.ts	(5.1 KB)
 src/pages/api/salla/webhook.ts	(14.9 KB)
 src/pages/api/settings/validate.ts	(1.4 KB)
@@ -142,7 +142,7 @@ src/pages/api/sms/status.ts	(4.6 KB)
 src/pages/api/store/app-settings.ts	(1.3 KB)
 src/pages/api/store/connection.ts	(857 B)
 src/pages/api/store/dashboard.ts	(3.9 KB)
-src/pages/api/store/info.ts	(1.1 KB)
+src/pages/api/store/info.ts	(2.6 KB)
 src/pages/api/store/settings.ts	(1.7 KB)
 src/pages/api/store/update-info.ts	(986 B)
 src/pages/api/support-ticket.ts	(1.3 KB)
@@ -154,15 +154,15 @@ src/pages/api/zid/start.ts	(1.6 KB)
 src/pages/api/zid/status.ts	(1.5 KB)
 src/pages/api/zid/webhook.ts	(7.5 KB)
 src/pages/connect/index.tsx	(986 B)
-src/pages/connect/salla.tsx	(3.2 KB)
+src/pages/connect/salla.tsx	(4.0 KB)
 src/pages/connect/zid.tsx	(999 B)
-src/pages/dashboard.tsx	(2.1 KB)
+src/pages/dashboard.tsx	(5.9 KB)
 src/pages/dashboard/integrations.tsx	(2.6 KB)
 src/pages/embedded/index.tsx	(293 B)
 src/pages/embedded/reviews.tsx	(4.8 KB)
 src/pages/index.tsx	(5.6 KB)
 src/pages/login.tsx	(3.9 KB)
-src/pages/onboarding/set-password.tsx	(3.6 KB)
+src/pages/onboarding/set-password.tsx	(3.4 KB)
 src/pages/privacy-policy.tsx	(3.6 KB)
 src/pages/r/[id].tsx	(4.3 KB)
 src/pages/report.tsx	(4.3 KB)
@@ -14500,14 +14500,39 @@ const inputCls =
   'w-full rounded-xl border px-3 py-2 text-sm bg-white dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-700';
 ====[ END FILE: src/components/admin/tabs/TestNotifyTab.tsx ]=======================================
 
-====[ START FILE: src/components/dashboard/Analytics.tsx (40.0 KB) ]================================
+====[ START FILE: src/components/dashboard/Analytics.tsx (38.1 KB) ]================================
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Area, AreaChart } from 'recharts';
-import { useAuth } from '@/contexts/AuthContext';
+import {
+  BarChart as ReBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Area,
+  AreaChart,
+} from 'recharts';
+import { auth } from '@/lib/firebase';
 import axios from '@/lib/axiosInstance';
-import { TrendingUp, ShoppingCart, Star, Users, Activity, Calendar, Target, Award, Zap, Eye, Heart, Sparkles } from 'lucide-react';
+import {
+  TrendingUp,
+  ShoppingCart,
+  Star,
+  Users,
+  Activity,
+  Calendar,
+  Target,
+  Award,
+  Zap,
+  Eye,
+  Heart,
+  Sparkles,
+} from 'lucide-react';
 
 type AnalyticsData = {
   totalOrders: number;
@@ -14517,20 +14542,20 @@ type AnalyticsData = {
   reviewsChart: { month: string; positive: number; negative: number }[];
 };
 
-const StatCard = ({ 
-  title, 
-  value, 
-  icon: Icon, 
-  color, 
-  bgColor, 
+const StatCard = ({
+  title,
+  value,
+  icon: Icon,
+  color,
+  bgColor,
   delay = 0,
   trend,
   subtitle,
-  gradient 
+  gradient,
 }: {
   title: string;
   value: string | number;
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon: any;
   color: string;
   bgColor: string;
@@ -14539,20 +14564,20 @@ const StatCard = ({
   subtitle?: string;
   gradient?: string;
 }) => (
-  <div 
+  <div
     className={`group relative bg-white rounded-3xl border border-gray-200/50 p-8 shadow-xl hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-4 hover:scale-105 cursor-pointer overflow-hidden backdrop-blur-sm`}
-    style={{ 
+    style={{
       animationDelay: `${delay}ms`,
       animation: 'slideInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
       opacity: 0,
       transform: 'translateY(50px) rotateX(10deg)',
-      perspective: '1000px'
+      perspective: '1000px',
     }}
   >
     {/* Animated Background Orbs */}
-    <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-xl group-hover:scale-150 transition-all duration-1000"></div>
-    <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-tr from-pink-400/20 to-orange-600/20 rounded-full blur-xl group-hover:scale-125 transition-all duration-1000 delay-200"></div>
-    
+    <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-xl group-hover:scale-150 transition-all duration-1000" />
+    <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-tr from-pink-400/20 to-orange-600/20 rounded-full blur-xl group-hover:scale-125 transition-all duration-1000 delay-200" />
+
     {/* Floating Particles */}
     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000">
       {[...Array(6)].map((_, i) => (
@@ -14563,26 +14588,28 @@ const StatCard = ({
             left: `${20 + i * 15}%`,
             top: `${10 + i * 10}%`,
             animationDelay: `${i * 200}ms`,
-            animationDuration: '2s'
+            animationDuration: '2s',
           }}
         />
       ))}
     </div>
-    
+
     {/* Glass Morphism Effect */}
-    <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 backdrop-blur-sm"></div>
-    
+    <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 backdrop-blur-sm" />
+
     <div className="relative z-10">
       <div className="flex items-center justify-between mb-6">
-        <div className={`relative w-16 h-16 ${gradient || bgColor} rounded-2xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-500 group-hover:rotate-12 group-hover:scale-110 transform-gpu`}>
+        <div
+          className={`relative w-16 h-16 ${gradient || bgColor} rounded-2xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-500 group-hover:rotate-12 group-hover:scale-110 transform-gpu`}
+        >
           {/* Icon Glow Effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl" />
           <Icon className={`w-8 h-8 ${color} relative z-10 group-hover:scale-110 transition-transform duration-300`} />
-          
+
           {/* Pulsing Ring */}
-          <div className="absolute inset-0 rounded-2xl border-2 border-white/30 group-hover:scale-125 group-hover:opacity-0 transition-all duration-500"></div>
+          <div className="absolute inset-0 rounded-2xl border-2 border-white/30 group-hover:scale-125 group-hover:opacity-0 transition-all duration-500" />
         </div>
-        
+
         {trend && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 group-hover:scale-105 transition-transform duration-300">
             <TrendingUp className="w-4 h-4 animate-bounce" />
@@ -14590,7 +14617,7 @@ const StatCard = ({
           </div>
         )}
       </div>
-      
+
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-gray-600 group-hover:text-gray-700 transition-colors uppercase tracking-wider">
           {title}
@@ -14598,119 +14625,115 @@ const StatCard = ({
         <p className={`text-4xl font-bold ${color} group-hover:scale-110 transition-all duration-500 origin-right transform-gpu`}>
           {value}
         </p>
-        {subtitle && (
-          <p className="text-sm text-gray-500 group-hover:text-gray-600 transition-colors font-medium">
-            {subtitle}
-          </p>
-        )}
+        {subtitle && <p className="text-sm text-gray-500 group-hover:text-gray-600 transition-colors font-medium">{subtitle}</p>}
       </div>
     </div>
-    
+
     {/* Holographic Shine Effect */}
-    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1200 ease-out"></div>
-    
+    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1200 ease-out" />
+
     {/* 3D Border Effect */}
-    <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 via-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+    <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 via-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
   </div>
 );
 
-const ChartCard = ({ 
-  title, 
-  children, 
+const ChartCard = ({
+  title,
+  children,
   delay = 0,
   icon: Icon,
-  subtitle 
-}: { 
-  title: string; 
-  children: React.ReactNode; 
+  subtitle,
+}: {
+  title: string;
+  children: React.ReactNode;
   delay?: number;
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon?: any;
   subtitle?: string;
 }) => (
-  <div 
+  <div
     className="relative bg-white rounded-3xl border border-gray-200/50 p-8 shadow-2xl hover:shadow-3xl transition-all duration-700 transform hover:-translate-y-2 hover:scale-[1.02] overflow-hidden backdrop-blur-sm group"
-    style={{ 
+    style={{
       animationDelay: `${delay}ms`,
       animation: 'slideInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
       opacity: 0,
       transform: 'translateY(50px) rotateX(5deg)',
-      perspective: '1000px'
+      perspective: '1000px',
     }}
   >
     {/* Animated Background */}
-    <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-purple-50/40 to-pink-50/60 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-    
+    <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-purple-50/40 to-pink-50/60 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
     {/* Floating Orbs */}
-    <div className="absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-br from-blue-400/10 to-purple-600/10 rounded-full blur-2xl group-hover:scale-150 transition-all duration-1000"></div>
-    <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-gradient-to-tr from-pink-400/10 to-orange-600/10 rounded-full blur-2xl group-hover:scale-125 transition-all duration-1000 delay-300"></div>
-    
+    <div className="absolute -top-12 -right-12 w-40 h-40 bg-gradient-to-br from-blue-400/10 to-purple-600/10 rounded-full blur-2xl group-hover:scale-150 transition-all duration-1000" />
+    <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-gradient-to-tr from-pink-400/10 to-orange-600/10 rounded-full blur-2xl group-hover:scale-125 transition-all duration-1000 delay-300" />
+
     <div className="relative z-10">
       <div className="flex items-center gap-4 mb-8">
         {Icon && (
           <div className="relative w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-500 group-hover:rotate-6 group-hover:scale-110 transform-gpu">
             {/* Icon Glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl" />
             <Icon className="w-7 h-7 text-white relative z-10 group-hover:scale-110 transition-transform duration-300" />
-            
+
             {/* Pulsing Ring */}
-            <div className="absolute inset-0 rounded-2xl border-2 border-white/30 group-hover:scale-125 group-hover:opacity-0 transition-all duration-500"></div>
+            <div className="absolute inset-0 rounded-2xl border-2 border-white/30 group-hover:scale-125 group-hover:opacity-0 transition-all duration-500" />
           </div>
         )}
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-gray-900 group-hover:text-gray-800 transition-colors">
-            {title}
-          </h2>
-          {subtitle && (
-            <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
-          )}
+          <h2 className="text-2xl font-bold text-gray-900 group-hover:text-gray-800 transition-colors">{title}</h2>
+          {subtitle && <p className="text-sm text-gray-600 mt-1">{subtitle}</p>}
         </div>
       </div>
-      
-      <div className="group-hover:scale-[1.01] transition-transform duration-500 transform-gpu">
-        {children}
-      </div>
+
+      <div className="group-hover:scale-[1.01] transition-transform duration-500 transform-gpu">{children}</div>
     </div>
-    
+
     {/* Holographic Border */}
-    <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-sm"></div>
+    <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-sm" />
   </div>
 );
 
-const MetricCard = ({ 
-  label, 
-  value, 
-  icon: Icon, 
+const MetricCard = ({
+  label,
+  value,
+  icon: Icon,
   color,
-  delay = 0 
-}: { 
-  label: string; 
-  value: string | number; 
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  icon: any; 
+  delay = 0,
+}: {
+  label: string;
+  value: string | number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: any;
   color: string;
   delay?: number;
 }) => (
-  <div 
+  <div
     className="group relative bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 overflow-hidden"
-    style={{ 
+    style={{
       animationDelay: `${delay}ms`,
       animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
       opacity: 0,
-      transform: 'translateY(30px)'
+      transform: 'translateY(30px)',
     }}
   >
     {/* Background Gradient */}
-    <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 to-white/50 group-hover:from-blue-50/50 group-hover:to-purple-50/50 transition-all duration-500"></div>
-    
+    <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 to-white/50 group-hover:from-blue-50/50 group-hover:to-purple-50/50 transition-all duration-500" />
+
     <div className="relative z-10 flex items-center justify-between">
       <div className="flex-1">
         <p className="text-sm font-medium text-gray-600 mb-1">{label}</p>
-        <p className={`text-2xl font-bold ${color} group-hover:scale-105 transition-transform duration-300 origin-left`}>
-          {value}
-        </p>
+        <p className={`text-2xl font-bold ${color} group-hover:scale-105 transition-transform duration-300 origin-left`}>{value}</p>
       </div>
-      <div className={`w-12 h-12 bg-gradient-to-br ${color.includes('emerald') ? 'from-emerald-400 to-emerald-600' : color.includes('blue') ? 'from-blue-400 to-blue-600' : 'from-purple-400 to-purple-600'} rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:rotate-12 group-hover:scale-110`}>
+      <div
+        className={`w-12 h-12 bg-gradient-to-br ${
+          color.includes('emerald')
+            ? 'from-emerald-400 to-emerald-600'
+            : color.includes('blue')
+            ? 'from-blue-400 to-blue-600'
+            : 'from-purple-400 to-purple-600'
+        } rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:rotate-12 group-hover:scale-110`}
+      >
         <Icon className="w-6 h-6 text-white" />
       </div>
     </div>
@@ -14718,58 +14741,46 @@ const MetricCard = ({
 );
 
 export default function DashboardAnalytics() {
-  const { token } = useAuth();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Calculate dynamic metrics from real data
   const calculateMetrics = (analyticsData: AnalyticsData) => {
     const { totalOrders, totalReviews, positiveRate, ordersChart, reviewsChart } = analyticsData;
-    
-    // Calculate growth trends
-    const ordersGrowth = ordersChart.length >= 2 
-      ? ((ordersChart[ordersChart.length - 1]?.count - ordersChart[ordersChart.length - 2]?.count) / ordersChart[ordersChart.length - 2]?.count * 100)
-      : 0;
-    
-    const reviewsGrowth = reviewsChart.length >= 2
-      ? (((reviewsChart[reviewsChart.length - 1]?.positive + reviewsChart[reviewsChart.length - 1]?.negative) - 
-          (reviewsChart[reviewsChart.length - 2]?.positive + reviewsChart[reviewsChart.length - 2]?.negative)) / 
-          (reviewsChart[reviewsChart.length - 2]?.positive + reviewsChart[reviewsChart.length - 2]?.negative) * 100)
-      : 0;
-    
-    // Calculate conversion rate (reviews/orders)
-    const conversionRate = totalOrders > 0 ? (totalReviews / totalOrders * 100) : 0;
-    
-    // Calculate average orders per month
-    const avgOrdersPerMonth = ordersChart.length > 0 
-      ? ordersChart.reduce((sum, item) => sum + item.count, 0) / ordersChart.length
-      : 0;
-    
-    // Calculate average reviews per month
-    const avgReviewsPerMonth = reviewsChart.length > 0 
-      ? reviewsChart.reduce((sum, item) => sum + item.positive + item.negative, 0) / reviewsChart.length
-      : 0;
-    
-    // Find best performing month
-    const bestMonth = ordersChart.length > 0 
-      ? ordersChart.reduce((max, item) => item.count > max.count ? item : max, ordersChart[0])
-      : null;
-    
-    // Calculate customer satisfaction score (out of 5)
-    const satisfactionScore = positiveRate / 20; // Convert percentage to 5-star scale
-    
-    // Calculate loyalty rate (customers with positive reviews)
+
+    // growth trends
+    const prevOrders = ordersChart.length >= 2 ? ordersChart[ordersChart.length - 2]?.count || 0 : 0;
+    const currOrders = ordersChart.length >= 1 ? ordersChart[ordersChart.length - 1]?.count || 0 : 0;
+    const ordersGrowth = ((currOrders - prevOrders) / (prevOrders || 1)) * 100;
+
+    const lastTotal =
+      (reviewsChart[reviewsChart.length - 2]?.positive ?? 0) + (reviewsChart[reviewsChart.length - 2]?.negative ?? 0);
+    const currTotal =
+      (reviewsChart[reviewsChart.length - 1]?.positive ?? 0) + (reviewsChart[reviewsChart.length - 1]?.negative ?? 0);
+    const reviewsGrowth = ((currTotal - lastTotal) / (lastTotal || 1)) * 100;
+
+    const conversionRate = totalOrders > 0 ? (totalReviews / totalOrders) * 100 : 0;
+
+    const avgOrdersPerMonth =
+      ordersChart.length > 0 ? ordersChart.reduce((sum, item) => sum + item.count, 0) / ordersChart.length : 0;
+
+    const avgReviewsPerMonth =
+      reviewsChart.length > 0
+        ? reviewsChart.reduce((sum, item) => sum + item.positive + item.negative, 0) / reviewsChart.length
+        : 0;
+
+    const bestMonth =
+      ordersChart.length > 0
+        ? ordersChart.reduce((max, item) => (item.count > max.count ? item : max), ordersChart[0])
+        : null;
+
+    const satisfactionScore = positiveRate / 20; // 100% -> 5.0
+
     const loyaltyRate = positiveRate > 80 ? 95 + (positiveRate - 80) / 4 : positiveRate * 1.2;
-    
-    // Determine overall rating
-    const getOverallRating = () => {
-      if (positiveRate >= 90) return 'ممتاز';
-      if (positiveRate >= 80) return 'جيد جداً';
-      if (positiveRate >= 70) return 'جيد';
-      if (positiveRate >= 60) return 'مقبول';
-      return 'يحتاج تحسين';
-    };
-    
+
+    const overallRating =
+      positiveRate >= 90 ? 'ممتاز' : positiveRate >= 80 ? 'جيد جداً' : positiveRate >= 70 ? 'جيد' : positiveRate >= 60 ? 'مقبول' : 'يحتاج تحسين';
+
     return {
       ordersGrowth: Math.round(ordersGrowth * 10) / 10,
       reviewsGrowth: Math.round(reviewsGrowth * 10) / 10,
@@ -14779,46 +14790,57 @@ export default function DashboardAnalytics() {
       bestMonth: bestMonth?.month || '—',
       satisfactionScore: Math.round(satisfactionScore * 10) / 10,
       loyaltyRate: Math.round(loyaltyRate * 10) / 10,
-      overallRating: getOverallRating(),
-      responseRate: Math.round(conversionRate * 10) / 10
+      overallRating,
+      responseRate: Math.round(conversionRate * 10) / 10,
     };
   };
 
   const metrics = data ? calculateMetrics(data) : null;
 
   useEffect(() => {
-    if (!token) return;
+    let cancelled = false;
 
     const fetchData = async () => {
       try {
-        const res = await axios.get('/api/store/dashboard');
-        setData(res.data);
+        // حاول نجيب توكن المستخدم لو متاح
+        const idToken = await auth.currentUser?.getIdToken().catch(() => undefined);
+        const headers: Record<string, string> = idToken ? { Authorization: `Bearer ${idToken}` } : {};
+
+        // 1) axios (بالهيدر لو عندنا توكن)
+        const res = await axios.get('/api/store/dashboard', { headers });
+        if (!cancelled) setData(res.data);
       } catch (err) {
         console.error('Dashboard API error (axios):', err);
 
         try {
-          const absolute = typeof window !== 'undefined'
-            ? new URL('/api/store/dashboard', window.location.origin).toString()
-            : '/api/store/dashboard';
+          // 2) fetch fallback + نفس الهيدر
+          const absolute =
+            typeof window !== 'undefined'
+              ? new URL('/api/store/dashboard', window.location.origin).toString()
+              : '/api/store/dashboard';
 
-          const f = await fetch(absolute, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const idToken2 = await auth.currentUser?.getIdToken().catch(() => undefined);
+          const headers2: Record<string, string> = idToken2 ? { Authorization: `Bearer ${idToken2}` } : {};
 
+          const f = await fetch(absolute, { headers: headers2 });
           if (!f.ok) throw new Error(`fetch status ${f.status}`);
           const json = (await f.json()) as AnalyticsData;
-          setData(json);
+
+          if (!cancelled) setData(json);
         } catch (e) {
           console.error('Dashboard API error (fetch fallback):', e);
-          setData(null);
+          if (!cancelled) setData(null);
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchData();
-  }, [token]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -14826,26 +14848,28 @@ export default function DashboardAnalytics() {
         <div className="text-center space-y-8">
           {/* 3D Loading Animation */}
           <div className="relative">
-            <div className="w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin shadow-2xl"></div>
-            <div className="absolute inset-0 w-20 h-20 border-4 border-transparent border-r-purple-600 rounded-full animate-spin shadow-2xl" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-            <div className="absolute inset-2 w-16 h-16 border-2 border-transparent border-b-pink-500 rounded-full animate-spin" style={{ animationDuration: '2s' }}></div>
-            
+            <div className="w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin shadow-2xl" />
+            <div
+              className="absolute inset-0 w-20 h-20 border-4 border-transparent border-r-purple-600 rounded-full animate-spin shadow-2xl"
+              style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}
+            />
+            <div
+              className="absolute inset-2 w-16 h-16 border-2 border-transparent border-b-pink-500 rounded-full animate-spin"
+              style={{ animationDuration: '2s' }}
+            />
+
             {/* Pulsing Center */}
-            <div className="absolute inset-6 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full animate-pulse shadow-lg"></div>
+            <div className="absolute inset-6 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full animate-pulse shadow-lg" />
           </div>
-          
+
           <div className="space-y-3">
             <p className="text-2xl font-bold text-gray-900 animate-pulse">جاري تحميل الإحصائيات</p>
             <p className="text-sm text-gray-600">تحليل البيانات وإعداد التقارير...</p>
-            
+
             {/* Loading Progress Dots */}
             <div className="flex items-center justify-center gap-2 mt-4">
               {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-                  style={{ animationDelay: `${i * 200}ms` }}
-                />
+                <div key={i} className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 200}ms` }} />
               ))}
             </div>
           </div>
@@ -14863,7 +14887,7 @@ export default function DashboardAnalytics() {
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-3">تعذر تحميل البيانات</h3>
           <p className="text-gray-600 mb-6">حدث خطأ أثناء جلب الإحصائيات</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="px-8 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
@@ -14876,19 +14900,19 @@ export default function DashboardAnalytics() {
 
   const pieData = [
     { name: 'إيجابية', value: data.positiveRate, color: '#10b981' },
-    { name: 'سلبية', value: 100 - data.positiveRate, color: '#ef4444' }
+    { name: 'سلبية', value: 100 - data.positiveRate, color: '#ef4444' },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 p-8 space-y-12">
       {/* Animated Header */}
       <div className="text-center space-y-6 mb-16">
-        <div 
+        <div
           className="inline-flex items-center gap-4 px-8 py-4 bg-white/80 backdrop-blur-sm rounded-full shadow-2xl border border-gray-200/50 hover:scale-105 transition-all duration-500"
-          style={{ 
+          style={{
             animation: 'slideInDown 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
             opacity: 0,
-            transform: 'translateY(-50px)'
+            transform: 'translateY(-50px)',
           }}
         >
           <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
@@ -14903,7 +14927,7 @@ export default function DashboardAnalytics() {
         </p>
       </div>
 
-      {/* Enhanced Stats Cards */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         <StatCard
           title="إجمالي الطلبات"
@@ -14951,73 +14975,46 @@ export default function DashboardAnalytics() {
         />
       </div>
 
-      {/* Enhanced Charts Grid */}
+      {/* Charts Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-        {/* Orders Chart */}
-        <ChartCard 
-          title="تحليل الطلبات الشهرية" 
-          subtitle="نمو وتطور المبيعات عبر الزمن"
-          delay={400} 
-          icon={BarChart}
-        >
+        {/* Orders AreaChart */}
+        <ChartCard title="تحليل الطلبات الشهرية" subtitle="نمو وتطور المبيعات عبر الزمن" delay={400} icon={Eye}>
           <div className="h-96 group-hover:scale-[1.02] transition-transform duration-700 transform-gpu">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data.ordersChart} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                 <defs>
                   <linearGradient id="orderAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                    <stop offset="50%" stopColor="#8b5cf6" stopOpacity={0.4}/>
-                    <stop offset="100%" stopColor="#ec4899" stopOpacity={0.1}/>
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8} />
+                    <stop offset="50%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="#ec4899" stopOpacity={0.1} />
                   </linearGradient>
                   <filter id="glow">
-                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                    <feMerge> 
-                      <feMergeNode in="coloredBlur"/>
-                      <feMergeNode in="SourceGraphic"/>
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                    <feMerge>
+                      <feMergeNode in="coloredBlur" />
+                      <feMergeNode in="SourceGraphic" />
                     </feMerge>
                   </filter>
                 </defs>
-                <XAxis 
-                  dataKey="month" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 500 }}
-                />
-                <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 500 }}
-                />
-                <Tooltip 
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 500 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 500 }} />
+                <Tooltip
                   contentStyle={{
                     backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     border: 'none',
                     borderRadius: '16px',
                     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                    backdropFilter: 'blur(10px)'
+                    backdropFilter: 'blur(10px)',
                   }}
                 />
-                <Area 
-                  type="monotone"
-                  dataKey="count" 
-                  stroke="#3b82f6"
-                  strokeWidth={3}
-                  fill="url(#orderAreaGradient)"
-                  filter="url(#glow)"
-                  className="hover:opacity-80 transition-opacity duration-300"
-                />
+                <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} fill="url(#orderAreaGradient)" filter="url(#glow)" className="hover:opacity-80 transition-opacity duration-300" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </ChartCard>
 
-        {/* Reviews Pie Chart */}
-        <ChartCard 
-          title="توزيع التقييمات التفاعلي" 
-          subtitle="نسب الرضا والتحسينات المطلوبة"
-          delay={500} 
-          icon={Eye}
-        >
+        {/* Reviews Pie */}
+        <ChartCard title="توزيع التقييمات التفاعلي" subtitle="نسب الرضا والتحسينات المطلوبة" delay={500} icon={Eye}>
           <div className="h-96 flex items-center justify-center">
             <div className="relative group-hover:scale-105 transition-transform duration-700 transform-gpu">
               <ResponsiveContainer width={350} height={350}>
@@ -15034,53 +15031,39 @@ export default function DashboardAnalytics() {
                       <stop offset="100%" stopColor="#b91c1c" />
                     </linearGradient>
                     <filter id="pieGlow">
-                      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-                      <feMerge> 
-                        <feMergeNode in="coloredBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
+                      <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                      <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
                       </feMerge>
                     </filter>
                   </defs>
-                  <Pie
-                    data={pieData}
-                    cx={175}
-                    cy={175}
-                    innerRadius={80}
-                    outerRadius={140}
-                    paddingAngle={8}
-                    dataKey="value"
-                    className="drop-shadow-2xl"
-                    filter="url(#pieGlow)"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
+                  <Pie data={pieData} cx={175} cy={175} innerRadius={80} outerRadius={140} paddingAngle={8} dataKey="value" className="drop-shadow-2xl" filter="url(#pieGlow)">
+                    {pieData.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
                         fill={index === 0 ? 'url(#positiveGradient)' : 'url(#negativeGradient)'}
                         className="hover:opacity-80 transition-all duration-300 cursor-pointer"
-                        style={{
-                          filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.1))'
-                        }}
+                        style={{ filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.1))' }}
                       />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{
                       backgroundColor: 'rgba(255, 255, 255, 0.95)',
                       border: 'none',
                       borderRadius: '16px',
                       boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                      backdropFilter: 'blur(10px)'
+                      backdropFilter: 'blur(10px)',
                     }}
                   />
                 </PieChart>
               </ResponsiveContainer>
-              
-              {/* Animated Center Display */}
+
+              {/* Center badge */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center bg-white/90 backdrop-blur-sm rounded-full w-24 h-24 flex flex-col items-center justify-center shadow-2xl border border-gray-200/50">
-                  <p className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 bg-clip-text text-transparent">
-                    {data.positiveRate}%
-                  </p>
+                  <p className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 bg-clip-text text-transparent">{data.positiveRate}%</p>
                   <p className="text-xs text-gray-600 font-medium">إيجابية</p>
                 </div>
               </div>
@@ -15089,88 +15072,60 @@ export default function DashboardAnalytics() {
         </ChartCard>
       </div>
 
-      {/* Reviews Trend Chart */}
-      <ChartCard 
-        title="اتجاهات التقييمات المتقدمة" 
-        subtitle="تحليل شامل للتقييمات الإيجابية والسلبية"
-        delay={600} 
-        icon={TrendingUp}
-      >
+      {/* Reviews Trend BarChart */}
+      <ChartCard title="اتجاهات التقييمات المتقدمة" subtitle="تحليل شامل للتقييمات الإيجابية والسلبية" delay={600} icon={TrendingUp}>
         <div className="h-96 group-hover:scale-[1.01] transition-transform duration-700 transform-gpu">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data.reviewsChart} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <ReBarChart data={data.reviewsChart} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
               <defs>
                 <linearGradient id="positiveBarGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={1}/>
-                  <stop offset="50%" stopColor="#8b5cf6" stopOpacity={0.8}/>
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.6}/>
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                  <stop offset="50%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.6} />
                 </linearGradient>
                 <linearGradient id="negativeBarGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#ef4444" stopOpacity={1}/>
-                  <stop offset="50%" stopColor="#f97316" stopOpacity={0.8}/>
-                  <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6}/>
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                  <stop offset="50%" stopColor="#f97316" stopOpacity={0.8} />
+                  <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6} />
                 </linearGradient>
                 <filter id="barGlow">
-                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                  <feMerge> 
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
+                  <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                  <feMerge>
+                    <feMergeNode in="coloredBlur" />
+                    <feMergeNode in="SourceGraphic" />
                   </feMerge>
                 </filter>
               </defs>
-              <XAxis 
-                dataKey="month" 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 500 }}
-              />
-              <YAxis 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 500 }}
-              />
-              <Tooltip 
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 500 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 500 }} />
+              <Tooltip
                 contentStyle={{
                   backgroundColor: 'rgba(255, 255, 255, 0.95)',
                   border: 'none',
                   borderRadius: '16px',
                   boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                  backdropFilter: 'blur(10px)'
+                  backdropFilter: 'blur(10px)',
                 }}
               />
-              <Bar 
-                dataKey="positive" 
-                fill="url(#positiveBarGradient)"
-                radius={[8, 8, 0, 0]}
-                filter="url(#barGlow)"
-                className="hover:opacity-80 transition-opacity duration-300"
-              />
-              <Bar 
-                dataKey="negative" 
-                fill="url(#negativeBarGradient)"
-                radius={[8, 8, 0, 0]}
-                filter="url(#barGlow)"
-                className="hover:opacity-80 transition-opacity duration-300"
-              />
-            </BarChart>
+              <Bar dataKey="positive" fill="url(#positiveBarGradient)" radius={[8, 8, 0, 0]} filter="url(#barGlow)" className="hover:opacity-80 transition-opacity duration-300" />
+              <Bar dataKey="negative" fill="url(#negativeBarGradient)" radius={[8, 8, 0, 0]} filter="url(#barGlow)" className="hover:opacity-80 transition-opacity duration-300" />
+            </ReBarChart>
           </ResponsiveContainer>
         </div>
       </ChartCard>
 
-      {/* Enhanced Performance Metrics */}
+      {/* Performance metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div 
+        <div
           className="relative bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-200/50 p-8 shadow-2xl hover:shadow-3xl transition-all duration-700 transform hover:-translate-y-2 overflow-hidden group"
-          style={{ 
+          style={{
             animationDelay: '700ms',
             animation: 'slideInLeft 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
             opacity: 0,
-            transform: 'translateX(-50px)'
+            transform: 'translateX(-50px)',
           }}
         >
-          {/* Animated Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-          
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
           <div className="relative z-10">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl group-hover:rotate-6 group-hover:scale-110 transition-all duration-500">
@@ -15181,38 +15136,23 @@ export default function DashboardAnalytics() {
                 <p className="text-gray-600">متوسط الطلبات والتقييمات</p>
               </div>
             </div>
-            
             <div className="space-y-4">
-              <MetricCard
-                label="متوسط الطلبات"
-                value={metrics?.avgOrdersPerMonth || 0}
-                icon={ShoppingCart}
-                color="text-emerald-600"
-                delay={800}
-              />
-              <MetricCard
-                label="متوسط التقييمات"
-                value={metrics?.avgReviewsPerMonth || 0}
-                icon={Star}
-                color="text-amber-600"
-                delay={900}
-              />
+              <MetricCard label="متوسط الطلبات" value={metrics?.avgOrdersPerMonth || 0} icon={ShoppingCart} color="text-emerald-600" delay={800} />
+              <MetricCard label="متوسط التقييمات" value={metrics?.avgReviewsPerMonth || 0} icon={Star} color="text-amber-600" delay={900} />
             </div>
           </div>
         </div>
 
-        <div 
+        <div
           className="relative bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-200/50 p-8 shadow-2xl hover:shadow-3xl transition-all duration-700 transform hover:-translate-y-2 overflow-hidden group"
-          style={{ 
+          style={{
             animationDelay: '800ms',
             animation: 'slideInRight 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
             opacity: 0,
-            transform: 'translateX(50px)'
+            transform: 'translateX(50px)',
           }}
         >
-          {/* Animated Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-transparent to-pink-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-          
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-transparent to-pink-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
           <div className="relative z-10">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl group-hover:rotate-6 group-hover:scale-110 transition-all duration-500">
@@ -15223,28 +15163,19 @@ export default function DashboardAnalytics() {
                 <p className="text-gray-600">مؤشرات الجودة والأداء</p>
               </div>
             </div>
-            
+
             <div className="space-y-4">
-              <MetricCard
-                label="معدل الاستجابة"
-                value={`${metrics?.responseRate || 0}%`}
-                icon={Zap}
-                color="text-blue-600"
-                delay={1000}
-              />
-              
+              <MetricCard label="معدل الاستجابة" value={`${metrics?.responseRate || 0}%`} icon={Zap} color="text-blue-600" delay={1000} />
               <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-lg hover:shadow-xl transition-all duration-500 transform hover:scale-105">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-gray-700">درجة الرضا</span>
                   <div className="flex items-center gap-3">
                     <div className="flex">
                       {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i} 
+                        <Star
+                          key={i}
                           className={`w-5 h-5 transition-all duration-300 ${
-                            i < Math.round((metrics?.satisfactionScore || 0)) 
-                              ? 'text-yellow-400 fill-current hover:scale-110' 
-                              : 'text-gray-300'
+                            i < Math.round(metrics?.satisfactionScore || 0) ? 'text-yellow-400 fill-current hover:scale-110' : 'text-gray-300'
                           }`}
                           style={{ animationDelay: `${i * 100}ms` }}
                         />
@@ -15263,35 +15194,23 @@ export default function DashboardAnalytics() {
 
       {/* Additional Insights */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div 
+        <div
           className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-          style={{ 
-            animationDelay: '900ms',
-            animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-            opacity: 0,
-            transform: 'translateY(30px)'
-          }}
+          style={{ animationDelay: '900ms', animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards', opacity: 0, transform: 'translateY(30px)' }}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
           <div className="relative z-10">
             <Award className="w-8 h-8 mb-3 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
             <p className="text-sm opacity-90 mb-1">أفضل شهر</p>
-            <p className="text-xl font-bold">
-              {metrics?.bestMonth || '—'}
-            </p>
+            <p className="text-xl font-bold">{metrics?.bestMonth || '—'}</p>
           </div>
         </div>
 
-        <div 
+        <div
           className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-          style={{ 
-            animationDelay: '1000ms',
-            animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-            opacity: 0,
-            transform: 'translateY(30px)'
-          }}
+          style={{ animationDelay: '1000ms', animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards', opacity: 0, transform: 'translateY(30px)' }}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
           <div className="relative z-10">
             <TrendingUp className="w-8 h-8 mb-3 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
             <p className="text-sm opacity-90 mb-1">نمو متوقع</p>
@@ -15301,16 +15220,11 @@ export default function DashboardAnalytics() {
           </div>
         </div>
 
-        <div 
+        <div
           className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-          style={{ 
-            animationDelay: '1100ms',
-            animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-            opacity: 0,
-            transform: 'translateY(30px)'
-          }}
+          style={{ animationDelay: '1100ms', animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards', opacity: 0, transform: 'translateY(30px)' }}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
           <div className="relative z-10">
             <Heart className="w-8 h-8 mb-3 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
             <p className="text-sm opacity-90 mb-1">ولاء العملاء</p>
@@ -15318,16 +15232,11 @@ export default function DashboardAnalytics() {
           </div>
         </div>
 
-        <div 
+        <div
           className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-6 text-white shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-          style={{ 
-            animationDelay: '1200ms',
-            animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-            opacity: 0,
-            transform: 'translateY(30px)'
-          }}
+          style={{ animationDelay: '1200ms', animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards', opacity: 0, transform: 'translateY(30px)' }}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
           <div className="relative z-10">
             <Sparkles className="w-8 h-8 mb-3 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
             <p className="text-sm opacity-90 mb-1">تقييم عام</p>
@@ -15347,7 +15256,7 @@ export default function DashboardAnalytics() {
             transform: translateY(0) rotateX(0deg);
           }
         }
-        
+
         @keyframes slideInDown {
           from {
             opacity: 0;
@@ -15358,7 +15267,7 @@ export default function DashboardAnalytics() {
             transform: translateY(0) rotateX(0deg);
           }
         }
-        
+
         @keyframes slideInLeft {
           from {
             opacity: 0;
@@ -15369,7 +15278,7 @@ export default function DashboardAnalytics() {
             transform: translateX(0) rotateY(0deg);
           }
         }
-        
+
         @keyframes slideInRight {
           from {
             opacity: 0;
@@ -15380,29 +15289,31 @@ export default function DashboardAnalytics() {
             transform: translateX(0) rotateY(0deg);
           }
         }
-        
+
         @keyframes float {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0px) rotate(0deg);
           }
           50% {
             transform: translateY(-20px) rotate(5deg);
           }
         }
-        
+
         @keyframes pulse-glow {
-          0%, 100% {
+          0%,
+          100% {
             box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
           }
           50% {
             box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
           }
         }
-        
+
         .animate-float {
           animation: float 6s ease-in-out infinite;
         }
-        
+
         .animate-pulse-glow {
           animation: pulse-glow 2s ease-in-out infinite;
         }
@@ -15817,7 +15728,6 @@ import { isAxiosError } from 'axios';
 import { format } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import Image from 'next/image';
-import { useAuth } from '@/contexts/AuthContext';
 import { getAuth } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import {
@@ -15865,12 +15775,14 @@ function toBool(v: unknown): boolean {
 function normalizeReview(raw: Record<string, unknown>): Review {
   const id = String(raw['id'] ?? raw['_id'] ?? raw['reviewId'] ?? raw['docId'] ?? '');
   const productId = (raw['productId'] ?? raw['product_id']) as string | undefined;
+
   const starsRaw = raw['stars'];
-  const stars = typeof starsRaw === 'number' ? starsRaw : Number(starsRaw ?? 0);
+  const starsNum = typeof starsRaw === 'number' ? starsRaw : Number(starsRaw ?? 0);
+  const stars = Number.isFinite(starsNum) ? starsNum : 0;
+
   const createdAt =
     toTs(raw['createdAt'] ?? raw['created'] ?? raw['timestamp'] ?? raw['created_at']) || Date.now();
 
-  // Read buyerVerified from multiple possible field names, including trustedBuyer variants
   const bvCandidate =
     raw['buyerVerified'] ??
     raw['trustedBuyer'] ??
@@ -15890,7 +15802,6 @@ function normalizeReview(raw: Record<string, unknown>): Review {
 }
 
 export default function ReviewsTab({ storeName }: { storeName?: string }) {
-  const { token, loading: authLoading } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -15904,9 +15815,11 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
     return () => { mountedRef.current = false; };
   }, []);
 
-  const fetchReviews = useCallback(async () => {
-    if (authLoading) return;
-    if (!token) {
+  const fetchReviews = useCallback(async (): Promise<void> => {
+    const auth = getAuth(app);
+    const user = auth.currentUser;
+
+    if (!user) {
       if (mountedRef.current) {
         setLoading(false);
         setError('غير مصرح: الرجاء تسجيل الدخول.');
@@ -15917,8 +15830,11 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
     try {
       if (mountedRef.current) { setLoading(true); setError(''); }
 
+      // خذ توكن حديث
+      const idToken = await user.getIdToken(/* forceRefresh */ true);
+
       const res = await axios.get('/api/reviews/list', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${idToken}` },
       });
 
       const items = (res.data?.items ?? res.data?.reviews ?? []) as unknown[];
@@ -15929,11 +15845,12 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
       if (mountedRef.current) setReviews(normalized);
     } catch (err: unknown) {
       const status = isAxiosError(err) ? err.response?.status ?? 0 : 0;
+
+      // لو Unauthorized جرّب تجدد التوكن مرة تانيه
       if (status === 401) {
         try {
-          const auth = getAuth(app);
-          if (auth.currentUser) {
-            const fresh = await auth.currentUser.getIdToken(true);
+          const fresh = await getAuth(app).currentUser?.getIdToken(true);
+          if (fresh) {
             const res2 = await axios.get('/api/reviews/list', {
               headers: { Authorization: `Bearer ${fresh}` },
             });
@@ -15946,16 +15863,17 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
           }
         } catch { /* ignore */ }
       }
+
       console.error('Error loading reviews:', err);
       if (mountedRef.current) setError('حدث خطأ أثناء تحميل التقييمات');
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [authLoading, token]);
+  }, []);
 
   useEffect(() => { fetchReviews(); }, [fetchReviews]);
 
-  const fmtDate = (v?: number | string) => {
+  const fmtDate = (v?: number | string): string => {
     if (v == null) return '-';
     const n = typeof v === 'string' ? Number(v) : v;
     const d = Number.isFinite(n) ? new Date(Number(n)) : new Date(v as string);
@@ -15964,7 +15882,7 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
     catch { return d.toLocaleDateString(); }
   };
 
-  const isPublished = (r: Review) => (r.status ? r.status === 'published' : true);
+  const isPublished = (r: Review): boolean => (r.status ? r.status === 'published' : true);
 
   // Analytics
   const stats = {
@@ -16000,7 +15918,7 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
     filter === 'all' ? true : filter === 'published' ? isPublished(r) : !isPublished(r)
   );
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
@@ -16477,65 +16395,110 @@ export default function RepliesTab({ reviewId, storeId, canPost = true }: Props)
 }
 ====[ END FILE: src/components/dashboard/reviews/RepliesTab.tsx ]===================================
 
-====[ START FILE: src/components/dashboard/settings/MessageSettings.tsx (4.3 KB) ]==================
+====[ START FILE: src/components/dashboard/settings/MessageSettings.tsx (5.9 KB) ]==================
+// src/components/dashboard/settings/MessageSettings.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import axios from '@/lib/axiosInstance';
-import { useAuth } from '@/contexts/AuthContext';
+import { getAuth } from 'firebase/auth';
+import { app } from '@/lib/firebase';
 
 export default function MessageSettings() {
-  const { token } = useAuth();
   const [senderName, setSenderName] = useState('');
-  const [defaultMethod, setDefaultMethod] = useState('whatsapp');
+  const [defaultMethod, setDefaultMethod] = useState<'whatsapp' | 'sms' | 'email'>('whatsapp');
   const [smsTemplate, setSmsTemplate] = useState('');
   const [whatsappTemplate, setWhatsappTemplate] = useState('');
   const [emailTemplate, setEmailTemplate] = useState('');
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
+  const mountedRef = useRef(true);
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await axios.get('/api/store/app-settings', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const app = res.data.app || {};
-        setSenderName(app.sender_name || '');
-        setDefaultMethod(app.default_send_method || 'whatsapp');
-        setSmsTemplate(app.sms_template || '');
-        setWhatsappTemplate(app.whatsapp_template || '');
-        setEmailTemplate(app.email_template || '');
-      } catch (err) {
-        console.error('Error loading settings:', err);
-        setError('تعذر تحميل الإعدادات.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (token) fetchSettings();
-  }, [token]);
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
-  const handleSave = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
-      await axios.post('/api/store/app-settings', {
-        sender_name: senderName,
-        default_send_method: defaultMethod,
-        sms_template: smsTemplate,
-        whatsapp_template: whatsappTemplate,
-        email_template: emailTemplate,
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
+      setError('');
+      setLoading(true);
+
+      const auth = getAuth(app);
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('UNAUTHENTICATED');
+      }
+      const idToken = await user.getIdToken(true);
+
+      const res = await axios.get('/api/store/app-settings', {
+        headers: { Authorization: `Bearer ${idToken}` },
       });
 
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      console.error('Error saving:', err);
-      setError('تعذر حفظ الإعدادات.');
+      const appCfg = res.data?.app ?? {};
+      if (!mountedRef.current) return;
+
+      setSenderName(appCfg.sender_name || '');
+      setDefaultMethod((appCfg.default_send_method as 'whatsapp' | 'sms' | 'email') || 'whatsapp');
+      setSmsTemplate(appCfg.sms_template || '');
+      setWhatsappTemplate(appCfg.whatsapp_template || '');
+      setEmailTemplate(appCfg.email_template || '');
+    } catch (e: unknown) {
+      if (!mountedRef.current) return;
+      console.error('Error loading settings:', e);
+      setError(
+        (e as Error)?.message === 'UNAUTHENTICATED'
+          ? 'غير مصرح: الرجاء تسجيل الدخول.'
+          : 'تعذر تحميل الإعدادات.'
+      );
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => { fetchSettings(); }, [fetchSettings]);
+
+  const handleSave = useCallback(async () => {
+    try {
+      setError('');
+      setSaving(true);
+
+      const auth = getAuth(app);
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('UNAUTHENTICATED');
+      }
+      const idToken = await user.getIdToken(true);
+
+      await axios.post(
+        '/api/store/app-settings',
+        {
+          sender_name: senderName,
+          default_send_method: defaultMethod,
+          sms_template: smsTemplate,
+          whatsapp_template: whatsappTemplate,
+          email_template: emailTemplate,
+        },
+        { headers: { Authorization: `Bearer ${idToken}` } }
+      );
+
+      if (!mountedRef.current) return;
+      setSaved(true);
+      setTimeout(() => mountedRef.current && setSaved(false), 2000);
+    } catch (e: unknown) {
+      if (!mountedRef.current) return;
+      console.error('Error saving settings:', e);
+      setError(
+        (e as Error)?.message === 'UNAUTHENTICATED'
+          ? 'غير مصرح: الرجاء تسجيل الدخول.'
+          : 'تعذر حفظ الإعدادات.'
+      );
+    } finally {
+      if (mountedRef.current) setSaving(false);
+    }
+  }, [senderName, defaultMethod, smsTemplate, whatsappTemplate, emailTemplate]);
 
   if (loading) return <p>جارٍ تحميل الإعدادات...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
@@ -16558,7 +16521,7 @@ export default function MessageSettings() {
         <select
           className="w-full border rounded px-3 py-2"
           value={defaultMethod}
-          onChange={(e) => setDefaultMethod(e.target.value)}
+          onChange={(e) => setDefaultMethod(e.target.value as 'whatsapp' | 'sms' | 'email')}
         >
           <option value="whatsapp">واتساب</option>
           <option value="sms">رسالة SMS</option>
@@ -16598,9 +16561,10 @@ export default function MessageSettings() {
 
       <button
         onClick={handleSave}
-        className="px-5 py-2 bg-green-700 text-white rounded hover:bg-green-800"
+        disabled={saving}
+        className={`px-5 py-2 text-white rounded ${saving ? 'bg-green-400 cursor-not-allowed' : 'bg-green-700 hover:bg-green-800'}`}
       >
-        حفظ التغييرات
+        {saving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
       </button>
 
       {saved && <p className="text-green-600">تم الحفظ بنجاح ✅</p>}
@@ -16623,8 +16587,7 @@ type SallaStatus = {
   reason?: string | null;
 };
 
-const DEFAULT_TEMPLATE =
-  "مرحباً [العميل]، قيم تجربتك من [المتجر]:: [الرابط] وساهم في إسعاد يتيم!";
+const DEFAULT_TEMPLATE = "مرحباً [العميل]، قيم تجربتك من [المتجر]:: [الرابط] وساهم في إسعاد يتيم!";
 
 async function fetchJson(url: string, init?: RequestInit) {
   const r = await fetch(url, init);
@@ -16632,8 +16595,9 @@ async function fetchJson(url: string, init?: RequestInit) {
   return { ok: r.ok, ...j };
 }
 
-export default function SallaIntegrationTab() {
+export default function SallaIntegrationTab({ storeUid }: { storeUid?: string }) {
   const router = useRouter();
+
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<SallaStatus | null>(null);
@@ -16644,13 +16608,11 @@ export default function SallaIntegrationTab() {
     const c = data?.connected;
     return c ? (
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium">
-        <Check size={14} />
-        متصل
+        <Check size={14} /> متصل
       </div>
     ) : (
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium">
-        <AlertCircle size={14} />
-        غير متصل
+        <AlertCircle size={14} /> غير متصل
       </div>
     );
   }, [data?.connected]);
@@ -16659,24 +16621,42 @@ export default function SallaIntegrationTab() {
     let mounted = true;
     (async () => {
       try {
-        // أولوية القراءة بالـ uid من الـ URL: /dashboard/integrations?uid=salla:123...
+        // أولوية uid: prop → query → من /api/store/info
         const uidFromQuery = typeof router.query.uid === "string" ? router.query.uid : undefined;
-        const url = uidFromQuery
-          ? `/api/salla/status?uid=${encodeURIComponent(uidFromQuery)}`
-          : `/api/salla/status`; // للتوافق لو عندك ownerUid في الواجهة القديمة
+        let preferUid = storeUid || uidFromQuery;
 
-        const st = await fetchJson(url);
+        if (!preferUid) {
+          const info = await fetchJson("/api/store/info");
+          // res.store.storeUid (لو API عندك منسّق)
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sUid = (info as any)?.store?.storeUid as string | undefined;
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sid  = (info as any)?.store?.salla?.storeId as string | number | undefined;
+          preferUid = sUid || (sid != null ? `salla:${String(sid)}` : undefined);
+        }
+
+        const st = await fetchJson(
+          preferUid ? `/api/salla/status?uid=${encodeURIComponent(preferUid)}` : "/api/salla/status"
+        );
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = (st as any)?.data ?? st ?? {};
         const normalized: SallaStatus = {
           connected: Boolean(raw.connected),
           storeName: raw.storeName ?? null,
           merchantId: raw.storeId ?? null,
-          uid: raw.uid ?? uidFromQuery ?? null,
+          uid: raw.uid ?? preferUid ?? null,
           domain: raw.domain ?? null,
           reason: raw.reason ?? null,
         };
         if (mounted) setData(normalized);
+
+        // (اختياري) استرجع القالب من إعدادات المتجر لو موجود
+        try {
+          const j = await fetchJson("/api/store/settings?salla=1");
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const tpl = (j as any)?.settings?.salla?.reviewTemplate ?? (j as any)?.salla?.reviewTemplate ?? null;
+          if (mounted && typeof tpl === "string" && tpl.trim()) setTemplate(tpl);
+        } catch {}
       } catch (e) {
         if (mounted) setMsg(e instanceof Error ? e.message : String(e));
       } finally {
@@ -16684,25 +16664,22 @@ export default function SallaIntegrationTab() {
       }
     })();
     return () => { mounted = false; };
-  }, [router.query.uid]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.query.uid, storeUid]);
 
   async function connect() {
-    setBusy(true);
-    setMsg(null);
+    setBusy(true); setMsg(null);
     try {
       const r = await fetch("/api/salla/connect", { method: "POST" });
       const j = await r.json().catch(() => ({}));
       if (j?.ok && j?.url) location.href = j.url;
       else setMsg(j?.error || "تعذّر بدء الاتصال.");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   async function disconnect() {
     if (!confirm("هل تريد فصل سلة؟")) return;
-    setBusy(true);
-    setMsg(null);
+    setBusy(true); setMsg(null);
     try {
       const r = await fetch("/api/salla/disconnect", { method: "POST" });
       const j = await r.json().catch(() => ({}));
@@ -16710,14 +16687,11 @@ export default function SallaIntegrationTab() {
         setData((d) => (d ? { ...d, connected: false } : d));
         setMsg("تم الفصل بنجاح.");
       } else setMsg(j?.error || "تعذّر الفصل.");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   async function saveTemplate() {
-    setBusy(true);
-    setMsg(null);
+    setBusy(true); setMsg(null);
     try {
       const r = await fetch("/api/store/settings", {
         method: "POST",
@@ -16727,9 +16701,7 @@ export default function SallaIntegrationTab() {
       const j = await r.json().catch(() => ({}));
       if (j?.ok !== false) setMsg("تم الحفظ ✅");
       else setMsg(j?.error || "تعذّر الحفظ.");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   if (loading) {
@@ -16764,18 +16736,15 @@ export default function SallaIntegrationTab() {
       {/* Store Info */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Info size={16} />
-          معلومات المتجر
+          <Info size={16} /> معلومات المتجر
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-gray-50 rounded-lg p-4">
             <dt className="text-sm font-medium text-gray-500 mb-1">اسم المتجر</dt>
-            <dd className="text-base font-semibold text-gray-900">
-              {data?.storeName || "غير محدد"}
-            </dd>
+            <dd className="text-base font-semibold text-gray-900">{data?.storeName || "غير محدد"}</dd>
           </div>
           <div className="bg-gray-50 rounded-lg p-4">
-            <dt className="text-sm font-medium text-gray-500 mb-1">معرف التاجر</dt>
+            <dt className="text-sm font-medium text-gray-500 mb-1">معرّف التاجر</dt>
             <dd className="text-base font-semibold text-gray-900">
               {data?.merchantId != null ? String(data.merchantId) : "غير محدد"}
             </dd>
@@ -16805,22 +16774,14 @@ export default function SallaIntegrationTab() {
         <h4 className="text-base font-semibold text-gray-900 mb-4">إدارة الاتصال</h4>
         <div className="flex gap-3">
           {!data?.connected ? (
-            <button
-              onClick={connect}
-              disabled={busy}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-medium rounded-lg shadow-sm hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50"
-            >
-              <Link2 size={16} />
-              {busy ? "جارٍ الاتصال..." : "اتصال"}
+            <button onClick={connect} disabled={busy}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50">
+              <Link2 size={16} /> {busy ? "جارٍ الاتصال..." : "اتصال"}
             </button>
           ) : (
-            <button
-              onClick={disconnect}
-              disabled={busy}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white font-medium rounded-lg shadow-sm hover:from-rose-700 hover:to-rose-800 disabled:opacity-50"
-            >
-              <Link2Off size={16} />
-              {busy ? "جارٍ الفصل..." : "فصل"}
+            <button onClick={disconnect} disabled={busy}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50">
+              <Link2Off size={16} /> {busy ? "جارٍ الفصل..." : "فصل"}
             </button>
           )}
         </div>
@@ -16837,28 +16798,9 @@ export default function SallaIntegrationTab() {
             placeholder="أدخل نص الرسالة هنا..."
           />
           <div className="flex justify-end">
-            <button
-              onClick={async () => {
-                setBusy(true);
-                setMsg(null);
-                try {
-                  const r = await fetch("/api/store/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ salla: { reviewTemplate: template } }),
-                  });
-                  const j = await r.json().catch(() => ({}));
-                  if (j?.ok !== false) setMsg("تم الحفظ ✅");
-                  else setMsg(j?.error || "تعذّر الحفظ.");
-                } finally {
-                  setBusy(false);
-                }
-              }}
-              disabled={busy}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50"
-            >
-              <Save size={16} />
-              {busy ? "جارٍ الحفظ..." : "حفظ القالب"}
+            <button onClick={saveTemplate} disabled={busy}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50">
+              <Save size={16} /> {busy ? "جارٍ الحفظ..." : "حفظ القالب"}
             </button>
           </div>
         </div>
@@ -17169,7 +17111,7 @@ export default function ZidIntegrationTab() {
 }
 ====[ END FILE: src/components/dashboard/settings/ZidIntegrationTab.tsx ]===========================
 
-====[ START FILE: src/components/dashboard/StoreSettings.tsx (18.7 KB) ]============================
+====[ START FILE: src/components/dashboard/StoreSettings.tsx (19.5 KB) ]============================
 // src/components/dashboard/StoreSettings.tsx
 'use client';
 
@@ -17184,6 +17126,7 @@ import {
   ChevronRight,
   Zap,
   FileText,
+  Hash,
 } from 'lucide-react';
 
 import ZidIntegrationTab from '@/components/dashboard/settings/ZidIntegrationTab';
@@ -17248,26 +17191,18 @@ const TabButton = ({
     }}
   >
     {/* Animated Background */}
-    <div
-      className={`absolute inset-0 bg-gradient-to-br ${tab.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}
-    />
+    <div className={`absolute inset-0 bg-gradient-to-br ${tab.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
     {/* Active State Glow */}
     {isActive && <div className={`absolute inset-0 bg-gradient-to-br ${tab.color} opacity-5`} />}
 
     <div className="relative z-10 p-6 text-center">
       <div
-        className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${tab.color} rounded-2xl flex items-center justify-center shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:rotate-6 group-hover:scale-110 ${
-          isActive ? 'scale-110' : ''
-        }`}
+        className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${tab.color} rounded-2xl flex items-center justify-center shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:rotate-6 group-hover:scale-110 ${isActive ? 'scale-110' : ''}`}
       >
         <tab.icon className="w-8 h-8 text-white" />
       </div>
 
-      <h3
-        className={`text-lg font-bold mb-2 transition-colors duration-300 ${
-          isActive ? 'text-gray-900' : 'text-gray-700 group-hover:text-gray-900'
-        }`}
-      >
+      <h3 className={`text-lg font-bold mb-2 transition-colors duration-300 ${isActive ? 'text-gray-900' : 'text-gray-700 group-hover:text-gray-900'}`}>
         {tab.label}
       </h3>
 
@@ -17278,9 +17213,7 @@ const TabButton = ({
       {/* Arrow Indicator */}
       <div
         className={`mt-4 flex items-center justify-center transition-all duration-300 ${
-          isActive
-            ? 'opacity-100 translate-x-0'
-            : 'opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0'
+          isActive ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0'
         }`}
       >
         <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -17312,7 +17245,13 @@ const ContentCard = ({ children, delay = 0 }: { children: React.ReactNode; delay
   </div>
 );
 
-export default function StoreSettings() {
+export default function StoreSettings({
+  storeUid,
+  storeName,
+}: {
+  storeUid?: string;
+  storeName?: string;
+}) {
   const [activeTab, setActiveTab] = useState<TabMeta['id']>('الربط');
 
   return (
@@ -17335,6 +17274,25 @@ export default function StoreSettings() {
           </h1>
           <Sparkles className="w-6 h-6 text-purple-500 animate-pulse" />
         </div>
+
+        {/* Badges for store name & UID */}
+        {(storeName || storeUid) && (
+          <div className="flex items-center justify-center gap-3">
+            {storeName && (
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <Store className="w-4 h-4" />
+                <strong>المتجر:</strong> {storeName}
+              </span>
+            )}
+            {storeUid && (
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-gray-50 text-gray-700 border border-gray-200">
+                <Hash className="w-4 h-4" />
+                <strong>UID:</strong> {storeUid}
+              </span>
+            )}
+          </div>
+        )}
+
         <p className="text-gray-600 max-w-3xl mx-auto text-lg leading-relaxed">
           تخصيص وإدارة جميع جوانب متجرك الإلكتروني بواجهة حديثة وتفاعلية
         </p>
@@ -17463,7 +17421,7 @@ export default function StoreSettings() {
 
             {/* Store Info Content */}
             <div
-              className="group relative bg-gradient-to-br from-white to-purple-50/30 rounded-2xl border border-gray-200/50 p-12 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1 overflow-hidden text-center"
+              className="group relative bg-gradient-to-br from-white to-purple-50/30 rounded-2xl border border-gray-200/50 p-12 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-1 overflow-hidden text-center"
               style={{
                 animationDelay: '500ms',
                 animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
@@ -17524,6 +17482,7 @@ export default function StoreSettings() {
         )}
       </ContentCard>
 
+      {/* Styles */}
       <style jsx>{`
         @keyframes slideInUp {
           from {
@@ -18803,63 +18762,92 @@ export default function UploadcareWidget({
 }
 ====[ END FILE: src/components/UploadcareWidget.tsx ]===============================================
 
-====[ START FILE: src/contexts/AuthContext.tsx (1.6 KB) ]===========================================
-import { createContext, useContext, useEffect, useState } from 'react';
-import { getAuth, onIdTokenChanged, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { app, db } from '@/lib/firebase'; // تأكد أن db و app موجودين هنا
+====[ START FILE: src/contexts/AuthContext.tsx (3.1 KB) ]===========================================
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
+type StoreState = {
+  storeUid: string | null;
   storeName: string | null;
-  loading: boolean;
-}
-
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  token: null,
-  storeName: null,
-  loading: true,
-});
-
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const auth = getAuth(app);
-    const unsubscribe = onIdTokenChanged(auth, async (user) => {
-      if (user) {
-        const idToken = await user.getIdToken();
-        setUser(user);
-        setToken(idToken);
-
-        // ✅ Firestore لجلب اسم المتجر
-        const snap = await getDoc(doc(db, 'stores', user.uid));
-        const data = snap.data();
-        setStoreName(data?.storeName || null);
-      } else {
-        setUser(null);
-        setToken(null);
-        setStoreName(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  return (
-    <AuthContext.Provider value={{ user, token, storeName, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  platform: string | null;
 };
 
-export const useAuth = () => useContext(AuthContext);
+type AuthValue = {
+  user: User | null;
+  loading: boolean;
+  store: StoreState;
+};
+
+const Ctx = createContext<AuthValue>({ user: null, loading: true, store: { storeUid: null, storeName: null, platform: null } });
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [store, setStore] = useState<StoreState>({ storeUid: null, storeName: null, platform: null });
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (!u) {
+        setStore({ storeUid: null, storeName: null, platform: null });
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // 1) جرّب alias: stores/{user.uid}
+        const aliasSnap = await getDoc(doc(db, "stores", u.uid));
+        if (aliasSnap.exists()) {
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const a = aliasSnap.data() as any;
+          const aliasOf: string | undefined = a.storeUid;
+          const nameAlias = a.storeName ?? null;
+
+          if (aliasOf) {
+            const realSnap = await getDoc(doc(db, "stores", aliasOf));
+            if (realSnap.exists()) {
+              //eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const r = realSnap.data() as any;
+              const s = r.salla || {};
+              setStore({
+                storeUid: aliasOf,
+                storeName: s.storeName ?? r.storeName ?? nameAlias ?? null,
+                platform: r.platform ?? "salla",
+              });
+              setLoading(false);
+              return;
+            }
+          }
+
+          // لو مفيش storeUid في alias، اعتبر نفس المستند هو المتجر (نادرًا)
+          setStore({
+            storeUid: u.uid,
+            storeName: nameAlias,
+            platform: a.platform ?? "salla",
+          });
+          setLoading(false);
+          return;
+        }
+
+        // 2) fallback: ربما تم حفظ المتجر مباشرة على stores/salla:{id} فقط
+        // في الحالة دي لا نعرف الـ id هنا؛ سيتم تمريره عبر URL بعد onboarding.
+        setStore({ storeUid: null, storeName: null, platform: null });
+      } catch {
+        setStore({ storeUid: null, storeName: null, platform: null });
+      } finally {
+        setLoading(false);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const value = useMemo(() => ({ user, loading, store }), [user, loading, store]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export function useAuth() { return useContext(Ctx); }
 ====[ END FILE: src/contexts/AuthContext.tsx ]======================================================
 
 ====[ START FILE: src/get-admin-token.ts (667 B) ]==================================================
@@ -19128,43 +19116,35 @@ export const env = {
 };
 ====[ END FILE: src/lib/env.ts ]====================================================================
 
-====[ START FILE: src/lib/firebase.ts (1.4 KB) ]====================================================
-// src/lib/firebase.ts
-// عميل Firebase للواجهات (متوافق مع Next.js)
-//
-// ملاحظة: استخدم هذا الملف في الواجهة فقط (React components, client hooks)
-// أما على السيرفر/الـ API routes فاستعمل src/server/firebase-admin.ts
-
-import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+====[ START FILE: src/lib/firebase.ts (838 B) ]=====================================================
+// Client SDK
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
+import {
+  getAuth,
+  setPersistence,
+  browserLocalPersistence,
+  type Auth,
+} from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
-import { getStorage, type FirebaseStorage } from "firebase/storage";
 
-// القيم تُحقن وقت البناء من NEXT_PUBLIC_*
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
 };
 
-function getClientApp(): FirebaseApp {
-  return getApps().length ? getApp() : initializeApp(firebaseConfig);
-}
+const app: FirebaseApp = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);
+const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
 
-export const app: FirebaseApp = getClientApp();
-export const auth: Auth = getAuth(app);
-export const db: Firestore = getFirestore(app);
-export const storage: FirebaseStorage = getStorage(app);
+// حاولة حفظ الجلسة محلياً
+setPersistence(auth, browserLocalPersistence).catch(() => {});
 
-// (اختياري) export alias لو بتحب
-export { db as firestore };
+export { app, auth, db };
 ====[ END FILE: src/lib/firebase.ts ]===============================================================
 
-====[ START FILE: src/lib/firebaseAdmin.ts (2.5 KB) ]===============================================
-// src/lib/firebaseAdmin.ts
+====[ START FILE: src/lib/firebaseAdmin.ts (2.1 KB) ]===============================================
 import * as admin from "firebase-admin";
 import fs from "node:fs";
 import path from "node:path";
@@ -19182,9 +19162,7 @@ function loadCredFromEnv() {
   }
   privateKey = privateKey.replace(/\\n/g, "\n");
 
-  if (projectId && clientEmail && privateKey) {
-    return { projectId, clientEmail, privateKey };
-  }
+  if (projectId && clientEmail && privateKey) return { projectId, clientEmail, privateKey };
 
   const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (json) {
@@ -19195,17 +19173,13 @@ function loadCredFromEnv() {
         clientEmail: String(svc.client_email),
         privateKey: String(svc.private_key ?? "").replace(/\\n/g, "\n"),
       };
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   if (credPath) {
     try {
-      const resolved = path.isAbsolute(credPath)
-        ? credPath
-        : path.join(process.cwd(), credPath);
+      const resolved = path.isAbsolute(credPath) ? credPath : path.join(process.cwd(), credPath);
       const raw = fs.readFileSync(resolved, "utf8");
       const svc = JSON.parse(raw);
       return {
@@ -19213,45 +19187,28 @@ function loadCredFromEnv() {
         clientEmail: String(svc.client_email),
         privateKey: String(svc.private_key ?? "").replace(/\\n/g, "\n"),
       };
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
-  throw new Error(
-    "[firebaseAdmin] Missing FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY"
-  );
+  throw new Error("[firebaseAdmin] Missing FIREBASE_* credentials");
 }
 
 function initAdmin() {
   if (_app) return _app;
-
   const { projectId, clientEmail, privateKey } = loadCredFromEnv();
-
   if (admin.apps.length === 0) {
     _app = admin.initializeApp({
       credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
     });
-
-    // ⬅️ مهم: settings() مرة واحدة **بعد** initializeApp و**قبل** أي استخدام لـ Firestore
     admin.firestore().settings({ ignoreUndefinedProperties: true });
   } else {
     _app = admin.app();
-    // لا تنادي settings() هنا إطلاقًا — لأن Firestore غالبًا اتستخدم بالفعل
   }
-
   return _app;
 }
 
-export function dbAdmin() {
-  // تأكد إن التهيئة تمت قبل جلب الـ instance
-  initAdmin();
-  return admin.firestore();
-}
-
-export function authAdmin() {
-  return initAdmin().auth();
-}
+export function dbAdmin() { initAdmin(); return admin.firestore(); }
+export function authAdmin() { return initAdmin().auth(); }
 ====[ END FILE: src/lib/firebaseAdmin.ts ]==========================================================
 
 ====[ START FILE: src/lib/logger.ts (1.0 KB) ]======================================================
@@ -21121,7 +21078,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/ai/insights.ts ]======================================================
 
-====[ START FILE: src/pages/api/auth/exchange-onboarding.ts (3.7 KB) ]==============================
+====[ START FILE: src/pages/api/auth/exchange-onboarding.ts (4.0 KB) ]==============================
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin, authAdmin } from "@/lib/firebaseAdmin";
 
@@ -21129,8 +21086,8 @@ type Body = { tokenId?: string; email?: string; password?: string };
 
 type OnboardingDoc = {
   id?: string;
-  storeUid?: string;                // "salla:123" (الأفضل)
-  uid?: string;                     // للتوافق
+  storeUid?: string;               // "salla:123" (الأفضل)
+  uid?: string;                    // للتوافق
   store?: { id?: number | string } | null;
   usedAt?: number | null;
   expiresAt?: number | null;
@@ -21139,10 +21096,7 @@ type OnboardingDoc = {
 type Ok = { ok: true; userUid: string; storeUid: string; customToken: string };
 type Err = { ok: false; error: string };
 
-function msg(e: unknown) {
-  return e instanceof Error ? e.message : String(e);
-}
-
+function msg(e: unknown) { return e instanceof Error ? e.message : String(e); }
 function resolveStoreUid(d: OnboardingDoc | undefined): string | null {
   if (!d) return null;
   if (d.storeUid) return d.storeUid;
@@ -21157,7 +21111,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   try {
     const { tokenId, email, password } = (req.body || {}) as Body;
-
     if (!tokenId) return res.status(400).json({ ok: false, error: "tokenId is required" });
     if (!password || password.length < 6) {
       return res.status(400).json({ ok: false, error: "Password must be at least 6 characters" });
@@ -21195,28 +21148,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userUid = created.uid;
     }
 
-    // 3) ثبّت ملكية المتجر
-    await db.collection("stores").doc(storeUid).set(
-      {
-        uid: storeUid,
-        platform: "salla",
-        ownerUid: userUid,
-        updatedAt: Date.now(),
-      },
-      { merge: true }
-    );
+    // 3) ثبّت الملكية على المستند الحقيقي
+    await db.collection("stores").doc(storeUid).set({
+      uid: storeUid,
+      platform: "salla",
+      ownerUid: userUid,
+      updatedAt: Date.now(),
+    }, { merge: true });
 
-    // (اختياري) سجل الربط العكسي
+    // ✅ 4) اكتب alias على stores/{ownerUid} → storeUid
+    await db.collection("stores").doc(userUid).set({
+      ownerUid: userUid,
+      platform: "salla",
+      storeUid,               // يشير للمستند الحقيقي
+      updatedAt: Date.now(),
+    }, { merge: true });
+
+    // (اختياري) ربط عكسي
     await db.collection("owners").doc(userUid).collection("stores").doc(storeUid)
       .set({ platform: "salla", linkedAt: Date.now() }, { merge: true })
       .catch(() => {});
 
-    // 4) وعلّم التوكن كمستخدم
+    // علّم التوكن كمستخدم
     await tokSnap.ref.set({ usedAt: Date.now(), ownerUid: userUid, storeUid }, { merge: true });
 
     // 5) custom token
     const customToken = await adminAuth.createCustomToken(userUid);
-
     return res.status(200).json({ ok: true, userUid, storeUid, customToken });
   } catch (e) {
     return res.status(500).json({ ok: false, error: msg(e) });
@@ -23108,17 +23065,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/reviews/submit.ts ]===================================================
 
-====[ START FILE: src/pages/api/salla/callback.ts (10.5 KB) ]=======================================
+====[ START FILE: src/pages/api/salla/callback.ts (9.5 KB) ]========================================
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 const SALLA_TOKEN_URL = process.env.SALLA_TOKEN_URL || "https://accounts.salla.sa/oauth2/token";
 const DEFAULT_API_BASE = (process.env.SALLA_API_BASE || "https://api.salla.sa").replace(/\/+$/, "");
-
-const CLIENT_ID     = process.env.SALLA_CLIENT_ID!;
+const CLIENT_ID = process.env.SALLA_CLIENT_ID!;
 const CLIENT_SECRET = process.env.SALLA_CLIENT_SECRET!;
-const REDIRECT_URI  = process.env.SALLA_REDIRECT_URI!;
+const REDIRECT_URI = process.env.SALLA_REDIRECT_URI!;
 
 const APP_BASE = (
   process.env.APP_BASE_URL ||
@@ -23138,16 +23094,10 @@ type TokenResp = {
 };
 
 type SallaStoreInfo = {
-  status?: number;
-  success?: boolean;
   data?: {
     id?: number | string;
     name?: string;
     domain?: string;
-    currency?: string;
-    plan?: string;
-    status?: string;
-    email?: string;
     type?: "demo" | "real" | string;
   };
 };
@@ -23157,37 +23107,27 @@ function withTimeout(ms: number) {
   const t = setTimeout(() => controller.abort(), ms);
   return { signal: controller.signal, cancel: () => clearTimeout(t) };
 }
-
 const toErr = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const redact = (tok?: string | null) =>
-  !tok ? null : tok.length <= 12 ? `${tok.length}ch:${tok}` : `${tok.length}ch:${tok.slice(0, 6)}…${tok.slice(-6)}`;
-const randHex = (len = 16) => crypto.randomBytes(len).toString("hex");
+  !tok ? null : tok.length <= 12 ? `${tok.length}ch:${tok}` : `${tok.length}ch:${tok.slice(0,6)}…${tok.slice(-6)}`;
+const randHex = (len=16) => crypto.randomBytes(len).toString("hex");
 
 async function fetchWithTrace(url: string, init: RequestInit, opts?: { label?: string; timeoutMs?: number }) {
   const label = opts?.label || "fetch";
   const timeoutMs = opts?.timeoutMs ?? 15000;
   const { signal, cancel } = withTimeout(timeoutMs);
-
   const startedAt = Date.now();
-  let text = "";
-  let ok = false;
-  let status = 0;
-  const headers: Record<string, string> = {};
-  let errMsg = "";
-
+  let text = "", ok = false, status = 0, errMsg = "";
+  const headers: Record<string,string> = {};
   try {
     const r = await fetch(url, { ...init, signal });
     status = r.status;
-    r.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; });
+    r.headers.forEach((v,k)=>{ headers[k.toLowerCase()] = v; });
     text = await r.text();
-    if (text.length > 1024) text = text.slice(0, 1024) + "…[truncated]";
+    if (text.length > 1024) text = text.slice(0,1024) + "…[truncated]";
     ok = r.ok;
-  } catch (e) {
-    errMsg = toErr(e);
-  } finally {
-    cancel();
-  }
-
+  } catch (e) { errMsg = toErr(e); }
+  finally { cancel(); }
   const elapsed = Date.now() - startedAt;
   console.error(`[salla/callback][${label}] url=${url}
   method=${init.method || "GET"}
@@ -23195,7 +23135,6 @@ async function fetchWithTrace(url: string, init: RequestInit, opts?: { label?: s
   headers=${JSON.stringify(headers)}
   error=${errMsg || "none"}
   body_snippet=${text ? JSON.stringify(text) : "none"}`);
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return { ok, status, headers, text, res: null as any, elapsed, error: errMsg || null };
 }
@@ -23210,7 +23149,6 @@ function decideApiBase(info: SallaStoreInfo | null | undefined): string {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const debugRequested = req.query.debug === "1";
-
   try {
     if (req.method !== "GET") return res.status(405).send("Method Not Allowed");
 
@@ -23219,30 +23157,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!code) return res.status(400).send("Missing code");
 
     if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
-      console.error("[salla/callback] missing_oauth_env", {
-        hasClientId: !!CLIENT_ID,
-        hasSecret: !!CLIENT_SECRET,
-        hasRedirect: !!REDIRECT_URI,
-      });
+      console.error("[salla/callback] missing_oauth_env");
       return res.status(500).send("Salla OAuth env vars are not configured");
     }
-
-    if (!APP_BASE) {
-      console.warn("[salla/callback] APP_BASE not configured; redirects/webhook setup may fail.");
-    }
+    if (!APP_BASE) console.warn("[salla/callback] APP_BASE not configured");
 
     const db = dbAdmin();
 
+    // state → ownerUid (اختياري)
     let presetUid: string | null = null;
     let returnTo: string | null = null;
     let ownerUid: string | null = null;
-
     if (state) {
       try {
         const stRef = db.collection("salla_oauth_state").doc(state);
         const stSnap = await stRef.get();
         if (stSnap.exists) {
-          const st = stSnap.data() as { uid?: string; returnTo?: string; ownerUid?: string; createdAt?: number } | undefined;
+          const st = stSnap.data() as { uid?: string; returnTo?: string; ownerUid?: string } | undefined;
           presetUid = typeof st?.uid === "string" ? st.uid : null;
           returnTo  = typeof st?.returnTo === "string" ? st.returnTo : null;
           ownerUid  = typeof st?.ownerUid === "string" ? st.ownerUid : null;
@@ -23253,20 +23184,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (typeof parsed?.uid === "string") presetUid = parsed.uid;
             if (typeof parsed?.returnTo === "string") returnTo = parsed.returnTo;
             if (typeof parsed?.ownerUid === "string") ownerUid = parsed.ownerUid;
-          } catch { /* ignore */ }
+          } catch {}
         }
-      } catch (e) {
-        console.error("[salla/callback] state_read_error", toErr(e));
-      }
+      } catch (e) { console.error("[salla/callback] state_read_error", toErr(e)); }
     }
 
     // 1) token exchange
     const tokenForm = new URLSearchParams({
       grant_type: "authorization_code",
-      code,
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      redirect_uri: REDIRECT_URI,
+      code, client_id: CLIENT_ID, client_secret: CLIENT_SECRET, redirect_uri: REDIRECT_URI,
     }).toString();
 
     const tokenTrace = await fetchWithTrace(
@@ -23274,29 +23200,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: tokenForm },
       { label: "token_exchange", timeoutMs: 15000 }
     );
-
-    if (!tokenTrace.ok) {
-      console.error("[salla/callback] token_exchange_failed_details", { status: tokenTrace.status, body: tokenTrace.text });
-      return res.status(tokenTrace.status || 502).send("token_exchange_failed");
-    }
+    if (!tokenTrace.ok) return res.status(tokenTrace.status || 502).send("token_exchange_failed");
 
     let tokens: Partial<TokenResp> = {};
-    try {
-      tokens = JSON.parse(tokenTrace.text || "{}") as Partial<TokenResp>;
-    } catch {
-      console.error("[salla/callback] token_parse_error");
-      return res.status(502).send("token_parse_error");
-    }
-
-    console.error("[salla/callback] token_ok", {
-      token: redact(tokens.access_token),
-      scope: tokens.scope,
-      expires_in: tokens.expires_in,
-    });
-
-    if (!tokens.access_token) {
-      return res.status(500).send("missing_access_token");
-    }
+    try { tokens = JSON.parse(tokenTrace.text || "{}") as Partial<TokenResp>; }
+    catch { return res.status(502).send("token_parse_error"); }
+    if (!tokens.access_token) return res.status(500).send("missing_access_token");
 
     // 2) store info
     const meUrl = `${DEFAULT_API_BASE}/admin/v2/store/info`;
@@ -23305,13 +23214,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { method: "GET", headers: { Authorization: `Bearer ${tokens.access_token}` } },
       { label: "store_info", timeoutMs: 15000 }
     );
-
-    if (!meTrace.ok) {
-      if (meTrace.status === 401 || meTrace.status === 403) {
-        return res.status(meTrace.status).send("fetch_store_auth_error");
-      }
-      return res.status(meTrace.status || 502).send("fetch_store_network_error");
-    }
+    if (!meTrace.ok) return res.status(meTrace.status || 502).send("fetch_store_error");
 
     const info = JSON.parse(meTrace.text || "{}") as SallaStoreInfo;
     const storeId     = info?.data?.id;
@@ -23325,45 +23228,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const expiresIn = Number(tokens.expires_in || 0);
     const expiresAt = expiresIn ? Date.now() + expiresIn * 1000 : null;
 
-    await db.collection("salla_tokens").doc(uid).set(
-      {
-        uid,
-        provider: "salla",
+    await db.collection("salla_tokens").doc(uid).set({
+      uid, provider: "salla", storeId,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token || null,
+      expiresIn: expiresIn || null,
+      expiresAt,
+      scope: tokens.scope || null,
+      obtainedAt: Date.now(),
+      storeName, storeDomain, apiBase: apiBaseForStore,
+    }, { merge: true });
+
+    // المستند الحقيقي
+    await db.collection("stores").doc(uid).set({
+      uid,
+      platform: "salla",
+      ownerUid: ownerUid || null,
+      salla: {
         storeId,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token || null,
-        expiresIn: expiresIn || null,
-        expiresAt,
-        scope: tokens.scope || null,
-        obtainedAt: Date.now(),
+        connected: true,
+        installed: true,
+        installedAt: Date.now(),
         storeName,
-        storeDomain,
+        domain: storeDomain,
         apiBase: apiBaseForStore,
       },
-      { merge: true }
-    );
+      connectedAt: Date.now(),
+      updatedAt: Date.now(),
+    }, { merge: true });
 
-    await db.collection("stores").doc(uid).set(
-      {
-        uid,
+    // ✅ alias على stores/{ownerUid} لو معروف
+    if (ownerUid) {
+      await db.collection("stores").doc(ownerUid).set({
+        ownerUid,
         platform: "salla",
-        ownerUid: ownerUid || null,
-        salla: {
-          storeId,
-          connected: true,
-          installed: true,
-          installedAt: Date.now(),
-          storeName,
-          domain: storeDomain,
-          apiBase: apiBaseForStore,
-        },
-        connectedAt: Date.now(),
+        storeUid: uid,           // يشير للمستند الحقيقي
+        storeName,
         updatedAt: Date.now(),
-      },
-      { merge: true }
-    );
+      }, { merge: true });
+    }
 
-    // 5) webhooks
+    // webhooks (اختياري)
     if (APP_BASE) {
       try {
         const subUrl = `${APP_BASE}/api/salla/subscribe?uid=${encodeURIComponent(uid)}`;
@@ -23372,20 +23277,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           { method: "POST", headers: { "Content-Type": "application/json", "x-cron-secret": process.env.CRON_SECRET || "" } },
           { label: "webhooks_subscribe", timeoutMs: 10000 }
         );
-      } catch (e) {
-        console.warn("[salla/callback] webhook_subscribe_exception", toErr(e));
-      }
+      } catch (e) { console.warn("[salla/callback] webhook_subscribe_exception", toErr(e)); }
     }
 
-    // 6) Onboarding Token → set-password (أضفنا storeUid)
+    // 3) Onboarding token (يحمل storeUid)
     let onboardingUrl: string | null = null;
     try {
       const tokenId = randHex(16);
       const now = Date.now();
       await db.collection("onboarding_tokens").doc(tokenId).set({
         id: tokenId,
-        storeUid: uid,                    // 👈 مهم
-        uid,                              // للتوافق
+        storeUid: uid,     // مهم
+        uid,               // للتوافق
         createdAt: now,
         expiresAt: now + 15 * 60 * 1000,
         usedAt: null,
@@ -23393,28 +23296,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         purpose: "set_password_after_salla_connect",
       });
       if (APP_BASE) onboardingUrl = `${APP_BASE}/onboarding/set-password?t=${tokenId}`;
-    } catch (e) {
-      console.warn("[salla/callback] onboarding_token_error", toErr(e));
-    }
+    } catch (e) { console.warn("[salla/callback] onboarding_token_error", toErr(e)); }
 
     const dest = onboardingUrl || returnTo || AFTER_PATH;
-
     if (debugRequested) {
-      return res.status(200).json({
-        ok: true,
-        uid,
-        ownerUid,
-        storeId,
-        apiBase: apiBaseForStore,
-        token_preview: redact(tokens.access_token),
-        scope: tokens.scope,
-        expires_in: tokens.expires_in || null,
-        storeName,
-        storeDomain,
-        redirect_to: dest,
-      });
+      return res.status(200).json({ ok: true, uid, ownerUid, storeId, storeName, storeDomain, redirect_to: dest });
     }
-
     return res.redirect(302, dest);
   } catch (e) {
     console.error("salla_callback_error", toErr(e));
@@ -23694,14 +23581,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/salla/refresh.ts ]====================================================
 
-====[ START FILE: src/pages/api/salla/status.ts (3.6 KB) ]==========================================
+====[ START FILE: src/pages/api/salla/status.ts (4.1 KB) ]==========================================
 import type { NextApiRequest, NextApiResponse } from "next";
-import { dbAdmin } from "@/lib/firebaseAdmin";
+import { dbAdmin, authAdmin } from "@/lib/firebaseAdmin";
 
 type StatusOk = {
   ok: true;
   connected: boolean;
-  uid?: string | null;
+  uid?: string | null;          // السجل المقروء (غالبًا "salla:{id}")
   storeId?: string | number | null;
   storeName?: string | null;
   domain?: string | null;
@@ -23709,16 +23596,50 @@ type StatusOk = {
 };
 type StatusFail = { ok: false; error: string };
 
-function asMsg(e: unknown) {
-  return e instanceof Error ? e.message : String(e);
-}
+const asMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 function normalizeConnected(d: Record<string, unknown> | undefined) {
   const s = (d?.salla || {}) as Record<string, unknown>;
   const connected = Boolean(s.connected);
-  const installedAt = Number(s.installedAt ?? (d as Record<string, unknown> | undefined)?.installedAt ?? 0);
-  const uninstalledAt = Number((d as Record<string, unknown> | undefined)?.uninstalledAt ?? 0);
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const installedAt = Number(s.installedAt ?? (d as any)?.installedAt ?? 0);
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const uninstalledAt = Number((d as any)?.uninstalledAt ?? 0);
   return connected && (!uninstalledAt || uninstalledAt < installedAt);
+}
+
+async function resolveUidFromToken(req: NextApiRequest): Promise<string | null> {
+  // تحقّق من المستخدم
+  const h = req.headers.authorization || "";
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  if (!m) return null;
+  const token = m[1];
+  try {
+    const dec = await authAdmin().verifyIdToken(token);
+    const ownerUid = dec.uid;
+
+    const db = dbAdmin();
+    // 1) alias: stores/{ownerUid} → storeUid
+    const aliasSnap = await db.collection("stores").doc(ownerUid).get();
+    if (aliasSnap.exists) {
+      const a = aliasSnap.data() || {};
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const storeUid = (a as any).storeUid as string | undefined;
+      if (storeUid) return storeUid;
+    }
+    // 2) استرجاع مباشر لمتجر سلة الخاص بالـ ownerUid
+    const q = await db
+      .collection("stores")
+      .where("platform", "==", "salla")
+      .where("ownerUid", "==", ownerUid)
+      .limit(1)
+      .get();
+    if (!q.empty) return q.docs[0].id;
+
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export default async function handler(
@@ -23727,71 +23648,56 @@ export default async function handler(
 ) {
   try {
     const db = dbAdmin();
-    const uidParam = typeof req.query.uid === "string" ? req.query.uid : undefined;
-    const ownerUid = typeof req.query.ownerUid === "string" ? req.query.ownerUid : undefined;
 
-    // 1) القراءة بالـ uid مباشرة (أفضل طريق)
-    if (uidParam) {
-      const doc = await db.collection("stores").doc(uidParam).get();
-      if (doc.exists) {
-        const data = doc.data() || {};
-        const s = (data as { salla?: Record<string, unknown> }).salla || {};
-        return res.status(200).json({
-          ok: true,
-          connected: normalizeConnected(data),
-          uid: doc.id,
-          storeId: (s.storeId as string | number | null) ?? null,
-          storeName: (s.storeName as string | null) ?? null,
-          domain: (s.domain as string | null) ?? null,
-          reason: "read_by_uid",
-        });
-      }
-      // fallback: التوكنات
-      const tok = await db.collection("salla_tokens").doc(uidParam).get();
-      if (tok.exists) {
-        const t = tok.data() || {};
-        return res.status(200).json({
-          ok: true,
-          connected: true,
-          uid: uidParam,
-          storeId: (t.storeId as string | number | null) ?? null,
-          storeName: (t.storeName as string | null) ?? null,
-          domain: (t.storeDomain as string | null) ?? null,
-          reason: "fallback_by_tokens",
-        });
-      }
-      return res.status(200).json({ ok: true, connected: false, uid: uidParam, reason: "not_found" });
+    // أولوية: uid صريح في الكويري
+    let uid = typeof req.query.uid === "string" ? req.query.uid : undefined;
+
+    // وإلا حاول حلّه من توكن المستخدم (alias → مستند سلة الحقيقي)
+    if (!uid) {
+      uid = await resolveUidFromToken(req) ?? undefined;
     }
 
-    // 2) للتوافق: platform + ownerUid (لو واجهتك القديمة تبعته)
-    if (!ownerUid) {
-      return res.status(400).json({ ok: false, error: "Missing uid or ownerUid" });
+    if (!uid) {
+      return res.status(400).json({ ok: false, error: "Missing uid (salla:{id}) and no resolvable user alias" });
     }
 
-    const q = await db
-      .collection("stores")
-      .where("platform", "==", "salla")
-      .where("ownerUid", "==", ownerUid)
-      .limit(1)
-      .get();
-
-    if (!q.empty) {
-      const doc = q.docs[0];
+    // اقرأ مستند سلة الحقيقي
+    const doc = await db.collection("stores").doc(uid).get();
+    if (doc.exists) {
       const data = doc.data() || {};
-      const s = (data as { salla?: Record<string, unknown> }).salla || {};
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const s = (data as any).salla || {};
       return res.status(200).json({
         ok: true,
         connected: normalizeConnected(data),
         uid: doc.id,
-        storeId: (s.storeId as string | number | null) ?? null,
-        storeName: (s.storeName as string | null) ?? null,
-        domain: (s.domain as string | null) ?? null,
-        reason: "query_by_ownerUid",
+        storeId: s.storeId ?? null,
+        storeName: s.storeName ?? null,
+        domain: s.domain ?? null,
+        reason: "read_salla_doc",
       });
     }
 
-    return res.status(200).json({ ok: true, connected: false, reason: "ownerUid_query_empty" });
-  } catch (e: unknown) {
+    // fallback: لو عندك توكنات
+    const tok = await db.collection("salla_tokens").doc(uid).get();
+    if (tok.exists) {
+      const t = tok.data() || {};
+      return res.status(200).json({
+        ok: true,
+        connected: true,
+        uid,
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        storeId: (t as any).storeId ?? null,
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        storeName: (t as any).storeName ?? null,
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        domain: (t as any).storeDomain ?? null,
+        reason: "fallback_by_tokens",
+      });
+    }
+
+    return res.status(200).json({ ok: true, connected: false, uid, reason: "not_found" });
+  } catch (e) {
     return res.status(500).json({ ok: false, error: asMsg(e) });
   }
 }
@@ -24705,38 +24611,76 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/store/dashboard.ts ]==================================================
 
-====[ START FILE: src/pages/api/store/info.ts (1.1 KB) ]============================================
-// src/pages/api/store/info.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { verifyStore, type AuthedRequest } from '@/utils/verifyStore';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+====[ START FILE: src/pages/api/store/info.ts (2.6 KB) ]============================================
+import type { NextApiRequest, NextApiResponse } from "next";
+import { dbAdmin } from "@/lib/firebaseAdmin";
+import { authAdmin } from "@/lib/firebaseAdmin";
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Ok = { ok: true; store: any };
+type Err = { ok: false; error: string };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function verify(req: NextApiRequest) {
+  const h = req.headers.authorization || "";
+  const m = h.match(/^Bearer (.+)$/i);
+  const token = m?.[1];
+  if (!token) return null;
   try {
-    await verifyStore(req); // ✅ وسيط واحد فقط
+    const dec = await authAdmin().verifyIdToken(token);
+    return { uid: dec.uid as string, email: (dec.email ?? null) as string | null };
+  } catch { return null; }
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse<Ok | Err>) {
+  try {
+    const db = dbAdmin();
+    const uidParam = typeof req.query.uid === "string" ? req.query.uid : undefined;
+
+    // 1) أولوية: uid في الكويري
+    let idToRead: string | null = uidParam || null;
+
+    // 2) وإلا استخدم uid الخاص بالمستخدم (لو الهيدر موجود)
+    if (!idToRead) {
+      const user = await verify(req);
+      if (!user) return res.status(401).json({ ok: false, error: "UNAUTHENTICATED" });
+      idToRead = user.uid;
+    }
+
+    if (!idToRead) return res.status(400).json({ ok: false, error: "Missing uid" });
+
+    // اقرأ المستند
+    let snap = await db.collection("stores").doc(idToRead).get();
+    if (!snap.exists) return res.status(404).json({ ok: false, error: "Store not found" });
+
+    let data = snap.data() || {};
+
+    // لو ده alias عنده storeUid → ارجع للمستند الحقيقي
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const alias = (data as any).storeUid as string | undefined;
+    if (alias) {
+      const real = await db.collection("stores").doc(alias).get();
+      if (real.exists) {
+        data = { ...(real.data() || {}), aliasOf: idToRead };
+        snap = real;
+      }
+    }
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s = (data as any).salla || {};
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const name = s.storeName ?? (data as any).storeName ?? null;
+
+    return res.status(200).json({
+      ok: true,
+      store: {
+        storeUid: snap.id,
+        name,
+        salla: s,
+        domain: s.domain ?? null,
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        platform: (data as any).platform ?? "salla",
+      },
+    });
   } catch (e) {
-    const err = e as Error & { status?: number };
-    return res.status(err.status ?? 401).json({ message: err.message || 'Unauthorized' });
-  }
-
-  try {
-    const { storeId } = req as AuthedRequest;
-    if (!storeId) {
-      return res.status(400).json({ message: 'Missing storeId' });
-    }
-
-    const docRef = doc(db, 'stores', storeId);
-    const snapshot = await getDoc(docRef);
-
-    if (!snapshot.exists()) {
-      return res.status(404).json({ message: 'Store not found' });
-    }
-
-    return res.status(200).json({ store: snapshot.data() });
-  } catch (err) {
-    console.error('Fetch store info error:', err);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    return res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
   }
 }
 ====[ END FILE: src/pages/api/store/info.ts ]=======================================================
@@ -25465,67 +25409,92 @@ export default function ConnectIndex() {
 }
 ====[ END FILE: src/pages/connect/index.tsx ]=======================================================
 
-====[ START FILE: src/pages/connect/salla.tsx (3.2 KB) ]============================================
+====[ START FILE: src/pages/connect/salla.tsx (4.0 KB) ]============================================
 // src/pages/connect/salla.tsx
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import Link from "next/link";
-import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/router';
+import Link from 'next/link';
+import { getAuth } from 'firebase/auth';
+import { app } from '@/lib/firebase';
 
 export default function ConnectSalla() {
-  const { token } = useAuth();
   const router = useRouter();
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<string>('');
   const [starting, setStarting] = useState<boolean>(true);
+  const cancelledRef = useRef(false);
 
   useEffect(() => {
-    if (!token) return; // منتظر التوكن من السياق
+    cancelledRef.current = false;
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const start = async () => {
       try {
         setStarting(true);
-        setError("");
+        setError('');
+
+        const auth = getAuth(app);
+        const user = auth.currentUser;
+
+        if (!user) {
+          throw new Error('غير مصرح: الرجاء تسجيل الدخول أولاً.');
+        }
+
+        // خُد توكن حديث
+        const idToken = await user.getIdToken(true);
 
         const params = new URLSearchParams();
-        // رجوع افتراضي بعد إتمام التفويض والكولباك
-        params.set("return", "/admin");
+        // مسار الرجوع بعد إنهاء التدفق في الكولباك
+        params.set('return', '/admin');
 
-        const res = await fetch(`/api/salla/connect?${params.toString()}`, {
-          headers: { Authorization: `Bearer ${token}` },
+        // استخدم رابط مطلق لو لزم الأمر
+        const url =
+          typeof window !== 'undefined'
+            ? new URL(`/api/salla/connect?${params.toString()}`, window.location.origin).toString()
+            : `/api/salla/connect?${params.toString()}`;
+
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${idToken}` },
         });
 
         if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const j = await res.json().catch(() => ({} as any));
           throw new Error(j?.message || `HTTP ${res.status}`);
         }
 
         const j = (await res.json()) as { url?: string };
-        if (!j?.url) throw new Error("Missing authorize URL");
+        if (!j?.url) throw new Error('Missing authorize URL');
 
-        // التحويل لصفحة موافقة سلة
-        window.location.href = j.url;
+        // التحويل إلى صفحة موافقة سلة
+        window.location.assign(j.url);
       } catch (e) {
+        if (cancelledRef.current) return;
         setError(e instanceof Error ? e.message : String(e));
         setStarting(false);
       }
     };
+
+    // ابدأ فوراً (بدون الاعتماد على useAuth)
     start();
-  }, [token]);
+  }, []);
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-8">
       <div className="bg-white rounded-3xl border border-gray-200/60 p-10 shadow-2xl w-full max-w-lg text-center">
         <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-emerald-600 to-emerald-700 flex items-center justify-center text-white text-3xl">
-          {starting ? "⏳" : error ? "⚠️" : "✅"}
+          {starting && !error ? '⏳' : error ? '⚠️' : '✅'}
         </div>
 
         {starting && !error && (
           <>
             <h1 className="text-2xl font-extrabold text-gray-900 mb-2">بدء ربط سلة</h1>
-            <p className="text-gray-600">
-              جارٍ تحويلك إلى صفحة التفويض في سلة لإتمام الربط الآمن…
-            </p>
+            <p className="text-gray-600">جارٍ تحويلك إلى صفحة التفويض في سلة لإتمام الربط الآمن…</p>
           </>
         )}
 
@@ -25541,7 +25510,6 @@ export default function ConnectSalla() {
                 إعادة المحاولة
               </button>
 
-              {/* استخدم Link بدل <a> */}
               <Link
                 href="/connect"
                 className="px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50"
@@ -25589,30 +25557,143 @@ export default function ConnectZid() {
 }
 ====[ END FILE: src/pages/connect/zid.tsx ]=========================================================
 
-====[ START FILE: src/pages/dashboard.tsx (2.1 KB) ]================================================
-import { useState } from 'react';
+====[ START FILE: src/pages/dashboard.tsx (5.9 KB) ]================================================
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import DashboardAnalytics from '@/components/dashboard/Analytics';
 import OrdersTab from '@/components/dashboard/OrdersTab';
 import ReviewsTab from '@/components/dashboard/Reviews';
 import SettingsTab from '@/components/dashboard/StoreSettings';
 import SupportTab from '@/components/dashboard/Support';
-import { useAuth } from '@/contexts/AuthContext';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { app } from '@/lib/firebase';
+import axios from '@/lib/axiosInstance';
 
-const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', 'الإعدادات', 'المساعدة'];
+const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', 'الإعدادات', 'المساعدة'] as const;
+type Tab = (typeof tabs)[number];
 
 export default function DashboardPage() {
-  const { storeName, loading } = useAuth(); // ✅ أضف loading
-  const [activeTab, setActiveTab] = useState('الإحصائيات');
+  const router = useRouter();
 
-  // ✅ إظهار رسالة فقط إذا كان جاري التحميل
-  if (loading) return <p>جارٍ تحميل بيانات المتجر...</p>;
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('dash_active_tab') as Tab) || 'الإحصائيات';
+    }
+    return 'الإحصائيات';
+  });
 
-  // ✅ التحقق من وجود اسم المتجر بعد التحميل
-  if (!storeName) return <p className="text-red-600">لم يتم العثور على المتجر!</p>;
+  const [authLoading, setAuthLoading] = useState(true);
+  const [userPresent, setUserPresent] = useState(false);
+
+  const [storeName, setStoreName] = useState<string | undefined>(undefined);
+  const [storeUid, setStoreUid] = useState<string | undefined>(undefined);
+  const [storeLoading, setStoreLoading] = useState(true);
+
+  useEffect(() => {
+    localStorage.setItem('dash_active_tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const auth = getAuth(app);
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUserPresent(!!u);
+      setAuthLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  // جلب اسم المتجر و storeUid بشكل قياسي
+  useEffect(() => {
+    const run = async () => {
+      setStoreLoading(true);
+      try {
+        const auth = getAuth(app);
+        const user = auth.currentUser;
+        if (!user) {
+          setStoreName(undefined);
+          setStoreUid(undefined);
+          return;
+        }
+        const idToken = await user.getIdToken(true);
+
+        // أولوية uid من الكويري (لو جاي من set-password)
+        const uidFromQuery =
+          typeof router.query.uid === 'string' ? router.query.uid : undefined;
+        if (uidFromQuery) setStoreUid(uidFromQuery);
+
+        // اندبوينت موحّد بيرجع storeUid + الاسم
+        const res = await axios.get('/api/store/info', {
+          headers: { Authorization: `Bearer ${idToken}` },
+        }).catch(() => null);
+
+        const name =
+          res?.data?.store?.name ??
+          res?.data?.name ??
+          res?.data?.storeName ??
+          undefined;
+
+        // حاول استخراج storeUid (لو مش موجود في الكويري)
+        const storeUidFromInfo: string | undefined =
+          res?.data?.store?.storeUid ??
+          (res?.data?.store?.salla?.storeId
+            ? `salla:${String(res.data.store.salla.storeId)}`
+            : undefined);
+
+        if (!uidFromQuery && storeUidFromInfo) setStoreUid(storeUidFromInfo);
+        if (name) setStoreName(name);
+
+        // كملّة تأكيد: لو لسه مفيش اسم، استخرجه من حالة سلة (بس بالـ uid لو معانا)
+        if (!name && (uidFromQuery || storeUidFromInfo)) {
+          const st = await axios.get(
+            `/api/salla/status?uid=${encodeURIComponent(
+              uidFromQuery || storeUidFromInfo!
+            )}`,
+            { headers: { Authorization: `Bearer ${idToken}` } }
+          ).catch(() => null);
+
+          const sName =
+            st?.data?.storeName ??
+            st?.data?.salla?.storeName ??
+            undefined;
+          if (sName) setStoreName(sName);
+        }
+      } finally {
+        setStoreLoading(false);
+      }
+    };
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.query.uid]);
+
+  const headerRight = useMemo(() => {
+    if (storeLoading) {
+      return <span className="text-gray-400 text-sm">جارٍ تحميل بيانات المتجر…</span>;
+    }
+    if (storeName) {
+      return (
+        <span className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+          المتجر: {storeName}
+        </span>
+      );
+    }
+    return (
+      <span className="px-3 py-1 rounded-lg bg-gray-50 text-gray-600 border border-gray-200">
+        المتجر: غير محدد
+      </span>
+    );
+  }, [storeLoading, storeName]);
+
+  if (authLoading) return <p>جارٍ التحقق من حالة تسجيل الدخول…</p>;
+  if (!userPresent) return <p className="text-red-600">مطلوب تسجيل الدخول للوصول للوحة التحكم.</p>;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="text-3xl font-bold mb-6 text-green-800">لوحة التحكم</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold text-green-800">لوحة التحكم</h1>
+        {headerRight}
+      </div>
 
       <div className="flex space-x-2 mb-6 rtl:space-x-reverse">
         {tabs.map((tab) => (
@@ -25634,7 +25715,7 @@ export default function DashboardPage() {
         {activeTab === 'الإحصائيات' && <DashboardAnalytics />}
         {activeTab === 'الطلبات' && <OrdersTab />}
         {activeTab === 'التقييمات' && <ReviewsTab storeName={storeName} />}
-        {activeTab === 'الإعدادات' && <SettingsTab />}
+        {activeTab === 'الإعدادات' && <SettingsTab storeUid={storeUid} />}
         {activeTab === 'المساعدة' && <SupportTab />}
       </div>
     </div>
@@ -26076,12 +26157,15 @@ export default function LoginPage() {
 }
 ====[ END FILE: src/pages/login.tsx ]===============================================================
 
-====[ START FILE: src/pages/onboarding/set-password.tsx (3.6 KB) ]==================================
+====[ START FILE: src/pages/onboarding/set-password.tsx (3.4 KB) ]==================================
 import { useRouter } from "next/router";
 import { useState, useMemo } from "react";
 import Head from "next/head";
 import { auth } from "@/lib/firebase";
-import { setPersistence, browserLocalPersistence, signInWithEmailAndPassword, signInWithCustomToken } from "firebase/auth";
+import {
+  setPersistence, browserLocalPersistence,
+  signInWithEmailAndPassword, signInWithCustomToken
+} from "firebase/auth";
 
 export default function SetPasswordPage() {
   const router = useRouter();
@@ -26093,16 +26177,12 @@ export default function SetPasswordPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [err,   setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tokenFromQuery) {
-      setErr("Token مفقود في الرابط.");
-      return;
-    }
-    setErr(null);
-    setSubmitting(true);
+    if (!tokenFromQuery) { setErr("Token مفقود في الرابط."); return; }
+    setErr(null); setSubmitting(true);
 
     try {
       const r = await fetch("/api/auth/exchange-onboarding", {
@@ -26114,17 +26194,14 @@ export default function SetPasswordPage() {
       if (!r.ok || !j?.ok) throw new Error(j?.error || "فشل في الاستبدال");
 
       await setPersistence(auth, browserLocalPersistence);
-
-      if (email) {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else if (j.customToken) {
-        await signInWithCustomToken(auth, j.customToken);
-      }
+      if (email) await signInWithEmailAndPassword(auth, email, password);
+      else if (j.customToken) await signInWithCustomToken(auth, j.customToken);
 
       const dest = `/dashboard/integrations?salla=connected${j.storeUid ? `&uid=${encodeURIComponent(j.storeUid)}` : ""}`;
       router.replace(dest);
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : String(e));
+      //eslint-disable-next-line
+    } catch (e: any) {
+      setErr(e?.message || String(e));
     } finally {
       setSubmitting(false);
     }
@@ -26140,37 +26217,23 @@ export default function SetPasswordPage() {
 
           <label className="block">
             <span className="block text-sm mb-1">الإيميل (اختياري — يُفضّل تعبئته)</span>
-            <input
-              type="email"
-              className="w-full border rounded-md p-2"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
+            <input type="email" className="w-full border rounded-md p-2"
+              placeholder="you@example.com" value={email}
+              onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
           </label>
 
           <label className="block">
             <span className="block text-sm mb-1">كلمة المرور</span>
-            <input
-              type="password"
-              className="w-full border rounded-md p-2"
-              placeholder="••••••••"
-              value={password}
+            <input type="password" className="w-full border rounded-md p-2"
+              placeholder="••••••••" value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
-              minLength={6}
-              required
-            />
+              autoComplete="new-password" minLength={6} required />
           </label>
 
           {err && <p className="text-red-600 text-sm">{err}</p>}
 
-          <button
-            type="submit"
-            disabled={!tokenFromQuery || submitting}
-            className="w-full rounded-md bg-black text-white py-2 disabled:opacity-60"
-          >
+          <button type="submit" disabled={!tokenFromQuery || submitting}
+            className="w-full rounded-md bg-black text-white py-2 disabled:opacity-60">
             {submitting ? "جاري الحفظ..." : "حفظ ومتابعة"}
           </button>
         </form>
@@ -29647,4 +29710,4 @@ function makeSeparator(title) {
 Total files seen : 209
 Included         : 197
 Skipped          : 12
-Finished at      : 2025-09-08T12:05:00.530Z
+Finished at      : 2025-09-08T14:41:16.926Z
