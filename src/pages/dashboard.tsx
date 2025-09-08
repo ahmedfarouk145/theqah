@@ -1,93 +1,105 @@
 // src/pages/dashboard.tsx
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useEffect, useMemo, useState } from 'react';
 import DashboardAnalytics from '@/components/dashboard/Analytics';
 import OrdersTab from '@/components/dashboard/OrdersTab';
 import ReviewsTab from '@/components/dashboard/Reviews';
 import SettingsTab from '@/components/dashboard/StoreSettings';
 import SupportTab from '@/components/dashboard/Support';
-import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { app } from '@/lib/firebase';
+import axios from '@/lib/axiosInstance';
 
 const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', 'الإعدادات', 'المساعدة'] as const;
 type Tab = (typeof tabs)[number];
 
-type SallaStatus = {
-  ok?: boolean;
-  connected?: boolean;
-  uid?: string | null;
-  storeId?: string | number | null;
-  storeName?: string | null;
-  domain?: string | null;
-  reason?: string | null;
-};
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function fetchJson<T = any>(url: string, init?: RequestInit): Promise<{ ok: boolean; data: T | null }> {
-  const r = await fetch(url, init);
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let j: any = null;
-  try { j = await r.json(); } catch { j = null; }
-  const data = (j && (j.data ?? j)) as T | null;
-  return { ok: r.ok, data };
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : null;
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
-
-  // حفظ التبويب
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('dash_active_tab') as Tab) || 'الإحصائيات';
     }
     return 'الإحصائيات';
   });
-  useEffect(() => {
-    localStorage.setItem('dash_active_tab', activeTab);
-  }, [activeTab]);
 
-  // auth state
   const [authLoading, setAuthLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
+  const [userPresent, setUserPresent] = useState(false);
+
+  const [storeUid, setStoreUid] = useState<string | undefined>(undefined);
+  const [storeName, setStoreName] = useState<string | undefined>(undefined);
+  const [storeLoading, setStoreLoading] = useState(true);
+
+  useEffect(() => { localStorage.setItem('dash_active_tab', activeTab); }, [activeTab]);
+
+  // مراقبة تسجيل الدخول (لو عندك صلاحيات إضافية بعد اللوجين)
   useEffect(() => {
     const auth = getAuth(app);
     const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u || null);
+      setUserPresent(!!u);
       setAuthLoading(false);
     });
     return () => unsub();
   }, []);
 
-  // بيانات المتجر
-  const [storeName, setStoreName] = useState<string | undefined>(undefined);
-  const [storeUid, setStoreUid] = useState<string | undefined>(undefined);
-  const [storeLoading, setStoreLoading] = useState(true);
-
-  const fromSalla = router.query.salla === 'connected';
-  const uidFromQuery = typeof router.query.uid === 'string' ? router.query.uid : undefined;
-  const onboardingToken = typeof router.query.t === 'string' ? router.query.t : undefined;
-
-  // وضع: جاي من سلة من غير لوجين → اعرض الكارت واقرأ الحالة مباشرة
+  // حدّد storeUid من query أو cookie
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      if (!fromSalla || !uidFromQuery) { setStoreLoading(false); return; }
-      setStoreLoading(true);
-      const { data } = await fetchJson<SallaStatus>(`/api/salla/status?uid=${encodeURIComponent(uidFromQuery)}`);
-      if (!mounted) return;
-      setStoreUid(uidFromQuery);
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const name = (data as any)?.storeName ?? null;
-      if (typeof name === 'string' && name.trim()) setStoreName(name.trim());
-      setStoreLoading(false);
-    })();
-    return () => { mounted = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fromSalla, uidFromQuery]);
+    const u = new URL(window.location.href);
+    const qUid = u.searchParams.get('uid');
+    const cUid = getCookie('salla_store_uid');
+    setStoreUid(qUid || cUid || undefined);
+  }, []);
 
-  // وضع: لوجين عادي → سيب بقية الداشبورد يشتغل بالطريقة المعتادة (لو عايز، أضف هنا جلب /api/store/info بالتوكن)
-  // … تقدر تستخدم نفس لوجيكك السابق هنا …
+  // جلب اسم المتجر (اختياري — يحاول عدة مسارات)
+  useEffect(() => {
+    const run = async () => {
+      setStoreLoading(true);
+      try {
+        // حاول من الـ status أولاً (لأن عندنا uid/كوكي)
+        let name: string | undefined;
+        const statusUrl = storeUid ? `/api/salla/status?uid=${encodeURIComponent(storeUid)}` : '/api/salla/status';
+        try {
+          const st = await axios.get(statusUrl);
+          name =
+            st.data?.storeName ??
+            st.data?.salla?.storeName ??
+            st.data?.integration?.salla?.storeName ??
+            undefined;
+        } catch { /* ignore */ }
+
+        // fallback: APIs محلية تتطلّب توكن (لو عندك)
+        if (!name) {
+          const auth = getAuth(app);
+          const user = auth.currentUser;
+          if (user) {
+            const idToken = await user.getIdToken(true);
+            const tryProfileEndpoints = ['/api/store/profile', '/api/store/info', '/api/store'];
+            for (const ep of tryProfileEndpoints) {
+              try {
+                const res = await axios.get(ep, { headers: { Authorization: `Bearer ${idToken}` } });
+                name =
+                  res.data?.storeName ??
+                  res.data?.name ??
+                  res.data?.store?.name ??
+                  res.data?.profile?.storeName;
+                if (name) break;
+              } catch { /* ignore */ }
+            }
+          }
+        }
+
+        setStoreName(name);
+      } finally {
+        setStoreLoading(false);
+      }
+    };
+    run();
+  }, [storeUid]);
 
   const headerRight = useMemo(() => {
     if (storeLoading) {
@@ -107,63 +119,13 @@ export default function DashboardPage() {
     );
   }, [storeLoading, storeName]);
 
-  // شاشة “تم الربط” لو جاي من سلة ومفيش لوجين
-  if (!authLoading && !user && fromSalla && uidFromQuery) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-2xl mx-auto bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-          <h1 className="text-2xl font-bold mb-2">🎉 تم ربط متجرك بسلة</h1>
-          <p className="text-gray-600 mb-4">
-            تم ربط <b>{storeName || 'متجرك'}</b> بنجاح. يمكنك الآن إكمال إعداد الحساب للوصول إلى لوحة التحكم.
-          </p>
-
-          <div className="mb-4">
-            <div className="text-sm text-gray-500">Store UID</div>
-            <div className="font-mono text-xs bg-gray-50 border rounded p-2">{uidFromQuery}</div>
-          </div>
-
-          <div className="flex gap-3">
-            {onboardingToken ? (
-              <a
-                href={`/onboarding/set-password?t=${encodeURIComponent(onboardingToken)}`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              >
-                إكمال إنشاء الحساب
-              </a>
-            ) : (
-              <a
-                href="/onboarding/set-password"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              >
-                إنشاء حساب والدخول
-              </a>
-            )}
-
-            <a
-              href={`/dashboard?salla=connected&uid=${encodeURIComponent(uidFromQuery)}`}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200"
-            >
-              تحديث الصفحة
-            </a>
-          </div>
-
-          <hr className="my-6" />
-
-          <div className="text-sm text-gray-600">
-            يمكن الرجوع إلى هذه الصفحة لاحقًا من سوق سلة أيضًا. ولعرض الودجت داخل المتجر، انسخ الكود من قسم الإعدادات بعد إنشاء الحساب.
-          </div>
-        </div>
-      </div>
-    );
+  // ملاحظة: لو حاب تمنع الوصول بدون لوجين، احتفظ بالشرط التالي:
+  if (authLoading) return <p>جارٍ التحقق من حالة تسجيل الدخول…</p>;
+  if (!userPresent) {
+    // تقدر تخليه يسمح بعرض الإعدادات الأساسية حتى بدون لوجين لو حاب
+    return <p className="text-red-600">مطلوب تسجيل الدخول للوصول للوحة التحكم.</p>;
   }
 
-  // لو لسه بنتحقق من اللوجين
-  if (authLoading) return <p>جارٍ التحقق من حالة تسجيل الدخول…</p>;
-
-  // لو مش داخل ومش جاي من سلة → اطلب تسجيل الدخول
-  if (!user) return <p className="text-red-600">مطلوب تسجيل الدخول للوصول للوحة التحكم.</p>;
-
-  // وضع الداشبورد المعتاد
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="flex items-center justify-between mb-6">
@@ -191,7 +153,8 @@ export default function DashboardPage() {
         {activeTab === 'الإحصائيات' && <DashboardAnalytics />}
         {activeTab === 'الطلبات' && <OrdersTab />}
         {activeTab === 'التقييمات' && <ReviewsTab storeName={storeName} />}
-        {activeTab === 'الإعدادات' && <SettingsTab storeUid={storeUid} />}
+        {/* ✅ مرّر storeUid و storeName هنا */}
+        {activeTab === 'الإعدادات' && <SettingsTab storeUid={storeUid} storeName={storeName} />}
         {activeTab === 'المساعدة' && <SupportTab />}
       </div>
     </div>

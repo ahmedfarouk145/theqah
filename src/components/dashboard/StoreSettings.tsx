@@ -231,7 +231,7 @@ export default function StoreSettings({
                     <Zap className="w-6 h-6 text-emerald-600" />
                     منصة سلة
                   </h3>
-                  <SallaIntegrationTab />
+                   <SallaIntegrationTab storeUid={storeUid} />
                 </div>
               </div>
 
