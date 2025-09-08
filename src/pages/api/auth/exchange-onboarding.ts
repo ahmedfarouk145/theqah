@@ -2,58 +2,187 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin, authAdmin } from "@/lib/firebaseAdmin";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+type PostBody = {
+  tokenId?: string;
+  email?: string;
+  password?: string;
+};
+
+type OnboardingTokenDoc = {
+  uid?: string;
+  used?: boolean;
+  expiresAt?: number; // ms epoch
+};
+
+type Success = { ok: true; uid: string; customToken: string };
+type Failure = { ok: false; error: string };
+
+function asErrorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<Success | Failure>
+) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ ok: false, error: "Method Not Allowed" });
+  }
+
   try {
-    if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
-    const { tokenId, password, email } = req.body || {};
-    if (!tokenId) return res.status(400).json({ error: "missing_token" });
+    const { tokenId, email, password } = (req.body || {}) as PostBody;
 
-    const db = dbAdmin();
-    const ref = db.collection("onboarding_tokens").doc(String(tokenId));
-    const snap = await ref.get();
-    if (!snap.exists) return res.status(400).json({ error: "invalid_token" });
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tok = snap.data() as any;
-    if (tok.usedAt) return res.status(400).json({ error: "token_used" });
-    if (Date.now() > Number(tok.expiresAt)) return res.status(400).json({ error: "token_expired" });
+    if (!tokenId || typeof tokenId !== "string") {
+      return res.status(400).json({ ok: false, error: "tokenId is required" });
+    }
+    if (!password || typeof password !== "string" || password.length < 6) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "Password must be at least 6 characters" });
+    }
+    if (email && typeof email !== "string") {
+      return res.status(400).json({ ok: false, error: "Invalid email" });
+    }
 
-    const storeUid: string = String(tok.uid); // salla:...
-    const fallbackEmail = `owner+${storeUid.replace(":", "_")}@theqah.local`;
-    const userEmail: string = (typeof email === "string" && email) || tok.store?.email || fallbackEmail;
-
-    // أنشئ/أحضر المستخدم
-    let userRecord;
+    // (اختياري قوي لكن مُستحسن): التحقق من صلاحية tokenId
+    let uidFromToken: string | undefined;
     try {
-      userRecord = await authAdmin().getUserByEmail(userEmail);
+      const snap = await dbAdmin()
+        .collection("onboarding_tokens")
+        .doc(tokenId)
+        .get();
+
+      if (!snap.exists) {
+        return res.status(401).json({ ok: false, error: "Invalid tokenId" });
+      }
+
+      const data = snap.data() as OnboardingTokenDoc | undefined;
+      if (data?.used) {
+        return res.status(401).json({ ok: false, error: "Token already used" });
+      }
+      if (data?.expiresAt && Date.now() > data.expiresAt) {
+        return res.status(401).json({ ok: false, error: "Token expired" });
+      }
+      uidFromToken = data?.uid;
+    } catch (e: unknown) {
+      // لو ما عندك كوليكشن للتحقق، ممكن تشيل البلوك ده كله
+      return res
+        .status(500)
+        .json({ ok: false, error: `Token check failed: ${asErrorMessage(e)}` });
+    }
+
+    const adminAuth = authAdmin();
+
+    // هنحدد الـ uid النهائي اللي هنشتغل عليه
+    let uid: string | undefined;
+
+    // لو التوكن مربوط مسبقًا بـ uid
+    if (uidFromToken) {
+      uid = uidFromToken;
+
+      if (email) {
+        try {
+          // لو الإيميل موجود على مستخدم آخر → ندمج على uid صاحب الإيميل
+          const byEmail = await adminAuth.getUserByEmail(email).catch(() => null);
+          if (byEmail && byEmail.uid !== uid) {
+            uid = byEmail.uid;
+          }
+
+          // هل يوجد مستخدم بنفس uid؟
+          const existing = await adminAuth.getUser(uid).catch(() => null);
+          if (existing) {
+            await adminAuth.updateUser(uid, {
+              email,
+              password,
+              emailVerified: true,
+              disabled: false,
+            });
+          } else {
+            await adminAuth.createUser({
+              uid,
+              email,
+              password,
+              emailVerified: true,
+              disabled: false,
+            });
+          }
+        } catch (e: unknown) {
+          return res.status(400).json({
+            ok: false,
+            error: `Failed to upsert user (uidFromToken): ${asErrorMessage(e)}`,
+          });
+        }
+      } else {
+        // بدون إيميل: نتأكد على الأقل من وجود المستخدم
+        const existing = await adminAuth.getUser(uid).catch(() => null);
+        if (!existing) {
+          await adminAuth.createUser({ uid, disabled: false }).catch((e: unknown) => {
+            throw new Error(`Failed to create user (no email): ${asErrorMessage(e)}`);
+          });
+        }
+      }
+    } else {
+      // لا يوجد uid من التوكن → نقرر حسب الإيميل
+      if (email) {
+        try {
+          const byEmail = await adminAuth.getUserByEmail(email).catch(() => null);
+          if (byEmail) {
+            uid = byEmail.uid;
+            await adminAuth.updateUser(uid, {
+              password,
+              emailVerified: true,
+              disabled: false,
+            });
+          } else {
+            const created = await adminAuth.createUser({
+              email,
+              password,
+              emailVerified: true,
+              disabled: false,
+            });
+            uid = created.uid;
+          }
+        } catch (e: unknown) {
+          return res.status(400).json({
+            ok: false,
+            error: `Failed to create/update user by email: ${asErrorMessage(e)}`,
+          });
+        }
+      } else {
+        // لا uid ولا email → ننشئ حساب بدون إيميل (لو يناسب فلوك)
+        try {
+          const created = await adminAuth.createUser({ disabled: false });
+          uid = created.uid;
+        } catch (e: unknown) {
+          return res.status(400).json({
+            ok: false,
+            error: `Failed to create user (no email): ${asErrorMessage(e)}`,
+          });
+        }
+      }
+    }
+
+    if (!uid) {
+      return res.status(500).json({ ok: false, error: "Failed to resolve uid" });
+    }
+
+    // علِّم التوكن كمستخدم (used) — اختياري
+    try {
+      await dbAdmin()
+        .collection("onboarding_tokens")
+        .doc(tokenId)
+        .set({ uid, used: true, usedAt: Date.now() }, { merge: true });
     } catch {
-      userRecord = await authAdmin().createUser({
-        email: userEmail,
-        emailVerified: false,
-        password: password && String(password).length >= 6 ? String(password) : undefined,
-        displayName: tok.store?.name || "TheQah Merchant",
-      });
+      // لا توقف بسبب فشل ثانوي
     }
 
-    // حدّث الباسورد لو أُرسل
-    if (password && String(password).length >= 6) {
-      await authAdmin().updateUser(userRecord.uid, { password: String(password) });
-    }
+    // أنشئ custom token لتسجيل الدخول الفوري من العميل
+    const customToken = await adminAuth.createCustomToken(uid);
 
-    // اربط حساب المستخدم بالمتجر
-    await db.collection("stores").doc(storeUid).set(
-      { ownerUid: userRecord.uid, updatedAt: Date.now() },
-      { merge: true }
-    );
-
-    // علّم التوكين مستخدم
-    await ref.update({ usedAt: Date.now() });
-
-    // أعمل Custom Token
-    const customToken = await authAdmin().createCustomToken(userRecord.uid, { theqahStoreUid: storeUid });
-
-    return res.status(200).json({ ok: true, customToken, userEmail });
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    return res.status(500).json({ error: "internal", message: e?.message || String(e) });
+    return res.status(200).json({ ok: true, uid, customToken });
+  } catch (e: unknown) {
+    return res
+      .status(500)
+      .json({ ok: false, error: asErrorMessage(e) || "Internal Server Error" });
   }
 }

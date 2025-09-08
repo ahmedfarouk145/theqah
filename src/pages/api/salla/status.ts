@@ -1,48 +1,71 @@
+// src/pages/api/salla/status.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
-import { verifyStore, type AuthedRequest } from "@/utils/verifyStore";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+type StatusOk = {
+  ok: true;
+  connected: boolean;
+  uid?: string | null;
+  storeId?: string | number | null;
+  storeName?: string | null;
+  domain?: string | null;
+};
+type StatusFail = { ok: false; error: string };
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<StatusOk | StatusFail>
+) {
   try {
-    if (req.method !== "GET") return res.status(405).json({ ok: false, error: "Method Not Allowed" });
+    const db = dbAdmin();
+    const uid = typeof req.query.uid === "string" ? req.query.uid : undefined;
+    const ownerUid = typeof req.query.ownerUid === "string" ? req.query.ownerUid : undefined;
 
-    // يحتاج جلسة مستخدم (نفس /api/store/settings)
-    try {
-      await verifyStore(req);
-    } catch (e) {
-      const err = e as Error & { status?: number };
-      return res.status(err.status ?? 401).json({ ok: false, error: err.message || "Unauthorized" });
+    // 1) لو فيه uid مباشر (مثال salla:123456) نقرأه مباشرة
+    if (uid) {
+      const doc = await db.collection("stores").doc(uid).get();
+      if (!doc.exists) return res.status(200).json({ ok: true, connected: false, uid });
+      const data = doc.data() || {};
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const s = (data as any).salla || {};
+      return res.status(200).json({
+        ok: true,
+        connected: Boolean(s.connected),
+        uid,
+        storeId: s.storeId ?? null,
+        storeName: s.storeName ?? null,
+        domain: s.domain ?? null,
+      });
     }
 
-    const { storeId } = req as AuthedRequest; // هذا الـ ownerUid
-    if (!storeId) return res.status(400).json({ ok: false, error: "Missing storeId" });
+    // 2) وإلا نرجع للطريقة القديمة: platform + ownerUid
+    if (!ownerUid) {
+      return res.status(400).json({ ok: false, error: "Missing uid or ownerUid" });
+    }
 
-    const db = dbAdmin();
-    // نجيب أول متجر سلة لهذا المالك
-    const snap = await db
+    const q = await db
       .collection("stores")
       .where("platform", "==", "salla")
-      .where("ownerUid", "==", storeId)
+      .where("ownerUid", "==", ownerUid)
       .limit(1)
       .get();
 
-    if (snap.empty) return res.status(200).json({ ok: true, connected: false });
+    if (q.empty) return res.status(200).json({ ok: true, connected: false });
 
-    const doc = snap.docs[0];
+    const doc = q.docs[0];
+    const data = doc.data() || {};
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = doc.data() as any;
-    const salla = data?.salla || {};
-
+    const s = (data as any).salla || {};
     return res.status(200).json({
       ok: true,
-      connected: !!salla.connected,
-      storeName: salla.storeName || null,
-      storeId: salla.storeId || null,
-      domain: salla.domain || null,
-      updatedAt: data?.updatedAt || null,
+      connected: Boolean(s.connected),
+      uid: doc.id,
+      storeId: s.storeId ?? null,
+      storeName: s.storeName ?? null,
+      domain: s.domain ?? null,
     });
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return res.status(500).json({ ok: false, error: msg });
   }
 }

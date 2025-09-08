@@ -1,36 +1,52 @@
 // src/pages/onboarding/set-password.tsx
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Head from "next/head";
-// لو بتستخدم Firebase Client SDK:
-import { getAuth, signInWithCustomToken } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword, signInWithCustomToken } from "firebase/auth";
 
 export default function SetPasswordPage() {
   const router = useRouter();
-  const t = typeof router.query.t === "string" ? router.query.t : "";
+  const tokenFromQuery = useMemo(
+    () => (typeof router.query.t === "string" ? router.query.t : ""),
+    [router.query.t]
+  );
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [err,   setErr] = useState<string | null>(null);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tokenFromQuery) {
+      setErr("Token مفقود في الرابط.");
+      return;
+    }
     setErr(null);
     setSubmitting(true);
+
     try {
       const r = await fetch("/api/auth/exchange-onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tokenId: t, password, email: email || undefined }),
+        body: JSON.stringify({
+          tokenId: tokenFromQuery,
+          password,
+          email: email || undefined,
+        }),
       });
       const j = await r.json();
-      if (!r.ok || !j.ok) throw new Error(j?.error || j?.message || "Failed");
+      if (!r.ok || !j?.ok) throw new Error(j?.error || "فشل في الاستبدال");
 
-      // سجّل دخول بالـ Custom Token (Firebase)
-      const auth = getAuth();
-      await signInWithCustomToken(auth, j.customToken);
+      // ✅ الأولوية: سجّل دخول بالإيميل/الباس (عشان تختبر بيانات الاعتماد فورًا وتظهر في Users)
+      if (email) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else if (j.customToken) {
+        // لو مفيش إيميل، لسه بنقدر ندخل بالتوكن
+        await signInWithCustomToken(auth, j.customToken);
+      }
 
-      // روح الداشبورد
       router.replace("/dashboard/integrations?salla=connected");
       //eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
@@ -42,14 +58,14 @@ export default function SetPasswordPage() {
 
   return (
     <>
-      <Head><title>Set Password</title></Head>
+      <Head><title>تعيين كلمة المرور</title></Head>
       <main className="min-h-screen flex items-center justify-center p-6">
         <form onSubmit={onSubmit} className="w-full max-w-md space-y-4 border rounded-xl p-6">
           <h1 className="text-2xl font-semibold">إنشاء/تعيين كلمة المرور</h1>
-          {!t && <p className="text-red-600">Token مفقود في الرابط.</p>}
+          {!tokenFromQuery && <p className="text-red-600">Token مفقود في الرابط.</p>}
 
           <label className="block">
-            <span className="block text-sm mb-1">الإيميل (اختياري)</span>
+            <span className="block text-sm mb-1">الإيميل (اختياري — يُفضّل تعبئته)</span>
             <input
               type="email"
               className="w-full border rounded-md p-2"
@@ -78,7 +94,7 @@ export default function SetPasswordPage() {
 
           <button
             type="submit"
-            disabled={!t || submitting}
+            disabled={!tokenFromQuery || submitting}
             className="w-full rounded-md bg-black text-white py-2 disabled:opacity-60"
           >
             {submitting ? "جاري الحفظ..." : "حفظ ومتابعة"}
