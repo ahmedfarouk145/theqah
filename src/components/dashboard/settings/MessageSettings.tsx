@@ -1,61 +1,106 @@
+// src/components/dashboard/settings/MessageSettings.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import axios from '@/lib/axiosInstance';
-import { useAuth } from '@/contexts/AuthContext';
+import { getAuth } from 'firebase/auth';
+import { app } from '@/lib/firebase';
 
 export default function MessageSettings() {
-  const { token } = useAuth();
   const [senderName, setSenderName] = useState('');
-  const [defaultMethod, setDefaultMethod] = useState('whatsapp');
+  const [defaultMethod, setDefaultMethod] = useState<'whatsapp' | 'sms' | 'email'>('whatsapp');
   const [smsTemplate, setSmsTemplate] = useState('');
   const [whatsappTemplate, setWhatsappTemplate] = useState('');
   const [emailTemplate, setEmailTemplate] = useState('');
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
+  const mountedRef = useRef(true);
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await axios.get('/api/store/app-settings', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const app = res.data.app || {};
-        setSenderName(app.sender_name || '');
-        setDefaultMethod(app.default_send_method || 'whatsapp');
-        setSmsTemplate(app.sms_template || '');
-        setWhatsappTemplate(app.whatsapp_template || '');
-        setEmailTemplate(app.email_template || '');
-      } catch (err) {
-        console.error('Error loading settings:', err);
-        setError('تعذر تحميل الإعدادات.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (token) fetchSettings();
-  }, [token]);
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
-  const handleSave = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
-      await axios.post('/api/store/app-settings', {
-        sender_name: senderName,
-        default_send_method: defaultMethod,
-        sms_template: smsTemplate,
-        whatsapp_template: whatsappTemplate,
-        email_template: emailTemplate,
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
+      setError('');
+      setLoading(true);
+
+      const auth = getAuth(app);
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('UNAUTHENTICATED');
+      }
+      const idToken = await user.getIdToken(true);
+
+      const res = await axios.get('/api/store/app-settings', {
+        headers: { Authorization: `Bearer ${idToken}` },
       });
 
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      console.error('Error saving:', err);
-      setError('تعذر حفظ الإعدادات.');
+      const appCfg = res.data?.app ?? {};
+      if (!mountedRef.current) return;
+
+      setSenderName(appCfg.sender_name || '');
+      setDefaultMethod((appCfg.default_send_method as 'whatsapp' | 'sms' | 'email') || 'whatsapp');
+      setSmsTemplate(appCfg.sms_template || '');
+      setWhatsappTemplate(appCfg.whatsapp_template || '');
+      setEmailTemplate(appCfg.email_template || '');
+    } catch (e: unknown) {
+      if (!mountedRef.current) return;
+      console.error('Error loading settings:', e);
+      setError(
+        (e as Error)?.message === 'UNAUTHENTICATED'
+          ? 'غير مصرح: الرجاء تسجيل الدخول.'
+          : 'تعذر تحميل الإعدادات.'
+      );
+    } finally {
+      if (mountedRef.current) setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => { fetchSettings(); }, [fetchSettings]);
+
+  const handleSave = useCallback(async () => {
+    try {
+      setError('');
+      setSaving(true);
+
+      const auth = getAuth(app);
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('UNAUTHENTICATED');
+      }
+      const idToken = await user.getIdToken(true);
+
+      await axios.post(
+        '/api/store/app-settings',
+        {
+          sender_name: senderName,
+          default_send_method: defaultMethod,
+          sms_template: smsTemplate,
+          whatsapp_template: whatsappTemplate,
+          email_template: emailTemplate,
+        },
+        { headers: { Authorization: `Bearer ${idToken}` } }
+      );
+
+      if (!mountedRef.current) return;
+      setSaved(true);
+      setTimeout(() => mountedRef.current && setSaved(false), 2000);
+    } catch (e: unknown) {
+      if (!mountedRef.current) return;
+      console.error('Error saving settings:', e);
+      setError(
+        (e as Error)?.message === 'UNAUTHENTICATED'
+          ? 'غير مصرح: الرجاء تسجيل الدخول.'
+          : 'تعذر حفظ الإعدادات.'
+      );
+    } finally {
+      if (mountedRef.current) setSaving(false);
+    }
+  }, [senderName, defaultMethod, smsTemplate, whatsappTemplate, emailTemplate]);
 
   if (loading) return <p>جارٍ تحميل الإعدادات...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
@@ -78,7 +123,7 @@ export default function MessageSettings() {
         <select
           className="w-full border rounded px-3 py-2"
           value={defaultMethod}
-          onChange={(e) => setDefaultMethod(e.target.value)}
+          onChange={(e) => setDefaultMethod(e.target.value as 'whatsapp' | 'sms' | 'email')}
         >
           <option value="whatsapp">واتساب</option>
           <option value="sms">رسالة SMS</option>
@@ -118,9 +163,10 @@ export default function MessageSettings() {
 
       <button
         onClick={handleSave}
-        className="px-5 py-2 bg-green-700 text-white rounded hover:bg-green-800"
+        disabled={saving}
+        className={`px-5 py-2 text-white rounded ${saving ? 'bg-green-400 cursor-not-allowed' : 'bg-green-700 hover:bg-green-800'}`}
       >
-        حفظ التغييرات
+        {saving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
       </button>
 
       {saved && <p className="text-green-600">تم الحفظ بنجاح ✅</p>}

@@ -1,26 +1,135 @@
-import { useState } from 'react';
+// src/pages/dashboard.tsx
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
 import DashboardAnalytics from '@/components/dashboard/Analytics';
 import OrdersTab from '@/components/dashboard/OrdersTab';
 import ReviewsTab from '@/components/dashboard/Reviews';
 import SettingsTab from '@/components/dashboard/StoreSettings';
 import SupportTab from '@/components/dashboard/Support';
-import { useAuth } from '@/contexts/AuthContext';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { app } from '@/lib/firebase';
+import axios from '@/lib/axiosInstance';
 
-const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', 'الإعدادات', 'المساعدة'];
+const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', 'الإعدادات', 'المساعدة'] as const;
+type Tab = (typeof tabs)[number];
 
 export default function DashboardPage() {
-  const { storeName, loading } = useAuth(); // ✅ أضف loading
-  const [activeTab, setActiveTab] = useState('الإحصائيات');
+  // --- hooks (لازم تكون فوق أي return) ---
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('dash_active_tab') as Tab) || 'الإحصائيات';
+    }
+    return 'الإحصائيات';
+  });
 
-  // ✅ إظهار رسالة فقط إذا كان جاري التحميل
-  if (loading) return <p>جارٍ تحميل بيانات المتجر...</p>;
+  const [authLoading, setAuthLoading] = useState(true);
+  const [userPresent, setUserPresent] = useState(false);
 
-  // ✅ التحقق من وجود اسم المتجر بعد التحميل
-  if (!storeName) return <p className="text-red-600">لم يتم العثور على المتجر!</p>;
+  const [storeName, setStoreName] = useState<string | undefined>(undefined);
+  const [storeLoading, setStoreLoading] = useState(true);
+
+  // حفظ التاب المختار
+  useEffect(() => {
+    localStorage.setItem('dash_active_tab', activeTab);
+  }, [activeTab]);
+
+  // مراقبة تسجيل الدخول
+  useEffect(() => {
+    const auth = getAuth(app);
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUserPresent(!!u);
+      setAuthLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  // جلب اسم المتجر من عدة مصادر (Store profile + تكامل سلة)
+  useEffect(() => {
+    const run = async () => {
+      setStoreLoading(true);
+      try {
+        const auth = getAuth(app);
+        const user = auth.currentUser;
+        if (!user) {
+          setStoreName(undefined);
+          return;
+        }
+        const idToken = await user.getIdToken(true);
+
+        // جرّب اندبوينتات محتملة لملف المتجر
+        const tryProfileEndpoints = ['/api/store/profile', '/api/store/info', '/api/store'];
+        let name: string | undefined;
+
+        for (const ep of tryProfileEndpoints) {
+          try {
+            const res = await axios.get(ep, { headers: { Authorization: `Bearer ${idToken}` } });
+            name =
+              res.data?.storeName ??
+              res.data?.name ??
+              res.data?.store?.name ??
+              res.data?.profile?.storeName;
+            if (name) break;
+          } catch {
+            // جرّب اللي بعده
+          }
+        }
+
+        // لو لسه مفيش اسم، جرّب حالة تكامل سلة
+        if (!name) {
+          // غيّر المسار ده حسب باك إندك لو مختلف
+          const sallaRes = await axios
+            .get('/api/salla/status', { headers: { Authorization: `Bearer ${idToken}` } })
+            .catch(() => null);
+
+          // بنستخرج من الشكل اللي اديتهولي (salla.storeName)
+          const sallaName =
+            sallaRes?.data?.storeName ??
+            sallaRes?.data?.salla?.storeName ??
+            sallaRes?.data?.integration?.salla?.storeName;
+
+          if (typeof sallaName === 'string' && sallaName.trim()) {
+            name = sallaName.trim();
+          }
+        }
+
+        setStoreName(name);
+      } finally {
+        setStoreLoading(false);
+      }
+    };
+    run();
+  }, []);
+
+  // عنصر الهيدر اليمين (بدون Hooks داخل شروط)
+  const headerRight = useMemo(() => {
+    if (storeLoading) {
+      return <span className="text-gray-400 text-sm">جارٍ تحميل بيانات المتجر…</span>;
+    }
+    if (storeName) {
+      return (
+        <span className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+          المتجر: {storeName}
+        </span>
+      );
+    }
+    return (
+      <span className="px-3 py-1 rounded-lg bg-gray-50 text-gray-600 border border-gray-200">
+        المتجر: غير محدد
+      </span>
+    );
+  }, [storeLoading, storeName]);
+
+  // --- من هنا تبدأ الـ returns بعد كل الهوكس ---
+  if (authLoading) return <p>جارٍ التحقق من حالة تسجيل الدخول…</p>;
+  if (!userPresent) return <p className="text-red-600">مطلوب تسجيل الدخول للوصول للوحة التحكم.</p>;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="text-3xl font-bold mb-6 text-green-800">لوحة التحكم</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold text-green-800">لوحة التحكم</h1>
+        {headerRight}
+      </div>
 
       <div className="flex space-x-2 mb-6 rtl:space-x-reverse">
         {tabs.map((tab) => (

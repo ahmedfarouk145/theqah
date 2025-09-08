@@ -7,7 +7,6 @@ import { isAxiosError } from 'axios';
 import { format } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import Image from 'next/image';
-import { useAuth } from '@/contexts/AuthContext';
 import { getAuth } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import {
@@ -55,12 +54,14 @@ function toBool(v: unknown): boolean {
 function normalizeReview(raw: Record<string, unknown>): Review {
   const id = String(raw['id'] ?? raw['_id'] ?? raw['reviewId'] ?? raw['docId'] ?? '');
   const productId = (raw['productId'] ?? raw['product_id']) as string | undefined;
+
   const starsRaw = raw['stars'];
-  const stars = typeof starsRaw === 'number' ? starsRaw : Number(starsRaw ?? 0);
+  const starsNum = typeof starsRaw === 'number' ? starsRaw : Number(starsRaw ?? 0);
+  const stars = Number.isFinite(starsNum) ? starsNum : 0;
+
   const createdAt =
     toTs(raw['createdAt'] ?? raw['created'] ?? raw['timestamp'] ?? raw['created_at']) || Date.now();
 
-  // Read buyerVerified from multiple possible field names, including trustedBuyer variants
   const bvCandidate =
     raw['buyerVerified'] ??
     raw['trustedBuyer'] ??
@@ -80,7 +81,6 @@ function normalizeReview(raw: Record<string, unknown>): Review {
 }
 
 export default function ReviewsTab({ storeName }: { storeName?: string }) {
-  const { token, loading: authLoading } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -94,9 +94,11 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
     return () => { mountedRef.current = false; };
   }, []);
 
-  const fetchReviews = useCallback(async () => {
-    if (authLoading) return;
-    if (!token) {
+  const fetchReviews = useCallback(async (): Promise<void> => {
+    const auth = getAuth(app);
+    const user = auth.currentUser;
+
+    if (!user) {
       if (mountedRef.current) {
         setLoading(false);
         setError('غير مصرح: الرجاء تسجيل الدخول.');
@@ -107,8 +109,11 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
     try {
       if (mountedRef.current) { setLoading(true); setError(''); }
 
+      // خذ توكن حديث
+      const idToken = await user.getIdToken(/* forceRefresh */ true);
+
       const res = await axios.get('/api/reviews/list', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${idToken}` },
       });
 
       const items = (res.data?.items ?? res.data?.reviews ?? []) as unknown[];
@@ -119,11 +124,12 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
       if (mountedRef.current) setReviews(normalized);
     } catch (err: unknown) {
       const status = isAxiosError(err) ? err.response?.status ?? 0 : 0;
+
+      // لو Unauthorized جرّب تجدد التوكن مرة تانيه
       if (status === 401) {
         try {
-          const auth = getAuth(app);
-          if (auth.currentUser) {
-            const fresh = await auth.currentUser.getIdToken(true);
+          const fresh = await getAuth(app).currentUser?.getIdToken(true);
+          if (fresh) {
             const res2 = await axios.get('/api/reviews/list', {
               headers: { Authorization: `Bearer ${fresh}` },
             });
@@ -136,16 +142,17 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
           }
         } catch { /* ignore */ }
       }
+
       console.error('Error loading reviews:', err);
       if (mountedRef.current) setError('حدث خطأ أثناء تحميل التقييمات');
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [authLoading, token]);
+  }, []);
 
   useEffect(() => { fetchReviews(); }, [fetchReviews]);
 
-  const fmtDate = (v?: number | string) => {
+  const fmtDate = (v?: number | string): string => {
     if (v == null) return '-';
     const n = typeof v === 'string' ? Number(v) : v;
     const d = Number.isFinite(n) ? new Date(Number(n)) : new Date(v as string);
@@ -154,7 +161,7 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
     catch { return d.toLocaleDateString(); }
   };
 
-  const isPublished = (r: Review) => (r.status ? r.status === 'published' : true);
+  const isPublished = (r: Review): boolean => (r.status ? r.status === 'published' : true);
 
   // Analytics
   const stats = {
@@ -190,7 +197,7 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
     filter === 'all' ? true : filter === 'published' ? isPublished(r) : !isPublished(r)
   );
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">

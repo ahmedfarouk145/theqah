@@ -2,7 +2,10 @@ import { useRouter } from "next/router";
 import { useState, useMemo } from "react";
 import Head from "next/head";
 import { auth } from "@/lib/firebase";
-import { setPersistence, browserLocalPersistence, signInWithEmailAndPassword, signInWithCustomToken } from "firebase/auth";
+import {
+  setPersistence, browserLocalPersistence,
+  signInWithEmailAndPassword, signInWithCustomToken
+} from "firebase/auth";
 
 export default function SetPasswordPage() {
   const router = useRouter();
@@ -14,16 +17,12 @@ export default function SetPasswordPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [err,   setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tokenFromQuery) {
-      setErr("Token مفقود في الرابط.");
-      return;
-    }
-    setErr(null);
-    setSubmitting(true);
+    if (!tokenFromQuery) { setErr("Token مفقود في الرابط."); return; }
+    setErr(null); setSubmitting(true);
 
     try {
       const r = await fetch("/api/auth/exchange-onboarding", {
@@ -35,17 +34,14 @@ export default function SetPasswordPage() {
       if (!r.ok || !j?.ok) throw new Error(j?.error || "فشل في الاستبدال");
 
       await setPersistence(auth, browserLocalPersistence);
-
-      if (email) {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else if (j.customToken) {
-        await signInWithCustomToken(auth, j.customToken);
-      }
+      if (email) await signInWithEmailAndPassword(auth, email, password);
+      else if (j.customToken) await signInWithCustomToken(auth, j.customToken);
 
       const dest = `/dashboard/integrations?salla=connected${j.storeUid ? `&uid=${encodeURIComponent(j.storeUid)}` : ""}`;
       router.replace(dest);
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : String(e));
+      //eslint-disable-next-line
+    } catch (e: any) {
+      setErr(e?.message || String(e));
     } finally {
       setSubmitting(false);
     }
@@ -61,37 +57,23 @@ export default function SetPasswordPage() {
 
           <label className="block">
             <span className="block text-sm mb-1">الإيميل (اختياري — يُفضّل تعبئته)</span>
-            <input
-              type="email"
-              className="w-full border rounded-md p-2"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
+            <input type="email" className="w-full border rounded-md p-2"
+              placeholder="you@example.com" value={email}
+              onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
           </label>
 
           <label className="block">
             <span className="block text-sm mb-1">كلمة المرور</span>
-            <input
-              type="password"
-              className="w-full border rounded-md p-2"
-              placeholder="••••••••"
-              value={password}
+            <input type="password" className="w-full border rounded-md p-2"
+              placeholder="••••••••" value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
-              minLength={6}
-              required
-            />
+              autoComplete="new-password" minLength={6} required />
           </label>
 
           {err && <p className="text-red-600 text-sm">{err}</p>}
 
-          <button
-            type="submit"
-            disabled={!tokenFromQuery || submitting}
-            className="w-full rounded-md bg-black text-white py-2 disabled:opacity-60"
-          >
+          <button type="submit" disabled={!tokenFromQuery || submitting}
+            className="w-full rounded-md bg-black text-white py-2 disabled:opacity-60">
             {submitting ? "جاري الحفظ..." : "حفظ ومتابعة"}
           </button>
         </form>

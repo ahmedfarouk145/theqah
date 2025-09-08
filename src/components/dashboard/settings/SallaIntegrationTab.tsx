@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
+import { useAuth } from "@/contexts/AuthContext";
 import { Store, Link2, Link2Off, Save, AlertCircle, Check, Info } from "lucide-react";
 
 type SallaStatus = {
@@ -11,8 +12,7 @@ type SallaStatus = {
   reason?: string | null;
 };
 
-const DEFAULT_TEMPLATE =
-  "مرحباً [العميل]، قيم تجربتك من [المتجر]:: [الرابط] وساهم في إسعاد يتيم!";
+const DEFAULT_TEMPLATE = "مرحباً [العميل]، قيم تجربتك من [المتجر]:: [الرابط] وساهم في إسعاد يتيم!";
 
 async function fetchJson(url: string, init?: RequestInit) {
   const r = await fetch(url, init);
@@ -22,6 +22,8 @@ async function fetchJson(url: string, init?: RequestInit) {
 
 export default function SallaIntegrationTab() {
   const router = useRouter();
+  const { store } = useAuth();
+
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<SallaStatus | null>(null);
@@ -32,13 +34,11 @@ export default function SallaIntegrationTab() {
     const c = data?.connected;
     return c ? (
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium">
-        <Check size={14} />
-        متصل
+        <Check size={14} /> متصل
       </div>
     ) : (
       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium">
-        <AlertCircle size={14} />
-        غير متصل
+        <AlertCircle size={14} /> غير متصل
       </div>
     );
   }, [data?.connected]);
@@ -47,20 +47,21 @@ export default function SallaIntegrationTab() {
     let mounted = true;
     (async () => {
       try {
-        // أولوية القراءة بالـ uid من الـ URL: /dashboard/integrations?uid=salla:123...
         const uidFromQuery = typeof router.query.uid === "string" ? router.query.uid : undefined;
-        const url = uidFromQuery
-          ? `/api/salla/status?uid=${encodeURIComponent(uidFromQuery)}`
-          : `/api/salla/status`; // للتوافق لو عندك ownerUid في الواجهة القديمة
+        const preferUid = uidFromQuery || store.storeUid || undefined;
+
+        const url = preferUid
+          ? `/api/salla/status?uid=${encodeURIComponent(preferUid)}`
+          : `/api/salla/status`; // (للتوافق) قديمًا كان ownerUid
 
         const st = await fetchJson(url);
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = (st as any)?.data ?? st ?? {};
         const normalized: SallaStatus = {
           connected: Boolean(raw.connected),
-          storeName: raw.storeName ?? null,
+          storeName: raw.storeName ?? store.storeName ?? null,
           merchantId: raw.storeId ?? null,
-          uid: raw.uid ?? uidFromQuery ?? null,
+          uid: raw.uid ?? preferUid ?? null,
           domain: raw.domain ?? null,
           reason: raw.reason ?? null,
         };
@@ -72,25 +73,22 @@ export default function SallaIntegrationTab() {
       }
     })();
     return () => { mounted = false; };
-  }, [router.query.uid]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.query.uid, store.storeUid]);
 
   async function connect() {
-    setBusy(true);
-    setMsg(null);
+    setBusy(true); setMsg(null);
     try {
       const r = await fetch("/api/salla/connect", { method: "POST" });
       const j = await r.json().catch(() => ({}));
       if (j?.ok && j?.url) location.href = j.url;
       else setMsg(j?.error || "تعذّر بدء الاتصال.");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   async function disconnect() {
     if (!confirm("هل تريد فصل سلة؟")) return;
-    setBusy(true);
-    setMsg(null);
+    setBusy(true); setMsg(null);
     try {
       const r = await fetch("/api/salla/disconnect", { method: "POST" });
       const j = await r.json().catch(() => ({}));
@@ -98,14 +96,11 @@ export default function SallaIntegrationTab() {
         setData((d) => (d ? { ...d, connected: false } : d));
         setMsg("تم الفصل بنجاح.");
       } else setMsg(j?.error || "تعذّر الفصل.");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   async function saveTemplate() {
-    setBusy(true);
-    setMsg(null);
+    setBusy(true); setMsg(null);
     try {
       const r = await fetch("/api/store/settings", {
         method: "POST",
@@ -115,9 +110,7 @@ export default function SallaIntegrationTab() {
       const j = await r.json().catch(() => ({}));
       if (j?.ok !== false) setMsg("تم الحفظ ✅");
       else setMsg(j?.error || "تعذّر الحفظ.");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
   if (loading) {
@@ -152,18 +145,15 @@ export default function SallaIntegrationTab() {
       {/* Store Info */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Info size={16} />
-          معلومات المتجر
+          <Info size={16} /> معلومات المتجر
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-gray-50 rounded-lg p-4">
             <dt className="text-sm font-medium text-gray-500 mb-1">اسم المتجر</dt>
-            <dd className="text-base font-semibold text-gray-900">
-              {data?.storeName || "غير محدد"}
-            </dd>
+            <dd className="text-base font-semibold text-gray-900">{data?.storeName || "غير محدد"}</dd>
           </div>
           <div className="bg-gray-50 rounded-lg p-4">
-            <dt className="text-sm font-medium text-gray-500 mb-1">معرف التاجر</dt>
+            <dt className="text-sm font-medium text-gray-500 mb-1">معرّف التاجر</dt>
             <dd className="text-base font-semibold text-gray-900">
               {data?.merchantId != null ? String(data.merchantId) : "غير محدد"}
             </dd>
@@ -193,22 +183,14 @@ export default function SallaIntegrationTab() {
         <h4 className="text-base font-semibold text-gray-900 mb-4">إدارة الاتصال</h4>
         <div className="flex gap-3">
           {!data?.connected ? (
-            <button
-              onClick={connect}
-              disabled={busy}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-medium rounded-lg shadow-sm hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50"
-            >
-              <Link2 size={16} />
-              {busy ? "جارٍ الاتصال..." : "اتصال"}
+            <button onClick={connect} disabled={busy}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50">
+              <Link2 size={16} /> {busy ? "جارٍ الاتصال..." : "اتصال"}
             </button>
           ) : (
-            <button
-              onClick={disconnect}
-              disabled={busy}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white font-medium rounded-lg shadow-sm hover:from-rose-700 hover:to-rose-800 disabled:opacity-50"
-            >
-              <Link2Off size={16} />
-              {busy ? "جارٍ الفصل..." : "فصل"}
+            <button onClick={disconnect} disabled={busy}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50">
+              <Link2Off size={16} /> {busy ? "جارٍ الفصل..." : "فصل"}
             </button>
           )}
         </div>
@@ -225,28 +207,9 @@ export default function SallaIntegrationTab() {
             placeholder="أدخل نص الرسالة هنا..."
           />
           <div className="flex justify-end">
-            <button
-              onClick={async () => {
-                setBusy(true);
-                setMsg(null);
-                try {
-                  const r = await fetch("/api/store/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ salla: { reviewTemplate: template } }),
-                  });
-                  const j = await r.json().catch(() => ({}));
-                  if (j?.ok !== false) setMsg("تم الحفظ ✅");
-                  else setMsg(j?.error || "تعذّر الحفظ.");
-                } finally {
-                  setBusy(false);
-                }
-              }}
-              disabled={busy}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50"
-            >
-              <Save size={16} />
-              {busy ? "جارٍ الحفظ..." : "حفظ القالب"}
+            <button onClick={saveTemplate} disabled={busy}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-medium rounded-lg shadow-sm disabled:opacity-50">
+              <Save size={16} /> {busy ? "جارٍ الحفظ..." : "حفظ القالب"}
             </button>
           </div>
         </div>

@@ -5,8 +5,8 @@ type Body = { tokenId?: string; email?: string; password?: string };
 
 type OnboardingDoc = {
   id?: string;
-  storeUid?: string;                // "salla:123" (الأفضل)
-  uid?: string;                     // للتوافق
+  storeUid?: string;               // "salla:123" (الأفضل)
+  uid?: string;                    // للتوافق
   store?: { id?: number | string } | null;
   usedAt?: number | null;
   expiresAt?: number | null;
@@ -15,10 +15,7 @@ type OnboardingDoc = {
 type Ok = { ok: true; userUid: string; storeUid: string; customToken: string };
 type Err = { ok: false; error: string };
 
-function msg(e: unknown) {
-  return e instanceof Error ? e.message : String(e);
-}
-
+function msg(e: unknown) { return e instanceof Error ? e.message : String(e); }
 function resolveStoreUid(d: OnboardingDoc | undefined): string | null {
   if (!d) return null;
   if (d.storeUid) return d.storeUid;
@@ -33,7 +30,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   try {
     const { tokenId, email, password } = (req.body || {}) as Body;
-
     if (!tokenId) return res.status(400).json({ ok: false, error: "tokenId is required" });
     if (!password || password.length < 6) {
       return res.status(400).json({ ok: false, error: "Password must be at least 6 characters" });
@@ -71,28 +67,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userUid = created.uid;
     }
 
-    // 3) ثبّت ملكية المتجر
-    await db.collection("stores").doc(storeUid).set(
-      {
-        uid: storeUid,
-        platform: "salla",
-        ownerUid: userUid,
-        updatedAt: Date.now(),
-      },
-      { merge: true }
-    );
+    // 3) ثبّت الملكية على المستند الحقيقي
+    await db.collection("stores").doc(storeUid).set({
+      uid: storeUid,
+      platform: "salla",
+      ownerUid: userUid,
+      updatedAt: Date.now(),
+    }, { merge: true });
 
-    // (اختياري) سجل الربط العكسي
+    // ✅ 4) اكتب alias على stores/{ownerUid} → storeUid
+    await db.collection("stores").doc(userUid).set({
+      ownerUid: userUid,
+      platform: "salla",
+      storeUid,               // يشير للمستند الحقيقي
+      updatedAt: Date.now(),
+    }, { merge: true });
+
+    // (اختياري) ربط عكسي
     await db.collection("owners").doc(userUid).collection("stores").doc(storeUid)
       .set({ platform: "salla", linkedAt: Date.now() }, { merge: true })
       .catch(() => {});
 
-    // 4) وعلّم التوكن كمستخدم
+    // علّم التوكن كمستخدم
     await tokSnap.ref.set({ usedAt: Date.now(), ownerUid: userUid, storeUid }, { merge: true });
 
     // 5) custom token
     const customToken = await adminAuth.createCustomToken(userUid);
-
     return res.status(200).json({ ok: true, userUid, storeUid, customToken });
   } catch (e) {
     return res.status(500).json({ ok: false, error: msg(e) });
