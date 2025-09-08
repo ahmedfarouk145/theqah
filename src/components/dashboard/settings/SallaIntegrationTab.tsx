@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import { useAuth } from "@/contexts/AuthContext";
 import { Store, Link2, Link2Off, Save, AlertCircle, Check, Info } from "lucide-react";
 
 type SallaStatus = {
@@ -20,9 +19,8 @@ async function fetchJson(url: string, init?: RequestInit) {
   return { ok: r.ok, ...j };
 }
 
-export default function SallaIntegrationTab() {
+export default function SallaIntegrationTab({ storeUid }: { storeUid?: string }) {
   const router = useRouter();
-  const { store } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -47,25 +45,42 @@ export default function SallaIntegrationTab() {
     let mounted = true;
     (async () => {
       try {
+        // أولوية uid: prop → query → من /api/store/info
         const uidFromQuery = typeof router.query.uid === "string" ? router.query.uid : undefined;
-        const preferUid = uidFromQuery || store.storeUid || undefined;
+        let preferUid = storeUid || uidFromQuery;
 
-        const url = preferUid
-          ? `/api/salla/status?uid=${encodeURIComponent(preferUid)}`
-          : `/api/salla/status`; // (للتوافق) قديمًا كان ownerUid
+        if (!preferUid) {
+          const info = await fetchJson("/api/store/info");
+          // res.store.storeUid (لو API عندك منسّق)
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sUid = (info as any)?.store?.storeUid as string | undefined;
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sid  = (info as any)?.store?.salla?.storeId as string | number | undefined;
+          preferUid = sUid || (sid != null ? `salla:${String(sid)}` : undefined);
+        }
 
-        const st = await fetchJson(url);
+        const st = await fetchJson(
+          preferUid ? `/api/salla/status?uid=${encodeURIComponent(preferUid)}` : "/api/salla/status"
+        );
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = (st as any)?.data ?? st ?? {};
         const normalized: SallaStatus = {
           connected: Boolean(raw.connected),
-          storeName: raw.storeName ?? store.storeName ?? null,
+          storeName: raw.storeName ?? null,
           merchantId: raw.storeId ?? null,
           uid: raw.uid ?? preferUid ?? null,
           domain: raw.domain ?? null,
           reason: raw.reason ?? null,
         };
         if (mounted) setData(normalized);
+
+        // (اختياري) استرجع القالب من إعدادات المتجر لو موجود
+        try {
+          const j = await fetchJson("/api/store/settings?salla=1");
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const tpl = (j as any)?.settings?.salla?.reviewTemplate ?? (j as any)?.salla?.reviewTemplate ?? null;
+          if (mounted && typeof tpl === "string" && tpl.trim()) setTemplate(tpl);
+        } catch {}
       } catch (e) {
         if (mounted) setMsg(e instanceof Error ? e.message : String(e));
       } finally {
@@ -74,7 +89,7 @@ export default function SallaIntegrationTab() {
     })();
     return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router.query.uid, store.storeUid]);
+  }, [router.query.uid, storeUid]);
 
   async function connect() {
     setBusy(true); setMsg(null);

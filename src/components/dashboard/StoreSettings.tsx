@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Zap,
   FileText,
+  Hash,
 } from 'lucide-react';
 
 import ZidIntegrationTab from '@/components/dashboard/settings/ZidIntegrationTab';
@@ -76,26 +77,18 @@ const TabButton = ({
     }}
   >
     {/* Animated Background */}
-    <div
-      className={`absolute inset-0 bg-gradient-to-br ${tab.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}
-    />
+    <div className={`absolute inset-0 bg-gradient-to-br ${tab.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
     {/* Active State Glow */}
     {isActive && <div className={`absolute inset-0 bg-gradient-to-br ${tab.color} opacity-5`} />}
 
     <div className="relative z-10 p-6 text-center">
       <div
-        className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${tab.color} rounded-2xl flex items-center justify-center shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:rotate-6 group-hover:scale-110 ${
-          isActive ? 'scale-110' : ''
-        }`}
+        className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${tab.color} rounded-2xl flex items-center justify-center shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:rotate-6 group-hover:scale-110 ${isActive ? 'scale-110' : ''}`}
       >
         <tab.icon className="w-8 h-8 text-white" />
       </div>
 
-      <h3
-        className={`text-lg font-bold mb-2 transition-colors duration-300 ${
-          isActive ? 'text-gray-900' : 'text-gray-700 group-hover:text-gray-900'
-        }`}
-      >
+      <h3 className={`text-lg font-bold mb-2 transition-colors duration-300 ${isActive ? 'text-gray-900' : 'text-gray-700 group-hover:text-gray-900'}`}>
         {tab.label}
       </h3>
 
@@ -106,9 +99,7 @@ const TabButton = ({
       {/* Arrow Indicator */}
       <div
         className={`mt-4 flex items-center justify-center transition-all duration-300 ${
-          isActive
-            ? 'opacity-100 translate-x-0'
-            : 'opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0'
+          isActive ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0'
         }`}
       >
         <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -140,7 +131,13 @@ const ContentCard = ({ children, delay = 0 }: { children: React.ReactNode; delay
   </div>
 );
 
-export default function StoreSettings() {
+export default function StoreSettings({
+  storeUid,
+  storeName,
+}: {
+  storeUid?: string;
+  storeName?: string;
+}) {
   const [activeTab, setActiveTab] = useState<TabMeta['id']>('الربط');
 
   return (
@@ -163,6 +160,25 @@ export default function StoreSettings() {
           </h1>
           <Sparkles className="w-6 h-6 text-purple-500 animate-pulse" />
         </div>
+
+        {/* Badges for store name & UID */}
+        {(storeName || storeUid) && (
+          <div className="flex items-center justify-center gap-3">
+            {storeName && (
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <Store className="w-4 h-4" />
+                <strong>المتجر:</strong> {storeName}
+              </span>
+            )}
+            {storeUid && (
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-gray-50 text-gray-700 border border-gray-200">
+                <Hash className="w-4 h-4" />
+                <strong>UID:</strong> {storeUid}
+              </span>
+            )}
+          </div>
+        )}
+
         <p className="text-gray-600 max-w-3xl mx-auto text-lg leading-relaxed">
           تخصيص وإدارة جميع جوانب متجرك الإلكتروني بواجهة حديثة وتفاعلية
         </p>
@@ -291,7 +307,7 @@ export default function StoreSettings() {
 
             {/* Store Info Content */}
             <div
-              className="group relative bg-gradient-to-br from-white to-purple-50/30 rounded-2xl border border-gray-200/50 p-12 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1 overflow-hidden text-center"
+              className="group relative bg-gradient-to-br from-white to-purple-50/30 rounded-2xl border border-gray-200/50 p-12 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-1 overflow-hidden text-center"
               style={{
                 animationDelay: '500ms',
                 animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
@@ -352,6 +368,7 @@ export default function StoreSettings() {
         )}
       </ContentCard>
 
+      {/* Styles */}
       <style jsx>{`
         @keyframes slideInUp {
           from {

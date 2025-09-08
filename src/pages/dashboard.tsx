@@ -1,7 +1,7 @@
-// src/pages/dashboard.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import DashboardAnalytics from '@/components/dashboard/Analytics';
 import OrdersTab from '@/components/dashboard/OrdersTab';
 import ReviewsTab from '@/components/dashboard/Reviews';
@@ -15,7 +15,8 @@ const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', '�
 type Tab = (typeof tabs)[number];
 
 export default function DashboardPage() {
-  // --- hooks (لازم تكون فوق أي return) ---
+  const router = useRouter();
+
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('dash_active_tab') as Tab) || 'الإحصائيات';
@@ -27,14 +28,13 @@ export default function DashboardPage() {
   const [userPresent, setUserPresent] = useState(false);
 
   const [storeName, setStoreName] = useState<string | undefined>(undefined);
+  const [storeUid, setStoreUid] = useState<string | undefined>(undefined);
   const [storeLoading, setStoreLoading] = useState(true);
 
-  // حفظ التاب المختار
   useEffect(() => {
     localStorage.setItem('dash_active_tab', activeTab);
   }, [activeTab]);
 
-  // مراقبة تسجيل الدخول
   useEffect(() => {
     const auth = getAuth(app);
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -44,7 +44,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, []);
 
-  // جلب اسم المتجر من عدة مصادر (Store profile + تكامل سلة)
+  // جلب اسم المتجر و storeUid بشكل قياسي
   useEffect(() => {
     const run = async () => {
       setStoreLoading(true);
@@ -53,55 +53,60 @@ export default function DashboardPage() {
         const user = auth.currentUser;
         if (!user) {
           setStoreName(undefined);
+          setStoreUid(undefined);
           return;
         }
         const idToken = await user.getIdToken(true);
 
-        // جرّب اندبوينتات محتملة لملف المتجر
-        const tryProfileEndpoints = ['/api/store/profile', '/api/store/info', '/api/store'];
-        let name: string | undefined;
+        // أولوية uid من الكويري (لو جاي من set-password)
+        const uidFromQuery =
+          typeof router.query.uid === 'string' ? router.query.uid : undefined;
+        if (uidFromQuery) setStoreUid(uidFromQuery);
 
-        for (const ep of tryProfileEndpoints) {
-          try {
-            const res = await axios.get(ep, { headers: { Authorization: `Bearer ${idToken}` } });
-            name =
-              res.data?.storeName ??
-              res.data?.name ??
-              res.data?.store?.name ??
-              res.data?.profile?.storeName;
-            if (name) break;
-          } catch {
-            // جرّب اللي بعده
-          }
+        // اندبوينت موحّد بيرجع storeUid + الاسم
+        const res = await axios.get('/api/store/info', {
+          headers: { Authorization: `Bearer ${idToken}` },
+        }).catch(() => null);
+
+        const name =
+          res?.data?.store?.name ??
+          res?.data?.name ??
+          res?.data?.storeName ??
+          undefined;
+
+        // حاول استخراج storeUid (لو مش موجود في الكويري)
+        const storeUidFromInfo: string | undefined =
+          res?.data?.store?.storeUid ??
+          (res?.data?.store?.salla?.storeId
+            ? `salla:${String(res.data.store.salla.storeId)}`
+            : undefined);
+
+        if (!uidFromQuery && storeUidFromInfo) setStoreUid(storeUidFromInfo);
+        if (name) setStoreName(name);
+
+        // كملّة تأكيد: لو لسه مفيش اسم، استخرجه من حالة سلة (بس بالـ uid لو معانا)
+        if (!name && (uidFromQuery || storeUidFromInfo)) {
+          const st = await axios.get(
+            `/api/salla/status?uid=${encodeURIComponent(
+              uidFromQuery || storeUidFromInfo!
+            )}`,
+            { headers: { Authorization: `Bearer ${idToken}` } }
+          ).catch(() => null);
+
+          const sName =
+            st?.data?.storeName ??
+            st?.data?.salla?.storeName ??
+            undefined;
+          if (sName) setStoreName(sName);
         }
-
-        // لو لسه مفيش اسم، جرّب حالة تكامل سلة
-        if (!name) {
-          // غيّر المسار ده حسب باك إندك لو مختلف
-          const sallaRes = await axios
-            .get('/api/salla/status', { headers: { Authorization: `Bearer ${idToken}` } })
-            .catch(() => null);
-
-          // بنستخرج من الشكل اللي اديتهولي (salla.storeName)
-          const sallaName =
-            sallaRes?.data?.storeName ??
-            sallaRes?.data?.salla?.storeName ??
-            sallaRes?.data?.integration?.salla?.storeName;
-
-          if (typeof sallaName === 'string' && sallaName.trim()) {
-            name = sallaName.trim();
-          }
-        }
-
-        setStoreName(name);
       } finally {
         setStoreLoading(false);
       }
     };
     run();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.query.uid]);
 
-  // عنصر الهيدر اليمين (بدون Hooks داخل شروط)
   const headerRight = useMemo(() => {
     if (storeLoading) {
       return <span className="text-gray-400 text-sm">جارٍ تحميل بيانات المتجر…</span>;
@@ -120,7 +125,6 @@ export default function DashboardPage() {
     );
   }, [storeLoading, storeName]);
 
-  // --- من هنا تبدأ الـ returns بعد كل الهوكس ---
   if (authLoading) return <p>جارٍ التحقق من حالة تسجيل الدخول…</p>;
   if (!userPresent) return <p className="text-red-600">مطلوب تسجيل الدخول للوصول للوحة التحكم.</p>;
 
@@ -151,7 +155,7 @@ export default function DashboardPage() {
         {activeTab === 'الإحصائيات' && <DashboardAnalytics />}
         {activeTab === 'الطلبات' && <OrdersTab />}
         {activeTab === 'التقييمات' && <ReviewsTab storeName={storeName} />}
-        {activeTab === 'الإعدادات' && <SettingsTab />}
+        {activeTab === 'الإعدادات' && <SettingsTab storeUid={storeUid} />}
         {activeTab === 'المساعدة' && <SupportTab />}
       </div>
     </div>
