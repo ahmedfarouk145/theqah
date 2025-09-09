@@ -161,6 +161,46 @@
         { "fieldPath": "storeUid", "order": "ASCENDING" },
         { "fieldPath": "orderId",  "order": "ASCENDING" }
       ]
+    },
+
+  
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid",    "order": "ASCENDING" },
+        { "fieldPath": "status",      "order": "ASCENDING" },
+        { "fieldPath": "publishedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid",    "order": "ASCENDING" },
+        { "fieldPath": "status",      "order": "ASCENDING" },
+        { "fieldPath": "publishedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid",    "order": "ASCENDING" },
+        { "fieldPath": "status",      "order": "ASCENDING" },
+        { "fieldPath": "productId",   "order": "ASCENDING" },
+        { "fieldPath": "publishedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid",    "order": "ASCENDING" },
+        { "fieldPath": "status",      "order": "ASCENDING" },
+        { "fieldPath": "productId",   "order": "ASCENDING" },
+        { "fieldPath": "publishedAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

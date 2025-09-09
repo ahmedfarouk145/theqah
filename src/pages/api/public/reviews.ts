@@ -1,4 +1,4 @@
-// src/pages/api/public/reviews.ts
+// src/pages/api/public/reviews/index.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
@@ -17,10 +17,8 @@ const parseQuery = (q: QueryLike) => {
   const storeUid = getStr(q, ["storeUid", "storeId", "store", "s"]);
   const productId = getStr(q, ["productId", "product", "p", "sku"], "");
   const limit = Math.min(100, Math.max(1, Number(getStr(q, ["limit"], "20")) || 20));
-  const sort = (getStr(q, ["sort", "order"], "desc").toLowerCase() === "asc" ? "asc" : "desc") as
-    | "asc"
-    | "desc";
-  const sinceDays = Math.max(0, Number(getStr(q, ["sinceDays", "days"], "")) || 0);
+  const sort = (getStr(q, ["sort", "order"], "desc").toLowerCase() === "asc" ? "asc" : "desc") as "asc" | "desc";
+  const sinceDays = Math.max(0, Number(getStr(q, ["sinceDays", "days", "since"], "")) || 0);
   return { storeUid, productId, limit, sort, sinceDays };
 };
 
@@ -47,30 +45,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { storeUid, productId, limit, sort, sinceDays } = parseQuery(req.query);
   if (!storeUid) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
     return res.status(400).json({ error: "MISSING_PARAMS", need: ["storeUid"] });
   }
 
   try {
     const db = dbAdmin();
 
-    // بناء الاستعلام ديناميكياً
-    let q = db
+    let q: FirebaseFirestore.Query = db
       .collection("reviews")
       .where("storeUid", "==", storeUid)
       .where("status", "==", "published");
 
     if (productId) q = q.where("productId", "==", productId);
 
-    // sinceDays => فلترة على publishedAt (لو فيه)
     const now = Date.now();
     const cutoff = sinceDays > 0 ? now - sinceDays * 24 * 60 * 60 * 1000 : 0;
-    if (cutoff > 0) {
-      q = q.where("publishedAt", ">=", cutoff);
-    }
+    if (cutoff > 0) q = q.where("publishedAt", ">=", cutoff);
 
     q = q.orderBy("publishedAt", sort as FirebaseFirestore.OrderByDirection).limit(limit);
 
-    // ملاحظة: أول مرة ممكن يطلب منك Firestore تعمل index مركّب للاستعلام ده.
     const snap = await q.get();
 
     const items: PublicReview[] = snap.docs.map((d) => {
@@ -87,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const trustedBuyer = Boolean(
         (typeof data["trustedBuyer"] === "boolean" && data["trustedBuyer"]) ||
-          (typeof data["buyerVerified"] === "boolean" && data["buyerVerified"])
+        (typeof data["buyerVerified"] === "boolean" && data["buyerVerified"])
       );
 
       return {
@@ -100,13 +94,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
     });
 
-    // CORS (في الإنتاج بدّل * بقائمة دوميناتك)
     res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300"); // اختياري: كاش بسيط
+    res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300");
     return res.status(200).json({ items });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("public/reviews error:", message);
+    res.setHeader("Access-Control-Allow-Origin", "*");
     return res.status(500).json({ error: "PUBLIC_LIST_FAILED", message });
   }
 }
