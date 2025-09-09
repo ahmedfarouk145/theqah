@@ -1,5 +1,7 @@
 (() => {
-  const SCRIPT_VERSION = "1.3.4"; // bump لو حدّثت الكود
+  const SCRIPT_VERSION = "1.3.4";
+
+  // ——— تحديد السكربت والمصدر ———
   const CURRENT_SCRIPT = document.currentScript;
   const SCRIPT_ORIGIN = (() => {
     try { return new URL(CURRENT_SCRIPT?.src || location.href).origin; }
@@ -9,7 +11,7 @@
   const API_BASE = `${SCRIPT_ORIGIN}/api/public/reviews`;
   const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png`;
 
-  // Helpers
+  // ——— Helpers ———
   const h = (tag, attrs = {}, children = []) => {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -22,42 +24,43 @@
       .forEach((c) => (typeof c === "string" ? el.appendChild(document.createTextNode(c)) : el.appendChild(c)));
     return el;
   };
-  const debounce = (fn, wait = 300) => {
-    let t;
-    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
-  };
+
   const Stars = (n = 0) => {
     const wrap = h("div", { class: "stars", role: "img", "aria-label": `${n} stars` });
     for (let i = 1; i <= 5; i++) wrap.appendChild(h("span", { class: "star" + (i <= n ? " filled" : "") }, "★"));
     return wrap;
   };
 
-  // Cache/Single-flight
+  // ——— Cache/Single-flight لنتيجة resolveStore ———
   const G = (window.__THEQAH__ = window.__THEQAH__ || {});
-  const TTL_MS = 10 * 60 * 1000; // 10m
-  const cacheKey = (host) => `theqah:storeUid:${host}`;
-  const getCached = (host) => {
+  const TTL_MS = 10 * 60 * 1000; // 10 دقائق
+
+  function cacheKey(host){ return `theqah:storeUid:${host}`; }
+  function getCached(host){
     try {
-      const o = JSON.parse(localStorage.getItem(cacheKey(host)) || "{}");
-      if (o.uid && Date.now() - (o.t || 0) < TTL_MS) return o.uid;
+      const o = JSON.parse(localStorage.getItem(cacheKey(host)) || '{}');
+      if (o.uid && (Date.now() - (o.t || 0) < TTL_MS)) return o.uid;
     } catch {}
     return null;
-  };
-  const setCached = (host, uid) => {
+  }
+  function setCached(host, uid){
     try { localStorage.setItem(cacheKey(host), JSON.stringify({ uid, t: Date.now() })); } catch {}
-  };
+  }
 
-  // Resolve Store (يرسل href لتفادي التباس المتاجر تحت نفس الدومين)
   async function resolveStore() {
-    const host = location.host.replace(/^www\./, "").toLowerCase();
+    const host = location.host.replace(/^www\./, '').toLowerCase();
+
+    // ذاكرة + localStorage
     if (G.storeUid) return G.storeUid;
     const cached = getCached(host);
     if (cached) { G.storeUid = cached; return cached; }
+
+    // single-flight
     if (G.resolvePromise) return G.resolvePromise;
 
-    const url = `${API_BASE}/resolve?href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
-    G.resolvePromise = fetch(url, { cache: "no-store" }) // simple GET => بدون OPTIONS
-      .then(r => (r.ok ? r.json() : null))
+    const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
+    G.resolvePromise = fetch(url, { cache: 'no-store' }) // طلب بسيط بدون هيدر مخصّص لتفادي OPTIONS
+      .then(r => r.ok ? r.json() : null)
       .then(j => {
         const uid = j?.storeUid || null;
         if (uid) { G.storeUid = uid; setCached(host, uid); }
@@ -68,12 +71,13 @@
     return G.resolvePromise;
   }
 
-  // Detect productId (سلة)
+  // ——— اكتشاف Product ID (سلة) ———
   function detectProductId() {
     const host = document.querySelector("#theqah-reviews, .theqah-reviews");
     const hostPid = host?.getAttribute("data-product") || host?.dataset?.product;
     if (hostPid && /\S/.test(hostPid) && hostPid !== "auto") return String(hostPid).trim();
 
+    // JSON-LD
     try {
       const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
       for (const s of scripts) {
@@ -86,7 +90,7 @@
               const pid = node.productID || node.productId || node.sku || null;
               if (pid) return String(pid);
               if (node.url) {
-                const m = String(node.url).match(/(\d{8,})/);
+                const m = String(node.url).match(/(\d{5,})/);
                 if (m) return m[1];
               }
             }
@@ -95,6 +99,7 @@
       }
     } catch {}
 
+    // DOM hints
     const domHints = [
       "[data-product-id]","[data-productid]",
       '[itemtype*="Product"] [itemprop="sku"]','[itemtype*="Product"] [itemprop="productID"]',
@@ -109,8 +114,13 @@
       if (v && /\S/.test(v)) return String(v).trim();
     }
 
+    // URL Heuristics لسلة
     const url = location.pathname;
-    const matchers = [/\/p(\d{8,})(?:\/|$)/, /-(\d{8,})$/, /\/products\/(\d{8,})/];
+    const matchers = [
+      /\/p(\d{8,})(?:\/|$)/,  // /p1927638714
+      /-(\d{8,})$/,           // ...-1927638714
+      /\/products\/(\d{8,})/  // /products/1927638714
+    ];
     for (const rgx of matchers) {
       const m = url.match(rgx);
       if (m) return m[1];
@@ -118,7 +128,7 @@
     return null;
   }
 
-  // Host placement
+  // ——— إدراج الحاوية أسفل سكشن المنتج ———
   function findProductAnchor() {
     const fromData = document.querySelector("[data-product-id], [data-productid]");
     if (fromData) {
@@ -135,20 +145,26 @@
     }
     return document.body;
   }
+
   function ensureHostUnderProduct() {
     let host = document.querySelector("#theqah-reviews, .theqah-reviews");
     if (host) return host;
+
     const anchor = findProductAnchor();
     host = document.createElement("div");
     host.className = "theqah-reviews";
     host.style.marginTop = "24px";
-    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(host, anchor.nextSibling);
-    else document.body.appendChild(host);
+    if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(host, anchor.nextSibling);
+    } else {
+      document.body.appendChild(host);
+    }
     return host;
   }
 
+  // ——— تركيب وrender ———
   async function mountOne(hostEl, store, productId, limit, lang, theme) {
-    // guards لمنع التكرارات
+    // حراسة ضد التكرار
     if (hostEl.getAttribute("data-state") === "done") return;
     if (hostEl.getAttribute("data-state") === "mounting") return;
     hostEl.setAttribute("data-state", "mounting");
@@ -172,6 +188,9 @@
         .badge { display:inline-flex; align-items:center; gap:6px; background:#e6f4ea; color:#166534; border:1px solid #86efac;
                  font-size:11px; padding:3px 8px; border-radius:999px; }
         .badge.dark { background:#064e3b; color:#bbf7d0; border-color:#10b981; }
+        /* — اللوجو بدل النص — */
+        .badge.icon-only { padding:2px 6px; }
+        .badge.icon-only .badge-logo { width:16px; height:16px; display:block; object-fit:contain; }
         .text { white-space:pre-wrap; line-height:1.6; font-size:13px; margin:8px 0 0 0; }
         .empty { padding:12px; border:1px dashed ${theme === "dark" ? "#374151" : "#94a3b8"}; border-radius:12px; font-size:13px; opacity:.8; }
         .row { display:flex; align-items:center; gap:8px; justify-content:space-between; }
@@ -230,16 +249,16 @@
     const fetchData = async () => {
       try {
         const url = `${endpoint}&sort=${currentSort}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
-        const res = await fetch(url, { cache: "no-store" }); // simple GET
+        const res = await fetch(url, { cache: 'no-store' }); // طلب بسيط => بدون preflight
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
         renderList(lastData);
-        hostEl.setAttribute("data-state", "done");
+        hostEl.setAttribute("data-state", "done"); // نجاح
       } catch (e) {
-        console.error("Failed to fetch reviews:", e);
+        console.error('Failed to fetch reviews:', e);
         list.innerHTML = "";
         list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "تعذّر التحميل" : "Failed to load"));
-        hostEl.removeAttribute("data-state");
+        hostEl.removeAttribute("data-state"); // تسمح بإعادة المحاولة لاحقًا
       }
     };
 
@@ -259,13 +278,24 @@
       for (const r of items) {
         const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
         const trusted = !!r.trustedBuyer;
+
         const row = h("div", { class: "row" }, [
           h("div", { class: "left" }, [
             Stars(Number(r.stars || 0)),
-            trusted ? h("span", { class: "badge" + (theme === "dark" ? " dark" : "") }, lang === "ar" ? "مشتري موثّق" : "Verified Buyer") : null,
+            trusted
+              ? h("span", { class: "badge" + (theme === "dark" ? " dark" : "") + " icon-only", title: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer") }, [
+                  h("img", {
+                    class: "badge-logo",
+                    src: LOGO_URL,                     // ← اللوجو بدل النص
+                    alt: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer"),
+                    loading: "lazy"
+                  })
+                ])
+              : null,
           ]),
           h("small", { class: "meta" }, when),
         ]);
+
         const text = h("p", { class: "text" }, String(r.text || "").trim());
         list.appendChild(h("div", { class: "item" }, [row, text]));
       }
@@ -274,30 +304,65 @@
     await fetchData();
   }
 
-  // Main mounting with guards/debounce + SPA
+  // ——— Main mounting مع حراسة و Debounce للـ SPA ———
+  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+
   let mountedOnce = false;
   let lastHref = location.href;
+
   const safeMount = async () => {
-    if (mountedOnce && lastHref === location.href) return; // نفس الصفحة
+    // ما تعيدش التركيب على نفس الـ URL
+    if (mountedOnce && lastHref === location.href) return;
     lastHref = location.href;
 
     const existingHost = document.querySelector("#theqah-reviews, .theqah-reviews");
 
-    let store = existingHost?.getAttribute("data-store") || existingHost?.dataset?.store || CURRENT_SCRIPT?.dataset?.store || "";
-    const lang  = existingHost?.getAttribute?.("data-lang")  || existingHost?.dataset?.lang  || CURRENT_SCRIPT?.dataset?.lang  || "ar";
-    const theme = existingHost?.getAttribute?.("data-theme") || existingHost?.dataset?.theme || CURRENT_SCRIPT?.dataset?.theme || "light";
-    const limit = Number(existingHost?.getAttribute?.("data-limit") || existingHost?.dataset?.limit || CURRENT_SCRIPT?.dataset?.limit || 10) || 10;
+    // قراءة الإعدادات
+    let store =
+      existingHost?.getAttribute("data-store") ||
+      existingHost?.dataset?.store ||
+      CURRENT_SCRIPT?.dataset?.store ||
+      "";
 
-    if (store && (store.includes("{") || /STORE_ID/i.test(store))) { console.warn("Clearing placeholder store:", store); store = ""; }
-    if (!store) store = await resolveStore();
+    const lang =
+      existingHost?.getAttribute?.("data-lang") ||
+      existingHost?.dataset?.lang ||
+      CURRENT_SCRIPT?.dataset?.lang ||
+      "ar";
 
+    const theme =
+      existingHost?.getAttribute?.("data-theme") ||
+      existingHost?.dataset?.theme ||
+      CURRENT_SCRIPT?.dataset?.theme ||
+      "light";
+
+    const limit = Number(
+      existingHost?.getAttribute?.("data-limit") ||
+      existingHost?.dataset?.limit ||
+      CURRENT_SCRIPT?.dataset?.limit ||
+      10
+    ) || 10;
+
+    // تنظيف placeholder
+    if (store && (store.includes('{') || /STORE_ID/i.test(store))) {
+      console.warn('Clearing placeholder store:', store);
+      store = '';
+    }
+
+    // محاولة auto-resolve
+    if (!store) {
+      try { store = await resolveStore(); }
+      catch (err) { console.error('Error during store auto-resolution:', err); }
+    }
+
+    // لو لسه مفيش — اعرض رسالة تشخيصية
     const host = existingHost || ensureHostUnderProduct();
     if (!store) {
       if (host && host.getAttribute("data-mounted") !== "1") {
         const msg = document.createElement("div");
         msg.className = "theqah-widget-empty";
         msg.style.cssText = "padding:12px;border:1px dashed #94a3b8;border-radius:12px;opacity:.8;font:13px system-ui;";
-        msg.textContent = (String(lang).toLowerCase() === "ar")
+        msg.textContent = (String(lang).toLowerCase() === 'ar')
           ? "لم يتم العثور على معرف المتجر. تأكد من تثبيت التطبيق في متجر سلة."
           : "Store ID not found. Make sure the app is installed in your Salla store.";
         host.appendChild(msg);
@@ -306,6 +371,7 @@
       return;
     }
 
+    // product id
     const pidFromHost = host?.getAttribute("data-product") || host?.dataset?.product || null;
     const pid = (pidFromHost && pidFromHost !== "auto") ? pidFromHost : detectProductId();
 
@@ -316,6 +382,7 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => safeMount());
   else safeMount();
 
+  // دعم SPA (مرة واحدة)
   if (!window.__THEQAH_OBS__) {
     window.__THEQAH_OBS__ = true;
     const deb = debounce(() => safeMount(), 700);
