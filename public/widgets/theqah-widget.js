@@ -4,16 +4,21 @@
 
   const SCRIPT_VERSION = '1.3.1';
 
+  // ------ Context ------
   const CURRENT_SCRIPT = document.currentScript;
   const SCRIPT_ORIGIN = (() => {
-    try { return new URL((CURRENT_SCRIPT && CURRENT_SCRIPT.src) || location.href).origin; }
+    try { return new URL(CURRENT_SCRIPT?.src || location.href).origin; }
     catch { return location.origin; }
   })();
 
-  const API_BASE = `${SCRIPT_ORIGIN}/api/public/reviews`;
+  // قابل للضبط عبر data-api-base، وإلا الافتراضي نفس أصل السكربت
+  const API_BASE = String(
+    CURRENT_SCRIPT?.dataset?.apiBase || `${SCRIPT_ORIGIN}/api/public/reviews`
+  ).replace(/\/$/, '');
+
   const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png`;
 
-  // ---------- Helpers ----------
+  // ------ Helpers ------
   const h = (tag, attrs = {}, children = []) => {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -42,15 +47,16 @@
     return id ? `salla:${id}` : null;
   };
 
-  // ---------- Product ID ----------
+  // ------ Product ID detection ------
   function detectProductId() {
+    // 1) host div data
     const host = document.querySelector('#theqah-reviews, .theqah-reviews');
     const hostPid =
-      (host && (host.getAttribute('data-product-id') || host.dataset?.productId ||
-                host.getAttribute('data-product') || host.dataset?.product));
+      host?.getAttribute('data-product-id') || host?.dataset?.productId ||
+      host?.getAttribute('data-product')    || host?.dataset?.product;
     if (hostPid && /\S/.test(hostPid)) return String(hostPid).trim();
 
-    // JSON-LD
+    // 2) JSON-LD
     try {
       const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
       for (const s of scripts) {
@@ -59,8 +65,7 @@
           const arr = Array.isArray(json) ? json : [json];
           for (const node of arr) {
             if (!node) continue;
-            const isProduct = node['@type'] === 'Product' ||
-              (Array.isArray(node['@type']) && node['@type'].includes('Product'));
+            const isProduct = node['@type'] === 'Product' || (Array.isArray(node['@type']) && node['@type'].includes('Product'));
             if (isProduct) {
               const pid = node.productID || node.productId || node.sku || null;
               if (pid) return String(pid);
@@ -74,7 +79,7 @@
       }
     } catch {}
 
-    // DOM hints
+    // 3) DOM hints
     const domHints = [
       '[data-product-id]','[data-productid]',
       '[itemtype*="Product"] [itemprop="sku"]','[itemtype*="Product"] [itemprop="productID"]',
@@ -89,7 +94,7 @@
       if (v && /\S/.test(v)) return String(v).trim();
     }
 
-    // URL
+    // 4) URL
     const url = location.pathname;
     const matchers = [
       /-(\d{5,})$/,
@@ -103,12 +108,12 @@
     return null;
   }
 
-  // ---------- Store UID ----------
+  // ------ Store UID detection ------
   function detectStoreUidSync() {
     const host = document.querySelector('#theqah-reviews, .theqah-reviews');
     let s =
-      (host && (host.getAttribute('data-store') || host.dataset?.store)) ||
-      (CURRENT_SCRIPT && CURRENT_SCRIPT.dataset?.store) ||
+      host?.getAttribute('data-store')      || host?.dataset?.store ||
+      CURRENT_SCRIPT?.dataset?.store        ||
       document.querySelector('meta[name="theqah:store-uid"]')?.content ||
       document.querySelector('meta[name="salla:store-id"]')?.content  ||
       document.querySelector('meta[name="store:id"]')?.content        || null;
@@ -116,7 +121,7 @@
     s = normalizeStoreUid(s);
     if (s) return s;
 
-    // احتمالات جلوبال سلة
+    // Salla globals
     const candidates = [
       (window.__NUXT__ && (window.__NUXT__.state?.store?.id || window.__NUXT__.state?.context?.store?.id)),
       window.__STORE__?.id,
@@ -132,8 +137,7 @@
 
   async function resolveStoreUidRemotely() {
     try {
-      // API الصحيح: /api/public/reviews/resolve?host=<domain>
-      const host = location.host.replace(/^www\./, '');
+      const host = location.host.replace(/^www\./, '').toLowerCase();
       const res = await fetch(`${API_BASE}/resolve?host=${encodeURIComponent(host)}`, { cache: 'no-store' });
       if (!res.ok) return null;
       const js = await res.json().catch(() => null);
@@ -141,7 +145,7 @@
     } catch { return null; }
   }
 
-  // ---------- Anchor & Host ----------
+  // ------ Host placement ------
   function findProductAnchor() {
     const fromData = document.querySelector('[data-product-id], [data-productid]');
     if (fromData) {
@@ -171,7 +175,7 @@
     return host;
   }
 
-  // ---------- Mount One ----------
+  // ------ UI ------
   async function mountOne(hostEl, storeUid, productId, limit, lang, theme) {
     if (hostEl.getAttribute('data-mounted') === '1') return;
     hostEl.setAttribute('data-mounted', '1');
@@ -235,19 +239,16 @@
       currentSort = btn.getAttribute('data-sort') || 'desc';
       filterEl.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
-      renderList(lastData); // إعادة ترتيب محلي
+      renderList(lastData);
     });
 
-    const base = `${API_BASE}?storeUid=${encodeURIComponent(storeUid)}&limit=${encodeURIComponent(String(limit))}&sinceDays=365`;
+    const base = `${API_BASE}?storeUid=${encodeURIComponent(storeUid)}&limit=${encodeURIComponent(String(limit))}`;
     const endpoint = productId ? `${base}&productId=${encodeURIComponent(productId)}` : base;
 
     const fetchData = async () => {
       try {
-        const url = `${endpoint}&sort=${currentSort}&_=${Date.now()}`; // منع الكاش
-        const res = await fetch(url, {
-          cache: 'no-store',
-          headers: { 'x-theqah-widget': SCRIPT_VERSION, 'Pragma': 'no-cache' },
-        });
+        const url = `${endpoint}&sort=${currentSort}&_=${Date.now()}`;
+        const res = await fetch(url, { cache: 'no-store', headers: { 'x-theqah-widget': SCRIPT_VERSION, 'Pragma': 'no-cache' } });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
         renderList(lastData);
@@ -287,28 +288,25 @@
     await fetchData();
   }
 
-  // ---------- Mount All ----------
+  // ------ Mount all ------
   async function mountAll() {
     const existingHost = document.querySelector('#theqah-reviews, .theqah-reviews');
 
     let store = detectStoreUidSync();
     const lang =
-      (existingHost && (existingHost.getAttribute('data-lang') || existingHost.dataset?.lang)) ||
-      (CURRENT_SCRIPT && CURRENT_SCRIPT.dataset?.lang) || 'ar';
+      existingHost?.getAttribute?.('data-lang') || existingHost?.dataset?.lang ||
+      CURRENT_SCRIPT?.dataset?.lang || 'ar';
     const theme =
-      (existingHost && (existingHost.getAttribute('data-theme') || existingHost.dataset?.theme)) ||
-      (CURRENT_SCRIPT && CURRENT_SCRIPT.dataset?.theme) || 'light';
+      existingHost?.getAttribute?.('data-theme') || existingHost?.dataset?.theme ||
+      CURRENT_SCRIPT?.dataset?.theme || 'light';
     const limit = Number(
-      (existingHost && (existingHost.getAttribute('data-limit') || existingHost.dataset?.limit)) ||
-      (CURRENT_SCRIPT && CURRENT_SCRIPT.dataset?.limit) || 10
+      existingHost?.getAttribute?.('data-limit') || existingHost?.dataset?.limit ||
+      CURRENT_SCRIPT?.dataset?.limit || 10
     ) || 10;
 
+    if (!store) store = await resolveStoreUidRemotely();
     if (!store) {
-      store = await resolveStoreUidRemotely();
-    }
-
-    if (!store) {
-      const host = ensureHostUnderProduct();
+      const host = existingHost || ensureHostUnderProduct();
       if (host && host.getAttribute('data-mounted') !== '1') {
         const msg = document.createElement('div');
         msg.className = 'theqah-widget-empty';
@@ -330,11 +328,8 @@
     await mountOne(host, store, pid, limit, String(lang).toLowerCase(), String(theme).toLowerCase());
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => mountAll());
-  } else {
-    mountAll();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => mountAll());
+  else mountAll();
 
   const obs = new MutationObserver(() => mountAll());
   obs.observe(document.documentElement || document.body, { childList: true, subtree: true });

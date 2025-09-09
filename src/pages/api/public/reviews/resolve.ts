@@ -1,67 +1,89 @@
 // src/pages/api/public/reviews/resolve.ts
-import type { NextApiRequest, NextApiResponse } from "next";
-import { dbAdmin } from "@/lib/firebaseAdmin";
+import type { NextApiRequest, NextApiResponse } from 'next';
+import * as admin from 'firebase-admin';
 
-function toHost(input: string): string | null {
-  try {
-    if (!input) return null;
-    // لو وصل host فقط
-    if (!/^[a-z]+:\/\//i.test(input)) return input.split("/")[0].toLowerCase();
-    const u = new URL(input);
-    return u.host.toLowerCase();
-  } catch {
-    return null;
+type StoreDoc = {
+  uid?: string;
+  storeUid?: string;
+  storeId?: string | number;
+  domains?: string[];
+  primaryDomain?: string;
+};
+
+function getDb() {
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      // يستخدم Application Default Credentials أو مفاتيحك (اختياري)
+      credential: admin.credential.applicationDefault(),
+    });
   }
+  return admin.firestore();
+}
+
+function cleanHost(raw: unknown): string {
+  const s = String(raw || '').trim().toLowerCase();
+  if (!s) return '';
+  return s.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // CORS / preflight
-  if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    res.setHeader("Access-Control-Allow-Origin", "*");
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(200).end();
   }
-  if (req.method !== "GET") return res.status(405).json({ error: "method_not_allowed" });
+  if (req.method !== 'GET') return res.status(405).json({ error: 'method_not_allowed' });
 
-  const hostParam = (req.query.host as string) || req.headers.origin || "";
-  const host = toHost(hostParam);
-  if (!host) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    return res.status(400).json({ error: "BAD_HOST" });
+  const host = cleanHost(req.query.host || req.query.domain);
+  const storeId = String(req.query.storeId || req.query.store || '').trim();
+  const storeUid = String(req.query.storeUid || '').trim();
+
+  // 1) إن وُجد storeUid أو storeId في الطلب
+  if (storeUid) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.status(200).json({ storeUid });
+  }
+  if (storeId) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.status(200).json({ storeUid: `salla:${storeId}` });
   }
 
+  // 2) بالـ host (الدومين)
+  if (!host) return res.status(400).json({ error: 'MISSING_HOST' });
+
   try {
-    const db = dbAdmin();
+    const db = getDb();
+    // البحث حسب arrays أو حقل أساسي
+    let snap = await db.collection('stores').where('domains', 'array-contains', host).limit(1).get();
+    let doc = snap.docs[0];
 
-    // 1) أسرع: جدول مابنج مباشر storeHosts/{host}
-    const mapDoc = await db.collection("storeHosts").doc(host).get();
-    if (mapDoc.exists) {
-      const storeUid = String(mapDoc.get("storeUid") || "");
-      if (storeUid) {
-        res.setHeader("Access-Control-Allow-Origin", "*");
-        return res.status(200).json({ storeUid });
-      }
+    if (!doc) {
+      snap = await db.collection('stores').where('primaryDomain', '==', host).limit(1).get();
+      doc = snap.docs[0];
     }
 
-    // 2) بديل: استعلم من stores (يفضَّل يكون عندك field domainHost = "demostore.salla.sa")
-    const snap = await db.collection("stores").where("domainHost", "==", host).limit(1).get();
-    if (!snap.empty) {
-      const d = snap.docs[0];
-      const storeUid = String(d.get("uid") || d.get("storeUid") || "");
-      if (storeUid) {
-        res.setHeader("Access-Control-Allow-Origin", "*");
-        return res.status(200).json({ storeUid });
-      }
+    if (!doc) {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      return res.status(404).json({ error: 'STORE_NOT_FOUND' });
     }
 
-    // مش لاقي
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    return res.status(404).json({ error: "STORE_NOT_FOUND" });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("public/reviews/resolve error:", message);
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    return res.status(500).json({ error: "RESOLVE_FAILED", message });
+    const data = doc.data() as Partial<StoreDoc>;
+    const uid =
+      data.uid ||
+      data.storeUid ||
+      (data.storeId != null ? `salla:${String(data.storeId)}` : undefined);
+
+    if (!uid) {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      return res.status(404).json({ error: 'UID_NOT_FOUND' });
+    }
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ storeUid: uid });
+  } catch (err) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.status(500).json({ error: 'RESOLVE_FAILED' });
   }
 }
