@@ -1,5 +1,6 @@
+
 (() => {
-  const SCRIPT_VERSION = "1.3.4";
+  const SCRIPT_VERSION = "1.3.5";
 
   // ——— تحديد السكربت والمصدر ———
   const CURRENT_SCRIPT = document.currentScript;
@@ -59,7 +60,7 @@
     if (G.resolvePromise) return G.resolvePromise;
 
     const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
-    G.resolvePromise = fetch(url, { cache: 'no-store' }) // طلب بسيط بدون هيدر مخصّص لتفادي OPTIONS
+    G.resolvePromise = fetch(url, { cache: 'no-store' })
       .then(r => r.ok ? r.json() : null)
       .then(j => {
         const uid = j?.storeUid || null;
@@ -117,9 +118,9 @@
     // URL Heuristics لسلة
     const url = location.pathname;
     const matchers = [
-      /\/p(\d{8,})(?:\/|$)/,  // /p1927638714
-      /-(\d{8,})$/,           // ...-1927638714
-      /\/products\/(\d{8,})/  // /products/1927638714
+      /\/p(\d{8,})(?:\/|$)/,
+      /-(\d{8,})$/,
+      /\/products\/(\d{8,})/
     ];
     for (const rgx of matchers) {
       const m = url.match(rgx);
@@ -164,7 +165,6 @@
 
   // ——— تركيب وrender ———
   async function mountOne(hostEl, store, productId, limit, lang, theme) {
-    // حراسة ضد التكرار
     if (hostEl.getAttribute("data-state") === "done") return;
     if (hostEl.getAttribute("data-state") === "mounting") return;
     hostEl.setAttribute("data-state", "mounting");
@@ -222,10 +222,10 @@
         }
         
         .logo { 
-          width: 32px; 
-          height: 32px; 
-          border-radius: 8px;
-          padding: 4px;
+          width: 48px;   /* ← كبّرنا لوجو الهيدر */
+          height: 48px; 
+          border-radius: 10px;
+          padding: 6px;
           background: ${theme === "dark" ? "rgba(59, 130, 246, 0.1)" : "rgba(59, 130, 246, 0.05)"};
           transition: all 0.3s ease;
         }
@@ -289,13 +289,14 @@
           color: ${theme === "dark" ? "#ecfdf5" : "#065f46"};
           border: 1px solid ${theme === "dark" ? "rgba(16, 185, 129, 0.3)" : "#86efac"};
           font-size: 12px; 
-          font-weight: 600;
-          padding: 6px 12px; 
+          font-weight: 700;
+          padding: 8px 12px;   /* ← أكبر شوية */
           border-radius: 20px;
           box-shadow: ${theme === "dark" 
             ? "0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(16, 185, 129, 0.1)" 
             : "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.1)"};
           transition: all 0.2s ease;
+          white-space: nowrap;
         }
         
         .badge:hover {
@@ -305,18 +306,21 @@
             : "0 8px 15px -3px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(16, 185, 129, 0.2)"};
         }
         
-        .badge.icon-only { 
-          padding: 8px; 
-          border-radius: 50%;
-        }
-        
-        .badge.icon-only .badge-logo { 
-          width: 16px; 
-          height: 16px; 
+        .badge-logo { 
+          width: 20px;   /* ← كبّرنا لوجو البادج */
+          height: 20px; 
           display: block; 
           object-fit: contain;
+          border-radius: 4px;
+          background: rgba(255,255,255,0.2);
+          padding: 1px;
         }
         
+        .badge .label {
+          font-weight: 800;
+          letter-spacing: .2px;
+        }
+
         .text { 
           white-space: pre-wrap; 
           line-height: 1.7; 
@@ -377,14 +381,12 @@
           height: 100%;
           background: linear-gradient(90deg, 
             transparent, 
-            ${theme === "dark" ? "rgba(255, 255, 255, 0.03)" : "rgba(59, 130, 246, 0.03)"}, 
+            ${theme === "dark" ? "rgba(255, 255, 255, 0.03)" : "rgba(59, 130, 246, 0.03)"},
             transparent);
           transition: left 0.6s;
         }
         
-        .item:hover::before {
-          left: 100%;
-        }
+        .item:hover::before { left: 100%; }
         
         .item:hover {
           transform: translateY(-2px);
@@ -404,9 +406,7 @@
           flex-wrap: wrap;
         }
         
-        .filter span {
-          color: ${theme === "dark" ? "#94a3b8" : "#64748b"};
-        }
+        .filter span { color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; }
         
         .filter button { 
           padding: 10px 20px; 
@@ -469,58 +469,21 @@
           vertical-align: middle;
         }
         
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         
-        /* Responsive Design */
+        /* Responsive */
         @media (max-width: 768px) {
-          .section {
-            padding: 20px;
-            border-radius: 16px;
-            margin: 16px 0;
-          }
-          
-          .title {
-            font-size: 18px;
-          }
-          
-          .item {
-            padding: 18px;
-            border-radius: 14px;
-          }
-          
-          .filter {
-            gap: 8px;
-          }
-          
-          .filter button {
-            padding: 8px 14px;
-            font-size: 12px;
-          }
-          
-          .row {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
-          }
+          .section { padding: 20px; border-radius: 16px; margin: 16px 0; }
+          .title { font-size: 18px; }
+          .item { padding: 18px; border-radius: 14px; }
+          .filter { gap: 8px; }
+          .filter button { padding: 8px 14px; font-size: 12px; }
+          .row { flex-direction: column; align-items: flex-start; gap: 8px; }
         }
         
-        /* Animation for new items */
-        .item {
-          animation: slideInUp 0.5s ease-out forwards;
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        
-        @keyframes slideInUp {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        /* Stagger animation for multiple items */
+        /* Animations */
+        .item { animation: slideInUp 0.5s ease-out forwards; opacity: 0; transform: translateY(20px); }
+        @keyframes slideInUp { to { opacity: 1; transform: translateY(0); } }
         .item:nth-child(1) { animation-delay: 0.1s; }
         .item:nth-child(2) { animation-delay: 0.2s; }
         .item:nth-child(3) { animation-delay: 0.3s; }
@@ -572,16 +535,16 @@
     const fetchData = async () => {
       try {
         const url = `${endpoint}&sort=${currentSort}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
-        const res = await fetch(url, { cache: 'no-store' }); // طلب بسيط => بدون preflight
+        const res = await fetch(url, { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
         renderList(lastData);
-        hostEl.setAttribute("data-state", "done"); // نجاح
+        hostEl.setAttribute("data-state", "done");
       } catch (e) {
         console.error('Failed to fetch reviews:', e);
         list.innerHTML = "";
         list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "تعذّر التحميل" : "Failed to load"));
-        hostEl.removeAttribute("data-state"); // تسمح بإعادة المحاولة لاحقًا
+        hostEl.removeAttribute("data-state");
       }
     };
 
@@ -602,20 +565,23 @@
         const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
         const trusted = !!r.trustedBuyer;
 
+        const rowLeftChildren = [
+          Stars(Number(r.stars || 0)),
+          trusted
+            ? h("span", { class: "badge", title: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer") }, [
+                h("img", {
+                  class: "badge-logo",
+                  src: LOGO_URL,
+                  alt: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer"),
+                  loading: "lazy"
+                }),
+                h("span", { class: "label" }, lang === "ar" ? "مشتري ثقة" : "Verified Buyer")
+              ])
+            : null,
+        ];
+
         const row = h("div", { class: "row" }, [
-          h("div", { class: "left" }, [
-            Stars(Number(r.stars || 0)),
-            trusted
-              ? h("span", { class: "badge" + (theme === "dark" ? " dark" : "") + " icon-only", title: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer") }, [
-                  h("img", {
-                    class: "badge-logo",
-                    src: LOGO_URL,                     // ← اللوجو بدل النص
-                    alt: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer"),
-                    loading: "lazy"
-                  })
-                ])
-              : null,
-          ]),
+          h("div", { class: "left" }, rowLeftChildren),
           h("small", { class: "meta" }, when),
         ]);
 
@@ -634,7 +600,6 @@
   let lastHref = location.href;
 
   const safeMount = async () => {
-    // ما تعيدش التركيب على نفس الـ URL
     if (mountedOnce && lastHref === location.href) return;
     lastHref = location.href;
 
@@ -713,3 +678,4 @@
     obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
   }
 })();
+
