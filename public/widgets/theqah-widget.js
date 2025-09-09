@@ -1,8 +1,7 @@
 
 (() => {
-  const SCRIPT_VERSION = "1.3.5";
+  const SCRIPT_VERSION = "1.3.6";
 
-  // ——— تحديد السكربت والمصدر ———
   const CURRENT_SCRIPT = document.currentScript;
   const SCRIPT_ORIGIN = (() => {
     try { return new URL(CURRENT_SCRIPT?.src || location.href).origin; }
@@ -12,7 +11,6 @@
   const API_BASE = `${SCRIPT_ORIGIN}/api/public/reviews`;
   const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png`;
 
-  // ——— Helpers ———
   const h = (tag, attrs = {}, children = []) => {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -32,9 +30,8 @@
     return wrap;
   };
 
-  // ——— Cache/Single-flight لنتيجة resolveStore ———
   const G = (window.__THEQAH__ = window.__THEQAH__ || {});
-  const TTL_MS = 10 * 60 * 1000; // 10 دقائق
+  const TTL_MS = 10 * 60 * 1000;
 
   function cacheKey(host){ return `theqah:storeUid:${host}`; }
   function getCached(host){
@@ -50,13 +47,9 @@
 
   async function resolveStore() {
     const host = location.host.replace(/^www\./, '').toLowerCase();
-
-    // ذاكرة + localStorage
     if (G.storeUid) return G.storeUid;
     const cached = getCached(host);
     if (cached) { G.storeUid = cached; return cached; }
-
-    // single-flight
     if (G.resolvePromise) return G.resolvePromise;
 
     const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
@@ -72,13 +65,11 @@
     return G.resolvePromise;
   }
 
-  // ——— اكتشاف Product ID (سلة) ———
   function detectProductId() {
     const host = document.querySelector("#theqah-reviews, .theqah-reviews");
     const hostPid = host?.getAttribute("data-product") || host?.dataset?.product;
     if (hostPid && /\S/.test(hostPid) && hostPid !== "auto") return String(hostPid).trim();
 
-    // JSON-LD
     try {
       const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
       for (const s of scripts) {
@@ -100,7 +91,6 @@
       }
     } catch {}
 
-    // DOM hints
     const domHints = [
       "[data-product-id]","[data-productid]",
       '[itemtype*="Product"] [itemprop="sku"]','[itemtype*="Product"] [itemprop="productID"]',
@@ -115,13 +105,8 @@
       if (v && /\S/.test(v)) return String(v).trim();
     }
 
-    // URL Heuristics لسلة
     const url = location.pathname;
-    const matchers = [
-      /\/p(\d{8,})(?:\/|$)/,
-      /-(\d{8,})$/,
-      /\/products\/(\d{8,})/
-    ];
+    const matchers = [/\/p(\d{8,})(?:\/|$)/, /-(\d{8,})$/, /\/products\/(\d{8,})/];
     for (const rgx of matchers) {
       const m = url.match(rgx);
       if (m) return m[1];
@@ -129,7 +114,6 @@
     return null;
   }
 
-  // ——— إدراج الحاوية أسفل سكشن المنتج ———
   function findProductAnchor() {
     const fromData = document.querySelector("[data-product-id], [data-productid]");
     if (fromData) {
@@ -163,7 +147,6 @@
     return host;
   }
 
-  // ——— تركيب وrender ———
   async function mountOne(hostEl, store, productId, limit, lang, theme) {
     if (hostEl.getAttribute("data-state") === "done") return;
     if (hostEl.getAttribute("data-state") === "mounting") return;
@@ -174,321 +157,130 @@
       html: `
         :host { all: initial; }
         * { box-sizing: border-box; }
-        
         .wrap { 
           font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,Noto Sans,Liberation Sans,Arial,sans-serif; 
           direction: ${lang === "ar" ? "rtl" : "ltr"}; 
           line-height: 1.5;
           color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"};
         }
-        
+
         .section { 
-          background: ${theme === "dark" 
-            ? "linear-gradient(135deg, #0f1629 0%, #1e293b 100%)" 
-            : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)"};
+          background: ${theme === "dark" ? "linear-gradient(135deg, #0f1629 0%, #1e293b 100%)" : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)"};
           color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"};
           border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.8)"};
           border-radius: 20px; 
           padding: 32px; 
           margin: 24px 0; 
-          box-shadow: ${theme === "dark" 
-            ? "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05)" 
-            : "0 25px 50px -12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.05)"};
+          box-shadow: ${theme === "dark" ? "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05)" : "0 25px 50px -12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.05)"};
           backdrop-filter: blur(12px);
           position: relative;
           overflow: hidden;
         }
-        
-        .section::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 1px;
-          background: linear-gradient(90deg, 
-            transparent 0%, 
-            ${theme === "dark" ? "rgba(148, 163, 184, 0.3)" : "rgba(59, 130, 246, 0.3)"} 50%, 
-            transparent 100%);
-        }
-        
+
         .header { 
           display: flex; 
           align-items: center; 
-          gap: 16px; 
+          gap: 20px; 
           margin-bottom: 24px;
           padding-bottom: 20px;
           border-bottom: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.5)"};
         }
-        
+
+        /* ========== أحجام كبيرة ========== */
         .logo { 
-          width: 48px;   /* ← كبّرنا لوجو الهيدر */
-          height: 48px; 
-          border-radius: 10px;
-          padding: 6px;
-          background: ${theme === "dark" ? "rgba(59, 130, 246, 0.1)" : "rgba(59, 130, 246, 0.05)"};
-          transition: all 0.3s ease;
+          width: 96px;   /* كبير جداً للهيدر */
+          height: 96px; 
+          border-radius: 16px;
+          padding: 10px;
+          background: ${theme === "dark" ? "rgba(59, 130, 246, 0.12)" : "rgba(59, 130, 246, 0.08)"};
+          transition: transform .25s ease;
         }
-        
-        .logo:hover {
-          transform: scale(1.05);
-          background: ${theme === "dark" ? "rgba(59, 130, 246, 0.2)" : "rgba(59, 130, 246, 0.1)"};
-        }
-        
+        .logo:hover { transform: scale(1.03); }
+
         .title { 
-          font-weight: 700; 
-          font-size: 22px; 
+          font-weight: 800; 
+          font-size: 28px; 
           margin: 0;
-          background: ${theme === "dark" 
-            ? "linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%)" 
-            : "linear-gradient(135deg, #1e293b 0%, #475569 100%)"};
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-          letter-spacing: -0.025em;
+          background: ${theme === "dark" ? "linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%)" : "linear-gradient(135deg, #1e293b 0%, #475569 100%)"};
+          -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+          letter-spacing: -0.02em;
         }
-        
-        .meta { 
-          font-size: 14px; 
-          opacity: 0.75; 
-          margin: 0 0 24px 0;
-          font-weight: 500;
-          color: ${theme === "dark" ? "#94a3b8" : "#64748b"};
-        }
-        
+
+        .meta { font-size: 14px; opacity: .75; margin: 0 0 24px 0; font-weight: 500; color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; }
+
         .stars { 
           color: #f59e0b; 
-          letter-spacing: 1px; 
-          font-size: 18px;
-          filter: drop-shadow(0 1px 2px rgba(245, 158, 11, 0.2));
+          letter-spacing: 2px; 
+          font-size: 26px;  /* نجوم أكبر */
+          filter: drop-shadow(0 1px 2px rgba(245, 158, 11, 0.25));
         }
-        
-        .star { 
-          opacity: 0.25; 
-          transition: all 0.2s ease;
-        } 
-        
-        .star.filled { 
-          opacity: 1;
-          animation: sparkle 0.6s ease-out;
-        }
-        
-        @keyframes sparkle {
-          0% { transform: scale(0.8); opacity: 0; }
-          50% { transform: scale(1.1); }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        
+        .star { opacity: .25; transition: all .2s ease; } 
+        .star.filled { opacity: 1; }
+
         .badge { 
           display: inline-flex; 
           align-items: center; 
-          gap: 8px; 
-          background: ${theme === "dark" 
-            ? "linear-gradient(135deg, #059669 0%, #10b981 100%)" 
-            : "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)"};
+          gap: 10px; 
+          background: ${theme === "dark" ? "linear-gradient(135deg, #059669 0%, #10b981 100%)" : "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)"};
           color: ${theme === "dark" ? "#ecfdf5" : "#065f46"};
-          border: 1px solid ${theme === "dark" ? "rgba(16, 185, 129, 0.3)" : "#86efac"};
-          font-size: 12px; 
-          font-weight: 700;
-          padding: 8px 12px;   /* ← أكبر شوية */
-          border-radius: 20px;
-          box-shadow: ${theme === "dark" 
-            ? "0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(16, 185, 129, 0.1)" 
-            : "0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(16, 185, 129, 0.1)"};
-          transition: all 0.2s ease;
+          border: 1px solid ${theme === "dark" ? "rgba(16, 185, 129, 0.35)" : "#86efac"};
+          font-size: 16px;     /* خط كبير */
+          font-weight: 800;
+          padding: 10px 16px;  /* أكبر */
+          border-radius: 24px;
+          box-shadow: ${theme === "dark" ? "0 6px 10px -2px rgba(0,0,0,.35)" : "0 6px 12px -3px rgba(0,0,0,.08)"};
           white-space: nowrap;
         }
-        
-        .badge:hover {
-          transform: translateY(-1px);
-          box-shadow: ${theme === "dark" 
-            ? "0 8px 15px -3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(16, 185, 129, 0.2)" 
-            : "0 8px 15px -3px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(16, 185, 129, 0.2)"};
-        }
-        
         .badge-logo { 
-          width: 20px;   /* ← كبّرنا لوجو البادج */
-          height: 20px; 
+          width: 32px;   /* لوجو البادج كبير */
+          height: 32px; 
           display: block; 
           object-fit: contain;
-          border-radius: 4px;
-          background: rgba(255,255,255,0.2);
-          padding: 1px;
+          border-radius: 6px;
+          background: rgba(255,255,255,0.25);
+          padding: 2px;
         }
-        
-        .badge .label {
-          font-weight: 800;
-          letter-spacing: .2px;
-        }
+        .badge .label { font-weight: 900; letter-spacing: .2px; }
 
-        .text { 
-          white-space: pre-wrap; 
-          line-height: 1.7; 
-          font-size: 15px; 
-          margin: 16px 0 0 0;
-          color: ${theme === "dark" ? "#e2e8f0" : "#374151"};
-          letter-spacing: -0.01em;
-        }
-        
-        .empty { 
-          padding: 32px; 
-          border: 2px dashed ${theme === "dark" ? "#475569" : "#cbd5e1"}; 
-          border-radius: 16px; 
-          font-size: 15px; 
-          opacity: 0.8;
-          text-align: center;
-          background: ${theme === "dark" ? "rgba(15, 23, 42, 0.3)" : "rgba(248, 250, 252, 0.5)"};
-        }
-        
-        .row { 
-          display: flex; 
-          align-items: center; 
-          gap: 12px; 
-          justify-content: space-between;
-          flex-wrap: wrap;
-        }
-        
-        .left { 
-          display: flex; 
-          align-items: center; 
-          gap: 12px;
-        }
-        
+        .text { white-space: pre-wrap; line-height: 1.75; font-size: 15px; margin: 16px 0 0 0; color: ${theme === "dark" ? "#e2e8f0" : "#374151"}; }
+
+        .empty { padding: 32px; border: 2px dashed ${theme === "dark" ? "#475569" : "#cbd5e1"}; border-radius: 16px; font-size: 15px; opacity: .8; text-align: center; background: ${theme === "dark" ? "rgba(15,23,42,.3)" : "rgba(248,250,252,.5)"}; }
+
+        .row { display: flex; align-items: center; gap: 16px; justify-content: space-between; flex-wrap: wrap; }
+        .left { display: flex; align-items: center; gap: 16px; }
+
         .item { 
-          background: ${theme === "dark" 
-            ? "linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.4) 100%)" 
-            : "linear-gradient(135deg, #ffffff 0%, rgba(248, 250, 252, 0.8) 100%)"};
+          background: ${theme === "dark" ? "linear-gradient(135deg, rgba(15, 23, 42, .8) 0%, rgba(30, 41, 59, .45) 100%)" : "linear-gradient(135deg, #ffffff 0%, rgba(248, 250, 252, .85) 100%)"};
           color: inherit; 
-          border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.6)"};
+          border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, .3)" : "rgba(226, 232, 240, .6)"};
           border-radius: 18px; 
           padding: 24px; 
           margin: 16px 0;
-          box-shadow: ${theme === "dark" 
-            ? "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05)" 
-            : "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.1)"};
+          box-shadow: ${theme === "dark" ? "0 10px 25px -5px rgba(0,0,0,.35)" : "0 10px 25px -5px rgba(0,0,0,.06)"};
           backdrop-filter: blur(8px);
-          transition: all 0.3s ease;
+          transition: all .3s ease;
           position: relative;
           overflow: hidden;
+          animation: slideInUp .5s ease-out forwards; opacity: 0; transform: translateY(20px);
         }
-        
-        .item::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, 
-            transparent, 
-            ${theme === "dark" ? "rgba(255, 255, 255, 0.03)" : "rgba(59, 130, 246, 0.03)"},
-            transparent);
-          transition: left 0.6s;
-        }
-        
-        .item:hover::before { left: 100%; }
-        
-        .item:hover {
-          transform: translateY(-2px);
-          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.3)" : "rgba(59, 130, 246, 0.2)"};
-          box-shadow: ${theme === "dark" 
-            ? "0 20px 40px -10px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.1)" 
-            : "0 20px 40px -10px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(59, 130, 246, 0.1)"};
-        }
-        
-        .filter { 
-          display: flex; 
-          align-items: center; 
-          gap: 12px; 
-          margin: 24px 0 0; 
-          font-size: 14px; 
-          font-weight: 500;
-          flex-wrap: wrap;
-        }
-        
-        .filter span { color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; }
-        
-        .filter button { 
-          padding: 10px 20px; 
-          border-radius: 12px; 
-          border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.4)" : "rgba(203, 213, 225, 0.8)"};
-          background: ${theme === "dark" ? "rgba(15, 23, 42, 0.6)" : "rgba(255, 255, 255, 0.8)"};
-          color: inherit; 
-          cursor: pointer;
-          font-weight: 500;
-          font-size: 13px;
-          transition: all 0.2s ease;
-          backdrop-filter: blur(8px);
-        }
-        
-        .filter button:hover {
-          transform: translateY(-1px);
-          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.4)" : "rgba(59, 130, 246, 0.3)"};
-          background: ${theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(248, 250, 252, 0.9)"};
-          box-shadow: ${theme === "dark" 
-            ? "0 4px 12px -2px rgba(0, 0, 0, 0.3)" 
-            : "0 4px 12px -2px rgba(0, 0, 0, 0.05)"};
-        }
-        
-        .filter button.active { 
-          background: ${theme === "dark" 
-            ? "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)" 
-            : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"};
-          color: white;
-          border-color: ${theme === "dark" ? "#1d4ed8" : "#2563eb"};
-          box-shadow: ${theme === "dark" 
-            ? "0 8px 20px -4px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.2)" 
-            : "0 8px 20px -4px rgba(59, 130, 246, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.1)"};
-        }
-        
-        .filter button.active:hover {
-          transform: translateY(-2px);
-          box-shadow: ${theme === "dark" 
-            ? "0 12px 24px -6px rgba(59, 130, 246, 0.5), 0 0 0 1px rgba(59, 130, 246, 0.3)" 
-            : "0 12px 24px -6px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.2)"};
-        }
-        
-        .loading { 
-          text-align: center; 
-          padding: 48px 20px; 
-          opacity: 0.7;
-          font-size: 16px;
-          color: ${theme === "dark" ? "#94a3b8" : "#64748b"};
-        }
-        
-        .loading::after {
-          content: '';
-          display: inline-block;
-          width: 20px;
-          height: 20px;
-          margin-left: 12px;
-          border: 2px solid ${theme === "dark" ? "#475569" : "#cbd5e1"};
-          border-radius: 50%;
-          border-top-color: ${theme === "dark" ? "#3b82f6" : "#3b82f6"};
-          animation: spin 1s linear infinite;
-          vertical-align: middle;
-        }
-        
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-          .section { padding: 20px; border-radius: 16px; margin: 16px 0; }
-          .title { font-size: 18px; }
-          .item { padding: 18px; border-radius: 14px; }
-          .filter { gap: 8px; }
-          .filter button { padding: 8px 14px; font-size: 12px; }
-          .row { flex-direction: column; align-items: flex-start; gap: 8px; }
-        }
-        
-        /* Animations */
-        .item { animation: slideInUp 0.5s ease-out forwards; opacity: 0; transform: translateY(20px); }
+        .item:nth-child(1){animation-delay:.1s}.item:nth-child(2){animation-delay:.2s}.item:nth-child(3){animation-delay:.3s}.item:nth-child(4){animation-delay:.4s}.item:nth-child(5){animation-delay:.5s}
         @keyframes slideInUp { to { opacity: 1; transform: translateY(0); } }
-        .item:nth-child(1) { animation-delay: 0.1s; }
-        .item:nth-child(2) { animation-delay: 0.2s; }
-        .item:nth-child(3) { animation-delay: 0.3s; }
-        .item:nth-child(4) { animation-delay: 0.4s; }
-        .item:nth-child(5) { animation-delay: 0.5s; }
+
+        .filter { display: flex; align-items: center; gap: 12px; margin: 24px 0 0; font-size: 14px; font-weight: 500; flex-wrap: wrap; }
+        .filter span { color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; }
+        .filter button { padding: 10px 20px; border-radius: 12px; border: 1px solid ${theme === "dark" ? "rgba(71,85,105,.4)" : "rgba(203,213,225,.8)"}; background: ${theme === "dark" ? "rgba(15,23,42,.6)" : "rgba(255,255,255,.85)"}; color: inherit; cursor: pointer; font-weight: 600; font-size: 13px; transition: all .2s ease; backdrop-filter: blur(8px); }
+        .filter button.active { background: linear-gradient(135deg,#3b82f6 0%,#2563eb 100%); color:#fff; border-color:#2563eb; }
+
+        .loading { text-align: center; padding: 48px 20px; opacity: .7; font-size: 16px; color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; }
+        .loading::after { content:''; display:inline-block; width:20px; height:20px; margin-inline-start:12px; border:2px solid ${theme === "dark" ? "#475569" : "#cbd5e1"}; border-radius:50%; border-top-color:#3b82f6; animation: spin 1s linear infinite; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+          .logo { width: 72px; height: 72px; }          /* كبير حتى على الموبايل */
+          .stars { font-size: 22px; }
+          .badge { font-size: 15px; padding: 9px 14px; }
+          .badge-logo { width: 28px; height: 28px; }
+        }
       `,
     });
 
@@ -565,23 +357,21 @@
         const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
         const trusted = !!r.trustedBuyer;
 
-        const rowLeftChildren = [
-          Stars(Number(r.stars || 0)),
-          trusted
-            ? h("span", { class: "badge", title: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer") }, [
-                h("img", {
-                  class: "badge-logo",
-                  src: LOGO_URL,
-                  alt: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer"),
-                  loading: "lazy"
-                }),
-                h("span", { class: "label" }, lang === "ar" ? "مشتري ثقة" : "Verified Buyer")
-              ])
-            : null,
-        ];
-
         const row = h("div", { class: "row" }, [
-          h("div", { class: "left" }, rowLeftChildren),
+          h("div", { class: "left" }, [
+            Stars(Number(r.stars || 0)),
+            trusted
+              ? h("span", { class: "badge", title: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer") }, [
+                  h("img", {
+                    class: "badge-logo",
+                    src: LOGO_URL,
+                    alt: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer"),
+                    loading: "lazy"
+                  }),
+                  h("span", { class: "label" }, lang === "ar" ? "مشتري ثقة" : "Verified Buyer")
+                ])
+              : null,
+          ]),
           h("small", { class: "meta" }, when),
         ]);
 
@@ -593,9 +383,7 @@
     await fetchData();
   }
 
-  // ——— Main mounting مع حراسة و Debounce للـ SPA ———
   function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-
   let mountedOnce = false;
   let lastHref = location.href;
 
@@ -605,7 +393,6 @@
 
     const existingHost = document.querySelector("#theqah-reviews, .theqah-reviews");
 
-    // قراءة الإعدادات
     let store =
       existingHost?.getAttribute("data-store") ||
       existingHost?.dataset?.store ||
@@ -631,19 +418,16 @@
       10
     ) || 10;
 
-    // تنظيف placeholder
     if (store && (store.includes('{') || /STORE_ID/i.test(store))) {
       console.warn('Clearing placeholder store:', store);
       store = '';
     }
 
-    // محاولة auto-resolve
     if (!store) {
       try { store = await resolveStore(); }
       catch (err) { console.error('Error during store auto-resolution:', err); }
     }
 
-    // لو لسه مفيش — اعرض رسالة تشخيصية
     const host = existingHost || ensureHostUnderProduct();
     if (!store) {
       if (host && host.getAttribute("data-mounted") !== "1") {
@@ -659,7 +443,6 @@
       return;
     }
 
-    // product id
     const pidFromHost = host?.getAttribute("data-product") || host?.dataset?.product || null;
     const pid = (pidFromHost && pidFromHost !== "auto") ? pidFromHost : detectProductId();
 
@@ -670,7 +453,6 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => safeMount());
   else safeMount();
 
-  // دعم SPA (مرة واحدة)
   if (!window.__THEQAH_OBS__) {
     window.__THEQAH_OBS__ = true;
     const deb = debounce(() => safeMount(), 700);
