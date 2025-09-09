@@ -1,8 +1,5 @@
-
 (() => {
-  const SCRIPT_VERSION = "1.3.3";
-
-  // ——— اكتشاف السكربت والمصدر ———
+  const SCRIPT_VERSION = "1.3.4"; // bump لو حدّثت الكود
   const CURRENT_SCRIPT = document.currentScript;
   const SCRIPT_ORIGIN = (() => {
     try { return new URL(CURRENT_SCRIPT?.src || location.href).origin; }
@@ -12,7 +9,7 @@
   const API_BASE = `${SCRIPT_ORIGIN}/api/public/reviews`;
   const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png`;
 
-  // ——— Helpers ———
+  // Helpers
   const h = (tag, attrs = {}, children = []) => {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -25,44 +22,42 @@
       .forEach((c) => (typeof c === "string" ? el.appendChild(document.createTextNode(c)) : el.appendChild(c)));
     return el;
   };
-
+  const debounce = (fn, wait = 300) => {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+  };
   const Stars = (n = 0) => {
     const wrap = h("div", { class: "stars", role: "img", "aria-label": `${n} stars` });
     for (let i = 1; i <= 5; i++) wrap.appendChild(h("span", { class: "star" + (i <= n ? " filled" : "") }, "★"));
     return wrap;
   };
 
-  // ——— Cache/Single-flight لنتيجة الـ resolveStore ———
+  // Cache/Single-flight
   const G = (window.__THEQAH__ = window.__THEQAH__ || {});
-  const TTL_MS = 10 * 60 * 1000; // 10 دقائق
-
-  function cacheKey(host){ return `theqah:storeUid:${host}`; }
-  function getCached(host){
+  const TTL_MS = 10 * 60 * 1000; // 10m
+  const cacheKey = (host) => `theqah:storeUid:${host}`;
+  const getCached = (host) => {
     try {
-      const o = JSON.parse(localStorage.getItem(cacheKey(host)) || '{}');
-      if (o.uid && (Date.now() - (o.t || 0) < TTL_MS)) return o.uid;
+      const o = JSON.parse(localStorage.getItem(cacheKey(host)) || "{}");
+      if (o.uid && Date.now() - (o.t || 0) < TTL_MS) return o.uid;
     } catch {}
     return null;
-  }
-  function setCached(host, uid){
+  };
+  const setCached = (host, uid) => {
     try { localStorage.setItem(cacheKey(host), JSON.stringify({ uid, t: Date.now() })); } catch {}
-  }
+  };
 
-  // ——— Store Resolution ———
+  // Resolve Store (يرسل href لتفادي التباس المتاجر تحت نفس الدومين)
   async function resolveStore() {
-    const host = location.host.replace(/^www\./, '').toLowerCase();
-
-    // ذاكرة و localStorage
+    const host = location.host.replace(/^www\./, "").toLowerCase();
     if (G.storeUid) return G.storeUid;
     const cached = getCached(host);
     if (cached) { G.storeUid = cached; return cached; }
-
-    // Single-flight
     if (G.resolvePromise) return G.resolvePromise;
 
-    const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
-    G.resolvePromise = fetch(url, { cache: 'no-store' }) // بدون هيدرات مخصّصة لتفادي OPTIONS
-      .then(r => r.ok ? r.json() : null)
+    const url = `${API_BASE}/resolve?href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
+    G.resolvePromise = fetch(url, { cache: "no-store" }) // simple GET => بدون OPTIONS
+      .then(r => (r.ok ? r.json() : null))
       .then(j => {
         const uid = j?.storeUid || null;
         if (uid) { G.storeUid = uid; setCached(host, uid); }
@@ -73,14 +68,12 @@
     return G.resolvePromise;
   }
 
-  // ——— اكتشاف Product ID من الصفحة (سلة) ———
+  // Detect productId (سلة)
   function detectProductId() {
-    // من المضيف لو محدد
     const host = document.querySelector("#theqah-reviews, .theqah-reviews");
     const hostPid = host?.getAttribute("data-product") || host?.dataset?.product;
     if (hostPid && /\S/.test(hostPid) && hostPid !== "auto") return String(hostPid).trim();
 
-    // JSON-LD
     try {
       const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
       for (const s of scripts) {
@@ -93,7 +86,7 @@
               const pid = node.productID || node.productId || node.sku || null;
               if (pid) return String(pid);
               if (node.url) {
-                const m = String(node.url).match(/(\d{5,})/);
+                const m = String(node.url).match(/(\d{8,})/);
                 if (m) return m[1];
               }
             }
@@ -102,7 +95,6 @@
       }
     } catch {}
 
-    // DOM hints
     const domHints = [
       "[data-product-id]","[data-productid]",
       '[itemtype*="Product"] [itemprop="sku"]','[itemtype*="Product"] [itemprop="productID"]',
@@ -117,13 +109,8 @@
       if (v && /\S/.test(v)) return String(v).trim();
     }
 
-    // URL Heuristics (سلة)
     const url = location.pathname;
-    const matchers = [
-      /\/p(\d{8,})(?:\/|$)/,       // /p1927638714
-      /-(\d{8,})$/,                // ...-1927638714
-      /\/products\/(\d{8,})/,      // /products/1927638714
-    ];
+    const matchers = [/\/p(\d{8,})(?:\/|$)/, /-(\d{8,})$/, /\/products\/(\d{8,})/];
     for (const rgx of matchers) {
       const m = url.match(rgx);
       if (m) return m[1];
@@ -131,7 +118,7 @@
     return null;
   }
 
-  // ——— إيجاد سكشن المنتج وحقن المضيف ———
+  // Host placement
   function findProductAnchor() {
     const fromData = document.querySelector("[data-product-id], [data-productid]");
     if (fromData) {
@@ -148,28 +135,21 @@
     }
     return document.body;
   }
-
   function ensureHostUnderProduct() {
     let host = document.querySelector("#theqah-reviews, .theqah-reviews");
     if (host) return host;
-
     const anchor = findProductAnchor();
     host = document.createElement("div");
     host.className = "theqah-reviews";
     host.style.marginTop = "24px";
-    if (anchor && anchor.parentNode) {
-      anchor.parentNode.insertBefore(host, anchor.nextSibling);
-    } else {
-      document.body.appendChild(host);
-    }
+    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(host, anchor.nextSibling);
+    else document.body.appendChild(host);
     return host;
   }
 
   async function mountOne(hostEl, store, productId, limit, lang, theme) {
-    // لو بالفعل مُركّب بنجاح — اخرج
+    // guards لمنع التكرارات
     if (hostEl.getAttribute("data-state") === "done") return;
-
-    // امنع التكرار أثناء الـmount
     if (hostEl.getAttribute("data-state") === "mounting") return;
     hostEl.setAttribute("data-state", "mounting");
 
@@ -250,17 +230,15 @@
     const fetchData = async () => {
       try {
         const url = `${endpoint}&sort=${currentSort}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
-        const res = await fetch(url, { cache: 'no-store' }); // Simple request => لا OPTIONS
+        const res = await fetch(url, { cache: "no-store" }); // simple GET
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
         renderList(lastData);
-        // نجاح — علّم done
         hostEl.setAttribute("data-state", "done");
       } catch (e) {
-        console.error('Failed to fetch reviews:', e);
+        console.error("Failed to fetch reviews:", e);
         list.innerHTML = "";
         list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "تعذّر التحميل" : "Failed to load"));
-        // ما نعلّمش done علشان نقدر نعيد المحاولة لاحقًا
         hostEl.removeAttribute("data-state");
       }
     };
@@ -296,93 +274,52 @@
     await fetchData();
   }
 
-  // ——— Main mounting (مع Debounce) ———
-  async function mountAll() {
+  // Main mounting with guards/debounce + SPA
+  let mountedOnce = false;
+  let lastHref = location.href;
+  const safeMount = async () => {
+    if (mountedOnce && lastHref === location.href) return; // نفس الصفحة
+    lastHref = location.href;
+
     const existingHost = document.querySelector("#theqah-reviews, .theqah-reviews");
 
-    // قراءة الإعدادات
-    let store =
-      existingHost?.getAttribute("data-store") ||
-      existingHost?.dataset?.store ||
-      CURRENT_SCRIPT?.dataset?.store ||
-      "";
+    let store = existingHost?.getAttribute("data-store") || existingHost?.dataset?.store || CURRENT_SCRIPT?.dataset?.store || "";
+    const lang  = existingHost?.getAttribute?.("data-lang")  || existingHost?.dataset?.lang  || CURRENT_SCRIPT?.dataset?.lang  || "ar";
+    const theme = existingHost?.getAttribute?.("data-theme") || existingHost?.dataset?.theme || CURRENT_SCRIPT?.dataset?.theme || "light";
+    const limit = Number(existingHost?.getAttribute?.("data-limit") || existingHost?.dataset?.limit || CURRENT_SCRIPT?.dataset?.limit || 10) || 10;
 
-    const lang =
-      existingHost?.getAttribute?.("data-lang") ||
-      existingHost?.dataset?.lang ||
-      CURRENT_SCRIPT?.dataset?.lang ||
-      "ar";
+    if (store && (store.includes("{") || /STORE_ID/i.test(store))) { console.warn("Clearing placeholder store:", store); store = ""; }
+    if (!store) store = await resolveStore();
 
-    const theme =
-      existingHost?.getAttribute?.("data-theme") ||
-      existingHost?.dataset?.theme ||
-      CURRENT_SCRIPT?.dataset?.theme ||
-      "light";
-
-    const limit = Number(
-      existingHost?.getAttribute?.("data-limit") ||
-      existingHost?.dataset?.limit ||
-      CURRENT_SCRIPT?.dataset?.limit ||
-      10
-    ) || 10;
-
-    // تنظيف store من placeholders
-    if (store && (store.includes('{') || /STORE_ID/i.test(store))) {
-      console.warn('Store ID contains placeholder, clearing:', store);
-      store = '';
-    }
-
-    // Auto-resolve لو مش متوفر
-    if (!store) {
-      try {
-        store = await resolveStore();
-      } catch (err) {
-        console.error('Error during store auto-resolution:', err);
-      }
-    }
-
-    // لو لسه مفيش ستور — اعرض رسالة لكن من غير data-state="done"
     const host = existingHost || ensureHostUnderProduct();
     if (!store) {
-      if (!host.querySelector('.theqah-widget-empty')) {
+      if (host && host.getAttribute("data-mounted") !== "1") {
         const msg = document.createElement("div");
         msg.className = "theqah-widget-empty";
         msg.style.cssText = "padding:12px;border:1px dashed #94a3b8;border-radius:12px;opacity:.8;font:13px system-ui;";
         msg.textContent = (String(lang).toLowerCase() === "ar")
-          ? "لم يتم العثور على معرف المتجر. سيُعاد المحاولة تلقائيًا."
-          : "Store ID not found. Will retry automatically.";
+          ? "لم يتم العثور على معرف المتجر. تأكد من تثبيت التطبيق في متجر سلة."
+          : "Store ID not found. Make sure the app is installed in your Salla store.";
         host.appendChild(msg);
+        host.setAttribute("data-mounted", "1");
       }
       return;
     }
 
-    // productId
     const pidFromHost = host?.getAttribute("data-product") || host?.dataset?.product || null;
     const pid = (pidFromHost && pidFromHost !== "auto") ? pidFromHost : detectProductId();
 
-    // نفّذ
     await mountOne(host, store, pid, limit, String(lang).toLowerCase(), String(theme).toLowerCase());
-  }
+    mountedOnce = true;
+  };
 
-  // Debounce للتركيب
-  let mountScheduled = false;
-  function scheduleMount(){
-    if (mountScheduled) return;
-    mountScheduled = true;
-    setTimeout(async () => {
-      mountScheduled = false;
-      await mountAll();
-    }, 150);
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => safeMount());
+  else safeMount();
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", scheduleMount);
-  } else {
-    scheduleMount();
+  if (!window.__THEQAH_OBS__) {
+    window.__THEQAH_OBS__ = true;
+    const deb = debounce(() => safeMount(), 700);
+    const obs = new MutationObserver(() => deb());
+    obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
   }
-
-  // دعم SPA
-  const obs = new MutationObserver(() => scheduleMount());
-  obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
 })();
-
