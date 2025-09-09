@@ -1,5 +1,6 @@
+
 (() => {
-  const SCRIPT_VERSION = "1.3.2";
+  const SCRIPT_VERSION = "1.3.3";
 
   // ——— اكتشاف السكربت والمصدر ———
   const CURRENT_SCRIPT = document.currentScript;
@@ -31,39 +32,55 @@
     return wrap;
   };
 
-  // ——— Store Resolution ———
-  async function resolveStore() {
+  // ——— Cache/Single-flight لنتيجة الـ resolveStore ———
+  const G = (window.__THEQAH__ = window.__THEQAH__ || {});
+  const TTL_MS = 10 * 60 * 1000; // 10 دقائق
+
+  function cacheKey(host){ return `theqah:storeUid:${host}`; }
+  function getCached(host){
     try {
-      const host = location.host.replace(/^www\./, '').toLowerCase();
-      console.log('Resolving store for host:', host);
-      
-      const res = await fetch(`${API_BASE}/resolve?host=${encodeURIComponent(host)}`, {
-        headers: { 'x-theqah-widget': SCRIPT_VERSION },
-        cache: 'no-store'
-      });
-      
-      if (!res.ok) {
-        console.error('Store resolution failed:', res.status, res.statusText);
-        return null;
-      }
-      
-      const data = await res.json();
-      console.log('Store resolved:', data);
-      return data.storeUid || null;
-    } catch (error) {
-      console.error('Error resolving store:', error);
-      return null;
-    }
+      const o = JSON.parse(localStorage.getItem(cacheKey(host)) || '{}');
+      if (o.uid && (Date.now() - (o.t || 0) < TTL_MS)) return o.uid;
+    } catch {}
+    return null;
+  }
+  function setCached(host, uid){
+    try { localStorage.setItem(cacheKey(host), JSON.stringify({ uid, t: Date.now() })); } catch {}
   }
 
-  // ——— اكتشاف Product ID من الصفحة ———
+  // ——— Store Resolution ———
+  async function resolveStore() {
+    const host = location.host.replace(/^www\./, '').toLowerCase();
+
+    // ذاكرة و localStorage
+    if (G.storeUid) return G.storeUid;
+    const cached = getCached(host);
+    if (cached) { G.storeUid = cached; return cached; }
+
+    // Single-flight
+    if (G.resolvePromise) return G.resolvePromise;
+
+    const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
+    G.resolvePromise = fetch(url, { cache: 'no-store' }) // بدون هيدرات مخصّصة لتفادي OPTIONS
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        const uid = j?.storeUid || null;
+        if (uid) { G.storeUid = uid; setCached(host, uid); }
+        return uid;
+      })
+      .finally(() => { G.resolvePromise = null; });
+
+    return G.resolvePromise;
+  }
+
+  // ——— اكتشاف Product ID من الصفحة (سلة) ———
   function detectProductId() {
-    // 0) من المضيف لو محدد
+    // من المضيف لو محدد
     const host = document.querySelector("#theqah-reviews, .theqah-reviews");
     const hostPid = host?.getAttribute("data-product") || host?.dataset?.product;
     if (hostPid && /\S/.test(hostPid) && hostPid !== "auto") return String(hostPid).trim();
 
-    // 1) JSON-LD: Product
+    // JSON-LD
     try {
       const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
       for (const s of scripts) {
@@ -85,7 +102,7 @@
       }
     } catch {}
 
-    // 2) DOM hints
+    // DOM hints
     const domHints = [
       "[data-product-id]","[data-productid]",
       '[itemtype*="Product"] [itemprop="sku"]','[itemtype*="Product"] [itemprop="productID"]',
@@ -100,7 +117,7 @@
       if (v && /\S/.test(v)) return String(v).trim();
     }
 
-    // 3) URL Heuristics (خاص بسلة)
+    // URL Heuristics (سلة)
     const url = location.pathname;
     const matchers = [
       /\/p(\d{8,})(?:\/|$)/,       // /p1927638714
@@ -114,7 +131,7 @@
     return null;
   }
 
-  // ——— إيجاد سكشن المنتج لحقن الحاوية أسفله ———
+  // ——— إيجاد سكشن المنتج وحقن المضيف ———
   function findProductAnchor() {
     const fromData = document.querySelector("[data-product-id], [data-productid]");
     if (fromData) {
@@ -149,8 +166,12 @@
   }
 
   async function mountOne(hostEl, store, productId, limit, lang, theme) {
-    if (hostEl.getAttribute("data-mounted") === "1") return;
-    hostEl.setAttribute("data-mounted", "1");
+    // لو بالفعل مُركّب بنجاح — اخرج
+    if (hostEl.getAttribute("data-state") === "done") return;
+
+    // امنع التكرار أثناء الـmount
+    if (hostEl.getAttribute("data-state") === "mounting") return;
+    hostEl.setAttribute("data-state", "mounting");
 
     const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
     const style = h("style", {
@@ -228,17 +249,19 @@
 
     const fetchData = async () => {
       try {
-        const res = await fetch(`${endpoint}&sort=${currentSort}&_=${Date.now()}`, {
-          headers: { "x-theqah-widget": SCRIPT_VERSION },
-          cache: 'no-store'
-        });
+        const url = `${endpoint}&sort=${currentSort}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
+        const res = await fetch(url, { cache: 'no-store' }); // Simple request => لا OPTIONS
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
         renderList(lastData);
+        // نجاح — علّم done
+        hostEl.setAttribute("data-state", "done");
       } catch (e) {
         console.error('Failed to fetch reviews:', e);
         list.innerHTML = "";
         list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "تعذّر التحميل" : "Failed to load"));
+        // ما نعلّمش done علشان نقدر نعيد المحاولة لاحقًا
+        hostEl.removeAttribute("data-state");
       }
     };
 
@@ -273,11 +296,11 @@
     await fetchData();
   }
 
-  // ——— Main mounting function ———
+  // ——— Main mounting (مع Debounce) ———
   async function mountAll() {
     const existingHost = document.querySelector("#theqah-reviews, .theqah-reviews");
 
-    // Read configuration
+    // قراءة الإعدادات
     let store =
       existingHost?.getAttribute("data-store") ||
       existingHost?.dataset?.store ||
@@ -303,64 +326,63 @@
       10
     ) || 10;
 
-    // تنظيف store ID من placeholders
-    if (store && (store.includes('{') || store.includes('STORE_ID'))) {
+    // تنظيف store من placeholders
+    if (store && (store.includes('{') || /STORE_ID/i.test(store))) {
       console.warn('Store ID contains placeholder, clearing:', store);
       store = '';
     }
 
-    // Auto-resolve store if not provided
+    // Auto-resolve لو مش متوفر
     if (!store) {
-      console.log('No store ID provided, attempting auto-resolution...');
       try {
         store = await resolveStore();
-        if (!store) {
-          console.error('Failed to auto-resolve store ID');
-        } else {
-          console.log('Auto-resolved store ID:', store);
-        }
-      } catch (error) {
-        console.error('Error during store auto-resolution:', error);
+      } catch (err) {
+        console.error('Error during store auto-resolution:', err);
       }
     }
 
-    // If still no store, show error
+    // لو لسه مفيش ستور — اعرض رسالة لكن من غير data-state="done"
+    const host = existingHost || ensureHostUnderProduct();
     if (!store) {
-      const host = ensureHostUnderProduct();
-      if (host && host.getAttribute("data-mounted") !== "1") {
+      if (!host.querySelector('.theqah-widget-empty')) {
         const msg = document.createElement("div");
         msg.className = "theqah-widget-empty";
         msg.style.cssText = "padding:12px;border:1px dashed #94a3b8;border-radius:12px;opacity:.8;font:13px system-ui;";
-        msg.textContent = (lang === "ar")
-          ? "لم يتم العثور على معرف المتجر. تأكد من تثبيت التطبيق في متجر سلة."
-          : "Store ID not found. Make sure the app is installed in your Salla store.";
+        msg.textContent = (String(lang).toLowerCase() === "ar")
+          ? "لم يتم العثور على معرف المتجر. سيُعاد المحاولة تلقائيًا."
+          : "Store ID not found. Will retry automatically.";
         host.appendChild(msg);
-        host.setAttribute("data-mounted", "1");
       }
       return;
     }
 
-    // Get or create host element
-    const host = existingHost || ensureHostUnderProduct();
-
-    // Detect product ID
+    // productId
     const pidFromHost = host?.getAttribute("data-product") || host?.dataset?.product || null;
     const pid = (pidFromHost && pidFromHost !== "auto") ? pidFromHost : detectProductId();
 
-    console.log('Mounting widget with:', { store, productId: pid, lang, theme, limit });
-
-    // Mount the widget
+    // نفّذ
     await mountOne(host, store, pid, limit, String(lang).toLowerCase(), String(theme).toLowerCase());
   }
 
-  // Initialize
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", mountAll);
-  } else {
-    mountAll();
+  // Debounce للتركيب
+  let mountScheduled = false;
+  function scheduleMount(){
+    if (mountScheduled) return;
+    mountScheduled = true;
+    setTimeout(async () => {
+      mountScheduled = false;
+      await mountAll();
+    }, 150);
   }
 
-  // Support SPA navigation
-  const obs = new MutationObserver(() => mountAll());
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", scheduleMount);
+  } else {
+    scheduleMount();
+  }
+
+  // دعم SPA
+  const obs = new MutationObserver(() => scheduleMount());
   obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
 })();
+

@@ -8,17 +8,28 @@ function cleanHost(raw: unknown): string {
   return s.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
 }
 
+// ذاكرة بسيطة عبر عمر العملية
+const MEM_KEY = '__THEQAH_RESOLVE_MEM__';
+const mem: Map<string, { uid: string; t: number }> =
+//eslint-disable-next-line 
+  (global as any)[MEM_KEY] || new Map();
+  //eslint-disable-next-line
+(global as any)[MEM_KEY] = mem;
+
+const TTL = 10 * 60 * 1000; // 10 دقائق
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // CORS headers
+  // CORS (خفيف بدون هيدرات مخصّصة => يقلّل OPTIONS)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-theqah-widget');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Max-Age', '86400'); // كاش للـpreflight يوم
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
-  
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'method_not_allowed' });
   }
@@ -28,153 +39,117 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const storeId = String(req.query.storeId || req.query.store || '').trim();
     const storeUid = String(req.query.storeUid || '').trim();
 
-    console.log('Resolve request:', { host, storeId, storeUid, userAgent: req.headers['user-agent'] });
+    // مفتاح الكاش
+    const cacheKey = `h:${host}|sid:${storeId}|su:${storeUid}|v:${String(req.query.v || '')}`;
+    const hit = mem.get(cacheKey);
+    if (hit && Date.now() - hit.t < TTL) {
+      return res.status(200).json({ storeUid: hit.uid });
+    }
 
-    // 1) If storeUid provided directly
+    // 1) storeUid مباشر
     if (storeUid) {
-      console.log('Returning provided storeUid:', storeUid);
+      mem.set(cacheKey, { uid: storeUid, t: Date.now() });
       return res.status(200).json({ storeUid });
     }
-    
-    // 2) If storeId provided, convert to salla format
+
+    // 2) storeId → salla:{id}
     if (storeId) {
       const resolvedUid = `salla:${storeId}`;
-      console.log('Returning resolved storeUid from storeId:', resolvedUid);
+      mem.set(cacheKey, { uid: resolvedUid, t: Date.now() });
       return res.status(200).json({ storeUid: resolvedUid });
     }
 
-    // 3) Lookup by host/domain
+    // 3) lookup بالـ host
     if (!host) {
-      console.error('Missing host parameter');
       return res.status(400).json({ error: 'MISSING_HOST' });
     }
 
-    console.log('Looking up store by host:', host);
-
     const db = dbAdmin();
-    let doc;
+    let doc: FirebaseFirestore.QueryDocumentSnapshot | undefined;
 
-    // Strategy 1: Search by salla.domain field (most accurate for Salla stores)
+    // Strategy 1: salla.domain تطابق مباشر + variations
     try {
-      console.log('Querying stores by salla.domain...');
-      
-      // Try exact match with https prefix
-      let snap = await db.collection('stores')
-        .where('salla.domain', '==', `https://${host}`)
-        .where('salla.connected', '==', true)
-        .where('salla.installed', '==', true)
-        .limit(1)
-        .get();
-      
-      doc = snap.docs[0];
-      
-      // If not found, try with different variations
-      if (!doc) {
-        const domainVariations = [
-          `https://${host}`,
-          `https://www.${host}`,
-          `http://${host}`,
-          `http://www.${host}`,
-          host,
-          `www.${host}`
-        ];
-        
-        for (const variation of domainVariations) {
-          snap = await db.collection('stores')
-            .where('salla.domain', '==', variation)
-            .where('salla.connected', '==', true)
-            .where('salla.installed', '==', true)
-            .limit(1)
-            .get();
-          
-          if (!snap.empty) {
-            doc = snap.docs[0];
-            console.log('Found store by domain variation:', variation, doc.id);
-            break;
-          }
+      const variations = [
+        `https://${host}`,
+        `https://www.${host}`,
+        `http://${host}`,
+        `http://www.${host}`,
+        host,
+        `www.${host}`,
+      ];
+
+      for (const variation of variations) {
+        const snap = await db.collection('stores')
+          .where('salla.domain', '==', variation)
+          .where('salla.connected', '==', true)
+          .where('salla.installed', '==', true)
+          .limit(1)
+          .get();
+        if (!snap.empty) {
+          doc = snap.docs[0];
+          break;
         }
       }
-      
-      if (doc) {
-        console.log('Found store by salla.domain:', doc.id);
-      }
-    } catch (error) {
-      console.error('Error querying by salla.domain:', error);
+    } catch (err) {
+      // log فقط
+      console.error('Error querying by salla.domain:', err);
     }
 
-    // Strategy 2: Manual search through all connected stores (fallback)
+    // Strategy 2: مسح يدوي (fallback)
     if (!doc) {
       try {
-        console.log('Performing manual domain matching...');
         const snap = await db.collection('stores')
           .where('salla.connected', '==', true)
           .where('salla.installed', '==', true)
           .get();
-        
-        for (const storeDoc of snap.docs) {
-          const data = storeDoc.data();
-          const storeDomain = data.salla?.domain || '';
-          
-          // Check if the domain matches (with various formats)
-          const domainChecks = [
-            storeDomain.includes(host),
-            storeDomain.includes(host.replace('www.', '')),
-            storeDomain.replace(/^https?:\/\//, '').replace(/^www\./, '') === host,
-            storeDomain.replace(/^https?:\/\//, '') === host,
-            storeDomain === `https://${host}`,
-            storeDomain === `http://${host}`
-          ];
-          
-          if (domainChecks.some(Boolean)) {
-            doc = storeDoc;
-            console.log('Found store by manual domain matching:', doc.id, 'domain:', storeDomain);
-            break;
-          }
+
+        for (const d of snap.docs) {
+            //eslint-disable-next-line
+          const data = d.data() as any;
+          const storeDomain = String(data?.salla?.domain || '');
+          const normalized = storeDomain.replace(/^https?:\/\//, '').replace(/^www\./, '');
+          if (!storeDomain) continue;
+
+          const ok =
+            storeDomain.includes(host) ||
+            storeDomain.includes(host.replace('www.', '')) ||
+            normalized === host ||
+            storeDomain === `https://${host}` ||
+            storeDomain === `http://${host}`;
+
+          if (ok) { doc = d; break; }
         }
-      } catch (error) {
-        console.error('Error in manual domain matching:', error);
+      } catch (err) {
+        console.error('Error in manual domain matching:', err);
       }
     }
 
     if (!doc) {
-      console.log('Store not found for host:', host);
       return res.status(404).json({ error: 'STORE_NOT_FOUND', host });
     }
-//eslint-disable-next-line
-    const data = doc.data() as any;
-    console.log('Store data found:', { 
-      uid: data.uid, 
-      storeUid: data.storeUid, 
-      sallaStoreId: data.salla?.storeId,
-      sallaUid: data.salla?.uid,
-      sallaDomain: data.salla?.domain,
-      sallaConnected: data.salla?.connected,
-      sallaInstalled: data.salla?.installed
-    });
 
-    // Extract UID based on Salla store structure
-    const uid = data.uid || 
-                data.storeUid || 
-                data.salla?.uid ||
-                (data.salla?.storeId ? `salla:${data.salla.storeId}` : undefined) ||
-                (data.storeId != null ? `salla:${String(data.storeId)}` : undefined);
+    // استخراج UID
+    // eslint-disable-next-line
+    const data = doc.data() as any;
+    const uid =
+      data.uid ||
+      data.storeUid ||
+      data.salla?.uid ||
+      (data.salla?.storeId ? `salla:${data.salla.storeId}` : undefined) ||
+      (data.storeId != null ? `salla:${String(data.storeId)}` : undefined);
 
     if (!uid) {
-      console.error('No valid UID found in store document');
       return res.status(404).json({ error: 'UID_NOT_FOUND' });
     }
 
-    console.log('Returning resolved storeUid:', uid);
+    mem.set(cacheKey, { uid, t: Date.now() });
     return res.status(200).json({ storeUid: uid });
-
-  } catch (error) {
+//eslint-disable-next-line
+  } catch (error: any) {
     console.error('Unexpected error in resolve handler:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'RESOLVE_FAILED',
-      details: process.env.NODE_ENV === 'development'
-      //eslint-disable-next-line
-        ? (typeof error === 'object' && error !== null && 'message' in error ? String((error as any).message) : String(error))
-        : undefined
+      details: process.env.NODE_ENV === 'development' ? String(error?.message || error) : undefined
     });
   }
 }
