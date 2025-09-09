@@ -10,23 +10,6 @@ type StoreDoc = {
   primaryDomain?: string;
 };
 
-// ---- Utilities ----
-function isErr(e: unknown): e is { message?: string } {
-  return typeof e === 'object' && e !== null && 'message' in e;
-}
-function errMsg(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (isErr(e) && typeof e.message === 'string') return e.message;
-  try {
-    return JSON.stringify(e);
-  } catch {
-    return String(e);
-  }
-}
-function logError(prefix: string, e: unknown) {
-  console.error(prefix, e);
-}
-
 // Initialize Firebase Admin with proper error handling
 function initializeFirebase() {
   if (admin.apps.length > 0) {
@@ -42,7 +25,7 @@ function initializeFirebase() {
         projectId: process.env.FIREBASE_PROJECT_ID,
       });
     }
-
+    
     // Option 2: Use individual environment variables
     if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
       return admin.initializeApp({
@@ -61,7 +44,7 @@ function initializeFirebase() {
       projectId: process.env.FIREBASE_PROJECT_ID,
     });
   } catch (error) {
-    logError('Failed to initialize Firebase:', error);
+    console.error('Failed to initialize Firebase:', error);
     throw new Error('Firebase initialization failed');
   }
 }
@@ -69,10 +52,9 @@ function initializeFirebase() {
 function getDb() {
   try {
     const app = initializeFirebase();
-    // Using the app's Firestore instance (compatible with admin v9+)
     return app.firestore();
   } catch (error) {
-    logError('Failed to get Firestore instance:', error);
+    console.error('Failed to get Firestore instance:', error);
     throw error;
   }
 }
@@ -93,15 +75,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
-
+  
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'method_not_allowed' });
   }
 
   try {
-    const host = cleanHost((req.query.host ?? req.query.domain) as string | undefined);
-    const storeId = String(req.query.storeId ?? req.query.store ?? '').trim();
-    const storeUid = String(req.query.storeUid ?? '').trim();
+    const host = cleanHost(req.query.host || req.query.domain);
+    const storeId = String(req.query.storeId || req.query.store || '').trim();
+    const storeUid = String(req.query.storeUid || '').trim();
 
     console.log('Resolve request:', { host, storeId, storeUid });
 
@@ -110,7 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('Returning provided storeUid:', storeUid);
       return res.status(200).json({ storeUid });
     }
-
+    
     if (storeId) {
       const resolvedUid = `salla:${storeId}`;
       console.log('Returning resolved storeUid from storeId:', resolvedUid);
@@ -130,28 +112,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       db = getDb();
     } catch (error) {
-      const details = errMsg(error);
-      logError('Failed to initialize Firestore:', error);
-      return res.status(500).json({
+      console.error('Failed to initialize Firestore:', error);
+      return res.status(500).json({ 
         error: 'DATABASE_INIT_FAILED',
-        details: process.env.NODE_ENV === 'development' ? details : undefined,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
 
     // Search by domains array first
     let snap;
     let doc;
-
+    
     try {
       console.log('Querying stores collection by domains array...');
-      snap = await db.collection('stores').where('domains', 'array-contains', host).limit(1).get();
+      snap = await db.collection('stores')
+        .where('domains', 'array-contains', host)
+        .limit(1)
+        .get();
       doc = snap.docs[0];
-
+      
       if (doc) {
         console.log('Found store by domains array:', doc.id);
       }
     } catch (error) {
-      logError('Error querying by domains array:', error);
+      console.error('Error querying by domains array:', error);
       // Continue to next query method
     }
 
@@ -159,14 +143,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!doc) {
       try {
         console.log('Querying stores collection by primaryDomain...');
-        snap = await db.collection('stores').where('primaryDomain', '==', host).limit(1).get();
+        snap = await db.collection('stores')
+          .where('primaryDomain', '==', host)
+          .limit(1)
+          .get();
         doc = snap.docs[0];
-
+        
         if (doc) {
           console.log('Found store by primaryDomain:', doc.id);
         }
       } catch (error) {
-        logError('Error querying by primaryDomain:', error);
+        console.error('Error querying by primaryDomain:', error);
       }
     }
 
@@ -174,20 +161,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log('Store not found for host:', host);
       return res.status(404).json({ error: 'STORE_NOT_FOUND' });
     }
-
-    const data = doc.data() as Partial<StoreDoc>;
-    console.log('Store data found:', {
-      uid: data.uid,
-      storeUid: data.storeUid,
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = doc.data() as any; // Use any for flexible structure
+    console.log('Store data found:', { 
+      uid: data.uid, 
+      storeUid: data.storeUid, 
       storeId: data.storeId,
+      sallaStoreId: data.salla?.storeId,
+      sallaUid: data.salla?.uid,
       domains: data.domains,
       primaryDomain: data.primaryDomain,
+      sallaDomain: data.salla?.domain
     });
 
-    const uid =
-      data.uid ||
-      data.storeUid ||
-      (data.storeId != null ? `salla:${String(data.storeId)}` : undefined);
+    // Extract UID based on your Salla store structure
+    const uid = data.uid || 
+                data.storeUid || 
+                data.salla?.uid ||
+                (data.salla?.storeId ? `salla:${data.salla.storeId}` : undefined) ||
+                (data.storeId != null ? `salla:${String(data.storeId)}` : undefined);
 
     if (!uid) {
       console.error('No valid UID found in store document');
@@ -196,12 +188,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Returning resolved storeUid:', uid);
     return res.status(200).json({ storeUid: uid });
+
   } catch (error) {
-    const details = errMsg(error);
-    logError('Unexpected error in resolve handler:', error);
-    return res.status(500).json({
+    console.error('Unexpected error in resolve handler:', error);
+    return res.status(500).json({ 
       error: 'RESOLVE_FAILED',
-      details: process.env.NODE_ENV === 'development' ? details : undefined,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }
