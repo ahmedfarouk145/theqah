@@ -38,6 +38,13 @@ export type SendSmsOptions = {
   validityMinutes?: number;
 };
 
+// النتيجة القياسية المتوقّعة من بقية المشروع (تتوافق مع tryChannels)
+export type SendSmsResult = {
+  ok: boolean;
+  id: string | null;
+  error: string | null;
+};
+
 function env(name: string, fallback?: string) {
   const v = process.env[name];
   return (v && v.trim()) || fallback || "";
@@ -95,7 +102,6 @@ export async function sendSMSViaOursms(params: SendSMSParams) {
   } = params;
 
   const dests = Array.isArray(to) ? to : [to];
-
   const url = `${BASE.replace(/\/+$/, "")}/msgs/sms`;
 
   const body = {
@@ -189,22 +195,38 @@ export async function sendSms(
   to: string | string[],
   text: string,
   opts?: SendSmsOptions
-): Promise<{ ok: boolean }> {
+): Promise<SendSmsResult> {
+  // 🇸🇦 افتراض السعودية الآن
+  const defaultCountry: "SA" = (opts?.defaultCountry ?? "SA") as "SA";
+
   const dests = (Array.isArray(to) ? to : [to]).map((n) =>
-    normalizePhone(n, opts?.defaultCountry)
+    normalizePhone(n, defaultCountry)
   );
 
-  const res = await sendSMSViaOursms({
-    to: dests,
-    text,
-    msgClass: opts?.msgClass ?? "",
-    requestDlr: !!opts?.requestDlr,
-    priority: opts?.priority ?? 0,
-    delayMinutes: opts?.delayMinutes ?? 0,
-    validityMinutes: opts?.validityMinutes ?? 0,
-  });
+  // إعدادات افتراضية مسرِّعة للتسليم في KSA
+  const msgClass: MsgClass = opts?.msgClass ?? "transactional";
+  const priority: 0 | 1 | 2 | 3 | 4 = opts?.priority ?? 1;
+  const requestDlr = opts?.requestDlr ?? true;
+  const delayMinutes = opts?.delayMinutes ?? 0;
+  const validityMinutes = opts?.validityMinutes ?? 0;
 
-  return { ok: !!res?.ok };
+  try {
+    const res = await sendSMSViaOursms({
+      to: dests,
+      text,
+      msgClass,
+      requestDlr,
+      priority,
+      delayMinutes,
+      validityMinutes,
+    });
+
+    const id = res.result?.jobId ? String(res.result.jobId) : null;
+    return { ok: !!res?.ok, id, error: null };
+  } catch (e) {
+    const errMsg = e instanceof Error ? e.message : String(e);
+    return { ok: false, id: null, error: errMsg };
+  }
 }
 
 // اجعل الرابر هو الـ default export أيضاً

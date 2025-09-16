@@ -62,7 +62,7 @@ export default async function handler(
       url: String(url),
       storeName: String(storeName),
       customerName: customerName ? String(customerName) : "عميل",
-      country: "eg",
+      country: "sa",
       inviteId: inviteId ? String(inviteId) : undefined,
       strategy: strategy === "first_success" ? "first_success" : "all",
       order, // ✅ بقت جزء من النوع

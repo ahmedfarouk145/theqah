@@ -185,16 +185,24 @@ async function ensureInviteForOrder(
   const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
   const smsText = buildInviteSMS(storeName, publicUrl);
 
+  // ⬇️ نرسل القناتين معًا (متوازي) + نمرّر إعدادات السعودية للـSMS
   const tasks: Array<Promise<unknown>> = [];
   if (buyer.mobile) {
     const mobile = String(buyer.mobile).replace(/\s+/g, "");
-    tasks.push(sendSms(mobile, smsText, { defaultCountry: "SA" }));
+    tasks.push(
+      sendSms(mobile, smsText, {
+        defaultCountry: "SA",
+        msgClass: "transactional",
+        priority: 1,
+        requestDlr: true,
+      })
+    );
   }
   if (buyer.email) {
     const name = buyer.name || "عميلنا العزيز";
     const emailHtml = `
       <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
-        <p>مرحباً ${name}،</p>
+        <p>مرحباً ${name},</p>
         <p>قيّم تجربتك من <strong>${storeName}</strong>.</p>
         <p><a href="${publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
         <p style="color:#64748b">فريق ثقة</p>
@@ -303,13 +311,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // ✅ يقبل Bearer / x-webhook-token / x-salla-token / ?t=
   const provided = extractProvidedToken(req);
   if (!WEBHOOK_TOKEN || !provided || !timingSafeEq(provided, WEBHOOK_TOKEN)) {
-    // لوج تشخيصي آمن (اختياري)
-    // console.warn("[webhook auth fail]", {
-    //   auth: getHeader(req,"authorization") ? "auth" : "",
-    //   xwt:  getHeader(req,"x-webhook-token") ? "x-webhook-token" : "",
-    //   xst:  getHeader(req,"x-salla-token") ? "x-salla-token" : "",
-    //   q:    typeof req.query.t === "string" && req.query.t ? "query" : "",
-    // });
     return res.status(401).json({ error: "invalid_webhook_token" });
   }
 
