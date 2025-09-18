@@ -1,4 +1,3 @@
-// src/pages/api/salla/webhook.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
@@ -185,7 +184,7 @@ async function ensureInviteForOrder(
   const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
   const smsText = buildInviteSMS(storeName, publicUrl);
 
-  // ⬇️ نرسل القناتين معًا (متوازي) + نمرّر إعدادات السعودية للـSMS
+  // نرسل القناتين معًا (متوازي) + إعدادات السعودية للـSMS
   const tasks: Array<Promise<unknown>> = [];
   if (buyer.mobile) {
     const mobile = String(buyer.mobile).replace(/\s+/g, "");
@@ -220,7 +219,7 @@ async function voidInvitesForOrder(db: FirebaseFirestore.Firestore, orderId: str
   await batch.commit();
 }
 
-// -------------------- Handle app.* events --------------------
+// -------------------- Handle app.* events (Easy OAuth) --------------------
 async function handleAppEvent(
   db: FirebaseFirestore.Firestore,
   event: SallaAppEvent,
@@ -232,6 +231,7 @@ async function handleAppEvent(
   await db.collection("salla_app_events").add({ uid, event, merchant: merchant ?? null, data, at: Date.now() });
 
   if (event === "app.store.authorize") {
+    // سلة ترسل التوكنات مباشرة عبر الويبهوك (النمط السهل)
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
     const access_token  = String((data as any)?.access_token || "");
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -247,6 +247,7 @@ async function handleAppEvent(
         storeId: merchant ?? null,
         accessToken: access_token,
         refreshToken: refresh_token,
+        expiresIn: expires || null,
         expiresAt,
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         scope: (data as any)?.scope || null,
@@ -257,9 +258,36 @@ async function handleAppEvent(
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
-      salla: { storeId: merchant ?? null, connected: true },
+      salla: { storeId: merchant ?? null, connected: true, installed: true, installedAt: Date.now() },
+      connectedAt: Date.now(),
       updatedAt: Date.now(),
     }, { merge: true });
+
+    // بريد ترحيبي للتاجر (لو توفر بريد)
+    try {
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const merchantEmail = (data as any)?.merchant_email || (data as any)?.email || null;
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const storeName = (data as any)?.store_name || (data as any)?.merchant_name || "متجرك";
+      if (merchantEmail) {
+        const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_BASE_URL || "").replace(/\/+$/, "");
+        const html = `
+          <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.8">
+            <h2>مرحبًا بك في ثقة 🎉</h2>
+            <p>تم ربط تطبيق ثقة بمتجرك <strong>${storeName}</strong> على سلة بنجاح.</p>
+            <p>
+              <a href="${appUrl}/dashboard?store=${encodeURIComponent(uid)}"
+                 style="background:#16a34a;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">
+                 الدخول للوحة التحكم
+              </a>
+            </p>
+            <p style="color:#64748b">لو واجهت أي مشكلة، راسلنا.</p>
+          </div>`;
+        await sendEmail(merchantEmail, "تم ربط تطبيق ثقة بمتجرك", html);
+      }
+    } catch (e) {
+      console.warn("welcome_email_failed", e);
+    }
   }
 
   if (event === "app.installed") {
@@ -328,7 +356,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const dataRaw = (body.data ?? {}) as UnknownRecord;
   const asOrder = dataRaw as SallaOrder;
 
-  // Idempotency (يشمل كل الأحداث)
+  // Idempotency لكل الأحداث
   const idemKey = crypto.createHash("sha256").update(provided + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
   if ((await idemRef.get()).exists) return res.status(200).json({ ok: true, deduped: true });
@@ -341,7 +369,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     merchant: body.merchant ?? null,
   });
 
-  // فرع أحداث Partner Portal (app.*)
+  // فرع Easy OAuth (app.*)
   if (event.startsWith("app.")) {
     await handleAppEvent(db, event as SallaAppEvent, body.merchant, dataRaw);
     await db.collection("processed_events").doc(keyOf(event)).set({ at: Date.now(), event, processed: true }, { merge: true });
@@ -356,10 +384,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
 
-  // القواعد:
-  // - after_payment: عبر order.payment.updated بحالة paid/authorized/captured
-  // - after_delivery: عبر shipment.updated (delivered) أو order.status.updated (completed)
-  // - أي cancel/refund قبل الإرسال ⇒ void
+  // القواعد التشغيلية
   if (event === "order.payment.updated") {
     if (["paid","authorized","captured"].includes(paymentStatus)) {
       await ensureInviteForOrder(db, asOrder, dataRaw);

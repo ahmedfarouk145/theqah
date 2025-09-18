@@ -1,11 +1,11 @@
 ====[ PROJECT DUMP - METADATA ]=====================================================================
 Root   : D:\theqah
 Output : D:\theqah\project-dump.txt
-When   : 2025-09-16T15:34:35.278Z
+When   : 2025-09-16T18:20:28.240Z
 Rules  : skip binaries=true, skip .env*=true, maxBytes=1.0 MB
 
 ====[ FILE LIST ]===================================================================================
-.firebase/logs/vsce-debug.log	(1.9 MB)
+.firebase/logs/vsce-debug.log	(2.1 MB)
 .firebaserc	(82 B)
 .gitignore	(480 B)
 components.json	(449 B)
@@ -138,7 +138,7 @@ src/pages/api/salla/disconnect.ts	(5.1 KB)
 src/pages/api/salla/refresh.ts	(2.3 KB)
 src/pages/api/salla/status.ts	(3.9 KB)
 src/pages/api/salla/subscribe.ts	(5.1 KB)
-src/pages/api/salla/webhook.ts	(14.9 KB)
+src/pages/api/salla/webhook.ts	(14.8 KB)
 src/pages/api/settings/validate.ts	(1.4 KB)
 src/pages/api/sms/inbound.ts	(653 B)
 src/pages/api/sms/status.ts	(4.6 KB)
@@ -182,9 +182,9 @@ src/server/idempotency.ts	(919 B)
 src/server/messaging/email-dmail.ts	(1.5 KB)
 src/server/messaging/invite-text.ts	(318 B)
 src/server/messaging/phone.ts	(674 B)
-src/server/messaging/send-invite.ts	(5.2 KB)
+src/server/messaging/send-invite.ts	(7.8 KB)
 src/server/messaging/send-rejection.ts	(1.9 KB)
-src/server/messaging/send-sms.ts	(7.0 KB)
+src/server/messaging/send-sms.ts	(7.8 KB)
 src/server/messaging/sms-length.ts	(755 B)
 src/server/messaging/templates.ts	(437 B)
 src/server/messaging/texts.ts	(929 B)
@@ -210,7 +210,6 @@ src/utils/email.ts	(1.5 KB)
 src/utils/getAuth.ts	(494 B)
 src/utils/getAuthFromRequest.ts	(731 B)
 src/utils/isServer.ts	(62 B)
-src/utils/sms.ts	(597 B)
 src/utils/verifyAdmin.ts	(2.3 KB)
 src/utils/verifyStore.ts	(1.6 KB)
 src/utils/verifyUser.ts	(1.1 KB)
@@ -221,7 +220,7 @@ tsconfig.json	(602 B)
 
 ====[ FILE CONTENTS ]===============================================================================
 ====[ SKIP (too large): .firebase/logs/vsce-debug.log ]=============================================
-Size: 1.9 MB > limit 1.0 MB
+Size: 2.1 MB > limit 1.0 MB
 
 ====[ START FILE: .firebaserc (82 B) ]==============================================================
 {
@@ -21387,7 +21386,7 @@ export default async function handler(
       url: String(url),
       storeName: String(storeName),
       customerName: customerName ? String(customerName) : "عميل",
-      country: "eg",
+      country: "sa",
       inviteId: inviteId ? String(inviteId) : undefined,
       strategy: strategy === "first_success" ? "first_success" : "all",
       order, // ✅ بقت جزء من النوع
@@ -24453,7 +24452,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/salla/subscribe.ts ]==================================================
 
-====[ START FILE: src/pages/api/salla/webhook.ts (14.9 KB) ]========================================
+====[ START FILE: src/pages/api/salla/webhook.ts (14.8 KB) ]========================================
 // src/pages/api/salla/webhook.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
@@ -24641,16 +24640,24 @@ async function ensureInviteForOrder(
   const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
   const smsText = buildInviteSMS(storeName, publicUrl);
 
+  // ⬇️ نرسل القناتين معًا (متوازي) + نمرّر إعدادات السعودية للـSMS
   const tasks: Array<Promise<unknown>> = [];
   if (buyer.mobile) {
     const mobile = String(buyer.mobile).replace(/\s+/g, "");
-    tasks.push(sendSms(mobile, smsText, { defaultCountry: "SA" }));
+    tasks.push(
+      sendSms(mobile, smsText, {
+        defaultCountry: "SA",
+        msgClass: "transactional",
+        priority: 1,
+        requestDlr: true,
+      })
+    );
   }
   if (buyer.email) {
     const name = buyer.name || "عميلنا العزيز";
     const emailHtml = `
       <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
-        <p>مرحباً ${name}،</p>
+        <p>مرحباً ${name},</p>
         <p>قيّم تجربتك من <strong>${storeName}</strong>.</p>
         <p><a href="${publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
         <p style="color:#64748b">فريق ثقة</p>
@@ -24759,13 +24766,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // ✅ يقبل Bearer / x-webhook-token / x-salla-token / ?t=
   const provided = extractProvidedToken(req);
   if (!WEBHOOK_TOKEN || !provided || !timingSafeEq(provided, WEBHOOK_TOKEN)) {
-    // لوج تشخيصي آمن (اختياري)
-    // console.warn("[webhook auth fail]", {
-    //   auth: getHeader(req,"authorization") ? "auth" : "",
-    //   xwt:  getHeader(req,"x-webhook-token") ? "x-webhook-token" : "",
-    //   xst:  getHeader(req,"x-salla-token") ? "x-salla-token" : "",
-    //   q:    typeof req.query.t === "string" && req.query.t ? "query" : "",
-    // });
     return res.status(401).json({ error: "invalid_webhook_token" });
   }
 
@@ -28428,7 +28428,7 @@ export async function isOptedOut(phone: string): Promise<boolean> {
 }
 ====[ END FILE: src/server/messaging/phone.ts ]=====================================================
 
-====[ START FILE: src/server/messaging/send-invite.ts (5.2 KB) ]====================================
+====[ START FILE: src/server/messaging/send-invite.ts (7.8 KB) ]====================================
 // src/server/messaging/send-invite.ts
 import { getDb } from "@/server/firebase-admin";
 import { sendSms } from "./send-sms";
@@ -28436,11 +28436,10 @@ import { sendEmailDmail } from "./email-dmail";
 import { warn } from "@/lib/logger";
 import { buildReviewSms } from "./templates";
 
-export type Country = "eg" | "sa";
-// بعد إزالة واتساب
+export type Country = "sa"; // السعودية فقط الآن
 export type Channel = "sms" | "email";
 
-// توحيد نتيجة أي مزود (محلي، لا يعتمد على ملفات تانية)
+// نضيف timestamp داخل Attempt عشان نعرف أول قناة نجحت فعليًا حتى مع التنفيذ المتوازي
 type MessageResult = { ok: boolean; id?: string | null; error?: string | null };
 
 export async function recordInviteChannel(
@@ -28468,41 +28467,54 @@ export async function recordInviteChannel(
 
 export interface TryChannelsOptions {
   inviteId?: string;
-  country: Country;
+  country: Country; // ثابت "sa"
   phone?: string;
   email?: string;
   customerName?: string;
   storeName?: string;
   url: string;
+  /**
+   * "all": ابعت كل القنوات معًا (متوازي) — (الموصى به)
+   * "first_success": يكتفي بأول نجاح (هنحدده بعد التنفيذ المتوازي حسب أسرع نجاح)
+   */
   strategy?: "all" | "first_success";
-  /** ترتيب القنوات اختيارياً (مثلاً ["sms","email"]) */
+  /** ترتيب القنوات (لأولوية تحديد أول نجاح فقط) */
   order?: Channel[];
 }
 
-export type Attempt = { channel: Channel; ok: boolean; id?: string | null; error?: string | null };
+export type Attempt = {
+  channel: Channel;
+  ok: boolean;
+  id?: string | null;
+  error?: string | null;
+  at?: number; // وقت اكتمال المحاولة (ms)
+};
+
 export type TryChannelsResult = {
   ok: boolean;
   firstSuccessChannel: Channel | null;
   attempts: Attempt[];
 };
 
-/** تطبيع نتيجة أي مزوّد لشكل موحّد بدون استخدام any */
+/** تطبيع نتيجة أي مزوّد لشكل موحّد */
 function asMessageResult(r: unknown): MessageResult {
   if (r && typeof r === "object") {
     const o = r as Record<string, unknown>;
     const ok = Boolean(o.ok);
     const id =
-      typeof o.id === "string"
-        ? o.id
-        : o.id == null
-        ? null
-        : String(o.id);
+      typeof o.id === "string" ? o.id : o.id == null ? null : String(o.id);
     const error = typeof o.error === "string" ? o.error : null;
     return { ok, id: id ?? null, error };
   }
   return { ok: false, id: null, error: "INVALID_RESULT" };
 }
 
+/**
+ * ✅ تعديل جذري:
+ * - نجمع مهام الإرسال في Array ونشغّلها معًا بـ Promise.allSettled
+ * - نرفع أولوية SMS + transactional + نطلب DLR + نثبّت الدولة للسعودية
+ * - نرجّع أول قناة نجحت فعليًا (الأسرع) باستخدام timestamps
+ */
 export async function tryChannels(opts: TryChannelsOptions): Promise<TryChannelsResult> {
   const strategy = opts.strategy || "all";
   const name = opts.customerName || "العميل";
@@ -28524,50 +28536,117 @@ export async function tryChannels(opts: TryChannelsOptions): Promise<TryChannels
     </div>
   `.trim();
 
-  // بعد إزالة واتساب: الترتيب الافتراضي ثابت
+  // الترتيب الافتراضي: SMS ثم Email
   const defaultOrder: Channel[] = ["sms", "email"];
   const order: Channel[] = (opts.order && opts.order.length ? opts.order : defaultOrder);
 
-  const attempts: Attempt[] = [];
-  let firstSuccessChannel: Channel | null = null;
+  // نجمع المهام المتاحة (حسب وجود phone/email)
+  type Task = () => Promise<Attempt>;
+  const tasks: Task[] = [];
 
-  // Helper لإيقاف مبكّر لو strategy=first_success
-  const stopEarly = () => strategy === "first_success" && firstSuccessChannel !== null;
-
-  for (const ch of order) {
-    if (stopEarly()) break;
-
-    try {
-      if (ch === "sms") {
-        if (!opts.phone) continue;
-        const r = await sendSms(opts.phone, smsText);
-        const mr = asMessageResult(r);
-        const attempt: Attempt = { channel: "sms", ok: mr.ok, id: mr.id ?? null, error: mr.error ?? null };
-        attempts.push(attempt);
-        if (opts.inviteId) await recordInviteChannel(opts.inviteId, "sms", attempt);
-        if (attempt.ok && strategy === "first_success" && firstSuccessChannel === null) firstSuccessChannel = "sms";
-      } else if (ch === "email") {
-        if (!opts.email) continue;
-        const r = await sendEmailDmail(opts.email, "وش رأيك؟ نبي نسمع منك", html);
-        const mr = asMessageResult(r);
-        const attempt: Attempt = { channel: "email", ok: mr.ok, id: mr.id ?? null, error: mr.error ?? null };
-        attempts.push(attempt);
-        if (opts.inviteId) await recordInviteChannel(opts.inviteId, "email", attempt);
-        if (attempt.ok && strategy === "first_success" && firstSuccessChannel === null) firstSuccessChannel = "email";
-      }
-    } catch (e) {
-      const errMsg = e instanceof Error ? e.message : String(e);
-      warn(`${ch}.send.failed`, { e: errMsg });
-      const attempt: Attempt = { channel: ch, ok: false, id: null, error: errMsg };
-      attempts.push(attempt);
-      if (opts.inviteId) await recordInviteChannel(opts.inviteId, ch, attempt);
+  // helper: يسجّل Attempt ويكتب في review_invites لو فيه inviteId
+  const finalizeAttempt = async (attempt: Attempt) => {
+    if (opts.inviteId) {
+      await recordInviteChannel(opts.inviteId, attempt.channel, {
+        ok: attempt.ok,
+        id: attempt.id ?? null,
+        error: attempt.error ?? null,
+      });
     }
+    return attempt;
+  };
+
+  // 🇸🇦 خيارات SMS للسعودية فقط + تسريع التسليم:
+  const smsOpts = {
+    defaultCountry: "SA" as const,
+    msgClass: "transactional" as const,
+    priority: 1 as const,      // أعلى من الافتراضي
+    requestDlr: true as const, // نحتاج تتبع التسليم
+  };
+
+  if (opts.phone) {
+    tasks.push(async () => {
+      try {
+        const r = await sendSms(opts.phone!, smsText, smsOpts);
+        const mr = asMessageResult(r);
+        const attempt: Attempt = {
+          channel: "sms",
+          ok: mr.ok,
+          id: mr.id ?? null,
+          error: mr.error ?? null,
+          at: Date.now(),
+        };
+        return finalizeAttempt(attempt);
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        warn("sms.send.failed", { e: errMsg });
+        return finalizeAttempt({
+          channel: "sms",
+          ok: false,
+          id: null,
+          error: errMsg,
+          at: Date.now(),
+        });
+      }
+    });
   }
 
-  const ok =
-    strategy === "first_success"
-      ? firstSuccessChannel !== null
-      : attempts.some((a) => a.ok) || attempts.length > 0;
+  if (opts.email) {
+    tasks.push(async () => {
+      try {
+        const r = await sendEmailDmail(opts.email!, "وش رأيك؟ نبي نسمع منك", html);
+        const mr = asMessageResult(r);
+        const attempt: Attempt = {
+          channel: "email",
+          ok: mr.ok,
+          id: mr.id ?? null,
+          error: mr.error ?? null,
+          at: Date.now(),
+        };
+        return finalizeAttempt(attempt);
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        warn("email.send.failed", { e: errMsg });
+        return finalizeAttempt({
+          channel: "email",
+          ok: false,
+          id: null,
+          error: errMsg,
+          at: Date.now(),
+        });
+      }
+    });
+  }
+
+  // لو مفيش ولا قناة متاحة
+  if (tasks.length === 0) {
+    return { ok: false, firstSuccessChannel: null, attempts: [] };
+  }
+
+  // ✅ تنفيذ متوازي للقنوات
+  const settled = await Promise.allSettled(tasks.map((t) => t()));
+  const attempts: Attempt[] = settled.map((s) =>
+    s.status === "fulfilled" ? s.value : { channel: "sms", ok: false, id: null, error: "TASK_FAILED", at: Date.now() }
+  );
+
+  // ok العام:
+  const ok = attempts.some((a) => a.ok);
+
+  // تحديد أول قناة نجحت فعليًا (الأسرع) بناءً على at + ترتيب تفضيلي (order)
+  let firstSuccessChannel: Channel | null = null;
+  const successAttempts = attempts.filter((a) => a.ok && a.at);
+  if (successAttempts.length > 0) {
+    // رتب حسب الزمن أولًا، ولو تعادل نرجّح حسب order
+    successAttempts.sort((a, b) => {
+      if ((a.at! - b.at!) !== 0) return a.at! - b.at!;
+      // ترجيح حسب order لو متساويين في الزمن
+      return order.indexOf(a.channel) - order.indexOf(b.channel);
+    });
+    firstSuccessChannel = successAttempts[0].channel;
+  }
+
+  // لو الاستراتيجية first_success وكان فيه نجاح — تمام. لو مفيش نجاح — ok=false بالفعل
+  // في "all" إحنا دايمًا شغّلنا الاثنين معًا؛ ده المطلوب علشان يصلوا في نفس الوقت.
 
   return { ok, firstSuccessChannel, attempts };
 }
@@ -28625,7 +28704,7 @@ export async function notifyRejection({
 }
 ====[ END FILE: src/server/messaging/send-rejection.ts ]============================================
 
-====[ START FILE: src/server/messaging/send-sms.ts (7.0 KB) ]=======================================
+====[ START FILE: src/server/messaging/send-sms.ts (7.8 KB) ]=======================================
 // src/server/messaging/send-sms.ts
 // عميل إرسال SMS عبر OurSMS + قالب الرسالة الموحد + رابر sendSms(to, text, opts?)
 
@@ -28664,6 +28743,13 @@ export type SendSmsOptions = {
   priority?: 0 | 1 | 2 | 3 | 4;
   delayMinutes?: number;
   validityMinutes?: number;
+};
+
+// النتيجة القياسية المتوقّعة من بقية المشروع (تتوافق مع tryChannels)
+export type SendSmsResult = {
+  ok: boolean;
+  id: string | null;
+  error: string | null;
 };
 
 function env(name: string, fallback?: string) {
@@ -28723,7 +28809,6 @@ export async function sendSMSViaOursms(params: SendSMSParams) {
   } = params;
 
   const dests = Array.isArray(to) ? to : [to];
-
   const url = `${BASE.replace(/\/+$/, "")}/msgs/sms`;
 
   const body = {
@@ -28817,22 +28902,38 @@ export async function sendSms(
   to: string | string[],
   text: string,
   opts?: SendSmsOptions
-): Promise<{ ok: boolean }> {
+): Promise<SendSmsResult> {
+  // 🇸🇦 افتراض السعودية الآن
+  const defaultCountry: "SA" = (opts?.defaultCountry ?? "SA") as "SA";
+
   const dests = (Array.isArray(to) ? to : [to]).map((n) =>
-    normalizePhone(n, opts?.defaultCountry)
+    normalizePhone(n, defaultCountry)
   );
 
-  const res = await sendSMSViaOursms({
-    to: dests,
-    text,
-    msgClass: opts?.msgClass ?? "",
-    requestDlr: !!opts?.requestDlr,
-    priority: opts?.priority ?? 0,
-    delayMinutes: opts?.delayMinutes ?? 0,
-    validityMinutes: opts?.validityMinutes ?? 0,
-  });
+  // إعدادات افتراضية مسرِّعة للتسليم في KSA
+  const msgClass: MsgClass = opts?.msgClass ?? "transactional";
+  const priority: 0 | 1 | 2 | 3 | 4 = opts?.priority ?? 1;
+  const requestDlr = opts?.requestDlr ?? true;
+  const delayMinutes = opts?.delayMinutes ?? 0;
+  const validityMinutes = opts?.validityMinutes ?? 0;
 
-  return { ok: !!res?.ok };
+  try {
+    const res = await sendSMSViaOursms({
+      to: dests,
+      text,
+      msgClass,
+      requestDlr,
+      priority,
+      delayMinutes,
+      validityMinutes,
+    });
+
+    const id = res.result?.jobId ? String(res.result.jobId) : null;
+    return { ok: !!res?.ok, id, error: null };
+  } catch (e) {
+    const errMsg = e instanceof Error ? e.message : String(e);
+    return { ok: false, id: null, error: errMsg };
+  }
 }
 
 // اجعل الرابر هو الـ default export أيضاً
@@ -30125,23 +30226,6 @@ export async function getAuthFromRequest(req: NextApiRequest) {
 export const isServer = () => typeof window === 'undefined';
 ====[ END FILE: src/utils/isServer.ts ]=============================================================
 
-====[ START FILE: src/utils/sms.ts (597 B) ]========================================================
-// src/utils/sms.ts
-import twilio from 'twilio';
-
-const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
-
-export async function sendSMS(phone: string, name: string, storeName: string, reviewLink: string) {
-  const message = `هلا ${name}،\n\nيعطيك العافية على طلبك من ${storeName}\n\nوش رايك تشاركنا رأيك؟\nاضغط وسجل تقييمك:\n${reviewLink}\n\nكلمتك تهمنا وتفيد غيرك`;
-
-  await client.messages.create({
-    to: phone,
-    from: process.env.TWILIO_SENDER_ID!,
-    body: message,
-  });
-}
-====[ END FILE: src/utils/sms.ts ]==================================================================
-
 ====[ START FILE: src/utils/verifyAdmin.ts (2.3 KB) ]===============================================
 import type { NextApiRequest } from 'next';
 import { authAdmin, dbAdmin } from '@/lib/firebaseAdmin';
@@ -30617,7 +30701,7 @@ function makeSeparator(title) {
 ====[ END FILE: tsconfig.json ]=====================================================================
 
 ====[ SUMMARY ]=====================================================================================
-Total files seen : 213
-Included         : 199
+Total files seen : 212
+Included         : 198
 Skipped          : 14
-Finished at      : 2025-09-16T15:34:35.457Z
+Finished at      : 2025-09-16T18:20:28.990Z
