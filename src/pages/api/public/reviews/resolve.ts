@@ -56,6 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     return res.status(200).json({ storeUid: data.storeUid });
   } catch (e) {
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
     console.error("[resolve] unexpected", typeof e === "object" && e && "message" in e ? (e as any).message : e);
     return res.status(500).json({ error: "RESOLVE_FAILED" });
   }
