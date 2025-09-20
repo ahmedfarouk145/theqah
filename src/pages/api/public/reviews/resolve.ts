@@ -55,9 +55,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "UID_NOT_FOUND_FOR_DOMAIN", baseTried: base });
     }
     return res.status(200).json({ storeUid: data.storeUid });
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    console.error("[resolve] unexpected", e?.message || e);
+  } catch (e) {
+    console.error("[resolve] unexpected", typeof e === "object" && e && "message" in e ? (e as any).message : e);
     return res.status(500).json({ error: "RESOLVE_FAILED" });
   }
 }
