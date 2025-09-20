@@ -1,15 +1,15 @@
 {
+  "regions": ["fra1"],
   "functions": {
     "api/**/*.ts": {
-      "runtime": "nodejs18.x",
+      "runtime": "nodejs20.x",
       "memory": 1024,
-      "maxDuration": 60,
-      "regions": ["fra1"]
+      "maxDuration": 60
     }
   },
   "crons": [
     {
-      "path": "/api/jobs/worker-run-once?key=${CRON_SECRET}",
+      "path": "/api/jobs/worker-run-once",
       "schedule": "*/1 * * * *"
     }
   ]
