@@ -5,17 +5,21 @@ import { dbAdmin } from "@/lib/firebaseAdmin";
  * lookup strategy:
  *   - if storeUid provided → return it as-is
  *   - else href=fullURL → نستخرج base = origin[/dev-xxxx] ونبحث في stores حسب salla.domain
+ *   - إذا لم يوجد salla.domain، نجرب استخراج storeId من الرابط ونبحث به
  */
 
-function parseHrefBase(raw: unknown): { base: string; host: string } {
+function parseHrefBase(raw: unknown): { base: string; host: string; storeId?: string } {
   try {
     const u = new URL(String(raw || ""));
     const origin = u.origin.toLowerCase();
     const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
     const base = firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
-    return { base, host: u.host.toLowerCase() };
+    // محاولة استخراج storeId من dev-xxxxxx إن وجد
+    const devMatch = firstSeg.match(/^dev-(\w+)$/);
+    const storeId = devMatch ? devMatch[1] : undefined;
+    return { base, host: u.host.toLowerCase(), storeId };
   } catch {
-    return { base: "", host: "" };
+    return { base: "", host: "", storeId: undefined };
   }
 }
 
@@ -37,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const href = typeof req.query.href === "string" ? req.query.href.trim() : "";
     if (!href) return res.status(400).json({ error: "MISSING_INPUT", hint: "send storeUid or href" });
 
-    const { base, host } = parseHrefBase(href);
+    const { base, host, storeId } = parseHrefBase(href);
     if (!base) return res.status(400).json({ error: "INVALID_HREF" });
 
     const db = dbAdmin();
@@ -78,11 +82,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    // إذا لم نجد متجرًا عبر الدومين، جرب البحث عبر storeId
+    if (!doc && storeId) {
+      snap = await db.collection("stores")
+        .where("salla.storeId", "==", Number(storeId))
+        .where("salla.connected", "==", true)
+        .where("salla.installed", "==", true)
+        .limit(1)
+        .get();
+      if (!snap.empty) {
+        doc = snap.docs[0];
+      }
+    }
+
+    // إذا لم نجد متجرًا عبر storeId، جرب البحث عبر uid
+    if (!doc && storeId) {
+      snap = await db.collection("stores")
+        .where("uid", "==", `salla:${storeId}`)
+        .where("salla.connected", "==", true)
+        .where("salla.installed", "==", true)
+        .limit(1)
+        .get();
+      if (!snap.empty) {
+        doc = snap.docs[0];
+      }
+    }
+
     if (!doc) {
       return res.status(404).json({
         error: "STORE_NOT_FOUND",
-        message: "لم يتم العثور على متجر لهذا الدومين. تأكد من أن التطبيق مثبت وأن الدومين مسجل.",
-        baseTried: base
+        message: "لم يتم العثور على متجر لهذا الدومين أو المعرف. تأكد من أن التطبيق مثبت وأن الدومين أو المعرف مسجل.",
+        baseTried: base,
+        storeIdTried: storeId
       });
     }
 
