@@ -1,9 +1,11 @@
+// src/pages/api/salla/webhook.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
 import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
-import { sendSms, buildInviteSMS } from "@/server/messaging/send-sms";
+import { buildInviteSMS } from "@/server/messaging/send-sms";
+import { enqueueInviteJob } from "@/server/queue/outbox";
 
 export const config = { api: { bodyParser: false } };
 
@@ -174,41 +176,49 @@ async function ensureInviteForOrder(
   });
 
   const buyer = order.customer ?? {};
-  await db.collection("review_invites").add({
+  const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
+  const smsText = buildInviteSMS(storeName, publicUrl);
+
+  // نسجّل الدعوة (بدون إرسال الآن)
+  const inviteRef = await db.collection("review_invites").add({
     tokenId, orderId, platform: "salla",
     storeUid, productId: mainProductId, productIds,
     customer: { name: buyer.name ?? null, email: buyer.email ?? null, mobile: buyer.mobile ?? null },
     sentAt: Date.now(), deliveredAt: null, clicks: 0, publicUrl,
   });
+  const inviteId = inviteRef.id;
 
-  const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
-  const smsText = buildInviteSMS(storeName, publicUrl);
+  // جهّز قنوات الإرسال للوركر
+  const channels: ("sms" | "email")[] = [];
+  const payload: Record<string, unknown> = {};
 
-  // نرسل القناتين معًا (متوازي) + إعدادات السعودية للـSMS
-  const tasks: Array<Promise<unknown>> = [];
   if (buyer.mobile) {
-    const mobile = String(buyer.mobile).replace(/\s+/g, "");
-    tasks.push(
-      sendSms(mobile, smsText, {
-        defaultCountry: "SA",
-        msgClass: "transactional",
-        priority: 1,
-        requestDlr: true,
-      })
-    );
+    channels.push("sms");
+    payload.smsText = smsText;
+    payload.phone = String(buyer.mobile).replace(/\s+/g, "");
   }
   if (buyer.email) {
-    const name = buyer.name || "عميلنا العزيز";
-    const emailHtml = `
+    channels.push("email");
+    payload.emailHtml = `
       <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
-        <p>مرحباً ${name},</p>
+        <p>مرحباً ${buyer.name || "عميلنا العزيز"},</p>
         <p>قيّم تجربتك من <strong>${storeName}</strong>.</p>
         <p><a href="${publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
         <p style="color:#64748b">فريق ثقة</p>
       </div>`;
-    tasks.push(sendEmail(buyer.email, "قيّم تجربتك معنا", emailHtml));
+    payload.emailTo = String(buyer.email);
+    payload.emailSubject = "قيّم تجربتك معنا";
   }
-  await Promise.allSettled(tasks);
+
+  if (channels.length) {
+    await enqueueInviteJob({
+      inviteId,
+      storeUid: storeUid || "unknown",
+      channels,
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      payload: payload as any,
+    });
+  }
 }
 
 async function voidInvitesForOrder(db: FirebaseFirestore.Firestore, orderId: string, reason: string) {
