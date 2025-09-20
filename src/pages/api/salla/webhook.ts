@@ -4,8 +4,7 @@ import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
 import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
-import { buildInviteSMS } from "@/server/messaging/send-sms";
-import { enqueueInviteJob } from "@/server/queue/outbox";
+import { sendSms, buildInviteSMS } from "@/server/messaging/send-sms";
 
 export const config = { api: { bodyParser: false } };
 
@@ -105,6 +104,19 @@ function extractProductIds(items?: SallaItem[]): string[] {
   return [...ids];
 }
 
+// 🔹 helper لاستخراج base من دومين سلة (origin[/dev-xxxx])
+function toDomainBase(domain: string | null | undefined): string | null {
+  if (!domain) return null;
+  try {
+    const u = new URL(String(domain));
+    const origin = u.origin.toLowerCase();
+    const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
+    return firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
+  } catch {
+    return null;
+  }
+}
+
 // -------------------- Order snapshot & invites --------------------
 async function upsertOrderSnapshot(
   db: FirebaseFirestore.Firestore,
@@ -176,10 +188,6 @@ async function ensureInviteForOrder(
   });
 
   const buyer = order.customer ?? {};
-  const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
-  const smsText = buildInviteSMS(storeName, publicUrl);
-
-  // نسجّل الدعوة (بدون إرسال الآن)
   const inviteRef = await db.collection("review_invites").add({
     tokenId, orderId, platform: "salla",
     storeUid, productId: mainProductId, productIds,
@@ -188,37 +196,51 @@ async function ensureInviteForOrder(
   });
   const inviteId = inviteRef.id;
 
-  // جهّز قنوات الإرسال للوركر
-  const channels: ("sms" | "email")[] = [];
-  const payload: Record<string, unknown> = {};
+  const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
+  const smsText = buildInviteSMS(storeName, publicUrl);
 
+  // بدل الإرسال المباشر، لو عندك Outbox/Worker خلّي هنا Enqueue فقط.
+  // مؤقتًا (لو لسه ما فعّلت الكيو) نرسل مباشرةً:
+  const tasks: Array<Promise<unknown>> = [];
   if (buyer.mobile) {
-    channels.push("sms");
-    payload.smsText = smsText;
-    payload.phone = String(buyer.mobile).replace(/\s+/g, "");
+    const mobile = String(buyer.mobile).replace(/\s+/g, "");
+    tasks.push(
+      sendSms(mobile, smsText, {
+        defaultCountry: "SA",
+        msgClass: "transactional",
+        priority: 1,
+        requestDlr: true,
+      }).then((r) =>
+        db.collection("review_invites").doc(inviteId).set({
+          sentChannels: {
+            sms: { ok: r.ok, id: r.id ?? null, error: r.error ?? null, at: Date.now() }
+          }
+        }, { merge: true })
+      )
+    );
   }
   if (buyer.email) {
-    channels.push("email");
-    payload.emailHtml = `
+    const name = buyer.name || "عميلنا العزيز";
+    const emailHtml = `
       <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
-        <p>مرحباً ${buyer.name || "عميلنا العزيز"},</p>
+        <p>مرحباً ${name},</p>
         <p>قيّم تجربتك من <strong>${storeName}</strong>.</p>
         <p><a href="${publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
         <p style="color:#64748b">فريق ثقة</p>
       </div>`;
-    payload.emailTo = String(buyer.email);
-    payload.emailSubject = "قيّم تجربتك معنا";
-  }
-
-  if (channels.length) {
-    await enqueueInviteJob({
-      inviteId,
-      storeUid: storeUid || "unknown",
-      channels,
+      //
+    tasks.push(
       //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      payload: payload as any,
-    });
+      sendEmail(String(buyer.email), "قيّم تجربتك معنا", emailHtml).then((r: any) =>
+        db.collection("review_invites").doc(inviteId).set({
+          sentChannels: {
+            email: { ok: !!r?.ok, id: r?.id ?? null, error: r?.error ?? null, at: Date.now() }
+          }
+        }, { merge: true })
+      )
+    );
   }
+  await Promise.allSettled(tasks);
 }
 
 async function voidInvitesForOrder(db: FirebaseFirestore.Firestore, orderId: string, reason: string) {
@@ -241,7 +263,6 @@ async function handleAppEvent(
   await db.collection("salla_app_events").add({ uid, event, merchant: merchant ?? null, data, at: Date.now() });
 
   if (event === "app.store.authorize") {
-    // سلة ترسل التوكنات مباشرة عبر الويبهوك (النمط السهل)
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
     const access_token  = String((data as any)?.access_token || "");
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -262,16 +283,45 @@ async function handleAppEvent(
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         scope: (data as any)?.scope || null,
         obtainedAt: Date.now(),
+        // اختياري لو عندك من الـ webhook:
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        storeName: (data as any)?.storeName || null,
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        storeDomain: (data as any)?.storeDomain || (data as any)?.domain || null,
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        apiBase: (data as any)?.apiBase || undefined,
       }, { merge: true });
     }
 
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
-      salla: { storeId: merchant ?? null, connected: true, installed: true, installedAt: Date.now() },
+      salla: {
+        storeId: merchant ?? null,
+        connected: true,
+        installed: true,
+        installedAt: Date.now(),
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        storeName: (data as any)?.storeName || (data as any)?.merchant_name || "متجر",
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        domain: (data as any)?.storeDomain || (data as any)?.domain || null,
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        apiBase: (data as any)?.apiBase || "https://api.salla.dev"
+      },
       connectedAt: Date.now(),
       updatedAt: Date.now(),
     }, { merge: true });
+
+    // 🔹 اكتب فهرس domains/{base} → storeUid
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const storeDomain = (data as any)?.storeDomain || (data as any)?.domain || null;
+    const base = toDomainBase(storeDomain);
+    if (base) {
+      await db.collection("domains").doc(base).set({
+        storeUid: uid,
+        updatedAt: Date.now()
+      }, { merge: true });
+    }
 
     // بريد ترحيبي للتاجر (لو توفر بريد)
     try {
@@ -316,6 +366,15 @@ async function handleAppEvent(
       salla: { storeId: merchant ?? null, installed: false, connected: false, uninstalledAt: Date.now() },
       updatedAt: Date.now(),
     }, { merge: true });
+
+    // 🔹 إزالة فهرس domains/{base} المرتبط بهذا المتجر (لو موجود)
+    const doc = await db.collection("stores").doc(uid).get();
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const d = doc.data() as any;
+    const base = toDomainBase(d?.salla?.domain || null);
+    if (base) {
+      await db.collection("domains").doc(base).delete().catch(()=>{});
+    }
   }
 
   if (event.startsWith("app.trial.") || event.startsWith("app.subscription.")) {
@@ -346,7 +405,7 @@ async function handleAppEvent(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
-  // ✅ يقبل Bearer / x-webhook-token / x-salla-token / ?t=
+  // ✅ auth (Bearer / x-webhook-token / x-salla-token / ?t=)
   const provided = extractProvidedToken(req);
   if (!WEBHOOK_TOKEN || !provided || !timingSafeEq(provided, WEBHOOK_TOKEN)) {
     return res.status(401).json({ error: "invalid_webhook_token" });
@@ -366,7 +425,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const dataRaw = (body.data ?? {}) as UnknownRecord;
   const asOrder = dataRaw as SallaOrder;
 
-  // Idempotency لكل الأحداث
+  // Idempotency
   const idemKey = crypto.createHash("sha256").update(provided + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
   if ((await idemRef.get()).exists) return res.status(200).json({ ok: true, deduped: true });
@@ -379,7 +438,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     merchant: body.merchant ?? null,
   });
 
-  // فرع Easy OAuth (app.*)
+  // app.* (Easy OAuth)
   if (event.startsWith("app.")) {
     await handleAppEvent(db, event as SallaAppEvent, body.merchant, dataRaw);
     await db.collection("processed_events").doc(keyOf(event)).set({ at: Date.now(), event, processed: true }, { merge: true });
@@ -394,7 +453,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
 
-  // القواعد التشغيلية
   if (event === "order.payment.updated") {
     if (["paid","authorized","captured"].includes(paymentStatus)) {
       await ensureInviteForOrder(db, asOrder, dataRaw);

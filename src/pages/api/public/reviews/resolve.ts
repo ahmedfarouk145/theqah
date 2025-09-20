@@ -1,46 +1,27 @@
-// src/pages/api/public/reviews/resolve.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 /**
- * يعمل resolve فقط بطريقتين:
- *  1) storeUid=...  => يرجّع نفس الـ UID فورًا
- *  2) href=...      => يستخرج base (origin + dev-...) ويعمل مساواة مباشرة مع stores.salla.domain
- *
- * لا يوجد مسح شامل لكل المتاجر. إمّا مساواة مباشرة أو UID مباشر.
+ * lookup strategy:
+ *   - if storeUid provided → return it as-is (أسرع وأضمن)
+ *   - else href=fullURL → نستخرج base = origin[/dev-xxxx] ونقرأ doc من domains/{base}
+ * لا يوجد fallback/approx matching إطلاقًا.
  */
 
-type StoreDoc = {
-  uid?: string;
-  storeUid?: string;
-  storeId?: number | string;
-  salla?: {
-    uid?: string;
-    storeId?: number | string;
-    domain?: string;        // مثل: https://demostore.salla.sa/dev-xxxxx
-    connected?: boolean;
-    installed?: boolean;
-  };
-};
-
-function parseHrefBase(raw: unknown): { host: string; origin: string; base: string; href: string } {
-  const out = { host: "", origin: "", base: "", href: "" };
+function parseHrefBase(raw: unknown): { base: string } {
   try {
     const u = new URL(String(raw || ""));
-    out.host = u.host.replace(/^www\./, "").toLowerCase();
-    out.origin = u.origin.toLowerCase();
+    const origin = u.origin.toLowerCase();
     const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
-    // سلة dev-... ⇒ نعتبرها جزء من base
-    out.base = firstSeg && firstSeg.startsWith("dev-") ? `${out.origin}/${firstSeg}` : out.origin;
-    out.href = u.href.toLowerCase();
+    const base = firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
+    return { base };
   } catch {
-    // invalid URL
+    return { base: "" };
   }
-  return out;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // CORS الخفيف للودجت
+  // CORS للودجت
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -48,58 +29,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader("Cache-Control", "no-store");
 
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "GET") return res.status(405).json({ error: "method_not_allowed" });
+  if (req.method !== "GET")   return res.status(405).json({ error: "method_not_allowed" });
 
   try {
     const storeUid = typeof req.query.storeUid === "string" ? req.query.storeUid.trim() : "";
+    if (storeUid) return res.status(200).json({ storeUid });
+
     const href = typeof req.query.href === "string" ? req.query.href.trim() : "";
-
-    // 1) storeUid مباشرة
-    if (storeUid) {
-      return res.status(200).json({ storeUid });
-    }
-
-    // 2) href مطلوب لو مفيش storeUid
-    if (!href) {
-      return res.status(400).json({ error: "MISSING_INPUT", hint: "send storeUid or href" });
-    }
+    if (!href) return res.status(400).json({ error: "MISSING_INPUT", hint: "send storeUid or href" });
 
     const { base } = parseHrefBase(href);
-    if (!base) {
-      return res.status(400).json({ error: "INVALID_HREF", hint: "must be full URL to the storefront page" });
-    }
+    if (!base) return res.status(400).json({ error: "INVALID_HREF" });
 
-    // مساواة مباشرة على salla.domain
     const db = dbAdmin();
-    const snap = await db.collection("stores")
-      .where("platform", "==", "salla")
-      .where("salla.connected", "==", true)
-      .where("salla.installed", "==", true)
-      .where("salla.domain", "==", base)
-      .limit(1)
-      .get();
-
-    if (snap.empty) {
-      // رسالة واضحة بالعربي
+    const doc = await db.collection("domains").doc(base).get();
+    if (!doc.exists) {
       return res.status(404).json({
         error: "STORE_NOT_FOUND",
-        message: "لم يتم العثور على معرف المتجر. تأكد من تثبيت التطبيق في متجر سلة، وأن salla.domain يطابق الـ href.",
+        message: "لم يتم العثور على متجر لهذا الدومين. تأكد من أن التطبيق مثبت وأن الدومين مسجل.",
         baseTried: base
       });
     }
-
-    const data = snap.docs[0].data() as StoreDoc;
-    const uid =
-      data.uid ||
-      data.storeUid ||
-      data.salla?.uid ||
-      (data.salla?.storeId ? `salla:${data.salla.storeId}` : undefined);
-
-    if (!uid) {
-      return res.status(404).json({ error: "UID_NOT_FOUND_FOR_STORE", baseTried: base });
+    const data = doc.data() as { storeUid?: string };
+    if (!data?.storeUid) {
+      return res.status(404).json({ error: "UID_NOT_FOUND_FOR_DOMAIN", baseTried: base });
     }
-
-    return res.status(200).json({ storeUid: uid });
+    return res.status(200).json({ storeUid: data.storeUid });
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     console.error("[resolve] unexpected", e?.message || e);
