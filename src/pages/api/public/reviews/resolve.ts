@@ -4,22 +4,24 @@ import { dbAdmin } from "@/lib/firebaseAdmin";
 /**
  * lookup strategy:
  *   - if storeUid provided → return it as-is
- *   - else href=fullURL → نستخرج base = origin[/dev-xxxx] ونبحث في stores حسب salla.domain
- *   - إذا لم يوجد salla.domain، نجرب استخراج storeId من الرابط ونبحث به
+ *   - else try to extract storeId from query or href (dev-xxxxxx or identifier param)
+ *   - search in stores by salla.domain, then by salla.storeId, then by uid
  */
 
-function parseHrefBase(raw: unknown): { base: string; host: string; storeId?: string } {
+function parseHrefBase(raw: unknown): { base: string; host: string; devStoreId?: string; identifier?: string } {
   try {
     const u = new URL(String(raw || ""));
     const origin = u.origin.toLowerCase();
     const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
     const base = firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
-    // محاولة استخراج storeId من dev-xxxxxx إن وجد
+    // استخراج storeId من dev-xxxxxx إن وجد
     const devMatch = firstSeg.match(/^dev-(\w+)$/);
-    const storeId = devMatch ? devMatch[1] : undefined;
-    return { base, host: u.host.toLowerCase(), storeId };
+    const devStoreId = devMatch ? devMatch[1] : undefined;
+    // استخراج identifier من الكويري باراميتر
+    const identifier = u.searchParams.get("identifier") || undefined;
+    return { base, host: u.host.toLowerCase(), devStoreId, identifier };
   } catch {
-    return { base: "", host: "", storeId: undefined };
+    return { base: "", host: "", devStoreId: undefined, identifier: undefined };
   }
 }
 
@@ -41,50 +43,59 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const href = typeof req.query.href === "string" ? req.query.href.trim() : "";
     if (!href) return res.status(400).json({ error: "MISSING_INPUT", hint: "send storeUid or href" });
 
-    const { base, host, storeId } = parseHrefBase(href);
-    if (!base) return res.status(400).json({ error: "INVALID_HREF" });
+    const { base, host, devStoreId, identifier } = parseHrefBase(href);
+
+    // أولوية استخراج storeId: من الكويري مباشرة ثم من identifier ثم من dev-xxxxxx
+    const storeId = typeof req.query.storeId === "string" && req.query.storeId.trim()
+      ? req.query.storeId.trim()
+      : identifier || devStoreId;
+
+    if (!base && !storeId) return res.status(400).json({ error: "INVALID_HREF" });
 
     const db = dbAdmin();
 
     // البحث في stores حسب salla.domain
     let doc = null;
-    let snap = await db.collection("stores")
-      .where("salla.domain", "==", base)
-      .where("salla.connected", "==", true)
-      .where("salla.installed", "==", true)
-      .limit(1)
-      .get();
+    if (base) {
+      //eslint-disable-next-line
+      let snap = await db.collection("stores")
+        .where("salla.domain", "==", base)
+        .where("salla.connected", "==", true)
+        .where("salla.installed", "==", true)
+        .limit(1)
+        .get();
 
-    if (!snap.empty) {
-      doc = snap.docs[0];
-    } else {
-      // جرب البحث بدون dev- أو www أو http/https
-      const domainVariations = [
-        base,
-        base.replace(/^https?:\/\//, ""),
-        base.replace(/^https?:\/\//, "").replace(/^www\./, ""),
-        `https://${host}`,
-        `http://${host}`,
-        host,
-        `www.${host}`
-      ];
-      for (const variation of domainVariations) {
-        snap = await db.collection("stores")
-          .where("salla.domain", "==", variation)
-          .where("salla.connected", "==", true)
-          .where("salla.installed", "==", true)
-          .limit(1)
-          .get();
-        if (!snap.empty) {
-          doc = snap.docs[0];
-          break;
+      if (!snap.empty) {
+        doc = snap.docs[0];
+      } else {
+        // جرب البحث بدون dev- أو www أو http/https
+        const domainVariations = [
+          base,
+          base.replace(/^https?:\/\//, ""),
+          base.replace(/^https?:\/\//, "").replace(/^www\./, ""),
+          `https://${host}`,
+          `http://${host}`,
+          host,
+          `www.${host}`
+        ];
+        for (const variation of domainVariations) {
+          const snap = await db.collection("stores")
+            .where("salla.domain", "==", variation)
+            .where("salla.connected", "==", true)
+            .where("salla.installed", "==", true)
+            .limit(1)
+            .get();
+          if (!snap.empty) {
+            doc = snap.docs[0];
+            break;
+          }
         }
       }
     }
 
-    // إذا لم نجد متجرًا عبر الدومين، جرب البحث عبر storeId
+    // إذا لم نجد متجرًا عبر الدومين، جرب البحث عبر storeId (رقم أو نص)
     if (!doc && storeId) {
-      snap = await db.collection("stores")
+      const snap = await db.collection("stores")
         .where("salla.storeId", "==", Number(storeId))
         .where("salla.connected", "==", true)
         .where("salla.installed", "==", true)
@@ -92,12 +103,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .get();
       if (!snap.empty) {
         doc = snap.docs[0];
+      } else {
+        // جرب البحث إذا كان storeId نص وليس رقم
+        const snap = await db.collection("stores")
+          .where("salla.storeId", "==", storeId)
+          .where("salla.connected", "==", true)
+          .where("salla.installed", "==", true)
+          .limit(1)
+          .get();
+        if (!snap.empty) {
+          doc = snap.docs[0];
+        }
       }
     }
 
     // إذا لم نجد متجرًا عبر storeId، جرب البحث عبر uid
     if (!doc && storeId) {
-      snap = await db.collection("stores")
+      //eslint-disable-next-line
+      let snap = await db.collection("stores")
         .where("uid", "==", `salla:${storeId}`)
         .where("salla.connected", "==", true)
         .where("salla.installed", "==", true)
