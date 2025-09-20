@@ -2,6 +2,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
+/**
+ * يعمل resolve فقط بطريقتين:
+ *  1) storeUid=...  => يرجّع نفس الـ UID فورًا
+ *  2) href=...      => يستخرج base (origin + dev-...) ويعمل مساواة مباشرة مع stores.salla.domain
+ *
+ * لا يوجد مسح شامل لكل المتاجر. إمّا مساواة مباشرة أو UID مباشر.
+ */
+
 type StoreDoc = {
   uid?: string;
   storeUid?: string;
@@ -9,110 +17,75 @@ type StoreDoc = {
   salla?: {
     uid?: string;
     storeId?: number | string;
-    domain?: string;        // مثال: https://demostore.salla.sa/dev-xxxxxx
+    domain?: string;        // مثل: https://demostore.salla.sa/dev-xxxxx
     connected?: boolean;
     installed?: boolean;
   };
 };
 
-// كاش اختياري لتقليل قراءات Firestore
-type CacheVal = { uid: string; t: number };
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
-const g: any = global as any;
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
-const MEM: Map<string, CacheVal> = g.__THEQAH_RESOLVE_MEM__ || new Map();
-g.__THEQAH_RESOLVE_MEM__ = MEM;
-const TTL = 10 * 60 * 1000; // 10 دقائق
-function cacheGet(k: string) {
-  const v = MEM.get(k);
-  if (v && Date.now() - v.t < TTL) return v.uid;
-  if (v) MEM.delete(k);
-  return null;
-}
-function cacheSet(k: string, uid: string) {
-  MEM.set(k, { uid, t: Date.now() });
-}
-
-// نطبع الدومين بإزالة الـ trailing slash فقط (ونمنع أي lowercase أو تعديل للمسار)
-function normalizeDomainInput(raw: string) {
-  let s = raw.trim();
-  // لازم يكون شكل URL كامل ببروتوكول
-  if (!/^https?:\/\//.test(s)) return null;
-  // إزالة سلاش أخير فقط
-  s = s.replace(/\/+$/, "");
-  return s;
-}
-
-// نتأكد أن شكل الدومين فيه مسار dev-xxxxx (لأن بدايات الدومينات متشابهة)
-function looksLikeDevDomain(url: string) {
+function parseHrefBase(raw: unknown): { host: string; origin: string; base: string; href: string } {
+  const out = { host: "", origin: "", base: "", href: "" };
   try {
-    const u = new URL(url);
+    const u = new URL(String(raw || ""));
+    out.host = u.host.replace(/^www\./, "").toLowerCase();
+    out.origin = u.origin.toLowerCase();
     const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
-    return firstSeg.startsWith("dev-");
+    // سلة dev-... ⇒ نعتبرها جزء من base
+    out.base = firstSeg && firstSeg.startsWith("dev-") ? `${out.origin}/${firstSeg}` : out.origin;
+    out.href = u.href.toLowerCase();
   } catch {
-    return false;
+    // invalid URL
   }
+  return out;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // CORS للودجت
+  // CORS الخفيف للودجت
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Max-Age", "86400");
-
-  // كاش 5 دقائق (يناسب إن الـ mapping ثابت تقريبًا)
-  res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
+  res.setHeader("Cache-Control", "no-store");
 
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).json({ error: "method_not_allowed" });
 
   try {
-    // مدخلين فقط:
-    // 1) storeUid الكامل (مثال: salla:982747175)
-    // 2) domain الكامل (مثال: https://demostore.salla.sa/dev-6pvf7vguhv84lfoi)
-    const storeUidRaw = typeof req.query.storeUid === "string" ? req.query.storeUid.trim() : "";
-    const domainRaw   = typeof req.query.domain   === "string" ? req.query.domain.trim()   : "";
+    const storeUid = typeof req.query.storeUid === "string" ? req.query.storeUid.trim() : "";
+    const href = typeof req.query.href === "string" ? req.query.href.trim() : "";
 
-    // 1) لو storeUid موجود → رجّعه مباشرة
-    if (storeUidRaw) {
-      cacheSet(`uid:${storeUidRaw}`, storeUidRaw);
-      return res.status(200).json({ storeUid: storeUidRaw });
+    // 1) storeUid مباشرة
+    if (storeUid) {
+      return res.status(200).json({ storeUid });
     }
 
-    // 2) لازم domain كامل
-    if (!domainRaw) {
-      return res.status(400).json({ error: "MISSING_DOMAIN_OR_UID" });
+    // 2) href مطلوب لو مفيش storeUid
+    if (!href) {
+      return res.status(400).json({ error: "MISSING_INPUT", hint: "send storeUid or href" });
     }
 
-    const domain = normalizeDomainInput(domainRaw);
-    if (!domain) {
-      return res.status(400).json({ error: "INVALID_DOMAIN_FORMAT", hint: "must start with http(s):// and be a full URL" });
+    const { base } = parseHrefBase(href);
+    if (!base) {
+      return res.status(400).json({ error: "INVALID_HREF", hint: "must be full URL to the storefront page" });
     }
 
-    // لو البدايات متشابهة، نلزم وجود مسار dev-xxxxx لتجنّب التضارب
-    if (!looksLikeDevDomain(domain)) {
-      return res.status(400).json({
-        error: "DOMAIN_TOO_GENERIC",
-        hint: "send the full domain including /dev-xxxxx to avoid collisions",
-      });
-    }
-
-    const hit = cacheGet(`dom:${domain}`);
-    if (hit) return res.status(200).json({ storeUid: hit });
-
+    // مساواة مباشرة على salla.domain
     const db = dbAdmin();
-
-    // مطابقة صارمة على salla.domain + يكون المتجر متصل ومثبت
     const snap = await db.collection("stores")
+      .where("platform", "==", "salla")
       .where("salla.connected", "==", true)
       .where("salla.installed", "==", true)
-      .where("salla.domain", "==", domain) // مساواة حرفيًا
+      .where("salla.domain", "==", base)
       .limit(1)
       .get();
 
     if (snap.empty) {
-      return res.status(404).json({ error: "STORE_NOT_FOUND", domain });
+      // رسالة واضحة بالعربي
+      return res.status(404).json({
+        error: "STORE_NOT_FOUND",
+        message: "لم يتم العثور على معرف المتجر. تأكد من تثبيت التطبيق في متجر سلة، وأن salla.domain يطابق الـ href.",
+        baseTried: base
+      });
     }
 
     const data = snap.docs[0].data() as StoreDoc;
@@ -120,18 +93,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data.uid ||
       data.storeUid ||
       data.salla?.uid ||
-      (data.salla?.storeId ? `salla:${data.salla.storeId}` : undefined) ||
-      (data.storeId != null ? `salla:${String(data.storeId)}` : undefined);
+      (data.salla?.storeId ? `salla:${data.salla.storeId}` : undefined);
 
     if (!uid) {
-      return res.status(404).json({ error: "UID_NOT_FOUND_FOR_STORE", domain });
+      return res.status(404).json({ error: "UID_NOT_FOUND_FOR_STORE", baseTried: base });
     }
 
-    cacheSet(`dom:${domain}`, uid);
     return res.status(200).json({ storeUid: uid });
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
-    console.error("resolve_error", e?.message || e);
+    console.error("[resolve] unexpected", e?.message || e);
     return res.status(500).json({ error: "RESOLVE_FAILED" });
   }
 }
