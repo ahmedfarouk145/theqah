@@ -1,4 +1,3 @@
-// src/pages/api/salla/webhook.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
@@ -228,7 +227,6 @@ async function ensureInviteForOrder(
         <p><a href="${publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
         <p style="color:#64748b">فريق ثقة</p>
       </div>`;
-      //
     tasks.push(
       //eslint-disable-next-line @typescript-eslint/no-explicit-any
       sendEmail(String(buyer.email), "قيّم تجربتك معنا", emailHtml).then((r: any) =>
@@ -294,12 +292,13 @@ async function handleAppEvent(
     }
 
     // جلب بيانات المتجر من سلة
+    let domain: string | null = null;
     const resp = await fetch("https://api.salla.dev/admin/v2/store/info", {
       headers: { Authorization: `Bearer ${access_token}` }
     });
     if (resp.ok) {
       const storeInfo = await resp.json();
-      const domain = storeInfo.data?.domain || storeInfo.data?.url || null;
+      domain = storeInfo.data?.domain || storeInfo.data?.url || null;
       if (domain) {
         await db.collection("stores").doc(uid).set({
           "salla.domain": domain
@@ -314,21 +313,19 @@ async function handleAppEvent(
       }
     }
 
+    // تحديث حالة المتجر بشكل صريح بعد جلب الدومين
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
-      salla: {
-        storeId: merchant ?? null,
-        connected: true,
-        installed: true,
-        installedAt: Date.now(),
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        storeName: (data as any)?.storeName || (data as any)?.merchant_name || "متجر",
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        domain: (data as any)?.storeDomain || (data as any)?.domain || null,
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        apiBase: (data as any)?.apiBase || "https://api.salla.dev"
-      },
+      "salla.storeId": merchant ?? null,
+      "salla.connected": true,
+      "salla.installed": true,
+      "salla.domain": domain,
+      "salla.installedAt": Date.now(),
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      "salla.storeName": (data as any)?.storeName || (data as any)?.merchant_name || "متجر",
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      "salla.apiBase": (data as any)?.apiBase || "https://api.salla.dev",
       connectedAt: Date.now(),
       updatedAt: Date.now(),
     }, { merge: true });
@@ -375,7 +372,9 @@ async function handleAppEvent(
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
-      salla: { storeId: merchant ?? null, installed: true, installedAt: Date.now() },
+      "salla.storeId": merchant ?? null,
+      "salla.installed": true,
+      "salla.installedAt": Date.now(),
       updatedAt: Date.now(),
     }, { merge: true });
   }
@@ -384,7 +383,10 @@ async function handleAppEvent(
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
-      salla: { storeId: merchant ?? null, installed: false, connected: false, uninstalledAt: Date.now() },
+      "salla.storeId": merchant ?? null,
+      "salla.installed": false,
+      "salla.connected": false,
+      "salla.uninstalledAt": Date.now(),
       updatedAt: Date.now(),
     }, { merge: true });
 
@@ -402,7 +404,8 @@ async function handleAppEvent(
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
-      salla: { storeId: merchant ?? null, subscription: { lastEvent: event, data, updatedAt: Date.now() } },
+      "salla.storeId": merchant ?? null,
+      "salla.subscription": { lastEvent: event, data, updatedAt: Date.now() },
       updatedAt: Date.now(),
     }, { merge: true });
   }
@@ -411,8 +414,9 @@ async function handleAppEvent(
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
+      "salla.storeId": merchant ?? null,
       //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      salla: { storeId: merchant ?? null, settings: (data as any)?.settings ?? {} },
+      "salla.settings": (data as any)?.settings ?? {},
       updatedAt: Date.now(),
     }, { merge: true });
   }
