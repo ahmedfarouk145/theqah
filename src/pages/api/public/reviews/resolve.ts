@@ -33,9 +33,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const href = typeof req.query.href === "string" ? req.query.href.trim() : "";
     if (!href) return res.status(400).json({ error: "MISSING_INPUT", hint: "send storeUid or href" });
 
-    const { base, host, devStoreId, identifier } = parseHrefBase(href);
+    const { base, host } = parseHrefBase(href);
 
-    // أولوية البحث: إذا فيه base (دومين أو dev-xxxx) نبحث فقط عليه، إذا مافيه نبحث عبر storeId/identifier
     const db = dbAdmin();
     let doc = null;
 
@@ -75,10 +74,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
     } else {
-      // إذا لم يوجد دومين في الرابط، جرب البحث عبر storeId/identifier/devStoreId فقط
+      // فقط إذا لم يوجد دومين في الرابط، جرب البحث عبر storeId/identifier/devStoreId
       const storeId = typeof req.query.storeId === "string" && req.query.storeId.trim()
         ? req.query.storeId.trim()
-        : identifier || devStoreId;
+        : undefined;
 
       if (!storeId) return res.status(400).json({ error: "INVALID_HREF" });
 
