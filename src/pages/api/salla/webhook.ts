@@ -294,12 +294,12 @@ async function handleAppEvent(
     }
 
     // جلب بيانات المتجر من سلة
-    const resp = await fetch("https://api.salla.dev/admin/v2/store", {
+    const resp = await fetch("https://api.salla.dev/admin/v2/store/info", {
       headers: { Authorization: `Bearer ${access_token}` }
     });
     if (resp.ok) {
       const storeInfo = await resp.json();
-      const domain = storeInfo.domain || storeInfo.url || null;
+      const domain = storeInfo.data?.domain || storeInfo.data?.url || null;
       if (domain) {
         await db.collection("stores").doc(uid).set({
           "salla.domain": domain
