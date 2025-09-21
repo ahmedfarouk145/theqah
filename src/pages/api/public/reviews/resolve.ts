@@ -33,13 +33,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const href = typeof req.query.href === "string" ? req.query.href.trim() : "";
     if (!href) return res.status(400).json({ error: "MISSING_INPUT", hint: "send storeUid or href" });
 
-    const { base, host } = parseHrefBase(href);
+    const { base, host, devStoreId, identifier } = parseHrefBase(href);
 
     const db = dbAdmin();
     let doc = null;
 
+    // جرب البحث عبر الدومين أولاً
     if (base) {
-      // البحث عبر الدومين فقط
       const snap = await db.collection("stores")
         .where("salla.domain", "==", base)
         .where("salla.connected", "==", true)
@@ -73,43 +73,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
       }
-    } else {
-      // فقط إذا لم يوجد دومين في الرابط، جرب البحث عبر storeId/identifier/devStoreId
+    }
+
+    // إذا لم نجد متجرًا عبر الدومين، جرب البحث عبر storeId أو uid
+    if (!doc) {
+      // أولوية استخراج storeId: من الكويري مباشرة ثم من identifier ثم من dev-xxxxxx
       const storeId = typeof req.query.storeId === "string" && req.query.storeId.trim()
         ? req.query.storeId.trim()
-        : undefined;
+        : identifier || devStoreId;
 
-      if (!storeId) return res.status(400).json({ error: "INVALID_HREF" });
-
-      // جرب البحث كرقم
-      const snapNum = await db.collection("stores")
-        .where("salla.storeId", "==", Number(storeId))
-        .where("salla.connected", "==", true)
-        .where("salla.installed", "==", true)
-        .limit(1)
-        .get();
-      if (!snapNum.empty) {
-        doc = snapNum.docs[0];
-      } else {
-        // جرب البحث كنص
-        const snapStr = await db.collection("stores")
-          .where("salla.storeId", "==", storeId)
+      if (storeId) {
+        // جرب البحث كرقم
+        const snapNum = await db.collection("stores")
+          .where("salla.storeId", "==", Number(storeId))
           .where("salla.connected", "==", true)
           .where("salla.installed", "==", true)
           .limit(1)
           .get();
-        if (!snapStr.empty) {
-          doc = snapStr.docs[0];
+        if (!snapNum.empty) {
+          doc = snapNum.docs[0];
         } else {
-          // جرب البحث عبر uid
-          const snapUid = await db.collection("stores")
-            .where("uid", "==", `salla:${storeId}`)
+          // جرب البحث كنص
+          const snapStr = await db.collection("stores")
+            .where("salla.storeId", "==", storeId)
             .where("salla.connected", "==", true)
             .where("salla.installed", "==", true)
             .limit(1)
             .get();
-          if (!snapUid.empty) {
-            doc = snapUid.docs[0];
+          if (!snapStr.empty) {
+            doc = snapStr.docs[0];
+          } else {
+            // جرب البحث عبر uid
+            const snapUid = await db.collection("stores")
+              .where("uid", "==", `salla:${storeId}`)
+              .where("salla.connected", "==", true)
+              .where("salla.installed", "==", true)
+              .limit(1)
+              .get();
+            if (!snapUid.empty) {
+              doc = snapUid.docs[0];
+            }
           }
         }
       }
