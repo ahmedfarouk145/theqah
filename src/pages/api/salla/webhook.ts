@@ -293,6 +293,27 @@ async function handleAppEvent(
       }, { merge: true });
     }
 
+    // جلب بيانات المتجر من سلة
+    const resp = await fetch("https://api.salla.dev/admin/v2/store", {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+    if (resp.ok) {
+      const storeInfo = await resp.json();
+      const domain = storeInfo.domain || storeInfo.url || null;
+      if (domain) {
+        await db.collection("stores").doc(uid).set({
+          "salla.domain": domain
+        }, { merge: true });
+        const base = toDomainBase(domain);
+        if (base) {
+          await db.collection("domains").doc(base).set({
+            storeUid: uid,
+            updatedAt: Date.now()
+          }, { merge: true });
+        }
+      }
+    }
+
     await db.collection("stores").doc(uid).set({
       uid,
       platform: "salla",
