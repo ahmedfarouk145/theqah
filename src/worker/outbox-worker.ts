@@ -1,252 +1,192 @@
+// src/worker/outbox-worker.ts
 import { dbAdmin } from "@/lib/firebaseAdmin";
-import { leasePendingJobs, completeJob, computeNextBackoffMs, OutboxJob } from "@/server/queue/outbox";
-import { canSendSMS, canSendEmail } from "@/server/queue/rate-limit";
-import sendSms from "@/server/messaging/send-sms";
-import { getOursmsDlrs } from "@/server/messaging/send-sms"; // بولر DLRs الجاهز
+import { leasePendingJobs, markOk, requeue, type OutboxJob } from "@/server/queue/outbox";
+import { canSend } from "@/server/queue/rate-limit";
+import { sendSms, type SendSmsOptions } from "@/server/messaging/send-sms";
 import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
-const MAX_ATTEMPTS = 5;
+const WORKER_ID = `w_${Math.random().toString(36).slice(2, 8)}`;
 
-function workerId() {
-  return `w_${Math.random().toString(36).slice(2, 8)}`;
+function nowMs() {
+  return Date.now();
 }
 
-/** ---------- Helpers & Types (no-any) ---------- */
+/** ---------- Typed payload instead of any ---------- */
+interface SmsPayload {
+  to?: string;
+  phone?: string;
+  text?: string;
+  smsText?: string;
+}
+interface EmailPayload {
+  emailTo?: string;
+  subject?: string;
+  html?: string;
+  emailHtml?: string;
+}
+type JobPayload = SmsPayload & EmailPayload;
 
-type SmsResult = {
-  ok: boolean;
-  id?: string | null;
-  error?: string | null;
-};
-
-type EmailResult = {
-  ok: boolean;
-  id?: string | null;
-};
-
-type UnknownObject = Record<string, unknown>;
-
-function isObject(x: unknown): x is UnknownObject {
-  return x !== null && typeof x === "object";
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
 }
 
-function getBool(obj: unknown, key: string, fallback = false): boolean {
-  return isObject(obj) && typeof obj[key] === "boolean" ? (obj[key] as boolean) : fallback;
+function asJobPayload(v: unknown): JobPayload {
+  const p: JobPayload = {};
+  if (!isRecord(v)) return p;
+
+  const o = v as Record<string, unknown>;
+  if (typeof o.to === "string") p.to = o.to;
+  if (typeof o.phone === "string") p.phone = o.phone;
+  if (typeof o.text === "string") p.text = o.text;
+  if (typeof o.smsText === "string") p.smsText = o.smsText;
+  if (typeof o.emailTo === "string") p.emailTo = o.emailTo;
+  if (typeof o.subject === "string") p.subject = o.subject;
+  if (typeof o.html === "string") p.html = o.html;
+  if (typeof o.emailHtml === "string") p.emailHtml = o.emailHtml;
+
+  return p;
 }
+/** ----------------------------------------------- */
 
-function getString(obj: unknown, key: string): string | null {
-  return isObject(obj) && typeof obj[key] === "string" ? (obj[key] as string) : null;
-}
-
-function readError(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (typeof e === "string") return e;
-  try {
-    return JSON.stringify(e);
-  } catch {
-    return "unknown_error";
-  }
-}
-
-/** OurSMS DLR item (we accept multiple potential shapes) */
-type DlrItem = {
-  message_id?: string;
-  jobId?: string;
-  id?: string;
-  status?: string;
-  Status?: string;
-  error?: string;
-};
-
-function toDlrArray(x: unknown): DlrItem[] {
-  if (Array.isArray(x)) return x as DlrItem[];
-  if (isObject(x)) {
-    const candidates = ["items", "dlrs", "results"] as const;
-    for (const key of candidates) {
-      const maybe = x[key];
-      if (Array.isArray(maybe)) return maybe as DlrItem[];
-    }
-  }
-  return [];
-}
-
-/** ---------- Firestore helpers ---------- */
-
-async function recordChannelResult(
+async function record(
   inviteId: string,
   channel: "sms" | "email",
-  ok: boolean,
-  id?: string | null,
-  error?: string | null
+  r: { ok: boolean; id?: string | null; error?: string | null }
 ) {
   const db = dbAdmin();
-  await db
-    .collection("review_invites")
-    .doc(inviteId)
-    .set(
-      {
-        sentChannels: { [channel]: { ok, id: id ?? null, error: error ?? null, at: Date.now() } },
-        lastSentAt: Date.now(),
+  const at = nowMs();
+  await db.collection("review_invites").doc(inviteId).set(
+    {
+      [`sentChannels.${channel}`]: {
+        ok: r.ok,
+        id: r.id ?? null,
+        error: r.error ?? null,
+        at,
       },
-      { merge: true }
-    );
+      lastSentAt: at,
+    },
+    { merge: true }
+  );
 }
 
-/** ---------- Core processing ---------- */
+async function incUsage(storeUid: string) {
+  const db = dbAdmin();
+  const ref = db.collection("stores").doc(storeUid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const used = Number(snap.data()?.usage?.invitesUsed ?? 0) + 1;
+    tx.set(ref, { usage: { invitesUsed: used } }, { merge: true });
+  });
+}
 
-async function processJob(job: OutboxJob) {
-  const now = Date.now();
-  let smsOk = true,
-    emailOk = true;
-  let smsId: string | null = null;
-  let emailId: string | null = null;
-  let lastError: string | null = null;
+async function handle(job: OutboxJob) {
+  const errs: string[] = [];
+  let anyOk = false;
+
+  const payload = asJobPayload(job.payload);
 
   for (const ch of job.channels) {
+    if (!canSend(job.storeUid, ch)) {
+      errs.push(`RateLimited:${ch}`);
+      continue;
+    }
+
     if (ch === "sms") {
-      if (!job.payload.phone || !job.payload.smsText) continue;
-
-      if (!canSendSMS(job.storeUid)) {
-        await completeJob(job.id, { nextAttemptAt: now + 1000, lastError: "RATE_LIMIT_SMS" });
-        return;
-      }
-
       try {
-        const r: unknown = await sendSms(job.payload.phone, job.payload.smsText, {
-          defaultCountry: "SA",
-          msgClass: "transactional",
-          priority: 1,
-          requestDlr: true,
-        });
+        const to = String(payload.to ?? payload.phone ?? "");
+        const text = String(payload.text ?? payload.smsText ?? "");
+        if (!to || !text) throw new Error("missing_sms_fields");
 
-        // Derive fields without any
-        const ok = getBool(r, "ok", false);
-        const id = getString(r, "id");
-        const err = getString(r, "error");
+        const opts: SendSmsOptions = { requestDlr: true };
+        const r = await sendSms(to, text, opts);
 
-        smsOk = ok;
-        smsId = id;
-        await recordChannelResult(job.inviteId, "sms", smsOk, smsId, ok ? null : err ?? "sms_failed");
-      } catch (e: unknown) {
-        smsOk = false;
-        lastError = readError(e);
-        await recordChannelResult(job.inviteId, "sms", false, null, lastError);
+        anyOk ||= r.ok;
+        await record(job.inviteId, "sms", r);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await record(job.inviteId, "sms", { ok: false, error: msg });
+        errs.push(`sms:${msg}`);
       }
     }
 
     if (ch === "email") {
-      if (!job.payload.emailTo || !job.payload.emailHtml) continue;
-
-      if (!canSendEmail(job.storeUid)) {
-        await completeJob(job.id, { nextAttemptAt: now + 1000, lastError: "RATE_LIMIT_EMAIL" });
-        return;
-      }
-
       try {
-        const r: unknown = await sendEmail(
-          job.payload.emailTo,
-          job.payload.emailSubject || "ثقة",
-          job.payload.emailHtml
-        );
+        const emailTo = String(payload.emailTo ?? "");
+        const subject = String(payload.subject ?? "قيّم تجربتك معنا");
+        const html = String(payload.html ?? payload.emailHtml ?? "");
+        if (!emailTo || !html) throw new Error("missing_email_fields");
 
-        // Avoid "Right operand of ?? is unreachable" by not using !! ... ?? true
-        const ok = getBool(r, "ok", true); // if not provided, assume true
-        emailOk = ok;
-        emailId = getString(r, "id");
-
-        await recordChannelResult(job.inviteId, "email", ok, emailId, ok ? null : "email_failed");
-      } catch (e: unknown) {
-        emailOk = false;
-        lastError = readError(e);
-        await recordChannelResult(job.inviteId, "email", false, null, lastError);
+        const r = await sendEmail(emailTo, subject, html);
+        anyOk ||= r.ok;
+        await record(job.inviteId, "email", r);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await record(job.inviteId, "email", { ok: false, error: msg });
+        errs.push(`email:${msg}`);
       }
     }
   }
 
-  const allOk = job.channels.every((ch) => (ch === "sms" ? smsOk : emailOk));
-  if (allOk) {
-    await completeJob(job.id, { status: "ok", lastError: null });
-    return;
-  }
-
-  const attempts = job.attempts + 1;
-  if (attempts >= MAX_ATTEMPTS) {
-    await completeJob(job.id, { status: "fail", attempts, dlq: true, lastError });
-    return;
-  }
-
-  const backoff = computeNextBackoffMs(attempts);
-  await completeJob(job.id, {
-    status: "pending",
-    attempts,
-    lastError,
-    nextAttemptAt: Date.now() + backoff,
-  });
-}
-
-/** ---------- Poll DLRs from OurSMS ---------- */
-async function pollOursmsDlrs(max = 200) {
-  try {
-    const data: unknown = await getOursmsDlrs(Math.max(1, Math.min(500, max)));
-    const items = toDlrArray(data);
-
-    if (!Array.isArray(items) || items.length === 0) return { ok: true as const, matched: 0 };
-
-    const db = dbAdmin();
-    let matched = 0;
-
-    for (const it of items) {
-      // normalize message id
-      const msgIdRaw = it.message_id ?? it.jobId ?? it.id ?? "";
-      const msgId = String(msgIdRaw).trim();
-      if (!msgId) continue;
-
-      const statusRaw = it.status ?? it.Status ?? "";
-      const status = String(statusRaw).toUpperCase();
-
-      const delivered =
-        status.includes("DELIVERED") || status === "DLR_DELIVERED" || status === "DELIVERED";
-
-      const snap = await db
-        .collection("review_invites")
-        .where("sentChannels.sms.id", "==", msgId)
-        .limit(1)
-        .get();
-      if (snap.empty) continue;
-
-      const doc = snap.docs[0];
-      await doc.ref.set(
-        {
-          deliveredAt: delivered ? Date.now() : null,
-          sentChannels: {
-            sms: {
-              id: msgId,
-              ok: delivered,
-              error: delivered ? null : (it.error ?? status ?? "UNKNOWN"),
-              at: Date.now(),
-            },
-          },
-        },
-        { merge: true }
-      );
-
-      matched++;
+  if (anyOk) {
+    try {
+      await incUsage(job.storeUid);
+    } catch {
+      /* ignore usage increment errors */
     }
-
-    return { ok: true as const, matched };
-  } catch (e: unknown) {
-    return { ok: false as const, error: readError(e) };
+    await markOk(job.jobId);
+  } else {
+    await requeue(job, errs.join("; "));
   }
 }
 
-/** ---------- Public runner ---------- */
-export async function runWorkerOnce(batchSize = 50) {
-  const wid = workerId();
-  const jobs = await leasePendingJobs(wid, batchSize);
+/**
+ * يُنفّذ دفعة واحدة (batch) من outbox_jobs — يعيد عدد الـ jobs التي تم معالجتها
+ */
+async function tick(maxJobs = 20, leaseMs = 30_000): Promise<number> {
+  const jobs = await leasePendingJobs(WORKER_ID, maxJobs, leaseMs);
+  let processed = 0;
   for (const j of jobs) {
-    await processJob(j);
+    try {
+      await handle(j);
+      processed += 1;
+    } catch (e) {
+      await requeue(j, e instanceof Error ? e.message : String(e));
+    }
   }
-  // بعد المعالجة، اسحب DLRs
-  await pollOursmsDlrs(200);
-  return jobs.length;
+  return processed;
 }
+
+// --- ESM-safe main-module check (بدون require) ---
+const isMainModule = (() => {
+  try {
+    if (!process?.argv?.[1]) return false;
+    const thisFile = path.normalize(fileURLToPath(import.meta.url));
+    const invoked = path.normalize(path.resolve(process.argv[1]));
+    return thisFile === invoked;
+  } catch {
+    return false;
+  }
+})();
+
+if (isMainModule) {
+  (async function loop() {
+    for (;;) {
+      try {
+        await tick(); // الافتراضي
+      } catch {
+        /* ignore loop errors */
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  })();
+}
+
+/** ✅ التصدير:
+ *  - default: runWorkerOnce(maxJobs?, leaseMs?)
+ *  - named  : tick
+ */
+export { tick };
+export const runWorkerOnce = tick;
+export default runWorkerOnce;

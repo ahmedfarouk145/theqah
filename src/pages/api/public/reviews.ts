@@ -30,6 +30,7 @@ type PublicReview = {
   text: string;
   publishedAt: number;     // ms
   trustedBuyer: boolean;
+  author: { displayName: string }; // 👈 فقط displayName
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -74,6 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (typeof data["text"] === "string" && data["text"]) ||
         (typeof data["comment"] === "string" && data["comment"]) ||
         "";
+
       const publishedAt =
         (typeof data["publishedAt"] === "number" && data["publishedAt"]) ||
         (typeof data["createdAt"] === "number" && data["createdAt"]) ||
@@ -84,6 +86,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (typeof data["buyerVerified"] === "boolean" && data["buyerVerified"])
       );
 
+      // 👇 نرجّع فقط displayName من author
+      const displayName =
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (data["author"] && typeof (data["author"] as any).displayName === "string"
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? (data["author"] as any).displayName
+          : "عميل المتجر");
+
       return {
         id: d.id,
         productId: typeof data["productId"] === "string" ? data["productId"] : null,
@@ -91,6 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         text,
         publishedAt,
         trustedBuyer,
+        author: { displayName },
       };
     });
 

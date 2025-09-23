@@ -1,64 +1,50 @@
-import * as admin from "firebase-admin";
-import fs from "node:fs";
-import path from "node:path";
+// src/lib/firebaseAdmin.ts
+import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getAuth, type Auth } from "firebase-admin/auth";
 
-let _app: admin.app.App | null = null;
+let _app: App | null = null;
+let _db: Firestore | null = null;
+let _auth: Auth | null = null;
 
-function loadCredFromEnv() {
+export function initAdmin(): App {
+  if (_app) return _app;
+
   const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
   let privateKey = process.env.FIREBASE_PRIVATE_KEY ?? "";
 
+  // cleanup for env-inlined private key
   privateKey = privateKey.trim();
   if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
     privateKey = privateKey.slice(1, -1);
   }
   privateKey = privateKey.replace(/\\n/g, "\n");
 
-  if (projectId && clientEmail && privateKey) return { projectId, clientEmail, privateKey };
-
-  const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (json) {
-    try {
-      const svc = JSON.parse(json);
-      return {
-        projectId: String(svc.project_id),
-        clientEmail: String(svc.client_email),
-        privateKey: String(svc.private_key ?? "").replace(/\\n/g, "\n"),
-      };
-    } catch {}
-  }
-
-  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (credPath) {
-    try {
-      const resolved = path.isAbsolute(credPath) ? credPath : path.join(process.cwd(), credPath);
-      const raw = fs.readFileSync(resolved, "utf8");
-      const svc = JSON.parse(raw);
-      return {
-        projectId: String(svc.project_id),
-        clientEmail: String(svc.client_email),
-        privateKey: String(svc.private_key ?? "").replace(/\\n/g, "\n"),
-      };
-    } catch {}
-  }
-
-  throw new Error("[firebaseAdmin] Missing FIREBASE_* credentials");
-}
-
-function initAdmin() {
-  if (_app) return _app;
-  const { projectId, clientEmail, privateKey } = loadCredFromEnv();
-  if (admin.apps.length === 0) {
-    _app = admin.initializeApp({
-      credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
+  if (!getApps().length) {
+    _app = initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        privateKey,
+      }),
     });
-    admin.firestore().settings({ ignoreUndefinedProperties: true });
   } else {
-    _app = admin.app();
+    _app = getApps()[0]!;
   }
-  return _app;
+  return _app!;
 }
 
-export function dbAdmin() { initAdmin(); return admin.firestore(); }
-export function authAdmin() { return initAdmin().auth(); }
+export function dbAdmin(): Firestore {
+  if (_db) return _db;
+  initAdmin();
+  _db = getFirestore();
+  return _db!;
+}
+
+export function authAdmin(): Auth {
+  if (_auth) return _auth;
+  initAdmin();
+  _auth = getAuth();
+  return _auth!;
+}

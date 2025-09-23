@@ -1,8 +1,7 @@
 // src/pages/api/reviews/submit.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { dbAdmin } from "@/lib/firebaseAdmin"; // استخدم نفس util المؤكد عندك
-// لو عندك getDb ويشتغل تمام استخدمه بدل dbAdmin().firestore()
-import { moderateReview } from "@/server/moderation"; // هنخليها اختيارية
+import { dbAdmin } from "@/lib/firebaseAdmin";
+import { moderateReview } from "@/server/moderation";
 
 type ReviewBody = {
   orderId?: string;
@@ -11,6 +10,8 @@ type ReviewBody = {
   images?: string[];
   tokenId?: string;
   platform?: "salla" | "zid" | "manual" | "web";
+  authorName?: string | null;
+  authorShowName?: boolean;
 };
 
 const isNonEmptyString = (v: unknown): v is string =>
@@ -19,12 +20,25 @@ const isNonEmptyString = (v: unknown): v is string =>
 const isImagesArray = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((u) => typeof u === "string" && u.length > 0);
 
+// -------- Helpers: sanitize/mask --------
+function sanitizeName(raw?: string | null) {
+  if (!raw) return "";
+  return String(raw).trim().replace(/[^\p{L}\p{N}\s.'’_-]/gu, "").slice(0, 60);
+}
+function maskName(clean: string) {
+  if (!clean) return "عميل المتجر";
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "عميل المتجر";
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[1][0]}.`;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
 
   try {
     const body: ReviewBody = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
-    const { orderId, stars, text, images, tokenId, platform } = body;
+    const { orderId, stars, text, images, tokenId, platform, authorName, authorShowName } = body;
 
     if (!isNonEmptyString(orderId)) return res.status(400).json({ error: "missing_orderId" });
     const s = Number(stars);
@@ -33,12 +47,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const imgs = isImagesArray(images) ? images : [];
     const safeImages = imgs.filter((u) => /^https:\/\/ucarecdn\.com\//.test(u)).slice(0, 10);
+
+    // author.{show,name,displayName}
+    const cleanName = sanitizeName(authorName);
+    const author = {
+      show: !!authorShowName && !!cleanName,
+      name: cleanName || null,
+      displayName: (!!authorShowName && cleanName) ? cleanName : maskName(cleanName),
+    };
+
     const now = Date.now();
+    const db = dbAdmin();
 
-    const db = dbAdmin(); // Firestore Admin instance
-
-    const result = await db.runTransaction(async (tx) => {
-      // لو مفيش tokenId: نسجّل تقييم غير موثّق (trustedBuyer=false)
+    // ننشئ التقييم كـ pending وغير منشور، ثم نقرر النشر بعد الموديريشن
+    const txResult = await db.runTransaction(async (tx) => {
+      // بدون tokenId ⇒ غير موثّق
       if (!isNonEmptyString(tokenId)) {
         const reviewRef = db.collection("reviews").doc();
         tx.set(reviewRef, {
@@ -52,17 +75,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           productId: null,
           platform: platform || "web",
           trustedBuyer: false,
-          status: "published",
-          published: true,
-          publishedAt: now,
+          status: "pending",
+          published: false,
+          publishedAt: null,
           createdAt: now,
+          author,
           moderation: null,
         });
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         return { reviewId: reviewRef.id, tok: null as any };
       }
 
-      // مع وجود tokenId: تحقق صارم
+      // مع tokenId: تحقق صارم
       const tokRef = db.collection("review_tokens").doc(String(tokenId));
       const tokSnap = await tx.get(tokRef);
       if (!tokSnap.exists) throw new Error("token_not_found");
@@ -77,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error("token_order_mismatch");
       }
 
-      // منع تكرار تقييم لنفس orderId (اختياري لكن مفيد)
+      // منع تكرار تقييم لنفس orderId
       const dup = await db.collection("reviews").where("orderId", "==", String(orderId)).limit(1).get();
       if (!dup.empty) throw new Error("duplicate_review");
 
@@ -94,10 +118,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         productIds: tok.productIds ?? [],
         platform: platform || tok.platform || "web",
         trustedBuyer: true,
-        status: "published",
-        published: true,
-        publishedAt: now,
+        status: "pending",
+        published: false,
+        publishedAt: null,
         createdAt: now,
+        author,
         moderation: null,
       });
       tx.update(tokRef, { usedAt: now });
@@ -105,29 +130,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return { reviewId: reviewRef.id, tok };
     });
 
-    // الموديريشن — خليها “لا تمنع” لو وقعت
+    // ===== الموديريشن (OpenAI) =====
+    let okToPublish = false;
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let modPayload: any = null;
+
     try {
       const mod = await moderateReview({
         text: isNonEmptyString(body.text) ? body.text : "",
         images: safeImages,
         stars: s,
       });
-      await db.collection("reviews").doc(result.reviewId).set(
+
+      modPayload = mod;
+      okToPublish = !!mod?.ok;
+
+      await db.collection("reviews").doc(txResult.reviewId).set(
         mod?.ok
-          ? { moderation: { model: mod.model, score: mod.score, flags: mod.flags } }
-          : { moderation: { model: mod?.model || "none", score: mod?.score ?? 0, flags: mod?.flags ?? ["failed"], reason: mod?.reason || "moderation_failed" } },
+          ? { moderation: { model: mod.model, score: mod.score, flags: mod.flags ?? [] } }
+          : { moderation: { model: mod?.model || "openai", score: mod?.score ?? 0, flags: mod?.flags ?? ["blocked"] } },
         { merge: true }
       );
-      // لو عايز تمنع بدل ما تسجل، رجّع 400 هنا بدل set فقط.
-    } catch {
-      await db.collection("reviews").doc(result.reviewId).set(
+    } catch (e) {
+      okToPublish = false;
+      await db.collection("reviews").doc(txResult.reviewId).set(
         { moderation: { model: "none", score: 0, flags: ["moderation_error"] } },
+        { merge: true }
+      );
+      console.error("moderation failed:", e);
+    }
+
+    // ===== قرار النشر =====
+    if (okToPublish) {
+      await db.collection("reviews").doc(txResult.reviewId).set(
+        { status: "published", published: true, publishedAt: Date.now() },
+        { merge: true }
+      );
+    } else {
+      await db.collection("reviews").doc(txResult.reviewId).set(
+        { status: "rejected", published: false, publishedAt: null },
         { merge: true }
       );
     }
 
-    return res.status(201).json({ ok: true, id: result.reviewId, published: true });
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return res.status(201).json({
+      ok: true,
+      id: txResult.reviewId,
+      published: okToPublish,
+      moderation: modPayload ? { model: modPayload.model, ok: !!modPayload.ok, score: modPayload.score, flags: modPayload.flags ?? [] } : null,
+    });
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     const msg = String(e?.message || e || "error");
 

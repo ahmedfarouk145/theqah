@@ -1,96 +1,139 @@
+// src/server/queue/outbox.ts
 import { dbAdmin } from "@/lib/firebaseAdmin";
-import crypto from "crypto";
 
 export type Channel = "sms" | "email";
+export type OutboxJobStatus = "pending" | "leased" | "ok" | "fail" | "dead";
 
-export type OutboxJob = {
-  id: string;                    // jobId
-  inviteId: string;
-  storeUid: string;
-  channels: Channel[];           // ["sms","email"]
-  payload: {
-    smsText?: string;
-    phone?: string | null;
-    emailHtml?: string;
-    emailTo?: string | null;
-    emailSubject?: string | null;
-  };
-  status: "pending" | "ok" | "fail" | "cancelled";
-  attempts: number;
-  nextAttemptAt: number;         // ms
-  lastError?: string | null;
-  createdAt: number;
-  updatedAt: number;
-  lockedBy?: string | null;
-  lockedAt?: number | null;
-  dlq?: boolean;
-};
-
-export function newId(prefix = "job"): string {
-  return `${prefix}_${crypto.randomBytes(10).toString("hex")}`;
-}
-
-export async function enqueueInviteJob(args: {
+export interface OutboxJob {
+  jobId: string;
   inviteId: string;
   storeUid: string;
   channels: Channel[];
-  payload: OutboxJob["payload"];
-}) {
-  const db = dbAdmin();
-  const id = newId();
-  const now = Date.now();
-  const job: OutboxJob = {
-    id,
-    inviteId: args.inviteId,
-    storeUid: args.storeUid,
-    channels: args.channels,
-    payload: args.payload,
-    status: "pending",
-    attempts: 0,
-    nextAttemptAt: now,
-    createdAt: now,
-    updatedAt: now,
-    lastError: null,
-    lockedBy: null,
-    lockedAt: null,
-    dlq: false,
-  };
-  await db.collection("outbox_jobs").doc(id).set(job);
-  return id;
+  payload: Record<string, unknown>;
+  status: OutboxJobStatus;
+  attempts: number;
+  lastError?: string | null;
+  leasedBy?: string | null;
+  leaseUntil?: number | null;      // ms epoch
+  nextRunAt?: number | null;       // ms epoch
+  createdAt: number;
+  updatedAt: number;
 }
 
-export async function leasePendingJobs(workerId: string, limit = 50) {
+const COLL = "outbox_jobs";
+
+export const enqueueOutboxJob = async (
+  input: Omit<OutboxJob, "status" | "attempts" | "createdAt" | "updatedAt" | "jobId">
+) => {
+  const db = dbAdmin();
+  const id = db.collection("_ids").doc().id;
+  const now = Date.now();
+
+  const doc: OutboxJob = {
+    jobId: id,
+    status: "pending",
+    attempts: 0,
+    lastError: null,
+    leasedBy: null,
+    leaseUntil: null,
+    nextRunAt: now,
+    createdAt: now,
+    updatedAt: now,
+    ...input,
+  };
+
+  await db.collection(COLL).doc(id).set(doc);
+  return id;
+};
+
+export const computeNextBackoffMs = (attempts: number) => {
+  // 2s, 4s, 8s, 16s … capped 5m + jitter
+  const base = 2000;
+  const max = 300000;
+  const jitter = Math.floor(Math.random() * 500);
+  return Math.min(base * 2 ** Math.max(0, attempts), max) + jitter;
+};
+
+export const leasePendingJobs = async (
+  workerId: string,
+  limit = 20,
+  leaseMs = 30000
+) => {
   const db = dbAdmin();
   const now = Date.now();
-  const snap = await db.collection("outbox_jobs")
-    .where("status", "==", "pending")
-    .where("nextAttemptAt", "<=", now)
-    .orderBy("nextAttemptAt", "asc")
+
+  const snap = await db
+    .collection(COLL)
+    .where("status", "in", ["pending", "fail"])
+    .where("nextRunAt", "<=", now)
+    .orderBy("nextRunAt", "asc")
     .limit(limit)
     .get();
 
-  const leased: OutboxJob[] = [];
   const batch = db.batch();
-  snap.docs.forEach((d) => {
-    const data = d.data() as OutboxJob;
-    if (data.lockedBy && data.lockedAt && now - data.lockedAt < 5 * 60_000) return;
-    batch.update(d.ref, { lockedBy: workerId, lockedAt: now, updatedAt: now });
-    leased.push({ ...data, lockedBy: workerId, lockedAt: now });
-  });
+  const leased: OutboxJob[] = [];
+
+  for (const d of snap.docs) {
+    const job = d.data() as OutboxJob;
+    const leaseUntil = now + leaseMs;
+    batch.update(d.ref, {
+      status: "leased",
+      leasedBy: workerId,
+      leaseUntil,
+      updatedAt: now,
+    });
+    leased.push({ ...job, status: "leased", leasedBy: workerId, leaseUntil });
+  }
+
   if (leased.length) await batch.commit();
-  return leased.map((j) => ({ ...j, updatedAt: now })) as OutboxJob[];
-}
+  return leased;
+};
 
-export async function completeJob(jobId: string, update: Partial<OutboxJob>) {
+export const markOk = async (jobId: string) => {
   const db = dbAdmin();
-  await db.collection("outbox_jobs").doc(jobId).set(
-    { ...update, updatedAt: Date.now(), lockedBy: null, lockedAt: null },
-    { merge: true }
-  );
-}
+  await db
+    .collection(COLL)
+    .doc(jobId)
+    .set(
+      {
+        status: "ok",
+        updatedAt: Date.now(),
+        leasedBy: null,
+        leaseUntil: null,
+      },
+      { merge: true }
+    );
+};
 
-export function computeNextBackoffMs(attempts: number) {
-  // 1,2,4,8,15 دقائق
-  const mins = Math.min(15, Math.pow(2, Math.max(0, attempts)));
-  return mins * 60_000;
-}
+export const requeue = async (job: OutboxJob, err: unknown) => {
+  const db = dbAdmin();
+  const attempts = (job.attempts ?? 0) + 1;
+  const now = Date.now();
+
+  if (attempts >= 5) {
+    // DLQ
+    await db
+      .collection("outbox_dlq")
+      .doc(job.jobId)
+      .set({ ...job, status: "dead", lastError: String(err), deadAt: now });
+
+    await db.collection(COLL).doc(job.jobId).delete();
+    return;
+  }
+
+  await db
+    .collection(COLL)
+    .doc(job.jobId)
+    .set(
+      {
+        status: "fail",
+        attempts,
+        lastError: String(err),
+        nextRunAt: now + computeNextBackoffMs(attempts),
+        leasedBy: null,
+        leaseUntil: null,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+};

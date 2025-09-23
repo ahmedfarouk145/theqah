@@ -1,11 +1,11 @@
 ====[ PROJECT DUMP - METADATA ]=====================================================================
 Root   : D:\theqah
 Output : D:\theqah\project-dump.txt
-When   : 2025-09-20T06:35:49.463Z
+When   : 2025-09-21T19:46:28.729Z
 Rules  : skip binaries=true, skip .env*=true, maxBytes=1.0 MB
 
 ====[ FILE LIST ]===================================================================================
-.firebase/logs/vsce-debug.log	(2.2 MB)
+.firebase/logs/vsce-debug.log	(3.6 MB)
 .firebaserc	(82 B)
 .gitignore	(480 B)
 components.json	(449 B)
@@ -37,6 +37,7 @@ public/widgets/theqah-widget.js	(26.0 KB)
 public/window.svg	(385 B)
 quick-smtp-check.mjs	(409 B)
 README.md	(1.4 KB)
+repair.mjs	(540 B)
 src/components/admin/AdminAnalytics.tsx	(12.4 KB)
 src/components/admin/AdminReports.tsx	(8.2 KB)
 src/components/admin/AdminReviews.tsx	(20.4 KB)
@@ -81,7 +82,7 @@ src/lib/auth/tokenManager.ts	(738 B)
 src/lib/axiosInstance.ts	(2.4 KB)
 src/lib/env.ts	(2.0 KB)
 src/lib/firebase.ts	(838 B)
-src/lib/firebaseAdmin.ts	(2.1 KB)
+src/lib/firebaseAdmin.ts	(1.3 KB)
 src/lib/logger.ts	(1.0 KB)
 src/lib/oursms.ts	(935 B)
 src/lib/salla-admin.ts	(1.0 KB)
@@ -115,14 +116,15 @@ src/pages/api/admin/users.ts	(1.8 KB)
 src/pages/api/ai/insights.ts	(2.3 KB)
 src/pages/api/auth/exchange-onboarding.ts	(4.0 KB)
 src/pages/api/auth/session.ts	(5.1 KB)
+src/pages/api/jobs/worker-run-once.ts	(1.9 KB)
 src/pages/api/orders/add.ts	(3.1 KB)
 src/pages/api/orders/get.ts	(2.3 KB)
 src/pages/api/orders/import.ts	(3.1 KB)
 src/pages/api/orders/index.ts	(1.6 KB)
 src/pages/api/orders/send-review.ts	(9.5 KB)
 src/pages/api/public/pixel.ts	(1.1 KB)
-src/pages/api/public/reviews.ts	(3.9 KB)
-src/pages/api/public/reviews/resolve.ts	(5.0 KB)
+src/pages/api/public/reviews.ts	(4.4 KB)
+src/pages/api/public/reviews/resolve.ts	(5.1 KB)
 src/pages/api/public/widget.ts	(6.3 KB)
 src/pages/api/report-review.ts	(1.1 KB)
 src/pages/api/review-token.ts	(1.4 KB)
@@ -131,16 +133,18 @@ src/pages/api/reviews/export-csv.ts	(5.2 KB)
 src/pages/api/reviews/export-pdf.ts	(5.5 KB)
 src/pages/api/reviews/list.ts	(1.4 KB)
 src/pages/api/reviews/moderate.ts	(6.2 KB)
-src/pages/api/reviews/submit.ts	(6.1 KB)
+src/pages/api/reviews/submit.ts	(7.5 KB)
 src/pages/api/salla/callback.ts	(10.2 KB)
 src/pages/api/salla/connect.ts	(1.8 KB)
 src/pages/api/salla/disconnect.ts	(5.1 KB)
 src/pages/api/salla/refresh.ts	(2.3 KB)
 src/pages/api/salla/status.ts	(3.9 KB)
 src/pages/api/salla/subscribe.ts	(5.1 KB)
+src/pages/api/salla/sync-domains.ts	(1.6 KB)
 src/pages/api/salla/verify.ts	(2.2 KB)
-src/pages/api/salla/webhook.ts	(17.2 KB)
+src/pages/api/salla/webhook.ts	(19.0 KB)
 src/pages/api/settings/validate.ts	(1.4 KB)
+src/pages/api/sms/dlr.ts	(3.0 KB)
 src/pages/api/sms/inbound.ts	(653 B)
 src/pages/api/sms/status.ts	(4.6 KB)
 src/pages/api/store/app-settings.ts	(1.3 KB)
@@ -150,6 +154,7 @@ src/pages/api/store/info.ts	(2.6 KB)
 src/pages/api/store/settings.ts	(1.7 KB)
 src/pages/api/store/update-info.ts	(986 B)
 src/pages/api/support-ticket.ts	(1.3 KB)
+src/pages/api/test-seed.ts	(3.8 KB)
 src/pages/api/test/sms.ts	(3.0 KB)
 src/pages/api/zid/callback.ts	(3.0 KB)
 src/pages/api/zid/disconnect.ts	(835 B)
@@ -179,6 +184,8 @@ src/pages/support.tsx	(5.4 KB)
 src/pages/terms.tsx	(3.4 KB)
 src/server/auth/requireAdmin.ts	(913 B)
 src/server/auth/requireUser.ts	(572 B)
+src/server/billing/plans.ts	(521 B)
+src/server/billing/usage.ts	(1.4 KB)
 src/server/firebase-admin.ts	(342 B)
 src/server/idempotency.ts	(919 B)
 src/server/messaging/email-dmail.ts	(1.5 KB)
@@ -195,6 +202,8 @@ src/server/moderation/index.ts	(3.6 KB)
 src/server/moderation/openai-moderation.ts	(2.7 KB)
 src/server/moderation/prompt.ts	(3.1 KB)
 src/server/notifications.ts	(487 B)
+src/server/queue/outbox.ts	(3.3 KB)
+src/server/queue/rate-limit.ts	(1.2 KB)
 src/server/rate-limit.ts	(914 B)
 src/server/review-tokens.ts	(2.1 KB)
 src/server/reviews/invites.ts	(1.2 KB)
@@ -205,6 +214,7 @@ src/server/withCors.ts	(1.1 KB)
 src/server/zid/state.ts	(979 B)
 src/server/zid/tokens.ts	(883 B)
 src/styles/globals.css	(4.9 KB)
+src/types.ts	(1.5 KB)
 src/types/api.d.ts	(169 B)
 src/types/uploadcare.d.ts	(681 B)
 src/utils/apiClient.ts	(1.1 KB)
@@ -215,14 +225,17 @@ src/utils/isServer.ts	(62 B)
 src/utils/verifyAdmin.ts	(2.3 KB)
 src/utils/verifyStore.ts	(1.6 KB)
 src/utils/verifyUser.ts	(1.1 KB)
+src/worker/outbox-worker.ts	(5.5 KB)
 tailwind.config.ts	(2.2 KB)
 test.html	(132 B)
 tools/dump-project.mjs	(6.5 KB)
+tools/k6-salla-webhook.js	(573 B)
 tsconfig.json	(602 B)
+vercel.json	(176 B)
 
 ====[ FILE CONTENTS ]===============================================================================
 ====[ SKIP (too large): .firebase/logs/vsce-debug.log ]=============================================
-Size: 2.2 MB > limit 1.0 MB
+Size: 3.6 MB > limit 1.0 MB
 
 ====[ START FILE: .firebaserc (82 B) ]==============================================================
 {
@@ -13410,6 +13423,28 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 ====[ END FILE: README.md ]=========================================================================
 
+====[ START FILE: repair.mjs (540 B) ]==============================================================
+import { dbAdmin } from "./src/lib/firebaseAdmin.js";
+
+async function fixStores() {
+  const db = dbAdmin();
+  const snap = await db.collection("stores").get();
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    await doc.ref.set({
+      salla: {
+        ...(data.salla || {}),
+        domain: data.salla?.domain || "",
+        connected: data.salla?.connected ?? false,
+        installed: data.salla?.installed ?? false,
+      }
+    }, { merge: true });
+    console.log("Fixed:", doc.id);
+  }
+}
+fixStores();
+====[ END FILE: repair.mjs ]========================================================================
+
 ====[ START FILE: src/components/admin/AdminAnalytics.tsx (12.4 KB) ]===============================
 'use client';
 
@@ -19586,71 +19621,57 @@ setPersistence(auth, browserLocalPersistence).catch(() => {});
 export { app, auth, db };
 ====[ END FILE: src/lib/firebase.ts ]===============================================================
 
-====[ START FILE: src/lib/firebaseAdmin.ts (2.1 KB) ]===============================================
-import * as admin from "firebase-admin";
-import fs from "node:fs";
-import path from "node:path";
+====[ START FILE: src/lib/firebaseAdmin.ts (1.3 KB) ]===============================================
+// src/lib/firebaseAdmin.ts
+import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getAuth, type Auth } from "firebase-admin/auth";
 
-let _app: admin.app.App | null = null;
+let _app: App | null = null;
+let _db: Firestore | null = null;
+let _auth: Auth | null = null;
 
-function loadCredFromEnv() {
+export function initAdmin(): App {
+  if (_app) return _app;
+
   const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
   let privateKey = process.env.FIREBASE_PRIVATE_KEY ?? "";
 
+  // cleanup for env-inlined private key
   privateKey = privateKey.trim();
   if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
     privateKey = privateKey.slice(1, -1);
   }
   privateKey = privateKey.replace(/\\n/g, "\n");
 
-  if (projectId && clientEmail && privateKey) return { projectId, clientEmail, privateKey };
-
-  const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (json) {
-    try {
-      const svc = JSON.parse(json);
-      return {
-        projectId: String(svc.project_id),
-        clientEmail: String(svc.client_email),
-        privateKey: String(svc.private_key ?? "").replace(/\\n/g, "\n"),
-      };
-    } catch {}
-  }
-
-  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (credPath) {
-    try {
-      const resolved = path.isAbsolute(credPath) ? credPath : path.join(process.cwd(), credPath);
-      const raw = fs.readFileSync(resolved, "utf8");
-      const svc = JSON.parse(raw);
-      return {
-        projectId: String(svc.project_id),
-        clientEmail: String(svc.client_email),
-        privateKey: String(svc.private_key ?? "").replace(/\\n/g, "\n"),
-      };
-    } catch {}
-  }
-
-  throw new Error("[firebaseAdmin] Missing FIREBASE_* credentials");
-}
-
-function initAdmin() {
-  if (_app) return _app;
-  const { projectId, clientEmail, privateKey } = loadCredFromEnv();
-  if (admin.apps.length === 0) {
-    _app = admin.initializeApp({
-      credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
+  if (!getApps().length) {
+    _app = initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        privateKey,
+      }),
     });
-    admin.firestore().settings({ ignoreUndefinedProperties: true });
   } else {
-    _app = admin.app();
+    _app = getApps()[0]!;
   }
-  return _app;
+  return _app!;
 }
 
-export function dbAdmin() { initAdmin(); return admin.firestore(); }
-export function authAdmin() { return initAdmin().auth(); }
+export function dbAdmin(): Firestore {
+  if (_db) return _db;
+  initAdmin();
+  _db = getFirestore();
+  return _db!;
+}
+
+export function authAdmin(): Auth {
+  if (_auth) return _auth;
+  initAdmin();
+  _auth = getAuth();
+  return _auth!;
+}
 ====[ END FILE: src/lib/firebaseAdmin.ts ]==========================================================
 
 ====[ START FILE: src/lib/logger.ts (1.0 KB) ]======================================================
@@ -21781,6 +21802,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/auth/session.ts ]=====================================================
 
+====[ START FILE: src/pages/api/jobs/worker-run-once.ts (1.9 KB) ]==================================
+// src/pages/api/jobs/worker-run-once.ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import { runWorkerOnce } from "@/worker/outbox-worker";
+
+// مقارنة ثابتة الزمن لتقليل فرص timing attacks
+function safeEq(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let v = 0;
+  for (let i = 0; i < a.length; i++) {
+    v |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return v === 0;
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // اسمح بـ GET و POST (Vercel Cron غالبًا يستخدم GET)
+  if (req.method !== "GET" && req.method !== "POST") {
+    return res.status(405).json({ ok: false, error: "method_not_allowed" });
+  }
+
+  const secret = (process.env.CRON_SECRET || "").trim();
+  const headerKey = String(req.headers["x-cron-secret"] || "");
+  const queryKey = typeof req.query.key === "string" ? req.query.key : "";
+  const provided = headerKey || queryKey;
+
+  if (!secret || !provided || !safeEq(provided, secret)) {
+    return res.status(401).json({ ok: false, error: "unauthorized" });
+  }
+
+  // حجم الدفعة اختياري من ?n= (افتراضي 50)
+  const nParam = Array.isArray(req.query.n) ? req.query.n[0] : req.query.n;
+  const batchSize = Math.max(1, Math.min(200, Number(nParam ?? 50) || 50));
+
+  try {
+    const started = Date.now();
+    const processed = await runWorkerOnce(batchSize);
+    const tookMs = Date.now() - started;
+
+    // لا كاش للنتيجة
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).json({ ok: true, processed, batchSize, tookMs });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // لوج مفيد للتتبّع
+    console.error("[worker-run-once] error:", msg);
+    return res.status(500).json({ ok: false, error: msg });
+  }
+}
+====[ END FILE: src/pages/api/jobs/worker-run-once.ts ]=============================================
+
 ====[ START FILE: src/pages/api/orders/add.ts (3.1 KB) ]============================================
 // src/pages/api/orders/add.ts
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -22365,7 +22437,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/public/pixel.ts ]=====================================================
 
-====[ START FILE: src/pages/api/public/reviews.ts (3.9 KB) ]========================================
+====[ START FILE: src/pages/api/public/reviews.ts (4.4 KB) ]========================================
 // src/pages/api/public/reviews/index.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
@@ -22398,6 +22470,7 @@ type PublicReview = {
   text: string;
   publishedAt: number;     // ms
   trustedBuyer: boolean;
+  author: { displayName: string }; // 👈 فقط displayName
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -22442,6 +22515,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (typeof data["text"] === "string" && data["text"]) ||
         (typeof data["comment"] === "string" && data["comment"]) ||
         "";
+
       const publishedAt =
         (typeof data["publishedAt"] === "number" && data["publishedAt"]) ||
         (typeof data["createdAt"] === "number" && data["createdAt"]) ||
@@ -22452,6 +22526,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (typeof data["buyerVerified"] === "boolean" && data["buyerVerified"])
       );
 
+      // 👇 نرجّع فقط displayName من author
+      const displayName =
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (data["author"] && typeof (data["author"] as any).displayName === "string"
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? (data["author"] as any).displayName
+          : "عميل المتجر");
+
       return {
         id: d.id,
         productId: typeof data["productId"] === "string" ? data["productId"] : null,
@@ -22459,6 +22541,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         text,
         publishedAt,
         trustedBuyer,
+        author: { displayName },
       };
     });
 
@@ -22474,141 +22557,143 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/public/reviews.ts ]===================================================
 
-====[ START FILE: src/pages/api/public/reviews/resolve.ts (5.0 KB) ]================================
-// src/pages/api/public/reviews/resolve.ts
+====[ START FILE: src/pages/api/public/reviews/resolve.ts (5.1 KB) ]================================
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
-type StoreDoc = {
-  uid?: string;
-  storeUid?: string;
-  storeId?: number | string;
-  salla?: {
-    uid?: string;
-    storeId?: number | string;
-    domain?: string;        // مثال: https://demostore.salla.sa/dev-xxxxxx
-    connected?: boolean;
-    installed?: boolean;
-  };
-};
-
-// كاش اختياري لتقليل قراءات Firestore
-type CacheVal = { uid: string; t: number };
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
-const g: any = global as any;
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
-const MEM: Map<string, CacheVal> = g.__THEQAH_RESOLVE_MEM__ || new Map();
-g.__THEQAH_RESOLVE_MEM__ = MEM;
-const TTL = 10 * 60 * 1000; // 10 دقائق
-function cacheGet(k: string) {
-  const v = MEM.get(k);
-  if (v && Date.now() - v.t < TTL) return v.uid;
-  if (v) MEM.delete(k);
-  return null;
-}
-function cacheSet(k: string, uid: string) {
-  MEM.set(k, { uid, t: Date.now() });
-}
-
-// نطبع الدومين بإزالة الـ trailing slash فقط (ونمنع أي lowercase أو تعديل للمسار)
-function normalizeDomainInput(raw: string) {
-  let s = raw.trim();
-  // لازم يكون شكل URL كامل ببروتوكول
-  if (!/^https?:\/\//.test(s)) return null;
-  // إزالة سلاش أخير فقط
-  s = s.replace(/\/+$/, "");
-  return s;
-}
-
-// نتأكد أن شكل الدومين فيه مسار dev-xxxxx (لأن بدايات الدومينات متشابهة)
-function looksLikeDevDomain(url: string) {
+function parseHrefBase(raw: unknown): { base: string; host: string } {
   try {
-    const u = new URL(url);
+    const u = new URL(String(raw || ""));
+    const origin = u.origin.toLowerCase();
     const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
-    return firstSeg.startsWith("dev-");
+    const base = firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
+    return { base, host: u.host.toLowerCase() };
   } catch {
-    return false;
+    return { base: "", host: "" };
   }
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // CORS للودجت
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Max-Age", "86400");
-
-  // كاش 5 دقائق (يناسب إن الـ mapping ثابت تقريبًا)
-  res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
+  res.setHeader("Cache-Control", "no-store");
 
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "GET") return res.status(405).json({ error: "method_not_allowed" });
+  if (req.method !== "GET")   return res.status(405).json({ error: "method_not_allowed" });
 
   try {
-    // مدخلين فقط:
-    // 1) storeUid الكامل (مثال: salla:982747175)
-    // 2) domain الكامل (مثال: https://demostore.salla.sa/dev-6pvf7vguhv84lfoi)
-    const storeUidRaw = typeof req.query.storeUid === "string" ? req.query.storeUid.trim() : "";
-    const domainRaw   = typeof req.query.domain   === "string" ? req.query.domain.trim()   : "";
+    const storeUid = typeof req.query.storeUid === "string" ? req.query.storeUid.trim() : "";
+    if (storeUid) return res.status(200).json({ storeUid });
 
-    // 1) لو storeUid موجود → رجّعه مباشرة
-    if (storeUidRaw) {
-      cacheSet(`uid:${storeUidRaw}`, storeUidRaw);
-      return res.status(200).json({ storeUid: storeUidRaw });
+    const href = typeof req.query.href === "string" ? req.query.href.trim() : "";
+    if (!href) return res.status(400).json({ error: "MISSING_INPUT", hint: "send storeUid or href" });
+
+    const { base, host } = parseHrefBase(href);
+
+    const db = dbAdmin();
+    let doc = null;
+
+    if (base) {
+      // البحث عبر الدومين فقط
+      const snap = await db.collection("stores")
+        .where("salla.domain", "==", base)
+        .where("salla.connected", "==", true)
+        .where("salla.installed", "==", true)
+        .limit(1)
+        .get();
+
+      if (!snap.empty) {
+        doc = snap.docs[0];
+      } else {
+        // جرب بعض التنسيقات الأخرى للدومين
+        const domainVariations = [
+          base,
+          base.replace(/^https?:\/\//, ""),
+          base.replace(/^https?:\/\//, "").replace(/^www\./, ""),
+          `https://${host}`,
+          `http://${host}`,
+          host,
+          `www.${host}`
+        ];
+        for (const variation of domainVariations) {
+          const snapVar = await db.collection("stores")
+            .where("salla.domain", "==", variation)
+            .where("salla.connected", "==", true)
+            .where("salla.installed", "==", true)
+            .limit(1)
+            .get();
+          if (!snapVar.empty) {
+            doc = snapVar.docs[0];
+            break;
+          }
+        }
+      }
+    } else {
+      // فقط إذا لم يوجد دومين في الرابط، جرب البحث عبر storeId/uid
+      const storeId = typeof req.query.storeId === "string" && req.query.storeId.trim()
+        ? req.query.storeId.trim()
+        : undefined;
+
+      if (!storeId) return res.status(400).json({ error: "INVALID_HREF" });
+
+      // جرب البحث كرقم
+      const snapNum = await db.collection("stores")
+        .where("salla.storeId", "==", Number(storeId))
+        .where("salla.connected", "==", true)
+        .where("salla.installed", "==", true)
+        .limit(1)
+        .get();
+      if (!snapNum.empty) {
+        doc = snapNum.docs[0];
+      } else {
+        // جرب البحث كنص
+        const snapStr = await db.collection("stores")
+          .where("salla.storeId", "==", storeId)
+          .where("salla.connected", "==", true)
+          .where("salla.installed", "==", true)
+          .limit(1)
+          .get();
+        if (!snapStr.empty) {
+          doc = snapStr.docs[0];
+        } else {
+          // جرب البحث عبر uid
+          const snapUid = await db.collection("stores")
+            .where("uid", "==", `salla:${storeId}`)
+            .where("salla.connected", "==", true)
+            .where("salla.installed", "==", true)
+            .limit(1)
+            .get();
+          if (!snapUid.empty) {
+            doc = snapUid.docs[0];
+          }
+        }
+      }
     }
 
-    // 2) لازم domain كامل
-    if (!domainRaw) {
-      return res.status(400).json({ error: "MISSING_DOMAIN_OR_UID" });
-    }
-
-    const domain = normalizeDomainInput(domainRaw);
-    if (!domain) {
-      return res.status(400).json({ error: "INVALID_DOMAIN_FORMAT", hint: "must start with http(s):// and be a full URL" });
-    }
-
-    // لو البدايات متشابهة، نلزم وجود مسار dev-xxxxx لتجنّب التضارب
-    if (!looksLikeDevDomain(domain)) {
-      return res.status(400).json({
-        error: "DOMAIN_TOO_GENERIC",
-        hint: "send the full domain including /dev-xxxxx to avoid collisions",
+    if (!doc) {
+      return res.status(404).json({
+        error: "STORE_NOT_FOUND",
+        message: "لم يتم العثور على متجر لهذا الدومين أو المعرف. تأكد من أن التطبيق مثبت وأن الدومين أو المعرف مسجل.",
+        baseTried: base
       });
     }
 
-    const hit = cacheGet(`dom:${domain}`);
-    if (hit) return res.status(200).json({ storeUid: hit });
-
-    const db = dbAdmin();
-
-    // مطابقة صارمة على salla.domain + يكون المتجر متصل ومثبت
-    const snap = await db.collection("stores")
-      .where("salla.connected", "==", true)
-      .where("salla.installed", "==", true)
-      .where("salla.domain", "==", domain) // مساواة حرفيًا
-      .limit(1)
-      .get();
-
-    if (snap.empty) {
-      return res.status(404).json({ error: "STORE_NOT_FOUND", domain });
-    }
-
-    const data = snap.docs[0].data() as StoreDoc;
-    const uid =
-      data.uid ||
+    const data = doc.data() as { storeUid?: string; uid?: string; salla?: { uid?: string; storeId?: string } };
+    const resolvedUid =
       data.storeUid ||
+      data.uid ||
       data.salla?.uid ||
-      (data.salla?.storeId ? `salla:${data.salla.storeId}` : undefined) ||
-      (data.storeId != null ? `salla:${String(data.storeId)}` : undefined);
+      (data.salla?.storeId ? `salla:${data.salla.storeId}` : undefined);
 
-    if (!uid) {
-      return res.status(404).json({ error: "UID_NOT_FOUND_FOR_STORE", domain });
+    if (!resolvedUid) {
+      return res.status(404).json({ error: "UID_NOT_FOUND_FOR_DOMAIN", baseTried: base });
     }
-
-    cacheSet(`dom:${domain}`, uid);
-    return res.status(200).json({ storeUid: uid });
+    return res.status(200).json({ storeUid: resolvedUid });
+  } catch (e) {
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    console.error("resolve_error", e?.message || e);
+    console.error("[resolve] unexpected", typeof e === "object" && e && "message" in e ? (e as any).message : e);
     return res.status(500).json({ error: "RESOLVE_FAILED" });
   }
 }
@@ -23493,12 +23578,11 @@ export default async function handler(
 }
 ====[ END FILE: src/pages/api/reviews/moderate.ts ]=================================================
 
-====[ START FILE: src/pages/api/reviews/submit.ts (6.1 KB) ]========================================
+====[ START FILE: src/pages/api/reviews/submit.ts (7.5 KB) ]========================================
 // src/pages/api/reviews/submit.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { dbAdmin } from "@/lib/firebaseAdmin"; // استخدم نفس util المؤكد عندك
-// لو عندك getDb ويشتغل تمام استخدمه بدل dbAdmin().firestore()
-import { moderateReview } from "@/server/moderation"; // هنخليها اختيارية
+import { dbAdmin } from "@/lib/firebaseAdmin";
+import { moderateReview } from "@/server/moderation";
 
 type ReviewBody = {
   orderId?: string;
@@ -23507,6 +23591,8 @@ type ReviewBody = {
   images?: string[];
   tokenId?: string;
   platform?: "salla" | "zid" | "manual" | "web";
+  authorName?: string | null;
+  authorShowName?: boolean;
 };
 
 const isNonEmptyString = (v: unknown): v is string =>
@@ -23515,12 +23601,25 @@ const isNonEmptyString = (v: unknown): v is string =>
 const isImagesArray = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((u) => typeof u === "string" && u.length > 0);
 
+// -------- Helpers: sanitize/mask --------
+function sanitizeName(raw?: string | null) {
+  if (!raw) return "";
+  return String(raw).trim().replace(/[^\p{L}\p{N}\s.'’_-]/gu, "").slice(0, 60);
+}
+function maskName(clean: string) {
+  if (!clean) return "عميل المتجر";
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "عميل المتجر";
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[1][0]}.`;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
 
   try {
     const body: ReviewBody = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
-    const { orderId, stars, text, images, tokenId, platform } = body;
+    const { orderId, stars, text, images, tokenId, platform, authorName, authorShowName } = body;
 
     if (!isNonEmptyString(orderId)) return res.status(400).json({ error: "missing_orderId" });
     const s = Number(stars);
@@ -23529,12 +23628,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const imgs = isImagesArray(images) ? images : [];
     const safeImages = imgs.filter((u) => /^https:\/\/ucarecdn\.com\//.test(u)).slice(0, 10);
+
+    // author.{show,name,displayName}
+    const cleanName = sanitizeName(authorName);
+    const author = {
+      show: !!authorShowName && !!cleanName,
+      name: cleanName || null,
+      displayName: (!!authorShowName && cleanName) ? cleanName : maskName(cleanName),
+    };
+
     const now = Date.now();
+    const db = dbAdmin();
 
-    const db = dbAdmin(); // Firestore Admin instance
-
-    const result = await db.runTransaction(async (tx) => {
-      // لو مفيش tokenId: نسجّل تقييم غير موثّق (trustedBuyer=false)
+    // ننشئ التقييم كـ pending وغير منشور، ثم نقرر النشر بعد الموديريشن
+    const txResult = await db.runTransaction(async (tx) => {
+      // بدون tokenId ⇒ غير موثّق
       if (!isNonEmptyString(tokenId)) {
         const reviewRef = db.collection("reviews").doc();
         tx.set(reviewRef, {
@@ -23548,17 +23656,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           productId: null,
           platform: platform || "web",
           trustedBuyer: false,
-          status: "published",
-          published: true,
-          publishedAt: now,
+          status: "pending",
+          published: false,
+          publishedAt: null,
           createdAt: now,
+          author,
           moderation: null,
         });
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         return { reviewId: reviewRef.id, tok: null as any };
       }
 
-      // مع وجود tokenId: تحقق صارم
+      // مع tokenId: تحقق صارم
       const tokRef = db.collection("review_tokens").doc(String(tokenId));
       const tokSnap = await tx.get(tokRef);
       if (!tokSnap.exists) throw new Error("token_not_found");
@@ -23573,7 +23682,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error("token_order_mismatch");
       }
 
-      // منع تكرار تقييم لنفس orderId (اختياري لكن مفيد)
+      // منع تكرار تقييم لنفس orderId
       const dup = await db.collection("reviews").where("orderId", "==", String(orderId)).limit(1).get();
       if (!dup.empty) throw new Error("duplicate_review");
 
@@ -23590,10 +23699,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         productIds: tok.productIds ?? [],
         platform: platform || tok.platform || "web",
         trustedBuyer: true,
-        status: "published",
-        published: true,
-        publishedAt: now,
+        status: "pending",
+        published: false,
+        publishedAt: null,
         createdAt: now,
+        author,
         moderation: null,
       });
       tx.update(tokRef, { usedAt: now });
@@ -23601,29 +23711,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return { reviewId: reviewRef.id, tok };
     });
 
-    // الموديريشن — خليها “لا تمنع” لو وقعت
+    // ===== الموديريشن (OpenAI) =====
+    let okToPublish = false;
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let modPayload: any = null;
+
     try {
       const mod = await moderateReview({
         text: isNonEmptyString(body.text) ? body.text : "",
         images: safeImages,
         stars: s,
       });
-      await db.collection("reviews").doc(result.reviewId).set(
+
+      modPayload = mod;
+      okToPublish = !!mod?.ok;
+
+      await db.collection("reviews").doc(txResult.reviewId).set(
         mod?.ok
-          ? { moderation: { model: mod.model, score: mod.score, flags: mod.flags } }
-          : { moderation: { model: mod?.model || "none", score: mod?.score ?? 0, flags: mod?.flags ?? ["failed"], reason: mod?.reason || "moderation_failed" } },
+          ? { moderation: { model: mod.model, score: mod.score, flags: mod.flags ?? [] } }
+          : { moderation: { model: mod?.model || "openai", score: mod?.score ?? 0, flags: mod?.flags ?? ["blocked"] } },
         { merge: true }
       );
-      // لو عايز تمنع بدل ما تسجل، رجّع 400 هنا بدل set فقط.
-    } catch {
-      await db.collection("reviews").doc(result.reviewId).set(
+    } catch (e) {
+      okToPublish = false;
+      await db.collection("reviews").doc(txResult.reviewId).set(
         { moderation: { model: "none", score: 0, flags: ["moderation_error"] } },
+        { merge: true }
+      );
+      console.error("moderation failed:", e);
+    }
+
+    // ===== قرار النشر =====
+    if (okToPublish) {
+      await db.collection("reviews").doc(txResult.reviewId).set(
+        { status: "published", published: true, publishedAt: Date.now() },
+        { merge: true }
+      );
+    } else {
+      await db.collection("reviews").doc(txResult.reviewId).set(
+        { status: "rejected", published: false, publishedAt: null },
         { merge: true }
       );
     }
 
-    return res.status(201).json({ ok: true, id: result.reviewId, published: true });
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return res.status(201).json({
+      ok: true,
+      id: txResult.reviewId,
+      published: okToPublish,
+      moderation: modPayload ? { model: modPayload.model, ok: !!modPayload.ok, score: modPayload.score, flags: modPayload.flags ?? [] } : null,
+    });
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     const msg = String(e?.message || e || "error");
 
@@ -24419,6 +24556,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/salla/subscribe.ts ]==================================================
 
+====[ START FILE: src/pages/api/salla/sync-domains.ts (1.6 KB) ]====================================
+// src/pages/api/salla/sync-domains.ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import { dbAdmin } from "@/lib/firebaseAdmin";
+
+function toDomainBase(domain: string | null | undefined): string | null {
+  if (!domain) return null;
+  try {
+    const u = new URL(String(domain));
+    const origin = u.origin.toLowerCase();
+    const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
+    return firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
+  } catch {
+    return null;
+  }
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
+
+  const key = String(req.headers["x-admin-secret"] || "");
+  if (!key || key !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+
+  const db = dbAdmin();
+  const snap = await db.collection("stores")
+    .where("platform", "==", "salla")
+    .where("salla.connected", "==", true)
+    .where("salla.installed", "==", true)
+    .get();
+
+  let updated = 0, skipped = 0;
+  for (const d of snap.docs) {
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = d.data() as any;
+    const uid = data?.uid || d.id;
+    const base = toDomainBase(data?.salla?.domain || null);
+    if (!base) { skipped++; continue; }
+    await db.collection("domains").doc(base).set({
+      storeUid: uid,
+      updatedAt: Date.now()
+    }, { merge: true });
+    updated++;
+  }
+
+  return res.status(200).json({ ok: true, updated, skipped, total: snap.size });
+}
+====[ END FILE: src/pages/api/salla/sync-domains.ts ]===============================================
+
 ====[ START FILE: src/pages/api/salla/verify.ts (2.2 KB) ]==========================================
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
@@ -24473,14 +24660,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/salla/verify.ts ]=====================================================
 
-====[ START FILE: src/pages/api/salla/webhook.ts (17.2 KB) ]========================================
-// src/pages/api/salla/webhook.ts
+====[ START FILE: src/pages/api/salla/webhook.ts (19.0 KB) ]========================================
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
-import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
-import { sendSms, buildInviteSMS } from "@/server/messaging/send-sms";
+import { buildInviteSMS } from "@/server/messaging/send-sms";
+
+// 🔸 الجديد:
+import { enqueueOutboxJob } from "@/server/queue/outbox";
+import { canSendInvite } from "@/server/billing/usage";
+import { getPlanConfig, type PlanCode } from "@/server/billing/plans";
 
 export const config = { api: { bodyParser: false } };
 
@@ -24580,7 +24770,20 @@ function extractProductIds(items?: SallaItem[]): string[] {
   return [...ids];
 }
 
-// -------------------- Order snapshot & invites --------------------
+// 🔹 helper لاستخراج base من دومين سلة (origin[/dev-xxxx])
+function toDomainBase(domain: string | null | undefined): string | null {
+  if (!domain) return null;
+  try {
+    const u = new URL(String(domain));
+    const origin = u.origin.toLowerCase();
+    const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
+    return firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
+  } catch {
+    return null;
+  }
+}
+
+// -------------------- Order snapshot & tokens --------------------
 async function upsertOrderSnapshot(
   db: FirebaseFirestore.Firestore,
   order: SallaOrder,
@@ -24604,18 +24807,13 @@ async function upsertOrderSnapshot(
   }, { merge: true });
 }
 
-async function ensureInviteForOrder(
+async function createInviteTokenAndDoc(
   db: FirebaseFirestore.Firestore,
   order: SallaOrder,
   eventRaw: UnknownRecord
 ) {
   const orderId = String(order.id ?? order.order_id ?? "");
-  if (!orderId) return;
-
-  // idempotency على دعوات الطلب
-  const invitesSnap = await db.collection("review_invites")
-    .where("orderId","==",orderId).limit(1).get();
-  if (!invitesSnap.empty) return;
+  if (!orderId) return { inviteId: null as string|null, tokenId: null as string|null, publicUrl: null as string|null, storeUid: null as string|null, productIds: [] as string[] };
 
   let storeUid: string | null = pickStoreUidFromSalla(eventRaw) || null;
   if (!storeUid) {
@@ -24651,41 +24849,79 @@ async function ensureInviteForOrder(
   });
 
   const buyer = order.customer ?? {};
-  await db.collection("review_invites").add({
+  const inviteRef = await db.collection("review_invites").add({
     tokenId, orderId, platform: "salla",
     storeUid, productId: mainProductId, productIds,
     customer: { name: buyer.name ?? null, email: buyer.email ?? null, mobile: buyer.mobile ?? null },
     sentAt: Date.now(), deliveredAt: null, clicks: 0, publicUrl,
   });
 
-  const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
-  const smsText = buildInviteSMS(storeName, publicUrl);
+  return { inviteId: inviteRef.id, tokenId, publicUrl, storeUid, productIds };
+}
 
-  // نرسل القناتين معًا (متوازي) + إعدادات السعودية للـSMS
-  const tasks: Array<Promise<unknown>> = [];
+// -------------------- إنكيو (بدون إرسال مباشر) --------------------
+async function enqueueInviteForOrder(
+  db: FirebaseFirestore.Firestore,
+  order: SallaOrder,
+  eventRaw: UnknownRecord
+) {
+  const orderId = String(order.id ?? order.order_id ?? "");
+  if (!orderId) return { queued: false, reason: "missing_order_id" };
+
+  // idempotency على دعوات الطلب
+  const exists = await db.collection("review_invites").where("orderId","==",orderId).limit(1).get();
+  if (!exists.empty) return { queued: false, reason: "already_invited" };
+
+  // إنشاء التوكن + مستند الدعوة
+  const seed = await createInviteTokenAndDoc(db, order, eventRaw);
+  if (!seed.inviteId || !seed.storeUid) return { queued: false, reason: "token_create_failed" };
+
+  // التحقق من الباقة قبل الإنكيو
+  const quota = await canSendInvite(seed.storeUid);
+  if (!quota.ok) {
+    await db.collection("review_invites").doc(seed.inviteId).set({
+      quotaDeniedAt: Date.now(),
+      quotaReason: quota.reason,
+    }, { merge: true });
+    return { queued: false, reason: `quota:${quota.reason}` };
+  }
+
+  // تجهيز القنوات + الحمولة
+  const buyer = order.customer ?? {};
+  const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
+  const smsText = buildInviteSMS(storeName, seed.publicUrl!);
+
+  const channels: ("sms"|"email")[] = [];
+  const payload: Record<string, unknown> = { inviteId: seed.inviteId, orderId, storeUid: seed.storeUid };
+
   if (buyer.mobile) {
-    const mobile = String(buyer.mobile).replace(/\s+/g, "");
-    tasks.push(
-      sendSms(mobile, smsText, {
-        defaultCountry: "SA",
-        msgClass: "transactional",
-        priority: 1,
-        requestDlr: true,
-      })
-    );
+    channels.push("sms");
+    payload.phone   = String(buyer.mobile).replace(/\s+/g, "");
+    payload.smsText = smsText;
   }
   if (buyer.email) {
-    const name = buyer.name || "عميلنا العزيز";
-    const emailHtml = `
+    channels.push("email");
+    payload.emailTo     = String(buyer.email);
+    payload.emailHtml   = `
       <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
-        <p>مرحباً ${name},</p>
+        <p>مرحباً ${buyer.name || "عميلنا العزيز"},</p>
         <p>قيّم تجربتك من <strong>${storeName}</strong>.</p>
-        <p><a href="${publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
+        <p><a href="${seed.publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
         <p style="color:#64748b">فريق ثقة</p>
       </div>`;
-    tasks.push(sendEmail(buyer.email, "قيّم تجربتك معنا", emailHtml));
+    payload.emailSubject = "قيّم تجربتك معنا";
   }
-  await Promise.allSettled(tasks);
+
+  if (!channels.length) return { queued: false, reason: "no_channels" };
+
+  await enqueueOutboxJob({
+    inviteId: seed.inviteId,
+    storeUid: seed.storeUid!,
+    channels,
+    payload,
+  });
+
+  return { queued: true, inviteId: seed.inviteId, channels };
 }
 
 async function voidInvitesForOrder(db: FirebaseFirestore.Firestore, orderId: string, reason: string) {
@@ -24696,7 +24932,7 @@ async function voidInvitesForOrder(db: FirebaseFirestore.Firestore, orderId: str
   await batch.commit();
 }
 
-// -------------------- Handle app.* events (Easy OAuth) --------------------
+// -------------------- Billing/Usage من أحداث سِلّة --------------------
 async function handleAppEvent(
   db: FirebaseFirestore.Firestore,
   event: SallaAppEvent,
@@ -24707,126 +24943,118 @@ async function handleAppEvent(
 
   await db.collection("salla_app_events").add({ uid, event, merchant: merchant ?? null, data, at: Date.now() });
 
+  // OAuth & تخزين التوكن + الدومين كما هو عندك (مختصر)
   if (event === "app.store.authorize") {
-    // سلة ترسل التوكنات مباشرة عبر الويبهوك (النمط السهل)
-    const payload = (data ?? {}) as Record<string, unknown>;
-
-    const access_token  = typeof payload["access_token"] === "string" ? String(payload["access_token"]) : "";
-    const refresh_token = typeof payload["refresh_token"] === "string" ? String(payload["refresh_token"]) : null;
-    const scope         = typeof payload["scope"] === "string" ? String(payload["scope"]) : null;
-
-    // expires قد تكون مدة (ثواني) أو طابع زمني Unix (ثواني)
-    let expiresAt: number | null = null;
-    const nowSec = Math.floor(Date.now() / 1000);
-    const rawExp = payload["expires"];
-
-    if (typeof rawExp === "number") {
-      expiresAt = rawExp > (nowSec + 3600) ? rawExp * 1000 : Date.now() + rawExp * 1000;
-    } else if (typeof rawExp === "string" && rawExp.trim() !== "" && !Number.isNaN(Number(rawExp))) {
-      const n = Number(rawExp);
-      expiresAt = n > (nowSec + 3600) ? n * 1000 : Date.now() + n * 1000;
-    } else {
-      expiresAt = null;
-    }
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const access_token  = String((data as any)?.access_token || "");
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const refresh_token = ((data as any)?.refresh_token as string) || null;
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const expires       = Number((data as any)?.expires || 0);
+    const expiresAt     = expires ? Date.now() + expires * 1000 : null;
 
     if (access_token) {
       await db.collection("salla_tokens").doc(uid).set({
-        uid,
-        provider: "salla",
-        storeId: merchant ?? null,
-        accessToken: access_token,
-        refreshToken: refresh_token,
-        expiresAt,
-        expiresRaw: rawExp ?? null, // للاحتفاظ بالقيمة الأصلية للتشخيص
-        scope,
+        uid, provider: "salla", storeId: merchant ?? null,
+        accessToken: access_token, refreshToken: refresh_token,
+        expiresIn: expires || null, expiresAt,
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        scope: (data as any)?.scope || null,
         obtainedAt: Date.now(),
-        app: {
-          id: payload["id"] ?? null,
-          name: payload["app_name"] ?? null,
-          description: payload["app_description"] ?? null,
-          type: payload["app_type"] ?? null,
-          tokenType: payload["token_type"] ?? null,
-        },
       }, { merge: true });
     }
 
+    // جلب معلومات المتجر (domain) وكتابة فهرس domains
+    let domain: string | null = null;
+    try {
+      const resp = await fetch("https://api.salla.dev/admin/v2/store/info", {
+        headers: { Authorization: `Bearer ${access_token}` }
+      });
+      if (resp.ok) {
+        const storeInfo = await resp.json();
+        domain = storeInfo.data?.domain || storeInfo.data?.url || null;
+        if (domain) {
+          await db.collection("stores").doc(uid).set({ "salla.domain": domain }, { merge: true });
+          const base = toDomainBase(domain);
+          if (base) {
+            await db.collection("domains").doc(base).set({ storeUid: uid, updatedAt: Date.now() }, { merge: true });
+          }
+        }
+      }
+    } catch {}
+
     await db.collection("stores").doc(uid).set({
-      uid,
-      platform: "salla",
-      salla: {
-        storeId: merchant ?? null,
-        connected: true,
-        installed: true,
-        installedAt: Date.now(),
-        lastAuthorizeAt: Date.now(),
-        scope,
-      },
-      connectedAt: Date.now(),
+      uid, platform: "salla",
+      "salla.storeId": merchant ?? null,
+      "salla.connected": true,
+      "salla.installed": true,
+      "salla.domain": domain,
+      "salla.installedAt": Date.now(),
       updatedAt: Date.now(),
     }, { merge: true });
-
-    // بريد ترحيبي للتاجر (اختياري) لو كان البريد متاحًا بالحِمل
-    const merchantEmail = typeof (data as UnknownRecord)["merchant_email"] === "string"
-      ? String((data as UnknownRecord)["merchant_email"])
-      : (typeof (data as UnknownRecord)["email"] === "string" ? String((data as UnknownRecord)["email"]) : null);
-    const storeName = typeof (data as UnknownRecord)["store_name"] === "string"
-      ? String((data as UnknownRecord)["store_name"])
-      : (typeof (data as UnknownRecord)["merchant_name"] === "string" ? String((data as UnknownRecord)["merchant_name"]) : "متجرك");
-
-    if (merchantEmail) {
-      try {
-        const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_BASE_URL || "").replace(/\/+$/, "");
-        const html = `
-          <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.8">
-            <h2>مرحبًا بك في ثقة 🎉</h2>
-            <p>تم ربط تطبيق ثقة بمتجرك <strong>${storeName}</strong> على سلة بنجاح.</p>
-            <p>
-              <a href="${appUrl}/dashboard?store=${encodeURIComponent(uid)}"
-                 style="background:#16a34a;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">
-                 الدخول للوحة التحكم
-              </a>
-            </p>
-            <p style="color:#64748b">لو واجهت أي مشكلة، راسلنا.</p>
-          </div>`;
-        await sendEmail(merchantEmail, "تم ربط تطبيق ثقة بمتجرك", html);
-      } catch (e) {
-        console.warn("welcome_email_failed", e instanceof Error ? e.message : String(e));
-      }
-    }
   }
 
+  // حالة التثبيت/الإزالة
   if (event === "app.installed") {
     await db.collection("stores").doc(uid).set({
-      uid,
-      platform: "salla",
-      salla: { storeId: merchant ?? null, installed: true, installedAt: Date.now() },
+      uid, platform: "salla",
+      "salla.storeId": merchant ?? null,
+      "salla.installed": true,
+      "salla.installedAt": Date.now(),
       updatedAt: Date.now(),
     }, { merge: true });
   }
-
   if (event === "app.uninstalled") {
     await db.collection("stores").doc(uid).set({
-      uid,
-      platform: "salla",
-      salla: { storeId: merchant ?? null, installed: false, connected: false, uninstalledAt: Date.now() },
+      uid, platform: "salla",
+      "salla.storeId": merchant ?? null,
+      "salla.installed": false,
+      "salla.connected": false,
+      "salla.uninstalledAt": Date.now(),
+      updatedAt: Date.now(),
+    }, { merge: true });
+
+    // إزالة فهرس الدومين المرتبط
+    const doc = await db.collection("stores").doc(uid).get();
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const d = doc.data() as any;
+    const base = toDomainBase(d?.salla?.domain || null);
+    if (base) await db.collection("domains").doc(base).delete().catch(()=>{});
+  }
+
+  // 🔸 الباقات والاستهلاك
+  if (event === "app.trial.started") {
+    await db.collection("stores").doc(uid).set({
+      plan: { code: "TRIAL", active: true },
+      usage: { invitesUsed: 0 },
       updatedAt: Date.now(),
     }, { merge: true });
   }
-
-  if (event.startsWith("app.trial.") || event.startsWith("app.subscription.")) {
+  if (event === "app.trial.expired" || event === "app.trial.canceled") {
     await db.collection("stores").doc(uid).set({
-      uid,
-      platform: "salla",
-      salla: { storeId: merchant ?? null, subscription: { lastEvent: event, data, updatedAt: Date.now() } },
+      "plan.active": false, updatedAt: Date.now(),
+    }, { merge: true });
+  }
+  if (event === "app.subscription.started" || event === "app.subscription.renewed") {
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const code = String(((data as any)?.plan_code || (data as any)?.plan || "P30")).toUpperCase() as PlanCode;
+    const cfg = getPlanConfig(code);
+    await db.collection("stores").doc(uid).set({
+      plan: { code: cfg.code, active: true },
+      usage: { invitesUsed: 0 }, // reset عند التجديد/البدء
       updatedAt: Date.now(),
+    }, { merge: true });
+  }
+  if (event === "app.subscription.expired" || event === "app.subscription.canceled") {
+    await db.collection("stores").doc(uid).set({
+      "plan.active": false, updatedAt: Date.now(),
     }, { merge: true });
   }
 
   if (event === "app.settings.updated") {
     await db.collection("stores").doc(uid).set({
-      uid,
-      platform: "salla",
-      salla: { storeId: merchant ?? null, settings: (data as UnknownRecord)["settings"] ?? {} },
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      "salla.settings": (data as any)?.settings ?? {},
       updatedAt: Date.now(),
     }, { merge: true });
   }
@@ -24840,7 +25068,7 @@ async function handleAppEvent(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
-  // ✅ يقبل Bearer / x-webhook-token / x-salla-token / ?t=
+  // ✅ auth (Bearer / x-webhook-token / x-salla-token / ?t=)
   const provided = extractProvidedToken(req);
   if (!WEBHOOK_TOKEN || !provided || !timingSafeEq(provided, WEBHOOK_TOKEN)) {
     return res.status(401).json({ error: "invalid_webhook_token" });
@@ -24860,7 +25088,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const dataRaw = (body.data ?? {}) as UnknownRecord;
   const asOrder = dataRaw as SallaOrder;
 
-  // Idempotency لكل الأحداث
+  // Idempotency (قبل أي عمل ثقيل)
   const idemKey = crypto.createHash("sha256").update(provided + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
   if ((await idemRef.get()).exists) return res.status(200).json({ ok: true, deduped: true });
@@ -24873,7 +25101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     merchant: body.merchant ?? null,
   });
 
-  // فرع Easy OAuth (app.*)
+  // app.* (OAuth + Plans)
   if (event.startsWith("app.")) {
     await handleAppEvent(db, event as SallaAppEvent, body.merchant, dataRaw);
     await db.collection("processed_events").doc(keyOf(event)).set({ at: Date.now(), event, processed: true }, { merge: true });
@@ -24888,30 +25116,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
 
-  // القواعد التشغيلية
+  // 🔸 Fast-ACK + ENQUEUE فقط (بدون إرسال مباشر)
+  let shouldQueue = false;
   if (event === "order.payment.updated") {
-    if (["paid","authorized","captured"].includes(paymentStatus)) {
-      await ensureInviteForOrder(db, asOrder, dataRaw);
-    }
+    if (["paid","authorized","captured"].includes(paymentStatus)) shouldQueue = true;
   } else if (event === "shipment.updated") {
-    if (DONE.has(status) || ["delivered","completed"].includes(status)) {
-      await ensureInviteForOrder(db, asOrder, dataRaw);
-    }
+    if (DONE.has(status) || ["delivered","completed"].includes(status)) shouldQueue = true;
   } else if (event === "order.status.updated") {
-    if (DONE.has(status)) {
-      await ensureInviteForOrder(db, asOrder, dataRaw);
-    }
+    if (DONE.has(status)) shouldQueue = true;
   } else if (event === "order.cancelled") {
     await voidInvitesForOrder(db, orderId, "order_cancelled");
   } else if (event === "order.refunded") {
     await voidInvitesForOrder(db, orderId, "order_refunded");
   }
 
-  await db.collection("processed_events")
-    .doc(keyOf(event, orderId, status))
-    .set({ at: Date.now(), event, processed: true, status }, { merge: true });
+  // ✅ ACK سريع دائمًا
+  res.status(202).json({ ok: true, accepted: true, event });
 
-  return res.status(200).json({ ok: true });
+  // 🧵 نفّذ الإنكيو بعد الرد (لا تنتظر الإرسال)
+  try {
+    if (shouldQueue) {
+      await enqueueInviteForOrder(db, asOrder, dataRaw);
+    }
+  } catch (e) {
+    // لو فشل الإنكيو نسجله للمتابعة
+    await db.collection("webhook_errors").add({
+      at: Date.now(), scope: "enqueueInviteForOrder", event, orderId, error: e instanceof Error ? e.message : String(e),
+    }).catch(()=>{});
+  }
 }
 ====[ END FILE: src/pages/api/salla/webhook.ts ]====================================================
 
@@ -24960,6 +25192,100 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   return res.status(200).json({ valid: true })
 }
 ====[ END FILE: src/pages/api/settings/validate.ts ]================================================
+
+====[ START FILE: src/pages/api/sms/dlr.ts (3.0 KB) ]===============================================
+// src/pages/api/sms/dlr.ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import { dbAdmin } from "@/lib/firebaseAdmin"; // ← كان "@/server/firebase-admin" وده سبب الخطأ
+
+type DeliveryStatus = string; // لو عايز تشددها: 'delivered' | 'ok' | 'success' | 'failed' | 'undelivered' | string
+
+interface DlrMeta {
+  inviteId?: string;
+}
+
+interface DlrItem {
+  inviteId?: string;
+  meta?: DlrMeta;
+  status?: DeliveryStatus;
+  Status?: DeliveryStatus; // بعض المزودين بيرسلوها بحرف كبير
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function asDlrItem(v: unknown): DlrItem | null {
+  if (!isRecord(v)) return null;
+  const inviteId =
+    (typeof v.inviteId === "string" && v.inviteId) ||
+    (isRecord(v.meta) && typeof v.meta.inviteId === "string" && v.meta.inviteId) ||
+    undefined;
+
+  const status =
+    (typeof v.status === "string" && v.status) ||
+    (typeof v.Status === "string" && v.Status) ||
+    undefined;
+
+  // نسمح بإنشاء العنصر حتى لو inviteId ناقص (هنفلتره لاحقاً)
+  return { inviteId, meta: isRecord(v.meta) ? { inviteId: v.meta.inviteId as string | undefined } : undefined, status, Status: undefined };
+}
+
+function extractItems(body: unknown): DlrItem[] {
+  if (Array.isArray(body)) {
+    return body.map(asDlrItem).filter((x): x is DlrItem => !!x);
+  }
+  if (isRecord(body)) {
+    const maybeItems = body.items ?? body.dlrs;
+    if (Array.isArray(maybeItems)) {
+      return maybeItems.map(asDlrItem).filter((x): x is DlrItem => !!x);
+    }
+    const single = asDlrItem(body);
+    return single ? [single] : [];
+  }
+  return [];
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
+
+  try {
+    const items = extractItems(req.body);
+    if (!items.length) return res.json({ ok: true, updated: 0 });
+
+    const db = dbAdmin();
+    const ops: Promise<void>[] = [];
+
+    for (const it of items) {
+      const inviteId = it.inviteId ?? it.meta?.inviteId;
+      if (!inviteId || typeof inviteId !== "string") continue;
+
+      const status = String((it.status ?? it.Status ?? "")).toLowerCase();
+      const delivered = ["delivered", "ok", "success"].includes(status);
+
+      ops.push(
+        db
+          .collection("review_invites")
+          .doc(inviteId)
+          .set(
+            {
+              deliveryStatus: status || null,
+              deliveredAt: delivered ? Date.now() : null,
+            },
+            { merge: true }
+          )
+          .then(() => void 0)
+      );
+    }
+
+    await Promise.allSettled(ops);
+    res.json({ ok: true, updated: ops.length });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    res.status(500).json({ ok: false, error: message });
+  }
+}
+====[ END FILE: src/pages/api/sms/dlr.ts ]==========================================================
 
 ====[ START FILE: src/pages/api/sms/inbound.ts (653 B) ]============================================
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -25494,6 +25820,113 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 ====[ END FILE: src/pages/api/support-ticket.ts ]===================================================
+
+====[ START FILE: src/pages/api/test-seed.ts (3.8 KB) ]=============================================
+// src/pages/api/test-seed.ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import crypto from "crypto";
+import { dbAdmin } from "@/lib/firebaseAdmin";
+import { createShortLink } from "@/server/short-links";
+import { buildInviteSMS } from "@/server/messaging/send-sms";
+import { enqueueInviteJob } from "@/server/queue/outbox";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
+
+  const key = (req.headers["x-admin-secret"] || "").toString();
+  if (!key || key !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+
+  try {
+    const { storeUid, toPhone, toEmail, storeName = "متجر تجريبي" } = (typeof req.body === "object" ? req.body : {}) as {
+      storeUid?: string;
+      toPhone?: string;
+      toEmail?: string;
+      storeName?: string;
+    };
+
+    if (!storeUid) return res.status(400).json({ error: "storeUid_required" });
+    if (!toPhone && !toEmail) return res.status(400).json({ error: "at_least_one_of_toPhone_or_toEmail" });
+
+    const db = dbAdmin();
+
+    const tokenId = crypto.randomBytes(10).toString("hex");
+    const base =
+      (process.env.APP_BASE_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        "").replace(/\/+$/, "");
+    if (!base) throw new Error("BASE_URL not configured");
+
+    const reviewUrl = `${base}/review/${tokenId}`;
+    const publicUrl = await createShortLink(reviewUrl).catch(() => reviewUrl);
+
+    await db.collection("review_tokens").doc(tokenId).set({
+      id: tokenId,
+      platform: "salla",
+      orderId: `SEED-${Date.now()}`,
+      storeUid,
+      productId: "seed",
+      productIds: ["seed"],
+      createdAt: Date.now(),
+      usedAt: null,
+      publicUrl,
+      targetUrl: reviewUrl,
+      channel: "multi",
+    });
+
+    const inviteRef = await db.collection("review_invites").add({
+      tokenId,
+      orderId: `SEED-${Date.now()}`,
+      platform: "salla",
+      storeUid,
+      productId: "seed",
+      productIds: ["seed"],
+      customer: {
+        name: "Seed Buyer",
+        email: toEmail || null,
+        mobile: toPhone || null,
+      },
+      sentAt: Date.now(),
+      deliveredAt: null,
+      clicks: 0,
+      publicUrl,
+    });
+    const inviteId = inviteRef.id;
+
+    const channels: ("sms" | "email")[] = [];
+    const payload: Record<string, unknown> = {};
+    const smsText = buildInviteSMS(storeName, publicUrl);
+
+    if (toPhone) {
+      channels.push("sms");
+      payload.smsText = smsText;
+      payload.phone = toPhone;
+    }
+    if (toEmail) {
+      channels.push("email");
+      payload.emailHtml = `
+        <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
+          <p>مرحباً عميلنا،</p>
+          <p>قيّم تجربتك من <strong>${storeName}</strong>.</p>
+          <p><a href="${publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
+          <p style="color:#64748b">فريق ثقة</p>
+        </div>`;
+      payload.emailTo = toEmail;
+      payload.emailSubject = "قيّم تجربتك معنا (اختبار)";
+    }
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await enqueueInviteJob({ inviteId, storeUid, channels, payload: payload as any });
+
+    return res.status(200).json({ ok: true, inviteId, tokenId, publicUrl, channels });
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (e: any) {
+    console.error("[test-seed] err", e?.message || e);
+    return res.status(500).json({ error: "seed_failed", details: e?.message || "unknown" });
+  }
+}
+====[ END FILE: src/pages/api/test-seed.ts ]========================================================
 
 ====[ START FILE: src/pages/api/test/sms.ts (3.0 KB) ]==============================================
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -28395,6 +28828,70 @@ export async function requireUser(
 }
 ====[ END FILE: src/server/auth/requireUser.ts ]====================================================
 
+====[ START FILE: src/server/billing/plans.ts (521 B) ]=============================================
+export type PlanCode = "TRIAL"|"P30"|"P60"|"P120";
+export type PlanCfg = { code: PlanCode; monthlyInvites: number };
+
+export function getPlanConfig(code: PlanCode): PlanCfg {
+  switch (code) {
+    case "TRIAL": return { code:"TRIAL", monthlyInvites: 5 };
+    case "P30":  return { code:"P30",   monthlyInvites: 40 };
+    case "P60":  return { code:"P60",   monthlyInvites: 90 };
+    case "P120": return { code:"P120",  monthlyInvites: 200 };
+    default:     return { code:"TRIAL", monthlyInvites: 5 };
+  }
+}
+====[ END FILE: src/server/billing/plans.ts ]=======================================================
+
+====[ START FILE: src/server/billing/usage.ts (1.4 KB) ]============================================
+import { dbAdmin } from "@/lib/firebaseAdmin"; // this is a function () => Firestore
+import { getPlanConfig, type PlanCode } from "./plans";
+import type { Firestore, Transaction, DocumentData } from "firebase-admin/firestore";
+
+// helper to get the Firestore instance
+const db: Firestore = dbAdmin();
+
+export async function canSendInvite(storeUid: string) {
+  const ref = db.collection("stores").doc(storeUid);
+  const snap = await ref.get();
+
+  if (!snap.exists) {
+    return { ok: false, reason: "store_not_found" } as const;
+  }
+
+  const s = (snap.data() as DocumentData) ?? {};
+
+  if (!s?.plan?.active) {
+    return { ok: false, reason: "plan_inactive" } as const;
+  }
+
+  const cfg = getPlanConfig(String(s.plan.code || "TRIAL").toUpperCase() as PlanCode);
+  const used = Number(s?.usage?.invitesUsed ?? 0);
+
+  if (used >= cfg.monthlyInvites) {
+    return { ok: false, reason: "quota_exhausted", used, limit: cfg.monthlyInvites } as const;
+  }
+
+  return { ok: true, used, limit: cfg.monthlyInvites } as const;
+}
+
+export async function incrementUsageAfterSuccess(storeUid: string) {
+  const ref = db.collection("stores").doc(storeUid);
+
+  await db.runTransaction(async (tx: Transaction) => {
+    const s = await tx.get(ref);
+    const cur = (s.data() as DocumentData) ?? {};
+    const used = Number(cur?.usage?.invitesUsed ?? 0) + 1;
+
+    tx.set(
+      ref,
+      { usage: { invitesUsed: used } },
+      { merge: true }
+    );
+  });
+}
+====[ END FILE: src/server/billing/usage.ts ]=======================================================
+
 ====[ START FILE: src/server/firebase-admin.ts (342 B) ]============================================
 // src/server/firebase-admin.ts
 // 🔁 Re-export the single canonical admin instance from src/lib/firebaseAdmin.ts
@@ -29582,6 +30079,182 @@ export async function sendEmail(to: string, subject: string, html?: string) {
 }
 ====[ END FILE: src/server/notifications.ts ]=======================================================
 
+====[ START FILE: src/server/queue/outbox.ts (3.3 KB) ]=============================================
+// src/server/queue/outbox.ts
+import { dbAdmin } from "@/lib/firebaseAdmin";
+
+export type Channel = "sms" | "email";
+export type OutboxJobStatus = "pending" | "leased" | "ok" | "fail" | "dead";
+
+export interface OutboxJob {
+  jobId: string;
+  inviteId: string;
+  storeUid: string;
+  channels: Channel[];
+  payload: Record<string, unknown>;
+  status: OutboxJobStatus;
+  attempts: number;
+  lastError?: string | null;
+  leasedBy?: string | null;
+  leaseUntil?: number | null;      // ms epoch
+  nextRunAt?: number | null;       // ms epoch
+  createdAt: number;
+  updatedAt: number;
+}
+
+const COLL = "outbox_jobs";
+
+export const enqueueOutboxJob = async (
+  input: Omit<OutboxJob, "status" | "attempts" | "createdAt" | "updatedAt" | "jobId">
+) => {
+  const db = dbAdmin();
+  const id = db.collection("_ids").doc().id;
+  const now = Date.now();
+
+  const doc: OutboxJob = {
+    jobId: id,
+    status: "pending",
+    attempts: 0,
+    lastError: null,
+    leasedBy: null,
+    leaseUntil: null,
+    nextRunAt: now,
+    createdAt: now,
+    updatedAt: now,
+    ...input,
+  };
+
+  await db.collection(COLL).doc(id).set(doc);
+  return id;
+};
+
+export const computeNextBackoffMs = (attempts: number) => {
+  // 2s, 4s, 8s, 16s … capped 5m + jitter
+  const base = 2000;
+  const max = 300000;
+  const jitter = Math.floor(Math.random() * 500);
+  return Math.min(base * 2 ** Math.max(0, attempts), max) + jitter;
+};
+
+export const leasePendingJobs = async (
+  workerId: string,
+  limit = 20,
+  leaseMs = 30000
+) => {
+  const db = dbAdmin();
+  const now = Date.now();
+
+  const snap = await db
+    .collection(COLL)
+    .where("status", "in", ["pending", "fail"])
+    .where("nextRunAt", "<=", now)
+    .orderBy("nextRunAt", "asc")
+    .limit(limit)
+    .get();
+
+  const batch = db.batch();
+  const leased: OutboxJob[] = [];
+
+  for (const d of snap.docs) {
+    const job = d.data() as OutboxJob;
+    const leaseUntil = now + leaseMs;
+    batch.update(d.ref, {
+      status: "leased",
+      leasedBy: workerId,
+      leaseUntil,
+      updatedAt: now,
+    });
+    leased.push({ ...job, status: "leased", leasedBy: workerId, leaseUntil });
+  }
+
+  if (leased.length) await batch.commit();
+  return leased;
+};
+
+export const markOk = async (jobId: string) => {
+  const db = dbAdmin();
+  await db
+    .collection(COLL)
+    .doc(jobId)
+    .set(
+      {
+        status: "ok",
+        updatedAt: Date.now(),
+        leasedBy: null,
+        leaseUntil: null,
+      },
+      { merge: true }
+    );
+};
+
+export const requeue = async (job: OutboxJob, err: unknown) => {
+  const db = dbAdmin();
+  const attempts = (job.attempts ?? 0) + 1;
+  const now = Date.now();
+
+  if (attempts >= 5) {
+    // DLQ
+    await db
+      .collection("outbox_dlq")
+      .doc(job.jobId)
+      .set({ ...job, status: "dead", lastError: String(err), deadAt: now });
+
+    await db.collection(COLL).doc(job.jobId).delete();
+    return;
+  }
+
+  await db
+    .collection(COLL)
+    .doc(job.jobId)
+    .set(
+      {
+        status: "fail",
+        attempts,
+        lastError: String(err),
+        nextRunAt: now + computeNextBackoffMs(attempts),
+        leasedBy: null,
+        leaseUntil: null,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+};
+====[ END FILE: src/server/queue/outbox.ts ]========================================================
+
+====[ START FILE: src/server/queue/rate-limit.ts (1.2 KB) ]=========================================
+// src/server/queue/rate-limit.ts
+type Bucket = { cap: number; rps: number; tokens: number; last: number };
+const B = new Map<string, Bucket>();
+
+function get(k: string, cap: number, rps: number) {
+  const now = Date.now();
+  let b = B.get(k);
+  if (!b) { b = { cap, rps, tokens: cap, last: now }; B.set(k, b); }
+  const dt = Math.max(0, (now - b.last) / 1000);
+  b.tokens = Math.min(b.cap, b.tokens + dt * b.rps);
+  b.last = now;
+  return b;
+}
+export function take(k: string, cap: number, rps: number, cost = 1) {
+  const b = get(k, cap, rps);
+  if (b.tokens >= cost) { b.tokens -= cost; return true; }
+  return false;
+}
+
+export const policy = {
+  sms:   { global: { cap: 200, rps: 80 },  store: { cap: 20, rps: 6 },  provider: { cap: 100, rps: 40 } },
+  email: { global: { cap: 400, rps: 120 }, store: { cap: 50, rps: 12 }, provider: { cap: 200, rps: 60 } },
+};
+
+export const canSend = (storeUid: string, kind: "sms"|"email") => {
+  const P = policy[kind];
+  const g = take(`${kind}:g`, P.global.cap, P.global.rps);
+  const s = take(`${kind}:s:${storeUid}`, P.store.cap, P.store.rps);
+  const p = take(`${kind}:p:${kind==="sms"?"oursms":"dmail"}`, P.provider.cap, P.provider.rps);
+  return g && s && p;
+};
+====[ END FILE: src/server/queue/rate-limit.ts ]====================================================
+
 ====[ START FILE: src/server/rate-limit.ts (914 B) ]================================================
 // src/server/rate-limit.ts
 import { dbAdmin } from '@/lib/firebaseAdmin';
@@ -30160,6 +30833,53 @@ body {
 }
 ====[ END FILE: src/styles/globals.css ]============================================================
 
+====[ START FILE: src/types.ts (1.5 KB) ]===========================================================
+export type Channel = "sms" | "email";
+
+export type OutboxJobStatus = "pending" | "leased" | "ok" | "fail" | "dead";
+export interface OutboxJob {
+  jobId: string;
+  inviteId: string;     // المرجع للدعوة (review_invites/{id})
+  storeUid: string;
+  channels: Channel[];  // ["sms","email"] أو واحدة منهم
+  payload: Record<string, unknown>;
+  status: OutboxJobStatus;
+  attempts: number;
+  lastError?: string | null;
+  leasedBy?: string | null;
+  leaseUntil?: FirebaseFirestore.Timestamp | null;
+  nextRunAt?: FirebaseFirestore.Timestamp | null;
+  createdAt: FirebaseFirestore.Timestamp;
+  updatedAt: FirebaseFirestore.Timestamp;
+}
+
+export interface PlanConfig {
+  code: "TRIAL" | "P30" | "P60" | "P120";
+  monthlyInvites: number;
+}
+
+export interface StoreUsage {
+  plan: { code: PlanConfig["code"]; active: boolean };
+  usage: { invitesUsed: number; monthAnchor?: string | null }; // optional: مرجع دورة سِلّة
+}
+
+export interface ReviewAuthor {
+  show: boolean;              // موافقة على إظهار الاسم
+  name: string | null;        // الاسم الخام (لا نُعيده في public)
+  displayName: string;        // الاسم المعروض فقط
+}
+
+export interface ReviewDoc {
+  id: string;
+  storeUid: string;
+  productId?: string | null;
+  status: "pending" | "approved" | "rejected" | "published";
+  publishedAt?: FirebaseFirestore.Timestamp | null;
+  author: ReviewAuthor;
+  // ... بقية حقول التقييم
+}
+====[ END FILE: src/types.ts ]======================================================================
+
 ====[ START FILE: src/types/api.d.ts (169 B) ]======================================================
 import type { NextApiRequest } from 'next';
 import type { File } from 'multer';
@@ -30475,6 +31195,201 @@ export async function verifyUser(req: NextApiRequest): Promise<{ uid: string; em
 }
 ====[ END FILE: src/utils/verifyUser.ts ]===========================================================
 
+====[ START FILE: src/worker/outbox-worker.ts (5.5 KB) ]============================================
+// src/worker/outbox-worker.ts
+import { dbAdmin } from "@/lib/firebaseAdmin";
+import { leasePendingJobs, markOk, requeue, type OutboxJob } from "@/server/queue/outbox";
+import { canSend } from "@/server/queue/rate-limit";
+import { sendSms, type SendSmsOptions } from "@/server/messaging/send-sms";
+import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const WORKER_ID = `w_${Math.random().toString(36).slice(2, 8)}`;
+
+function nowMs() {
+  return Date.now();
+}
+
+/** ---------- Typed payload instead of any ---------- */
+interface SmsPayload {
+  to?: string;
+  phone?: string;
+  text?: string;
+  smsText?: string;
+}
+interface EmailPayload {
+  emailTo?: string;
+  subject?: string;
+  html?: string;
+  emailHtml?: string;
+}
+type JobPayload = SmsPayload & EmailPayload;
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function asJobPayload(v: unknown): JobPayload {
+  const p: JobPayload = {};
+  if (!isRecord(v)) return p;
+
+  const o = v as Record<string, unknown>;
+  if (typeof o.to === "string") p.to = o.to;
+  if (typeof o.phone === "string") p.phone = o.phone;
+  if (typeof o.text === "string") p.text = o.text;
+  if (typeof o.smsText === "string") p.smsText = o.smsText;
+  if (typeof o.emailTo === "string") p.emailTo = o.emailTo;
+  if (typeof o.subject === "string") p.subject = o.subject;
+  if (typeof o.html === "string") p.html = o.html;
+  if (typeof o.emailHtml === "string") p.emailHtml = o.emailHtml;
+
+  return p;
+}
+/** ----------------------------------------------- */
+
+async function record(
+  inviteId: string,
+  channel: "sms" | "email",
+  r: { ok: boolean; id?: string | null; error?: string | null }
+) {
+  const db = dbAdmin();
+  const at = nowMs();
+  await db.collection("review_invites").doc(inviteId).set(
+    {
+      [`sentChannels.${channel}`]: {
+        ok: r.ok,
+        id: r.id ?? null,
+        error: r.error ?? null,
+        at,
+      },
+      lastSentAt: at,
+    },
+    { merge: true }
+  );
+}
+
+async function incUsage(storeUid: string) {
+  const db = dbAdmin();
+  const ref = db.collection("stores").doc(storeUid);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const used = Number(snap.data()?.usage?.invitesUsed ?? 0) + 1;
+    tx.set(ref, { usage: { invitesUsed: used } }, { merge: true });
+  });
+}
+
+async function handle(job: OutboxJob) {
+  const errs: string[] = [];
+  let anyOk = false;
+
+  const payload = asJobPayload(job.payload);
+
+  for (const ch of job.channels) {
+    if (!canSend(job.storeUid, ch)) {
+      errs.push(`RateLimited:${ch}`);
+      continue;
+    }
+
+    if (ch === "sms") {
+      try {
+        const to = String(payload.to ?? payload.phone ?? "");
+        const text = String(payload.text ?? payload.smsText ?? "");
+        if (!to || !text) throw new Error("missing_sms_fields");
+
+        const opts: SendSmsOptions = { requestDlr: true };
+        const r = await sendSms(to, text, opts);
+
+        anyOk ||= r.ok;
+        await record(job.inviteId, "sms", r);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await record(job.inviteId, "sms", { ok: false, error: msg });
+        errs.push(`sms:${msg}`);
+      }
+    }
+
+    if (ch === "email") {
+      try {
+        const emailTo = String(payload.emailTo ?? "");
+        const subject = String(payload.subject ?? "قيّم تجربتك معنا");
+        const html = String(payload.html ?? payload.emailHtml ?? "");
+        if (!emailTo || !html) throw new Error("missing_email_fields");
+
+        const r = await sendEmail(emailTo, subject, html);
+        anyOk ||= r.ok;
+        await record(job.inviteId, "email", r);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await record(job.inviteId, "email", { ok: false, error: msg });
+        errs.push(`email:${msg}`);
+      }
+    }
+  }
+
+  if (anyOk) {
+    try {
+      await incUsage(job.storeUid);
+    } catch {
+      /* ignore usage increment errors */
+    }
+    await markOk(job.jobId);
+  } else {
+    await requeue(job, errs.join("; "));
+  }
+}
+
+/**
+ * يُنفّذ دفعة واحدة (batch) من outbox_jobs — يعيد عدد الـ jobs التي تم معالجتها
+ */
+async function tick(maxJobs = 20, leaseMs = 30_000): Promise<number> {
+  const jobs = await leasePendingJobs(WORKER_ID, maxJobs, leaseMs);
+  let processed = 0;
+  for (const j of jobs) {
+    try {
+      await handle(j);
+      processed += 1;
+    } catch (e) {
+      await requeue(j, e instanceof Error ? e.message : String(e));
+    }
+  }
+  return processed;
+}
+
+// --- ESM-safe main-module check (بدون require) ---
+const isMainModule = (() => {
+  try {
+    if (!process?.argv?.[1]) return false;
+    const thisFile = path.normalize(fileURLToPath(import.meta.url));
+    const invoked = path.normalize(path.resolve(process.argv[1]));
+    return thisFile === invoked;
+  } catch {
+    return false;
+  }
+})();
+
+if (isMainModule) {
+  (async function loop() {
+    for (;;) {
+      try {
+        await tick(); // الافتراضي
+      } catch {
+        /* ignore loop errors */
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  })();
+}
+
+/** ✅ التصدير:
+ *  - default: runWorkerOnce(maxJobs?, leaseMs?)
+ *  - named  : tick
+ */
+export { tick };
+export const runWorkerOnce = tick;
+export default runWorkerOnce;
+====[ END FILE: src/worker/outbox-worker.ts ]=======================================================
+
 ====[ START FILE: tailwind.config.ts (2.2 KB) ]=====================================================
 // tailwind.config.ts
 import type { Config } from "tailwindcss";
@@ -30762,6 +31677,20 @@ function makeSeparator(title) {
 })();
 ====[ END FILE: tools/dump-project.mjs ]============================================================
 
+====[ START FILE: tools/k6-salla-webhook.js (573 B) ]===============================================
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+
+export const options = { vus: 50, duration: '30s' };
+
+export default function () {
+  const payload = JSON.stringify({ type:"invite.created", data:{ inviteId:"test"+__VU+"_"+__ITER, storeUid:"s:1", channels:["sms"], payload:{to:"+9665...",text:"hi"} }});
+  const res = http.post('http://localhost:3000/api/salla/webhook', payload, { headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+__ENV.SALLA_WEBHOOK_TOKEN }});
+  check(res, { '202': (r)=> r.status===202 });
+  sleep(0.2);
+}
+====[ END FILE: tools/k6-salla-webhook.js ]=========================================================
+
 ====[ START FILE: tsconfig.json (602 B) ]===========================================================
 {
   "compilerOptions": {
@@ -30792,8 +31721,18 @@ function makeSeparator(title) {
 }
 ====[ END FILE: tsconfig.json ]=====================================================================
 
+====[ START FILE: vercel.json (176 B) ]=============================================================
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["fra1"],
+  "crons": [
+    { "path": "/api/jobs/worker-run-once", "schedule": "*/1 * * * *" }
+  ]
+}
+====[ END FILE: vercel.json ]=======================================================================
+
 ====[ SUMMARY ]=====================================================================================
-Total files seen : 214
-Included         : 200
+Total files seen : 227
+Included         : 213
 Skipped          : 14
-Finished at      : 2025-09-20T06:35:49.916Z
+Finished at      : 2025-09-21T19:46:29.329Z
