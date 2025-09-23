@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
 import { buildInviteSMS } from "@/server/messaging/send-sms";
-import { enqueueInviteJob } from "@/server/queue/outbox";
+import { enqueueOutboxJob } from "@/server/queue/outbox";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
@@ -93,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       payload.emailSubject = "قيّم تجربتك معنا (اختبار)";
     }
 //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await enqueueInviteJob({ inviteId, storeUid, channels, payload: payload as any });
+    await enqueueOutboxJob({ inviteId, storeUid, channels, payload: payload as any });
 
     return res.status(200).json({ ok: true, inviteId, tokenId, publicUrl, channels });
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
