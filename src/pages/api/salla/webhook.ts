@@ -591,6 +591,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
   
+  // Method 3: Development/testing fallback - allow requests when no authentication is configured
+  if (!isAuthenticated) {
+    const hasNoAuthConfigured = !process.env.SALLA_WEBHOOK_SECRET && !WEBHOOK_TOKEN;
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    
+    if (hasNoAuthConfigured || (isDevelopment && process.env.SKIP_WEBHOOK_AUTH === 'true')) {
+      console.warn("Webhook authentication bypassed", {
+        reason: hasNoAuthConfigured ? "no_auth_configured" : "development_skip",
+        hasWebhookSecret: !!process.env.SALLA_WEBHOOK_SECRET,
+        hasWebhookToken: !!WEBHOOK_TOKEN,
+        isDevelopment,
+        skipAuth: process.env.SKIP_WEBHOOK_AUTH === 'true',
+        timestamp: Date.now()
+      });
+      isAuthenticated = true;
+    }
+  }
+  
   if (!isAuthenticated) {
     console.error("Webhook authentication failed - neither signature nor token verification succeeded", {
       hasSallaSignature: !!sallaSignature,
