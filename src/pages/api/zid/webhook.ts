@@ -19,7 +19,7 @@ interface ZidOrder {
 }
 interface ZidWebhookBody { event?: string; data?: ZidOrder | UnknownRecord; }
 
-const DONE = new Set(["paid", "delivered", "completed", "complete"]);
+const DONE = new Set(["delivered", "completed", "complete"]);
 const CANCEL = new Set(["canceled", "cancelled", "refunded", "returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 
