@@ -25,6 +25,17 @@ function toDomainBase(domain: string | null | undefined): string | null {
   }
 }
 
+function encodeUrlForFirestore(url: string | null | undefined): string {
+  if (!url) return "";
+  // Replace problematic characters with safe alternatives for Firestore document IDs
+  return url
+    .replace(/:/g, "_COLON_")  // Replace : with _COLON_
+    .replace(/\//g, "_SLASH_") // Replace / with _SLASH_
+    .replace(/\?/g, "_QUEST_") // Replace ? with _QUEST_
+    .replace(/#/g, "_HASH_")   // Replace # with _HASH_
+    .replace(/&/g, "_AMP_");   // Replace & with _AMP_
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
@@ -61,8 +72,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } else {
         // جرب البحث عبر مجموعة domains أولاً (optimized lookup)
         try {
-          const domainDoc = await db.collection("domains").doc(base).get();
-          if (domainDoc.exists) {
+          // Try encoded URL first (new format)
+          const encodedBase = encodeUrlForFirestore(base);
+          let domainDoc = await db.collection("domains").doc(encodedBase).get();
+          
+          // If not found, try the original URL as a fallback (backward compatibility)
+          if (!domainDoc.exists) {
+            try {
+              domainDoc = await db.collection("domains").doc(base).get();
+            } catch {
+              // Ignore errors from invalid document paths (original URLs with slashes)
+            }
+          }
+          
+          if (domainDoc && domainDoc.exists) {
             const domainData = domainDoc.data();
             const storeUid = domainData?.storeUid;
             if (storeUid) {
@@ -80,8 +103,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (!doc) {
             const normalizedBase = toDomainBase(base);
             if (normalizedBase && normalizedBase !== base) {
-              const normalizedDomainDoc = await db.collection("domains").doc(normalizedBase).get();
-              if (normalizedDomainDoc.exists) {
+              // Try encoded normalized URL first (new format)
+              const encodedNormalizedBase = encodeUrlForFirestore(normalizedBase);
+              let normalizedDomainDoc = await db.collection("domains").doc(encodedNormalizedBase).get();
+              
+              // If not found, try the original normalized URL as a fallback (backward compatibility)
+              if (!normalizedDomainDoc.exists) {
+                try {
+                  normalizedDomainDoc = await db.collection("domains").doc(normalizedBase).get();
+                } catch {
+                  // Ignore errors from invalid document paths
+                }
+              }
+              
+              if (normalizedDomainDoc && normalizedDomainDoc.exists) {
                 const domainData = normalizedDomainDoc.data();
                 const storeUid = domainData?.storeUid;
                 if (storeUid) {
