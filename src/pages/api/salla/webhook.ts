@@ -364,6 +364,8 @@ async function handleAppEvent(
     // 🆕 إرسال إيميل ترحيب للتاجر (متطلبات سلة - Easy mode)
     if (merchantEmail && storeName && merchant) {
       try {
+        console.log(`محاولة إرسال إيميل ترحيب للتاجر: ${merchantEmail} للمتجر: ${storeName} (${merchant})`);
+        
         await sendMerchantWelcomeEmail({
           merchantEmail,
           storeName,
@@ -371,11 +373,53 @@ async function handleAppEvent(
           domain: domain || undefined,
           accessToken: access_token,
         });
-        console.log(`تم إرسال إيميل الترحيب للتاجر: ${merchantEmail}`);
+        
+        console.log(`✅ تم إرسال إيميل الترحيب بنجاح للتاجر: ${merchantEmail}`);
+        
+        // حفظ معلومات إرسال الإيميل في قاعدة البيانات للمراجعة
+        await db.collection("merchant_welcome_emails").add({
+          merchantEmail,
+          storeName,
+          storeId: merchant,
+          uid,
+          domain,
+          sentAt: Date.now(),
+          status: "sent",
+        });
+        
       } catch (emailError) {
-        console.error('فشل في إرسال إيميل الترحيب:', emailError);
+        console.error('❌ فشل في إرسال إيميل الترحيب:', {
+          error: emailError,
+          merchantEmail,
+          storeName,
+          storeId: merchant,
+          uid,
+          domain,
+          timestamp: new Date().toISOString()
+        });
+        
+        // حفظ معلومات فشل إرسال الإيميل للمراجعة
+        await db.collection("merchant_welcome_emails").add({
+          merchantEmail,
+          storeName,
+          storeId: merchant,
+          uid,
+          domain,
+          sentAt: Date.now(),
+          status: "failed",
+          error: emailError instanceof Error ? emailError.message : String(emailError),
+        });
+        
         // لا نوقف العملية حتى لو فشل الإيميل
       }
+    } else {
+      console.warn('⚠️ لم يتم إرسال إيميل الترحيب - معلومات ناقصة:', {
+        merchantEmail: !!merchantEmail,
+        storeName: !!storeName,
+        merchant: !!merchant,
+        uid,
+        domain
+      });
     }
   }
 

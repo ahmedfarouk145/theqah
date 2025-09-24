@@ -13,6 +13,18 @@ function parseHrefBase(raw: unknown): { base: string; host: string } {
   }
 }
 
+function toDomainBase(domain: string | null | undefined): string | null {
+  if (!domain) return null;
+  try {
+    const u = new URL(String(domain));
+    const origin = u.origin.toLowerCase();
+    const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
+    return firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
@@ -36,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let doc = null;
 
     if (base) {
-      // البحث عبر الدومين فقط
+      // البحث عبر الدومين فقط - أولاً جرب البحث المباشر
       const snap = await db.collection("stores")
         .where("salla.domain", "==", base)
         .where("salla.connected", "==", true)
@@ -47,26 +59,72 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!snap.empty) {
         doc = snap.docs[0];
       } else {
-        // جرب بعض التنسيقات الأخرى للدومين
-        const domainVariations = [
-          base,
-          base.replace(/^https?:\/\//, ""),
-          base.replace(/^https?:\/\//, "").replace(/^www\./, ""),
-          `https://${host}`,
-          `http://${host}`,
-          host,
-          `www.${host}`
-        ];
-        for (const variation of domainVariations) {
-          const snapVar = await db.collection("stores")
-            .where("salla.domain", "==", variation)
-            .where("salla.connected", "==", true)
-            .where("salla.installed", "==", true)
-            .limit(1)
-            .get();
-          if (!snapVar.empty) {
-            doc = snapVar.docs[0];
-            break;
+        // جرب البحث عبر مجموعة domains أولاً (optimized lookup)
+        try {
+          const domainDoc = await db.collection("domains").doc(base).get();
+          if (domainDoc.exists) {
+            const domainData = domainDoc.data();
+            const storeUid = domainData?.storeUid;
+            if (storeUid) {
+              const storeDoc = await db.collection("stores").doc(storeUid).get();
+              if (storeDoc.exists) {
+                const storeData = storeDoc.data();
+                if (storeData?.["salla.connected"] === true && storeData?.["salla.installed"] === true) {
+                  doc = storeDoc;
+                }
+              }
+            }
+          }
+          
+          // جرب أيضاً البحث بالتنسيق المعياري للدومين
+          if (!doc) {
+            const normalizedBase = toDomainBase(base);
+            if (normalizedBase && normalizedBase !== base) {
+              const normalizedDomainDoc = await db.collection("domains").doc(normalizedBase).get();
+              if (normalizedDomainDoc.exists) {
+                const domainData = normalizedDomainDoc.data();
+                const storeUid = domainData?.storeUid;
+                if (storeUid) {
+                  const storeDoc = await db.collection("stores").doc(storeUid).get();
+                  if (storeDoc.exists) {
+                    const storeData = storeDoc.data();
+                    if (storeData?.["salla.connected"] === true && storeData?.["salla.installed"] === true) {
+                      doc = storeDoc;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (domainLookupError) {
+          console.warn("[resolve] domain lookup failed:", domainLookupError);
+        }
+
+        // إذا لم نجد في domains، جرب التنسيقات المختلفة للدومين
+        if (!doc) {
+          const normalizedBase = toDomainBase(base);
+          const domainVariations = [
+            base,
+            normalizedBase,
+            base.replace(/^https?:\/\//, ""),
+            base.replace(/^https?:\/\//, "").replace(/^www\./, ""),
+            `https://${host}`,
+            `http://${host}`,
+            host,
+            `www.${host}`
+          ].filter((v, i, arr) => v && arr.indexOf(v) === i); // إزالة المكرر والقيم الفارغة
+          
+          for (const variation of domainVariations) {
+            const snapVar = await db.collection("stores")
+              .where("salla.domain", "==", variation)
+              .where("salla.connected", "==", true)
+              .where("salla.installed", "==", true)
+              .limit(1)
+              .get();
+            if (!snapVar.empty) {
+              doc = snapVar.docs[0];
+              break;
+            }
           }
         }
       }
@@ -113,10 +171,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (!doc) {
+      // إضافة معلومات أكثر للتشخيص
+      console.warn("[resolve] Store not found:", {
+        baseTried: base,
+        host: host,
+        href: href,
+        timestamp: new Date().toISOString()
+      });
+      
       return res.status(404).json({
         error: "STORE_NOT_FOUND",
         message: "لم يتم العثور على متجر لهذا الدومين أو المعرف. تأكد من أن التطبيق مثبت وأن الدومين أو المعرف مسجل.",
-        baseTried: base
+        baseTried: base,
+        hostTried: host,
+        debug: {
+          parsedBase: base,
+          parsedHost: host,
+          originalHref: href
+        }
       });
     }
 
@@ -130,6 +202,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!resolvedUid) {
       return res.status(404).json({ error: "UID_NOT_FOUND_FOR_DOMAIN", baseTried: base });
     }
+    
+    // إضافة معلومات نجاح للتشخيص
+    console.log("[resolve] Store resolved successfully:", {
+      resolvedUid,
+      baseTried: base,
+      host: host,
+      timestamp: new Date().toISOString()
+    });
+    
     return res.status(200).json({ storeUid: resolvedUid });
   } catch (e) {
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
