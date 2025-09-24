@@ -40,6 +40,8 @@ export async function sendEmailDmail(
   });
 
   try {
+    console.log(`محاولة إرسال إيميل إلى: ${to} باستخدام SMTP: ${host}:${port}`);
+    
     const info = await transporter.sendMail({
       from,
       to,
@@ -47,9 +49,13 @@ export async function sendEmailDmail(
       html,
       text: textFallback ?? stripHtml(html),
     });
+    
+    console.log(`✅ تم إرسال الإيميل بنجاح - Message ID: ${info.messageId}`);
+    
     return { ok: true, id: info.messageId || null };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    console.error(`❌ فشل في إرسال الإيميل إلى ${to}:`, { error: msg, subject });
     return { ok: false, error: msg };
   }
 }
