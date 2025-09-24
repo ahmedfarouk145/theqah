@@ -4,6 +4,7 @@ import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
 import { buildInviteSMS, sendSms } from "@/server/messaging/send-sms";
 import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
+import { verifySallaWebhook } from "@/server/salla/webhook-verify";
 
 // 🔸 الجديد:
 import { canSendInvite } from "@/server/billing/usage";
@@ -53,6 +54,51 @@ const CANCEL= new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const keyOf = (event: string, orderId?: string, status?: string) =>
   `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
+
+// Helper to safely extract string values from potentially nested objects
+function safeStringExtract(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (typeof value === "object" && value !== null) {
+    // If it's an object, try to extract common status properties
+    const obj = value as Record<string, unknown>;
+    // Try common status field names
+    const statusValue = obj.status || obj.name || obj.value || obj.state || obj.text || obj.label;
+    if (typeof statusValue === "string") return statusValue;
+    if (typeof statusValue === "number") return String(statusValue);
+  }
+  return "";
+}
+
+// Helper to extract customer name with fallback logic
+function extractCustomerName(customer: unknown): string | null {
+  if (!customer || typeof customer !== "object") return null;
+  
+  const cust = customer as Record<string, unknown>;
+  
+  // Try different possible name fields
+  const nameFields = [
+    'name', 'full_name', 'fullName', 'customer_name', 'customerName',
+    'first_name', 'firstName', 'display_name', 'displayName'
+  ];
+  
+  for (const field of nameFields) {
+    const value = cust[field];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  
+  // If no direct name field, try combining first and last name
+  const firstName = cust.first_name || cust.firstName;
+  const lastName = cust.last_name || cust.lastName;
+  if (typeof firstName === "string" && typeof lastName === "string") {
+    return `${firstName} ${lastName}`.trim();
+  }
+  
+  return null;
+}
 
 function readRawBody(req: NextApiRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -143,10 +189,10 @@ async function upsertOrderSnapshot(
   await db.collection("orders").doc(orderId).set({
     id: orderId,
     number: order.number ?? null,
-    status: lc(order.status ?? order.order_status ?? order.new_status ?? order.shipment_status ?? ""),
-    paymentStatus: lc(order.payment_status ?? ""),
+    status: lc(safeStringExtract(order.status) || safeStringExtract(order.order_status) || safeStringExtract(order.new_status) || safeStringExtract(order.shipment_status) || ""),
+    paymentStatus: lc(safeStringExtract(order.payment_status)),
     customer: {
-      name: order.customer?.name ?? null,
+      name: extractCustomerName(order.customer),
       email: order.customer?.email ?? null,
       mobile: order.customer?.mobile ?? null,
     },
@@ -201,7 +247,11 @@ async function createInviteTokenAndDoc(
   const inviteRef = await db.collection("review_invites").add({
     tokenId, orderId, platform: "salla",
     storeUid, productId: mainProductId, productIds,
-    customer: { name: buyer.name ?? null, email: buyer.email ?? null, mobile: buyer.mobile ?? null },
+    customer: { 
+      name: extractCustomerName(buyer), 
+      email: buyer.email ?? null, 
+      mobile: buyer.mobile ?? null 
+    },
     sentAt: Date.now(), deliveredAt: null, clicks: 0, publicUrl,
   });
 
@@ -238,7 +288,7 @@ async function sendInviteDirectly(
   // تجهيز الرسائل والإرسال المباشر
   const buyer = order.customer ?? {};
   const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
-  const name = buyer.name || "عميلنا العزيز";
+  const name = extractCustomerName(buyer) || "عميلنا العزيز";
   const smsText = buildInviteSMS(storeName, seed.publicUrl!);
   const emailHtml = `
     <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
@@ -506,13 +556,49 @@ async function handleAppEvent(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
-  // ✅ auth (Bearer / x-webhook-token / x-salla-token / ?t=)
-  const provided = extractProvidedToken(req);
-  if (!WEBHOOK_TOKEN || !provided || !timingSafeEq(provided, WEBHOOK_TOKEN)) {
-    return res.status(401).json({ error: "invalid_webhook_token" });
+  const raw = await readRawBody(req);
+  
+  // ✅ Enhanced authentication supporting both token and signature verification
+  let isAuthenticated = false;
+  
+  // Method 1: Signature-based verification (preferred by Salla)
+  const sallaSignature = getHeader(req, "x-salla-signature");
+  if (sallaSignature) {
+    isAuthenticated = verifySallaWebhook(raw, sallaSignature);
+    if (!isAuthenticated) {
+      console.warn("Salla webhook signature verification failed", {
+        hasSignature: !!sallaSignature,
+        hasSecret: !!process.env.SALLA_WEBHOOK_SECRET,
+        timestamp: Date.now()
+      });
+    }
+  }
+  
+  // Method 2: Token-based verification (fallback)
+  if (!isAuthenticated) {
+    const provided = extractProvidedToken(req);
+    if (WEBHOOK_TOKEN && provided && timingSafeEq(provided, WEBHOOK_TOKEN)) {
+      isAuthenticated = true;
+    } else if (provided) {
+      console.warn("Webhook token verification failed", {
+        hasToken: !!WEBHOOK_TOKEN,
+        hasProvided: !!provided,
+        timestamp: Date.now()
+      });
+    }
+  }
+  
+  if (!isAuthenticated) {
+    console.error("Webhook authentication failed - neither signature nor token verification succeeded", {
+      hasSallaSignature: !!sallaSignature,
+      hasProvidedToken: !!extractProvidedToken(req),
+      hasWebhookSecret: !!process.env.SALLA_WEBHOOK_SECRET,
+      hasWebhookToken: !!WEBHOOK_TOKEN,
+      timestamp: Date.now()
+    });
+    return res.status(401).json({ error: "authentication_failed" });
   }
 
-  const raw = await readRawBody(req);
   const db = dbAdmin();
 
   let body: SallaWebhookBody = { event: "" };
@@ -527,15 +613,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const asOrder = dataRaw as SallaOrder;
 
   // Idempotency (قبل أي عمل ثقيل)
-  const idemKey = crypto.createHash("sha256").update(provided + "|").update(raw).digest("hex");
+  const providedToken = extractProvidedToken(req);
+  const idemKey = crypto.createHash("sha256").update((providedToken || sallaSignature || "") + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
   if ((await idemRef.get()).exists) return res.status(200).json({ ok: true, deduped: true });
   await idemRef.set({
     at: Date.now(),
     event,
     orderId: String(asOrder.id ?? asOrder.order_id ?? "") || null,
-    status: lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? ""),
-    paymentStatus: lc(asOrder.payment_status ?? ""),
+    status: lc(safeStringExtract(asOrder.status) || safeStringExtract(asOrder.order_status) || safeStringExtract(asOrder.new_status) || safeStringExtract(asOrder.shipment_status) || ""),
+    paymentStatus: lc(safeStringExtract(asOrder.payment_status)),
     merchant: body.merchant ?? null,
   });
 
@@ -548,8 +635,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // أوامر الطلبات / الشحن
   const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
-  const status = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
-  const paymentStatus = lc(asOrder.payment_status ?? "");
+  const status = lc(safeStringExtract(asOrder.status) || safeStringExtract(asOrder.order_status) || safeStringExtract(asOrder.new_status) || safeStringExtract(asOrder.shipment_status) || "");
+  const paymentStatus = lc(safeStringExtract(asOrder.payment_status));
   const storeUidFromEvent = pickStoreUidFromSalla(dataRaw) || null;
 
   await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
