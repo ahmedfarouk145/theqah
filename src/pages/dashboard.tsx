@@ -10,6 +10,9 @@ import SupportTab from '@/components/dashboard/Support';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import axios from '@/lib/axiosInstance';
+import { motion } from 'framer-motion';
+import { Loader2, Lock } from 'lucide-react';
+import Link from 'next/link';
 
 const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', 'الإعدادات', 'المساعدة'] as const;
 type Tab = (typeof tabs)[number];
@@ -120,10 +123,44 @@ export default function DashboardPage() {
   }, [storeLoading, storeName]);
 
   // ملاحظة: لو حاب تمنع الوصول بدون لوجين، احتفظ بالشرط التالي:
-  if (authLoading) return <p>جارٍ التحقق من حالة تسجيل الدخول…</p>;
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+          <p className="text-gray-600">جارٍ التحقق من حالة تسجيل الدخول…</p>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (!userPresent) {
-    // تقدر تخليه يسمح بعرض الإعدادات الأساسية حتى بدون لوجين لو حاب
-    return <p className="text-red-600">مطلوب تسجيل الدخول للوصول للوحة التحكم.</p>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg text-center"
+          dir="rtl"
+        >
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="h-8 w-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">يرجى تسجيل الدخول</h2>
+          <p className="text-gray-600 mb-6">مطلوب تسجيل الدخول للوصول للوحة التحكم.</p>
+          <Link 
+            href="/login"
+            className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+          >
+            تسجيل الدخول
+          </Link>
+        </motion.div>
+      </div>
+    );
   }
 
   return (

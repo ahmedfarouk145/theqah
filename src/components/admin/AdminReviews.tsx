@@ -39,7 +39,6 @@ import {
   Edit3,
   Lock,
   Loader2,
-  CheckCircle,
   AlertTriangle,
 } from 'lucide-react';
 
@@ -462,16 +461,16 @@ export default function AdminReviews() {
                 </motion.div>
                 <CardTitle className="text-xl mb-2 text-muted-foreground">لا توجد تقييمات</CardTitle>
                 <CardDescription className="text-lg mb-4">
-                  {searchTerm || statusFilter !== 'all' 
+                  {searchTerm || publishedFilter !== 'all' 
                     ? "لا توجد تقييمات تطابق معايير البحث" 
                     : "لم يتم استلام أي تقييمات بعد"}
                 </CardDescription>
-                {(searchTerm || statusFilter !== 'all') && (
+                {(searchTerm || publishedFilter !== 'all') && (
                   <Button 
                     variant="outline" 
                     onClick={() => {
                       setSearchTerm('');
-                      setStatusFilter('all');
+                      setPublishedFilter('all');
                     }}
                     className="hover:scale-105 transition-transform"
                   >
@@ -480,21 +479,6 @@ export default function AdminReviews() {
                 )}
               </Card>
             </motion.div>
-              {(searchTerm || storeFilter || starsFilter || publishedFilter !== 'all') && (
-                <Button
-                  variant="link"
-                  className="mt-2"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setStoreFilter('');
-                    setStarsFilter('all');
-                    setPublishedFilter('all');
-                  }}
-                >
-                  مسح جميع الفلاتر
-                </Button>
-              )}
-            </Card>
           ) : (
             filteredReviews.map((review) => (
               <Card
