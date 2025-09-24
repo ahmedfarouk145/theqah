@@ -2,10 +2,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
-import { buildInviteSMS } from "@/server/messaging/send-sms";
+import { buildInviteSMS, sendSms } from "@/server/messaging/send-sms";
+import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
 
 // 🔸 الجديد:
-import { enqueueOutboxJob } from "@/server/queue/outbox";
 import { canSendInvite } from "@/server/billing/usage";
 import { getPlanConfig, type PlanCode } from "@/server/billing/plans";
 import { sendMerchantWelcomeEmail } from "@/server/messaging/merchant-welcome";
@@ -197,69 +197,63 @@ async function createInviteTokenAndDoc(
   return { inviteId: inviteRef.id, tokenId, publicUrl, storeUid, productIds };
 }
 
-// -------------------- إنكيو (بدون إرسال مباشر) --------------------
-async function enqueueInviteForOrder(
+// -------------------- إرسال مباشر (بدون إنكيو) --------------------
+async function sendInviteDirectly(
   db: FirebaseFirestore.Firestore,
   order: SallaOrder,
   eventRaw: UnknownRecord
 ) {
   const orderId = String(order.id ?? order.order_id ?? "");
-  if (!orderId) return { queued: false, reason: "missing_order_id" };
+  if (!orderId) return { sent: false, reason: "missing_order_id" };
 
   // idempotency على دعوات الطلب
   const exists = await db.collection("review_invites").where("orderId","==",orderId).limit(1).get();
-  if (!exists.empty) return { queued: false, reason: "already_invited" };
+  if (!exists.empty) return { sent: false, reason: "already_invited" };
 
   // إنشاء التوكن + مستند الدعوة
   const seed = await createInviteTokenAndDoc(db, order, eventRaw);
-  if (!seed.inviteId || !seed.storeUid) return { queued: false, reason: "token_create_failed" };
+  if (!seed.inviteId || !seed.storeUid) return { sent: false, reason: "token_create_failed" };
 
-  // التحقق من الباقة قبل الإنكيو
+  // التحقق من الباقة قبل الإرسال
   const quota = await canSendInvite(seed.storeUid);
   if (!quota.ok) {
     await db.collection("review_invites").doc(seed.inviteId).set({
       quotaDeniedAt: Date.now(),
       quotaReason: quota.reason,
     }, { merge: true });
-    return { queued: false, reason: `quota:${quota.reason}` };
+    return { sent: false, reason: `quota:${quota.reason}` };
   }
 
-  // تجهيز القنوات + الحمولة
+  // تجهيز الرسائل والإرسال المباشر
   const buyer = order.customer ?? {};
   const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
+  const name = buyer.name || "عميلنا العزيز";
   const smsText = buildInviteSMS(storeName, seed.publicUrl!);
+  const emailHtml = `
+    <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
+      <p>مرحباً ${name},</p>
+      <p>قيّم تجربتك من <strong>${storeName}</strong>.</p>
+      <p><a href="${seed.publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
+      <p style="color:#64748b">فريق ثقة</p>
+    </div>
+  `;
 
-  const channels: ("sms"|"email")[] = [];
-  const payload: Record<string, unknown> = { inviteId: seed.inviteId, orderId, storeUid: seed.storeUid };
-
+  // إرسال الرسائل مباشرة
+  const tasks: Array<Promise<unknown>> = [];
   if (buyer.mobile) {
-    channels.push("sms");
-    payload.phone   = String(buyer.mobile).replace(/\s+/g, "");
-    payload.smsText = smsText;
+    const mobile = String(buyer.mobile).replace(/\s+/g, "");
+    tasks.push(sendSms(mobile, smsText));
   }
   if (buyer.email) {
-    channels.push("email");
-    payload.emailTo     = String(buyer.email);
-    payload.emailHtml   = `
-      <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
-        <p>مرحباً ${buyer.name || "عميلنا العزيز"},</p>
-        <p>قيّم تجربتك من <strong>${storeName}</strong>.</p>
-        <p><a href="${seed.publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
-        <p style="color:#64748b">فريق ثقة</p>
-      </div>`;
-    payload.emailSubject = "قيّم تجربتك معنا";
+    tasks.push(sendEmail(buyer.email, "قيّم تجربتك معنا", emailHtml));
   }
 
-  if (!channels.length) return { queued: false, reason: "no_channels" };
+  if (!tasks.length) return { sent: false, reason: "no_channels" };
 
-  await enqueueOutboxJob({
-    inviteId: seed.inviteId,
-    storeUid: seed.storeUid!,
-    channels,
-    payload,
-  });
+  // تنفيذ الإرسال
+  await Promise.allSettled(tasks);
 
-  return { queued: true, inviteId: seed.inviteId, channels };
+  return { sent: true, inviteId: seed.inviteId, channels: tasks.length };
 }
 
 async function voidInvitesForOrder(db: FirebaseFirestore.Firestore, orderId: string, reason: string) {
@@ -545,13 +539,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
 
-  // 🔸 Fast-ACK + ENQUEUE فقط (بدون إرسال مباشر)
-  let shouldQueue = false;
+  // 🔸 Fast-ACK + إرسال مباشر (بدون إنكيو)
+  let shouldSend = false;
   // إرسال الرسائل فقط عند اكتمال الطلب، ليس عند الدفع
   if (event === "shipment.updated") {
-    if (DONE.has(status) || ["delivered","completed"].includes(status)) shouldQueue = true;
+    if (DONE.has(status) || ["delivered","completed"].includes(status)) shouldSend = true;
   } else if (event === "order.status.updated") {
-    if (DONE.has(status)) shouldQueue = true;
+    if (DONE.has(status)) shouldSend = true;
   } else if (event === "order.cancelled") {
     await voidInvitesForOrder(db, orderId, "order_cancelled");
   } else if (event === "order.refunded") {
@@ -561,15 +555,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // ✅ ACK سريع دائمًا
   res.status(202).json({ ok: true, accepted: true, event });
 
-  // 🧵 نفّذ الإنكيو بعد الرد (لا تنتظر الإرسال)
+  // 🧵 نفّذ الإرسال المباشر بعد الرد
   try {
-    if (shouldQueue) {
-      await enqueueInviteForOrder(db, asOrder, dataRaw);
+    if (shouldSend) {
+      await sendInviteDirectly(db, asOrder, dataRaw);
     }
   } catch (e) {
-    // لو فشل الإنكيو نسجله للمتابعة
+    // لو فشل الإرسال نسجله للمتابعة
     await db.collection("webhook_errors").add({
-      at: Date.now(), scope: "enqueueInviteForOrder", event, orderId, error: e instanceof Error ? e.message : String(e),
+      at: Date.now(), scope: "sendInviteDirectly", event, orderId, error: e instanceof Error ? e.message : String(e),
     }).catch(()=>{});
   }
 }
