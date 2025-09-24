@@ -5,6 +5,7 @@ import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import axios from '@/lib/axiosInstance';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,8 @@ import {
   CalendarClock,
   Edit3,
   Lock,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface Review {
@@ -371,54 +374,111 @@ export default function AdminReviews() {
       </Card>
 
       {loading && (
-        <div className="grid gap-4">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="border border-border/60">
-              <CardContent className="pt-6">
-                <div className="animate-pulse space-y-4">
-                  <div className="h-5 w-1/3 bg-muted rounded" />
-                  <div className="h-4 w-2/3 bg-muted rounded" />
-                  <div className="h-20 w-full bg-muted rounded" />
-                </div>
-              </CardContent>
-            </Card>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="grid gap-4"
+        >
+          <div className="flex items-center justify-center py-8">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="text-muted-foreground font-medium">جارٍ تحميل التقييمات...</span>
+            </div>
+          </div>
+          {[1, 2, 3].map((i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+            >
+              <Card className="border border-border/60">
+                <CardContent className="pt-6">
+                  <div className="animate-pulse space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="h-5 w-1/3 bg-muted rounded" />
+                      <div className="h-6 w-20 bg-muted rounded-full" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 bg-muted rounded" />
+                      <div className="h-4 w-2/3 bg-muted rounded" />
+                    </div>
+                    <div className="h-20 w-full bg-muted rounded" />
+                    <div className="flex gap-2">
+                      <div className="h-8 w-16 bg-muted rounded" />
+                      <div className="h-8 w-16 bg-muted rounded" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {error && (
-        <Alert variant="destructive" className="animate-fade-in" aria-live="assertive" role="alert">
-          <AlertTitle>حدث خطأ</AlertTitle>
-          <AlertDescription className="flex items-center justify-between w-full">
-            <span>⚠️ {error}</span>
-            <Button size="sm" variant="secondary" onClick={fetchReviews}>
-              إعادة المحاولة
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Alert variant="destructive" className="animate-fade-in border-2" aria-live="assertive" role="alert">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertTitle className="flex items-center gap-2">
+              حدث خطأ أثناء تحميل التقييمات
+            </AlertTitle>
+            <AlertDescription className="mt-2">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <span>{error}</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="secondary" onClick={fetchReviews} className="hover:scale-105 transition-transform">
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    إعادة المحاولة
+                  </Button>
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </motion.div>
       )}
 
       {!loading && !error && (
         <div className="space-y-4">
           {filteredReviews.length === 0 ? (
-            <Card className="p-10 text-center animate-fade-in border border-border/60">
-              <div className="text-5xl mb-3">📝</div>
-              <CardDescription className="text-lg">لا توجد تقييمات تطابق معايير البحث</CardDescription>
-              {(searchTerm || storeFilter || starsFilter || publishedFilter !== 'all') && (
-                <Button
-                  variant="link"
-                  className="mt-2"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setStoreFilter('');
-                    setStarsFilter('all');
-                    setPublishedFilter('all');
-                  }}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Card className="p-12 text-center animate-fade-in border border-border/60 bg-gradient-to-br from-muted/20 to-muted/5">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                  className="text-6xl mb-4"
                 >
-                  مسح جميع الفلاتر
-                </Button>
-              )}
-            </Card>
+                  📝
+                </motion.div>
+                <CardTitle className="text-xl mb-2 text-muted-foreground">لا توجد تقييمات</CardTitle>
+                <CardDescription className="text-lg mb-4">
+                  {searchTerm || publishedFilter !== 'all' 
+                    ? "لا توجد تقييمات تطابق معايير البحث" 
+                    : "لم يتم استلام أي تقييمات بعد"}
+                </CardDescription>
+                {(searchTerm || publishedFilter !== 'all') && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setSearchTerm('');
+                      setPublishedFilter('all');
+                    }}
+                    className="hover:scale-105 transition-transform"
+                  >
+                    مسح الفلاتر
+                  </Button>
+                )}
+              </Card>
+            </motion.div>
           ) : (
             filteredReviews.map((review) => (
               <Card
