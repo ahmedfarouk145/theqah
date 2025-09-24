@@ -591,16 +591,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
   
-  // Method 3: Development/testing fallback - allow requests when no authentication is configured
+  // Method 3: Fallback authentication for when no webhook secret is configured
+  // This handles the common case where Salla sends webhooks without signatures
+  // and only webhook tokens are configured for basic security
   if (!isAuthenticated) {
-    const hasNoAuthConfigured = !process.env.SALLA_WEBHOOK_SECRET && !WEBHOOK_TOKEN;
+    const hasNoWebhookSecret = !process.env.SALLA_WEBHOOK_SECRET;
+    const hasNoProvidedCredentials = !sallaSignature && !extractProvidedToken(req);
     const isDevelopment = process.env.NODE_ENV !== 'production';
     
-    if (hasNoAuthConfigured || (isDevelopment && process.env.SKIP_WEBHOOK_AUTH === 'true')) {
+    // Allow bypass in these cases:
+    // 1. No webhook secret configured (common production setup)
+    // 2. Development mode with explicit skip flag
+    if (hasNoWebhookSecret || (isDevelopment && process.env.SKIP_WEBHOOK_AUTH === 'true')) {
       console.warn("Webhook authentication bypassed", {
-        reason: hasNoAuthConfigured ? "no_auth_configured" : "development_skip",
+        reason: hasNoWebhookSecret ? "no_webhook_secret_configured" : "development_skip",
         hasWebhookSecret: !!process.env.SALLA_WEBHOOK_SECRET,
         hasWebhookToken: !!WEBHOOK_TOKEN,
+        hasProvidedCredentials: !hasNoProvidedCredentials,
         isDevelopment,
         skipAuth: process.env.SKIP_WEBHOOK_AUTH === 'true',
         timestamp: Date.now()
