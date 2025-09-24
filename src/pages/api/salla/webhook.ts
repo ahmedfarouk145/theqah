@@ -8,6 +8,7 @@ import { buildInviteSMS } from "@/server/messaging/send-sms";
 import { enqueueOutboxJob } from "@/server/queue/outbox";
 import { canSendInvite } from "@/server/billing/usage";
 import { getPlanConfig, type PlanCode } from "@/server/billing/plans";
+import { sendMerchantWelcomeEmail } from "@/server/messaging/merchant-welcome";
 
 export const config = { api: { bodyParser: false } };
 
@@ -301,15 +302,21 @@ async function handleAppEvent(
       }, { merge: true });
     }
 
-    // جلب معلومات المتجر (domain) وكتابة فهرس domains
+    // 🆕 جلب معلومات المتجر والتاجر (متطلبات سلة - Get user information)
     let domain: string | null = null;
+    let storeName: string | null = null;
+    let merchantEmail: string | null = null;
+    
     try {
-      const resp = await fetch("https://api.salla.dev/admin/v2/store/info", {
+      // جلب معلومات المتجر
+      const storeResp = await fetch("https://api.salla.dev/admin/v2/store/info", {
         headers: { Authorization: `Bearer ${access_token}` }
       });
-      if (resp.ok) {
-        const storeInfo = await resp.json();
+      if (storeResp.ok) {
+        const storeInfo = await storeResp.json();
         domain = storeInfo.data?.domain || storeInfo.data?.url || null;
+        storeName = storeInfo.data?.name || null;
+        
         if (domain) {
           await db.collection("stores").doc(uid).set({ "salla.domain": domain }, { merge: true });
           const base = toDomainBase(domain);
@@ -318,7 +325,30 @@ async function handleAppEvent(
           }
         }
       }
-    } catch {}
+
+      // 🆕 جلب معلومات التاجر (صاحب المتجر)
+      try {
+        const userResp = await fetch("https://api.salla.dev/admin/v2/user/info", {
+          headers: { Authorization: `Bearer ${access_token}` }
+        });
+        if (userResp.ok) {
+          const userInfo = await userResp.json();
+          merchantEmail = userInfo.data?.email || null;
+          
+          // حفظ معلومات التاجر
+          if (merchantEmail) {
+            await db.collection("stores").doc(uid).set({
+              "salla.merchantEmail": merchantEmail,
+              "salla.merchantName": userInfo.data?.name || null,
+            }, { merge: true });
+          }
+        }
+      } catch (userFetchError) {
+        console.warn('فشل في جلب معلومات التاجر:', userFetchError);
+      }
+    } catch (fetchError) {
+      console.warn('فشل في جلب معلومات المتجر:', fetchError);
+    }
 
     await db.collection("stores").doc(uid).set({
       uid, platform: "salla",
@@ -326,9 +356,27 @@ async function handleAppEvent(
       "salla.connected": true,
       "salla.installed": true,
       "salla.domain": domain,
+      "salla.storeName": storeName,
       "salla.installedAt": Date.now(),
       updatedAt: Date.now(),
     }, { merge: true });
+
+    // 🆕 إرسال إيميل ترحيب للتاجر (متطلبات سلة - Easy mode)
+    if (merchantEmail && storeName && merchant) {
+      try {
+        await sendMerchantWelcomeEmail({
+          merchantEmail,
+          storeName,
+          storeId: merchant,
+          domain: domain || undefined,
+          accessToken: access_token,
+        });
+        console.log(`تم إرسال إيميل الترحيب للتاجر: ${merchantEmail}`);
+      } catch (emailError) {
+        console.error('فشل في إرسال إيميل الترحيب:', emailError);
+        // لا نوقف العملية حتى لو فشل الإيميل
+      }
+    }
   }
 
   // حالة التثبيت/الإزالة

@@ -37,13 +37,48 @@ const cspFrameAncestors = `frame-ancestors ${ALLOWED_ANCESTORS.join(" ")};`;
 
 const nextConfig = {
   async headers() {
+    // 🔒 Headers أمنية شاملة للحماية (متطلبات سلة)
+    const securityHeaders = [
+      // إجبار HTTPS في الإنتاج
+      {
+        key: "Strict-Transport-Security",
+        value: isProd ? "max-age=31536000; includeSubDomains" : "max-age=0",
+      },
+      // منع تخمين نوع المحتوى
+      {
+        key: "X-Content-Type-Options",
+        value: "nosniff",
+      },
+      // حماية من XSS
+      {
+        key: "X-XSS-Protection", 
+        value: "1; mode=block",
+      },
+      // إخفاء معلومات الخادم
+      {
+        key: "X-Powered-By",
+        value: "",
+      },
+      // منع clickjacking للصفحات العادية
+      {
+        key: "X-Frame-Options",
+        value: "DENY",
+      },
+    ];
+
     return [
+      // أمان عام لجميع الصفحات
+      {
+        source: "/((?!embedded|widget|api).*)",
+        headers: securityHeaders,
+      },
       // يطبّق على /embedded مباشرة
       {
         source: "/embedded",
         headers: [
           { key: "Content-Security-Policy", value: cspFrameAncestors },
-          // لا تضيف X-Frame-Options هنا — CSP كافي
+          // باقي headers الأمنية عدا X-Frame-Options
+          ...securityHeaders.filter(h => h.key !== "X-Frame-Options"),
         ],
       },
       // ويطبّق على أي مسارات فرعية تحت /embedded
@@ -51,13 +86,20 @@ const nextConfig = {
         source: "/embedded/:path*",
         headers: [
           { key: "Content-Security-Policy", value: cspFrameAncestors },
+          ...securityHeaders.filter(h => h.key !== "X-Frame-Options"),
         ],
       },
-      // (اختياري) لو عندك مسار تاني للودجت:
-      // {
-      //   source: "/widget/:path*",
-      //   headers: [{ key: "Content-Security-Policy", value: cspFrameAncestors }],
-      // },
+      // API routes - أمان إضافي
+      {
+        source: "/api/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          // CORS headers للتحكم بالوصول
+          { key: "Access-Control-Allow-Methods", value: "GET,POST,PUT,DELETE,OPTIONS" },
+          { key: "Access-Control-Max-Age", value: "86400" },
+        ],
+      },
     ];
   },
 };
