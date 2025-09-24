@@ -48,7 +48,7 @@ type SallaAppEvent =
 
 // -------------------- Consts & helpers --------------------
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
-const DONE  = new Set(["paid","fulfilled","delivered","completed","complete"]);
+const DONE  = new Set(["fulfilled","delivered","completed","complete"]);
 const CANCEL= new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const keyOf = (event: string, orderId?: string, status?: string) =>
@@ -547,9 +547,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // 🔸 Fast-ACK + ENQUEUE فقط (بدون إرسال مباشر)
   let shouldQueue = false;
-  if (event === "order.payment.updated") {
-    if (["paid","authorized","captured"].includes(paymentStatus)) shouldQueue = true;
-  } else if (event === "shipment.updated") {
+  // إرسال الرسائل فقط عند اكتمال الطلب، ليس عند الدفع
+  if (event === "shipment.updated") {
     if (DONE.has(status) || ["delivered","completed"].includes(status)) shouldQueue = true;
   } else if (event === "order.status.updated") {
     if (DONE.has(status)) shouldQueue = true;
