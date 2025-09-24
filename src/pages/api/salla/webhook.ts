@@ -121,6 +121,17 @@ function toDomainBase(domain: string | null | undefined): string | null {
   }
 }
 
+function encodeUrlForFirestore(url: string | null | undefined): string {
+  if (!url) return "";
+  // Replace problematic characters with safe alternatives for Firestore document IDs
+  return url
+    .replace(/:/g, "_COLON_")  // Replace : with _COLON_
+    .replace(/\//g, "_SLASH_") // Replace / with _SLASH_
+    .replace(/\?/g, "_QUEST_") // Replace ? with _QUEST_
+    .replace(/#/g, "_HASH_")   // Replace # with _HASH_
+    .replace(/&/g, "_AMP_");   // Replace & with _AMP_
+}
+
 // -------------------- Order snapshot & tokens --------------------
 async function upsertOrderSnapshot(
   db: FirebaseFirestore.Firestore,
@@ -315,7 +326,8 @@ async function handleAppEvent(
           await db.collection("stores").doc(uid).set({ "salla.domain": domain }, { merge: true });
           const base = toDomainBase(domain);
           if (base) {
-            await db.collection("domains").doc(base).set({ storeUid: uid, updatedAt: Date.now() }, { merge: true });
+            const encodedBase = encodeUrlForFirestore(base);
+            await db.collection("domains").doc(encodedBase).set({ storeUid: uid, updatedAt: Date.now() }, { merge: true });
           }
         }
       }
@@ -442,7 +454,10 @@ async function handleAppEvent(
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
     const d = doc.data() as any;
     const base = toDomainBase(d?.salla?.domain || null);
-    if (base) await db.collection("domains").doc(base).delete().catch(()=>{});
+    if (base) {
+      const encodedBase = encodeUrlForFirestore(base);
+      await db.collection("domains").doc(encodedBase).delete().catch(()=>{});
+    }
   }
 
   // 🔸 الباقات والاستهلاك

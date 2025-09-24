@@ -14,6 +14,17 @@ function toDomainBase(domain: string | null | undefined): string | null {
   }
 }
 
+function encodeUrlForFirestore(url: string | null | undefined): string {
+  if (!url) return "";
+  // Replace problematic characters with safe alternatives for Firestore document IDs
+  return url
+    .replace(/:/g, "_COLON_")  // Replace : with _COLON_
+    .replace(/\//g, "_SLASH_") // Replace / with _SLASH_
+    .replace(/\?/g, "_QUEST_") // Replace ? with _QUEST_
+    .replace(/#/g, "_HASH_")   // Replace # with _HASH_
+    .replace(/&/g, "_AMP_");   // Replace & with _AMP_
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
 
@@ -36,7 +47,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const uid = data?.uid || d.id;
     const base = toDomainBase(data?.salla?.domain || null);
     if (!base) { skipped++; continue; }
-    await db.collection("domains").doc(base).set({
+    const encodedBase = encodeUrlForFirestore(base);
+    await db.collection("domains").doc(encodedBase).set({
       storeUid: uid,
       updatedAt: Date.now()
     }, { merge: true });
