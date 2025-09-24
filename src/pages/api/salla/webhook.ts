@@ -67,6 +67,9 @@ function safeStringExtract(value: unknown): string {
     const statusValue = obj.status || obj.name || obj.value || obj.state || obj.text || obj.label;
     if (typeof statusValue === "string") return statusValue;
     if (typeof statusValue === "number") return String(statusValue);
+    
+    // Log when we encounter an object we can't extract from
+    console.warn("Unexpected object structure in status field:", JSON.stringify(obj));
   }
   return "";
 }
@@ -604,13 +607,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let body: SallaWebhookBody = { event: "" };
   try {
     body = JSON.parse(raw.toString("utf8") || "{}") as SallaWebhookBody;
-  } catch {
+  } catch (parseError) {
+    console.error("Failed to parse webhook JSON:", {
+      error: parseError instanceof Error ? parseError.message : String(parseError),
+      rawLength: raw.length,
+      timestamp: Date.now()
+    });
     return res.status(400).json({ error: "invalid_json" });
   }
 
   const event = String(body.event || "");
   const dataRaw = (body.data ?? {}) as UnknownRecord;
   const asOrder = dataRaw as SallaOrder;
+
+  // Log webhook processing for debugging
+  console.log("Processing Salla webhook:", {
+    event,
+    orderId: String(asOrder.id ?? asOrder.order_id ?? "") || null,
+    hasCustomer: !!asOrder.customer,
+    customerEmail: asOrder.customer?.email || null,
+    timestamp: Date.now()
+  });
 
   // Idempotency (قبل أي عمل ثقيل)
   const providedToken = extractProvidedToken(req);
