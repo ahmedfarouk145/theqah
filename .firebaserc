@@ -1,6 +1,7 @@
 {
   "projects": {
-    "prod": "theqah-d3ee0"
+    "prod": "theqah-d3ee0",
+    "default": "theqah-d3ee0"
   },
   "targets": {},
   "etags": {}

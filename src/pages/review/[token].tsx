@@ -5,9 +5,9 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { CheckCircle, AlertCircle, Star, Loader2 } from "lucide-react";
-import UploadcareWidget from "@/components/UploadcareWidget";
+import FirebaseStorageWidget from "@/components/FirebaseStorageWidget";
 
-type UploadedFile = { cdnUrl: string; name?: string; size?: number; mime?: string };
+type UploadedFile = { url: string; name: string; size?: number; path: string };
 
 type TokenInfo = {
   tokenId: string;
@@ -121,7 +121,7 @@ export default function ReviewByTokenPage() {
         orderId,
         stars,
         text,
-        images: attachments.map((f) => f.cdnUrl),
+        images: attachments.map((f) => f.url),
         tokenId: token,
         platform: "web",
       };
@@ -318,7 +318,7 @@ export default function ReviewByTokenPage() {
           <div className="mb-8">
             <label className="block text-lg font-medium text-gray-700 mb-3">صور التجربة (اختياري)</label>
             <p className="text-sm text-gray-500 mb-3">أضف صور المنتج أو التجربة لتجعل تقييمك أكثر فائدة</p>
-            <UploadcareWidget value={attachments} onChange={setAttachments} />
+            <FirebaseStorageWidget value={attachments} onChange={setAttachments} />
           </div>
 
           {tokenInfo?.expired && (
