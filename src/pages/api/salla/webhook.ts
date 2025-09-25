@@ -50,7 +50,7 @@ type SallaAppEvent =
 // -------------------- Consts & helpers --------------------
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
 const DONE  = new Set(["fulfilled","delivered","completed","complete"]);
-const CANCEL= new Set(["canceled","cancelled","refunded","returned"]);
+// const CANCEL= new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const keyOf = (event: string, orderId?: string, status?: string) =>
   `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
@@ -61,14 +61,10 @@ function safeStringExtract(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number") return String(value);
   if (typeof value === "object" && value !== null) {
-    // If it's an object, try to extract common status properties
     const obj = value as Record<string, unknown>;
-    // Try common status field names
-    const statusValue = obj.status || obj.name || obj.value || obj.state || obj.text || obj.label;
+    const statusValue = obj.status || obj.name || obj.value || obj.state || obj.text || obj.label || obj.slug;
     if (typeof statusValue === "string") return statusValue;
     if (typeof statusValue === "number") return String(statusValue);
-    
-    // Log when we encounter an object we can't extract from
     console.warn("Unexpected object structure in status field:", JSON.stringify(obj));
   }
   return "";
@@ -77,29 +73,20 @@ function safeStringExtract(value: unknown): string {
 // Helper to extract customer name with fallback logic
 function extractCustomerName(customer: unknown): string | null {
   if (!customer || typeof customer !== "object") return null;
-  
   const cust = customer as Record<string, unknown>;
-  
-  // Try different possible name fields
   const nameFields = [
-    'name', 'full_name', 'fullName', 'customer_name', 'customerName',
-    'first_name', 'firstName', 'display_name', 'displayName'
+    "name", "full_name", "fullName", "customer_name", "customerName",
+    "first_name", "firstName", "display_name", "displayName"
   ];
-  
   for (const field of nameFields) {
     const value = cust[field];
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
+    if (typeof value === "string" && value.trim()) return value.trim();
   }
-  
-  // If no direct name field, try combining first and last name
   const firstName = cust.first_name || cust.firstName;
   const lastName = cust.last_name || cust.lastName;
   if (typeof firstName === "string" && typeof lastName === "string") {
     return `${firstName} ${lastName}`.trim();
   }
-  
   return null;
 }
 
@@ -172,13 +159,55 @@ function toDomainBase(domain: string | null | undefined): string | null {
 
 function encodeUrlForFirestore(url: string | null | undefined): string {
   if (!url) return "";
-  // Replace problematic characters with safe alternatives for Firestore document IDs
   return url
-    .replace(/:/g, "_COLON_")  // Replace : with _COLON_
-    .replace(/\//g, "_SLASH_") // Replace / with _SLASH_
-    .replace(/\?/g, "_QUEST_") // Replace ? with _QUEST_
-    .replace(/#/g, "_HASH_")   // Replace # with _HASH_
-    .replace(/&/g, "_AMP_");   // Replace & with _AMP_
+    .replace(/:/g, "_COLON_")
+    .replace(/\//g, "_SLASH_")
+    .replace(/\?/g, "_QUEST_")
+    .replace(/#/g, "_HASH_")
+    .replace(/&/g, "_AMP_");
+}
+
+// -------------------- Utilities (NEW) --------------------
+
+// حاول استنتاج storeUid من الحدث أو من snapshot الطلب أو من token المخزن
+async function resolveStoreUid(db: FirebaseFirestore.Firestore, eventRaw: UnknownRecord, orderId: string): Promise<string | null> {
+  const uid = pickStoreUidFromSalla(eventRaw) || null;
+  if (uid) return uid;
+  try {
+    const o = await db.collection("orders").doc(orderId).get();
+    const s = (o.data()?.storeUid as string) || null;
+    if (s) return s;
+  } catch {}
+  return null;
+}
+
+// هات access token للمتجر
+async function getAccessTokenForStore(db: FirebaseFirestore.Firestore, storeUid: string | null): Promise<string | null> {
+  if (!storeUid) return null;
+  const tok = await db.collection("salla_tokens").doc(storeUid).get();
+  return tok.exists ? String(tok.data()?.accessToken || "") : null;
+}
+
+// جلب تفاصيل الطلب من سلة (للـ fallback)
+async function fetchOrderDetailsFromSalla(db: FirebaseFirestore.Firestore, storeUid: string | null, orderId: string) {
+  if (!storeUid || !orderId) return null;
+  const accessToken = await getAccessTokenForStore(db, storeUid);
+  if (!accessToken) return null;
+
+  try {
+    const resp = await fetch(`https://api.salla.dev/admin/v2/orders/${encodeURIComponent(orderId)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (!resp.ok) {
+      console.warn("fetchOrderDetailsFromSalla: non-OK", { status: resp.status, storeUid, orderId });
+      return null;
+    }
+    const json = await resp.json();
+    return json?.data ?? null;
+  } catch (e) {
+    console.warn("fetchOrderDetailsFromSalla error:", e);
+    return null;
+  }
 }
 
 // -------------------- Order snapshot & tokens --------------------
@@ -288,8 +317,27 @@ async function sendInviteDirectly(
     return { sent: false, reason: `quota:${quota.reason}` };
   }
 
-  // تجهيز الرسائل والإرسال المباشر
-  const buyer = order.customer ?? {};
+  // تجهيز القنوات (مع Fallback جلب العميل من API إن لزم)
+  let buyer: SallaCustomer = order.customer ?? {};
+  if ((!buyer?.mobile && !buyer?.email)) {
+    try {
+      const storeUid = seed.storeUid || (await resolveStoreUid(db, eventRaw, orderId));
+      const od = await fetchOrderDetailsFromSalla(db, storeUid, orderId);
+      const cust = od?.customer || {};
+      buyer = {
+        name: cust?.name || buyer?.name || undefined,
+        email: cust?.email || buyer?.email || undefined,
+        mobile: cust?.mobile || buyer?.mobile || undefined,
+      };
+      if (!buyer?.mobile && !buyer?.email) {
+        console.warn("sendInviteDirectly: no channels after fallback", { orderId, storeUid });
+      }
+    } catch (e) {
+      console.warn("sendInviteDirectly: fallback fetch customer failed", e);
+    }
+  }
+
+  // بناء الرسائل
   const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
   const name = extractCustomerName(buyer) || "عميلنا العزيز";
   const smsText = buildInviteSMS(storeName, seed.publicUrl!);
@@ -302,7 +350,6 @@ async function sendInviteDirectly(
     </div>
   `;
 
-  // إرسال الرسائل مباشرة
   const tasks: Array<Promise<unknown>> = [];
   if (buyer.mobile) {
     const mobile = String(buyer.mobile).replace(/\s+/g, "");
@@ -314,9 +361,7 @@ async function sendInviteDirectly(
 
   if (!tasks.length) return { sent: false, reason: "no_channels" };
 
-  // تنفيذ الإرسال
   await Promise.allSettled(tasks);
-
   return { sent: true, inviteId: seed.inviteId, channels: tasks.length };
 }
 
@@ -360,13 +405,12 @@ async function handleAppEvent(
       }, { merge: true });
     }
 
-    // 🆕 جلب معلومات المتجر والتاجر (متطلبات سلة - Get user information)
+    // 🆕 جلب معلومات المتجر والتاجر
     let domain: string | null = null;
     let storeName: string | null = null;
     let merchantEmail: string | null = null;
     
     try {
-      // جلب معلومات المتجر
       const storeResp = await fetch("https://api.salla.dev/admin/v2/store/info", {
         headers: { Authorization: `Bearer ${access_token}` }
       });
@@ -385,7 +429,6 @@ async function handleAppEvent(
         }
       }
 
-      // 🆕 جلب معلومات التاجر (صاحب المتجر)
       try {
         const userResp = await fetch("https://api.salla.dev/admin/v2/user/info", {
           headers: { Authorization: `Bearer ${access_token}` }
@@ -394,7 +437,6 @@ async function handleAppEvent(
           const userInfo = await userResp.json();
           merchantEmail = userInfo.data?.email || null;
           
-          // حفظ معلومات التاجر
           if (merchantEmail) {
             await db.collection("stores").doc(uid).set({
               "salla.merchantEmail": merchantEmail,
@@ -403,10 +445,10 @@ async function handleAppEvent(
           }
         }
       } catch (userFetchError) {
-        console.warn('فشل في جلب معلومات التاجر:', userFetchError);
+        console.warn("فشل في جلب معلومات التاجر:", userFetchError);
       }
     } catch (fetchError) {
-      console.warn('فشل في جلب معلومات المتجر:', fetchError);
+      console.warn("فشل في جلب معلومات المتجر:", fetchError);
     }
 
     await db.collection("stores").doc(uid).set({
@@ -420,11 +462,9 @@ async function handleAppEvent(
       updatedAt: Date.now(),
     }, { merge: true });
 
-    // 🆕 إرسال إيميل ترحيب للتاجر (متطلبات سلة - Easy mode)
     if (merchantEmail && storeName && merchant) {
       try {
         console.log(`محاولة إرسال إيميل ترحيب للتاجر: ${merchantEmail} للمتجر: ${storeName} (${merchant})`);
-        
         await sendMerchantWelcomeEmail({
           merchantEmail,
           storeName,
@@ -432,10 +472,7 @@ async function handleAppEvent(
           domain: domain || undefined,
           accessToken: access_token,
         });
-        
         console.log(`✅ تم إرسال إيميل الترحيب بنجاح للتاجر: ${merchantEmail}`);
-        
-        // حفظ معلومات إرسال الإيميل في قاعدة البيانات للمراجعة
         await db.collection("merchant_welcome_emails").add({
           merchantEmail,
           storeName,
@@ -445,9 +482,8 @@ async function handleAppEvent(
           sentAt: Date.now(),
           status: "sent",
         });
-        
       } catch (emailError) {
-        console.error('❌ فشل في إرسال إيميل الترحيب:', {
+        console.error("❌ فشل في إرسال إيميل الترحيب:", {
           error: emailError,
           merchantEmail,
           storeName,
@@ -456,8 +492,6 @@ async function handleAppEvent(
           domain,
           timestamp: new Date().toISOString()
         });
-        
-        // حفظ معلومات فشل إرسال الإيميل للمراجعة
         await db.collection("merchant_welcome_emails").add({
           merchantEmail,
           storeName,
@@ -468,11 +502,9 @@ async function handleAppEvent(
           status: "failed",
           error: emailError instanceof Error ? emailError.message : String(emailError),
         });
-        
-        // لا نوقف العملية حتى لو فشل الإيميل
       }
     } else {
-      console.warn('⚠️ لم يتم إرسال إيميل الترحيب - معلومات ناقصة:', {
+      console.warn("⚠️ لم يتم إرسال إيميل الترحيب - معلومات ناقصة:", {
         merchantEmail: !!merchantEmail,
         storeName: !!storeName,
         merchant: !!merchant,
@@ -482,7 +514,6 @@ async function handleAppEvent(
     }
   }
 
-  // حالة التثبيت/الإزالة
   if (event === "app.installed") {
     await db.collection("stores").doc(uid).set({
       uid, platform: "salla",
@@ -502,7 +533,6 @@ async function handleAppEvent(
       updatedAt: Date.now(),
     }, { merge: true });
 
-    // إزالة فهرس الدومين المرتبط
     const doc = await db.collection("stores").doc(uid).get();
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
     const d = doc.data() as any;
@@ -513,7 +543,6 @@ async function handleAppEvent(
     }
   }
 
-  // 🔸 الباقات والاستهلاك
   if (event === "app.trial.started") {
     await db.collection("stores").doc(uid).set({
       plan: { code: "TRIAL", active: true },
@@ -532,7 +561,7 @@ async function handleAppEvent(
     const cfg = getPlanConfig(code);
     await db.collection("stores").doc(uid).set({
       plan: { code: cfg.code, active: true },
-      usage: { invitesUsed: 0 }, // reset عند التجديد/البدء
+      usage: { invitesUsed: 0 },
       updatedAt: Date.now(),
     }, { merge: true });
   }
@@ -591,25 +620,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
   
-  // Method 3: Fallback authentication for when no webhook secret is configured
-  // This handles the common case where Salla sends webhooks without signatures
-  // and only webhook tokens are configured for basic security
+  // Method 3: Fallback (عند غياب السر) — تحذير فقط
   if (!isAuthenticated) {
     const hasNoWebhookSecret = !process.env.SALLA_WEBHOOK_SECRET;
     const hasNoProvidedCredentials = !sallaSignature && !extractProvidedToken(req);
-    const isDevelopment = process.env.NODE_ENV !== 'production';
-    
-    // Allow bypass in these cases:
-    // 1. No webhook secret configured (common production setup)
-    // 2. Development mode with explicit skip flag
-    if (hasNoWebhookSecret || (isDevelopment && process.env.SKIP_WEBHOOK_AUTH === 'true')) {
+    const isDevelopment = process.env.NODE_ENV !== "production";
+    if (hasNoWebhookSecret || (isDevelopment && process.env.SKIP_WEBHOOK_AUTH === "true")) {
       console.warn("Webhook authentication bypassed", {
         reason: hasNoWebhookSecret ? "no_webhook_secret_configured" : "development_skip",
         hasWebhookSecret: !!process.env.SALLA_WEBHOOK_SECRET,
         hasWebhookToken: !!WEBHOOK_TOKEN,
         hasProvidedCredentials: !hasNoProvidedCredentials,
         isDevelopment,
-        skipAuth: process.env.SKIP_WEBHOOK_AUTH === 'true',
+        skipAuth: process.env.SKIP_WEBHOOK_AUTH === "true",
         timestamp: Date.now()
       });
       isAuthenticated = true;
@@ -654,7 +677,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     timestamp: Date.now()
   });
 
-  // Idempotency (قبل أي عمل ثقيل)
+  // Idempotency
   const providedToken = extractProvidedToken(req);
   const idemKey = crypto.createHash("sha256").update((providedToken || sallaSignature || "") + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
@@ -677,15 +700,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // أوامر الطلبات / الشحن
   const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
-  const status = lc(safeStringExtract(asOrder.status) || safeStringExtract(asOrder.order_status) || safeStringExtract(asOrder.new_status) || safeStringExtract(asOrder.shipment_status) || "");
+  let status = lc(
+    safeStringExtract(asOrder.status) ||
+    safeStringExtract(asOrder.order_status) ||
+    safeStringExtract(asOrder.new_status) ||
+    safeStringExtract(asOrder.shipment_status) || ""
+  );
   const paymentStatus = lc(safeStringExtract(asOrder.payment_status));
   const storeUidFromEvent = pickStoreUidFromSalla(dataRaw) || null;
 
   await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
 
+  // 🔁 Fallback على الحالة إن كانت فاضية: جِب الطلب من الـ API وخذ status.slug
+  if (!status && orderId) {
+    try {
+      const storeUid = storeUidFromEvent || (await resolveStoreUid(db, dataRaw, orderId));
+      const od = await fetchOrderDetailsFromSalla(db, storeUid, orderId);
+      const s =
+        safeStringExtract(od?.status?.slug) ||
+        safeStringExtract(od?.status) ||
+        safeStringExtract(od?.shipment_status) ||
+        safeStringExtract(od?.order_status) || "";
+      status = lc(s);
+      console.log("Resolved status via API:", { orderId, status });
+    } catch (e) {
+      console.warn("status fallback failed:", e);
+    }
+  }
+
   // 🔸 Fast-ACK + إرسال مباشر (بدون إنكيو)
   let shouldSend = false;
-  // إرسال الرسائل فقط عند اكتمال الطلب، ليس عند الدفع
   if (event === "shipment.updated") {
     if (DONE.has(status) || ["delivered","completed"].includes(status)) shouldSend = true;
   } else if (event === "order.status.updated") {
@@ -696,16 +740,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await voidInvitesForOrder(db, orderId, "order_refunded");
   }
 
+  console.log("Decision:", { orderId, event, status, paymentStatus, shouldSend });
+
   // ✅ ACK سريع دائمًا
   res.status(202).json({ ok: true, accepted: true, event });
 
   // 🧵 نفّذ الإرسال المباشر بعد الرد
   try {
     if (shouldSend) {
-      await sendInviteDirectly(db, asOrder, dataRaw);
+      const result = await sendInviteDirectly(db, asOrder, dataRaw);
+      if (!result.sent) {
+        await db.collection("webhook_errors").add({
+          at: Date.now(), scope: "sendInviteDirectly", event, orderId,
+          error: result.reason || "unknown_reason",
+        }).catch(()=>{});
+      }
     }
   } catch (e) {
-    // لو فشل الإرسال نسجله للمتابعة
     await db.collection("webhook_errors").add({
       at: Date.now(), scope: "sendInviteDirectly", event, orderId, error: e instanceof Error ? e.message : String(e),
     }).catch(()=>{});
