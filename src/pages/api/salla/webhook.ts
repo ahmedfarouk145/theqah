@@ -49,7 +49,7 @@ type SallaAppEvent =
 
 // -------------------- Consts & helpers --------------------
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
-const DONE  = new Set(["fulfilled","delivered","completed","complete"]);
+const DONE  = new Set(["fulfilled","delivered","completed","complete"]); // baseline
 const CANCEL= new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const keyOf = (event: string, orderId?: string, status?: string) =>
@@ -151,9 +151,51 @@ function encodeUrlForFirestore(url: string | null | undefined): string {
   return url.replace(/:/g,"_COLON_").replace(/\//g,"_SLASH_").replace(/\?/g,"_QUEST_").replace(/#/g,"_HASH_").replace(/&/g,"_AMP_");
 }
 
+// -------------------- NEW: تطبيع الحالة (AR/EN → slug) --------------------
+function normalizeStatus(raw: string): string {
+  const s = lc(raw).trim();
+
+  const arMap: Record<string, string> = {
+    "تم التوصيل": "delivered",
+    "تم التسليم": "delivered",
+    "مكتمل": "completed",
+    "اكتمل": "completed",
+    "منجز": "completed",
+    "ملغي": "canceled",
+    "ملغى": "canceled",
+    "أُلغي": "canceled",
+    "مرتجع": "returned",
+    "مسترجع": "returned",
+    "مسترد": "refunded",
+    "قيد الشحن": "shipped",
+    "تم الشحن": "shipped",
+    "مؤكد": "confirmed",
+    "قيد المعالجة": "processing",
+    "بانتظار المراجعة": "pending_review",
+    "بإنتظار المراجعة": "pending_review",
+    "بانتظار الدفع": "pending_payment",
+    "قيد الدفع": "pending_payment",
+    "مدفوع": "paid",
+  };
+
+  if (arMap[s]) return arMap[s];
+
+  if (s.includes("التوصيل") || s.includes("التسليم")) return "delivered";
+  if (s.includes("اكتمل") || s.includes("مكتمل") || s.includes("منجز")) return "completed";
+  if (s.includes("ملغي") || s.includes("ملغى") || s.includes("أُلغي")) return "canceled";
+  if (s.includes("مرتجع") || s.includes("مسترج")) return "returned";
+  if (s.includes("مسترد")) return "refunded";
+  if (s.includes("شحن")) return "shipped";
+  if (s.includes("مؤكد")) return "confirmed";
+  if (s.includes("مراجعة")) return "pending_review";
+  if (s.includes("دفع")) return "pending_payment";
+
+  return s.replace(/\s+/g, "_"); // fallback: حول المسافات إلى _
+}
+
 // -------------------- Utilities (NEW) --------------------
 async function resolveStoreUid(db: FirebaseFirestore.Firestore, eventRaw: UnknownRecord, orderId: string): Promise<string | null> {
-  //eslint-disable-next-line 
+  //eslint-disable-next-line
   let uid = pickStoreUidFromSalla(eventRaw) || null;
   if (uid) return uid;
   try {
@@ -670,6 +712,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
 
+  // 🔁 Fallback على الحالة إن كانت فاضية
   if (!status && orderId) {
     try {
       const storeUid = storeUidFromEvent || (await resolveStoreUid(db, dataRaw, orderId));
@@ -686,21 +729,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
+  // -------------------- NEW: قرار الإرسال بعد التطبيع --------------------
   let shouldSend = false;
+
+  // 1) طبع الحالة
+  let statusNorm = normalizeStatus(status);
+
+  // 2) لو لسه مش done، حاول تجيب slug من API وتطبّعه
+  if (!["delivered","completed","complete","fulfilled"].includes(statusNorm) && orderId) {
+    try {
+      const storeUid = storeUidFromEvent || (await resolveStoreUid(db, dataRaw, orderId));
+      const od = await fetchOrderDetailsFromSalla(db, storeUid, orderId);
+      const s2 = lc(
+        safeStringExtract(od?.status?.slug) ||
+        safeStringExtract(od?.status) ||
+        safeStringExtract(od?.shipment_status) ||
+        safeStringExtract(od?.order_status) || ""
+      );
+      if (s2) {
+        statusNorm = normalizeStatus(s2);
+        console.log("Resolved status via API/normalized:", { orderId, status: s2, statusNorm });
+      }
+    } catch (e) {
+      console.warn("status slug fallback failed:", e);
+    }
+  }
+
+  // 3) القرار النهائي
   if (event === "shipment.updated") {
-    if (DONE.has(status) || ["delivered","completed"].includes(status)) shouldSend = true;
+    if (["delivered","completed","complete","fulfilled"].includes(statusNorm)) shouldSend = true;
   } else if (event === "order.status.updated") {
-    if (DONE.has(status)) shouldSend = true;
-  } else if (event === "order.cancelled") {
+    if (["delivered","completed","complete","fulfilled"].includes(statusNorm)) shouldSend = true;
+  } else if (event === "order.cancelled" || event === "order.canceled") {
     await voidInvitesForOrder(db, orderId, "order_cancelled");
   } else if (event === "order.refunded") {
     await voidInvitesForOrder(db, orderId, "order_refunded");
   }
 
-  console.log("Decision:", { orderId, event, status, paymentStatus, shouldSend });
+  console.log("Decision:", { orderId, event, status, statusNorm, paymentStatus, shouldSend });
 
+  // ✅ ACK سريع
   res.status(202).json({ ok: true, accepted: true, event });
 
+  // 🧵 إرسال الدعوات بعد الرد
   try {
     if (shouldSend) {
       const result = await sendInviteDirectly(db, asOrder, dataRaw);
