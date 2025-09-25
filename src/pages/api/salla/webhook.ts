@@ -4,7 +4,6 @@ import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
 import { buildInviteSMS, sendSms } from "@/server/messaging/send-sms";
 import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
-import { verifySallaWebhook } from "@/server/salla/webhook-verify";
 
 // 🔸 Billing/Plans
 import { canSendInvite } from "@/server/billing/usage";
@@ -20,7 +19,10 @@ interface SallaCustomer { name?: string; email?: string; mobile?: string; }
 interface SallaItem { id?: string|number; product?: { id?: string|number }|null; product_id?: string|number; }
 interface SallaOrder {
   id?: string|number; order_id?: string|number; number?: string|number;
-  status?: string; order_status?: string; new_status?: string; shipment_status?: string;
+  status?: string | { name?: string; slug?: string } | UnknownRecord;
+  order_status?: string | { name?: string; slug?: string } | UnknownRecord;
+  new_status?: string | { name?: string; slug?: string } | UnknownRecord;
+  shipment_status?: string | { name?: string; slug?: string } | UnknownRecord;
   payment_status?: string;
   customer?: SallaCustomer; items?: SallaItem[];
   store?: { id?: string|number; name?: string } | null;
@@ -49,8 +51,6 @@ type SallaAppEvent =
 
 // -------------------- Consts & helpers --------------------
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
-const DONE  = new Set(["fulfilled","delivered","completed","complete"]); // baseline
-const CANCEL= new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const keyOf = (event: string, orderId?: string, status?: string) =>
   `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
@@ -61,13 +61,60 @@ function safeStringExtract(value: unknown): string {
   if (typeof value === "number") return String(value);
   if (typeof value === "object" && value !== null) {
     const obj = value as Record<string, unknown>;
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const statusValue = obj.status || obj.name || obj.value || obj.state || obj.text || obj.label || (obj as any).slug;
+    const statusValue =
+      (obj as Record<string, unknown>).slug ||
+      obj.status ||
+      obj.name ||
+      obj.value ||
+      obj.state ||
+      obj.text ||
+      obj.label;
     if (typeof statusValue === "string") return statusValue;
     if (typeof statusValue === "number") return String(statusValue);
-    console.warn("Unexpected object structure in status field:", JSON.stringify(obj));
   }
   return "";
+}
+
+// ✅ تطبيع الحالة إلى slug موحّد
+function normalizeStatus(input: unknown): { raw: string; slug: string } {
+  const raw = lc(safeStringExtract(input));
+  const known = new Set([
+    "payment_pending","under_review","in_progress","completed",
+    "delivering","delivered","shipped","canceled",
+    "restored","restoring","fulfilled","complete"
+  ]);
+  if (known.has(raw)) return { raw, slug: raw };
+
+  const arMap: Record<string,string> = {
+    "بإنتظار الدفع":"payment_pending",
+    "في انتظار الدفع":"payment_pending",
+    "بإنتظار المراجعة":"under_review",
+    "جاري مراجعة طلبك":"under_review",
+    "قيد التنفيذ":"in_progress",
+    "تم التنفيذ":"completed",
+    "جاري التوصيل":"delivering",
+    "تم التوصيل":"delivered",
+    "تم الشحن":"shipped",
+    "ملغي":"canceled",
+    "مسترجع":"restored",
+    "قيد الإسترجاع":"restoring",
+    "مكتمل":"completed",
+    "اكتمل":"completed",
+  };
+  const norm = raw.replace(/\s+/g,"").replace(/[إأآ]/g,"ا").replace(/ى/g,"ي").replace(/ؤ|ئ/g,"ء");
+  for (const [k,v] of Object.entries(arMap)) {
+    const kk = k.toLowerCase().replace(/\s+/g,"").replace(/[إأآ]/g,"ا").replace(/ى/g,"ي").replace(/ؤ|ئ/g,"ء");
+    if (norm === kk) return { raw, slug: v };
+  }
+  if (raw.includes("delivered")) return { raw, slug: "delivered" };
+  if (raw.includes("delivering")) return { raw, slug: "delivering" };
+  if (raw.includes("shipped")) return { raw, slug: "shipped" };
+  if (raw.includes("complete")) return { raw, slug: "completed" };
+  if (raw.includes("cancel")) return { raw, slug: "canceled" };
+  if (raw.includes("progress")) return { raw, slug: "in_progress" };
+  if (raw.includes("review")) return { raw, slug: "under_review" };
+  if (raw.includes("payment")) return { raw, slug: "payment_pending" };
+  return { raw, slug: raw };
 }
 
 function extractCustomerName(customer: unknown): string | null {
@@ -78,9 +125,8 @@ function extractCustomerName(customer: unknown): string | null {
     const v = cust[f];
     if (typeof v === "string" && v.trim()) return v.trim();
   }
-  const firstName = cust.first_name || cust.firstName;
-  //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const lastName  = cust.last_name  || (cust as any).lastName;
+  const firstName = (cust as Record<string, unknown>).first_name || (cust as Record<string, unknown>).firstName;
+  const lastName  = (cust as Record<string, unknown>).last_name  || (cust as Record<string, unknown>).lastName;
   if (typeof firstName === "string" && typeof lastName === "string") return `${firstName} ${lastName}`.trim();
   return null;
 }
@@ -151,52 +197,9 @@ function encodeUrlForFirestore(url: string | null | undefined): string {
   return url.replace(/:/g,"_COLON_").replace(/\//g,"_SLASH_").replace(/\?/g,"_QUEST_").replace(/#/g,"_HASH_").replace(/&/g,"_AMP_");
 }
 
-// -------------------- NEW: تطبيع الحالة (AR/EN → slug) --------------------
-function normalizeStatus(raw: string): string {
-  const s = lc(raw).trim();
-
-  const arMap: Record<string, string> = {
-    "تم التوصيل": "delivered",
-    "تم التسليم": "delivered",
-    "مكتمل": "completed",
-    "اكتمل": "completed",
-    "منجز": "completed",
-    "ملغي": "canceled",
-    "ملغى": "canceled",
-    "أُلغي": "canceled",
-    "مرتجع": "returned",
-    "مسترجع": "returned",
-    "مسترد": "refunded",
-    "قيد الشحن": "shipped",
-    "تم الشحن": "shipped",
-    "مؤكد": "confirmed",
-    "قيد المعالجة": "processing",
-    "بانتظار المراجعة": "pending_review",
-    "بإنتظار المراجعة": "pending_review",
-    "بانتظار الدفع": "pending_payment",
-    "قيد الدفع": "pending_payment",
-    "مدفوع": "paid",
-  };
-
-  if (arMap[s]) return arMap[s];
-
-  if (s.includes("التوصيل") || s.includes("التسليم")) return "delivered";
-  if (s.includes("اكتمل") || s.includes("مكتمل") || s.includes("منجز")) return "completed";
-  if (s.includes("ملغي") || s.includes("ملغى") || s.includes("أُلغي")) return "canceled";
-  if (s.includes("مرتجع") || s.includes("مسترج")) return "returned";
-  if (s.includes("مسترد")) return "refunded";
-  if (s.includes("شحن")) return "shipped";
-  if (s.includes("مؤكد")) return "confirmed";
-  if (s.includes("مراجعة")) return "pending_review";
-  if (s.includes("دفع")) return "pending_payment";
-
-  return s.replace(/\s+/g, "_"); // fallback: حول المسافات إلى _
-}
-
-// -------------------- Utilities (NEW) --------------------
+// -------------------- Utilities --------------------
 async function resolveStoreUid(db: FirebaseFirestore.Firestore, eventRaw: UnknownRecord, orderId: string): Promise<string | null> {
-  //eslint-disable-next-line
-  let uid = pickStoreUidFromSalla(eventRaw) || null;
+  const uid = pickStoreUidFromSalla(eventRaw) || null;
   if (uid) return uid;
   try {
     const o = await db.collection("orders").doc(orderId).get();
@@ -216,7 +219,7 @@ async function fetchOrderDetailsFromSalla(db: FirebaseFirestore.Firestore, store
   if (!accessToken) return null;
   try {
     const resp = await fetch(`https://api.salla.dev/admin/v2/orders/${encodeURIComponent(orderId)}`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
+      headers: { Authorization: `Bearer ${accessToken}`, "Accept-Language": "ar" }
     });
     if (!resp.ok) {
       console.warn("fetchOrderDetailsFromSalla: non-OK", { status: resp.status, storeUid, orderId });
@@ -238,10 +241,12 @@ async function upsertOrderSnapshot(
 ) {
   const orderId = String(order.id ?? order.order_id ?? "");
   if (!orderId) return;
+  const norm = normalizeStatus(order.status ?? order.order_status ?? order.new_status ?? order.shipment_status ?? "");
   await db.collection("orders").doc(orderId).set({
     id: orderId,
     number: order.number ?? null,
-    status: lc(safeStringExtract(order.status) || safeStringExtract(order.order_status) || safeStringExtract(order.new_status) || safeStringExtract(order.shipment_status) || ""),
+    status: norm.raw,
+    statusSlug: norm.slug,
     paymentStatus: lc(safeStringExtract(order.payment_status)),
     customer: {
       name: extractCustomerName(order.customer),
@@ -400,12 +405,12 @@ async function handleAppEvent(
   await db.collection("salla_app_events").add({ uid, event, merchant: merchant ?? null, data, at: Date.now() });
 
   if (event === "app.store.authorize") {
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const access_token  = String((data as any)?.access_token || "");
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const refresh_token = ((data as any)?.refresh_token as string) || null;
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const expires       = Number((data as any)?.expires || 0);
+  
+    const access_token  = String((data as UnknownRecord)?.access_token || "");
+
+    const refresh_token = ((data as UnknownRecord)?.refresh_token as string) || null;
+
+    const expires       = Number((data as UnknownRecord)?.expires || 0);
     const expiresAt     = expires ? Date.now() + expires * 1000 : null;
 
     if (access_token) {
@@ -413,19 +418,17 @@ async function handleAppEvent(
         uid, provider: "salla", storeId: merchant ?? null,
         accessToken: access_token, refreshToken: refresh_token,
         expiresIn: expires || null, expiresAt,
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        scope: (data as any)?.scope || null,
+        scope: (data as UnknownRecord)?.scope || null,
         obtainedAt: Date.now(),
       }, { merge: true });
     }
 
-    // جلب معلومات المتجر + التاجر
+    // جلب معلومات المتجر + التاجر (Easy Mode)
     let domain: string | null = null;
     let storeName: string | null = null;
     let merchantEmail: string | null = null;
 
     try {
-      // Store Info
       const storeResp = await fetch("https://api.salla.dev/admin/v2/store/info", {
         headers: { Authorization: `Bearer ${access_token}` }
       });
@@ -444,7 +447,7 @@ async function handleAppEvent(
         }
       }
 
-      // User Info (Easy Mode) — الحسابات
+      // User Info (accounts) مع fallback
       let uiResp: Response | null = null;
       try {
         uiResp = await fetch("https://accounts.salla.sa/oauth2/user/info", {
@@ -459,7 +462,6 @@ async function handleAppEvent(
         uiResp = null;
       }
 
-      // Fallback: Admin API user/info
       if (!uiResp) {
         try {
           const adminUi = await fetch("https://api.salla.dev/admin/v2/user/info", {
@@ -567,8 +569,7 @@ async function handleAppEvent(
     }, { merge: true });
   }
   if (event === "app.subscription.started" || event === "app.subscription.renewed") {
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const code = String(((data as any)?.plan_code || (data as any)?.plan || "P30")).toUpperCase() as PlanCode;
+    const code = String(((data as UnknownRecord)?.plan_code || (data as UnknownRecord)?.plan || "P30")).toUpperCase() as PlanCode;
     const cfg = getPlanConfig(code);
     await db.collection("stores").doc(uid).set({
       plan: { code: cfg.code, active: true },
@@ -584,8 +585,7 @@ async function handleAppEvent(
 
   if (event === "app.settings.updated") {
     await db.collection("stores").doc(uid).set({
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      "salla.settings": (data as any)?.settings ?? {},
+      "salla.settings": (data as UnknownRecord)?.settings ?? {},
       updatedAt: Date.now(),
     }, { merge: true });
   }
@@ -601,60 +601,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const raw = await readRawBody(req);
 
+  // ✅ Token-only authentication (no signature, no production bypass)
   let isAuthenticated = false;
-
-  const sallaSignature = getHeader(req, "x-salla-signature");
-  if (sallaSignature) {
-    isAuthenticated = verifySallaWebhook(raw, sallaSignature);
-    if (!isAuthenticated) {
-      console.warn("Salla webhook signature verification failed", {
-        hasSignature: !!sallaSignature, hasSecret: !!process.env.SALLA_WEBHOOK_SECRET, timestamp: Date.now()
-      });
-    }
+  const provided = extractProvidedToken(req);
+  if (WEBHOOK_TOKEN && provided && timingSafeEq(provided, WEBHOOK_TOKEN)) {
+    isAuthenticated = true;
   }
 
+  // ⛔️ لا bypass في الإنتاج نهائيًا
   if (!isAuthenticated) {
-    const provided = extractProvidedToken(req);
-    if (WEBHOOK_TOKEN && provided && timingSafeEq(provided, WEBHOOK_TOKEN)) {
-      isAuthenticated = true;
-    } else if (provided) {
-      console.warn("Webhook token verification failed", {
-        hasToken: !!WEBHOOK_TOKEN, hasProvided: !!provided, timestamp: Date.now()
-      });
-    }
-  }
-
-  if (!isAuthenticated) {
-    const hasNoWebhookSecret = !process.env.SALLA_WEBHOOK_SECRET;
-    const hasNoProvidedCredentials = !sallaSignature && !extractProvidedToken(req);
     const isDevelopment = process.env.NODE_ENV !== "production";
-    if (hasNoWebhookSecret || (isDevelopment && process.env.SKIP_WEBHOOK_AUTH === "true")) {
-      console.warn("Webhook authentication bypassed", {
-        reason: hasNoWebhookSecret ? "no_webhook_secret_configured" : "development_skip",
-        hasWebhookSecret: !!process.env.SALLA_WEBHOOK_SECRET,
-        hasWebhookToken: !!WEBHOOK_TOKEN,
-        hasProvidedCredentials: !hasNoProvidedCredentials,
-        isDevelopment,
-        skipAuth: process.env.SKIP_WEBHOOK_AUTH === "true",
-        timestamp: Date.now()
-      });
+    if (isDevelopment && process.env.SKIP_WEBHOOK_AUTH === "true") {
+      console.warn("⚠️ Webhook auth bypassed in development (token-only mode).");
       isAuthenticated = true;
     }
   }
 
   if (!isAuthenticated) {
-    console.error("Webhook authentication failed - neither signature nor token verification succeeded", {
-      hasSallaSignature: !!sallaSignature,
-      hasProvidedToken: !!extractProvidedToken(req),
-      hasWebhookSecret: !!process.env.SALLA_WEBHOOK_SECRET,
-      hasWebhookToken: !!WEBHOOK_TOKEN,
-      timestamp: Date.now()
+    console.error("❌ Webhook authentication failed (token-only)", {
+      hasProvidedToken: !!provided,
+      hasExpectedToken: !!WEBHOOK_TOKEN,
+      env: process.env.NODE_ENV,
     });
     return res.status(401).json({ error: "authentication_failed" });
   }
 
   const db = dbAdmin();
 
+  // Parse body
   let body: SallaWebhookBody = { event: "" };
   try {
     body = JSON.parse(raw.toString("utf8") || "{}") as SallaWebhookBody;
@@ -679,8 +653,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     timestamp: Date.now()
   });
 
-  const providedToken = extractProvidedToken(req);
-  const idemKey = crypto.createHash("sha256").update((providedToken || sallaSignature || "") + "|").update(raw).digest("hex");
+  // Idempotency
+  const idemKey = crypto.createHash("sha256").update((provided || "") + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
   if ((await idemRef.get()).exists) return res.status(200).json({ ok: true, deduped: true });
   await idemRef.set({
@@ -699,79 +673,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ ok: true });
   }
 
-  // الطلبات / الشحن
+  // Orders / Shipments
   const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
-  let status = lc(
-    safeStringExtract(asOrder.status) ||
-    safeStringExtract(asOrder.order_status) ||
-    safeStringExtract(asOrder.new_status) ||
-    safeStringExtract(asOrder.shipment_status) || ""
-  );
+  const statusRaw = (asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
+  let { slug: statusNorm } = normalizeStatus(statusRaw);
   const paymentStatus = lc(safeStringExtract(asOrder.payment_status));
   const storeUidFromEvent = pickStoreUidFromSalla(dataRaw) || null;
 
   await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
 
-  // 🔁 Fallback على الحالة إن كانت فاضية
-  if (!status && orderId) {
+  // 🔁 لو الحالة غير واضحة، اسحب Order Details لأخذ slug الرسمي
+  if ((!statusNorm || statusNorm === statusRaw) && orderId) {
     try {
       const storeUid = storeUidFromEvent || (await resolveStoreUid(db, dataRaw, orderId));
       const od = await fetchOrderDetailsFromSalla(db, storeUid, orderId);
-      const s =
-        safeStringExtract(od?.status?.slug) ||
-        safeStringExtract(od?.status) ||
-        safeStringExtract(od?.shipment_status) ||
-        safeStringExtract(od?.order_status) || "";
-      status = lc(s);
-      console.log("Resolved status via API:", { orderId, status });
+      const slug =
+        lc(safeStringExtract((od?.status as Record<string, unknown>)?.slug)) ||
+        lc(safeStringExtract(od?.status)) ||
+        lc(safeStringExtract(od?.shipment_status)) ||
+        lc(safeStringExtract(od?.order_status)) || "";
+      statusNorm = normalizeStatus(slug).slug;
+      console.log("Resolved status via API:", { orderId, statusNorm });
     } catch (e) {
       console.warn("status fallback failed:", e);
     }
   }
 
-  // -------------------- NEW: قرار الإرسال بعد التطبيع --------------------
-  let shouldSend = false;
+  const shouldSend =
+    (event === "order.status.updated" || event === "shipment.updated") &&
+    (statusNorm === "delivered" || statusNorm === "completed" || statusNorm === "complete" || statusNorm === "fulfilled");
 
-  // 1) طبع الحالة
-  let statusNorm = normalizeStatus(status);
+  console.log("Decision:", {
+    orderId, event,
+    status: safeStringExtract(statusRaw),
+    statusNorm,
+    paymentStatus,
+    shouldSend
+  });
 
-  // 2) لو لسه مش done، حاول تجيب slug من API وتطبّعه
-  if (!["delivered","completed","complete","fulfilled"].includes(statusNorm) && orderId) {
-    try {
-      const storeUid = storeUidFromEvent || (await resolveStoreUid(db, dataRaw, orderId));
-      const od = await fetchOrderDetailsFromSalla(db, storeUid, orderId);
-      const s2 = lc(
-        safeStringExtract(od?.status?.slug) ||
-        safeStringExtract(od?.status) ||
-        safeStringExtract(od?.shipment_status) ||
-        safeStringExtract(od?.order_status) || ""
-      );
-      if (s2) {
-        statusNorm = normalizeStatus(s2);
-        console.log("Resolved status via API/normalized:", { orderId, status: s2, statusNorm });
-      }
-    } catch (e) {
-      console.warn("status slug fallback failed:", e);
-    }
-  }
-
-  // 3) القرار النهائي
-  if (event === "shipment.updated") {
-    if (["delivered","completed","complete","fulfilled"].includes(statusNorm)) shouldSend = true;
-  } else if (event === "order.status.updated") {
-    if (["delivered","completed","complete","fulfilled"].includes(statusNorm)) shouldSend = true;
-  } else if (event === "order.cancelled" || event === "order.canceled") {
-    await voidInvitesForOrder(db, orderId, "order_cancelled");
-  } else if (event === "order.refunded") {
-    await voidInvitesForOrder(db, orderId, "order_refunded");
-  }
-
-  console.log("Decision:", { orderId, event, status, statusNorm, paymentStatus, shouldSend });
-
-  // ✅ ACK سريع
+  // Fast ACK
   res.status(202).json({ ok: true, accepted: true, event });
 
-  // 🧵 إرسال الدعوات بعد الرد
+  // Execute send after ack
   try {
     if (shouldSend) {
       const result = await sendInviteDirectly(db, asOrder, dataRaw);
@@ -781,10 +724,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           error: result.reason || "unknown_reason",
         }).catch(()=>{});
       }
+    } else if (event === "order.cancelled" || event === "order.canceled") {
+      await voidInvitesForOrder(db, orderId, "order_cancelled");
+    } else if (event === "order.refunded") {
+      await voidInvitesForOrder(db, orderId, "order_refunded");
     }
   } catch (e) {
     await db.collection("webhook_errors").add({
-      at: Date.now(), scope: "sendInviteDirectly", event, orderId, error: e instanceof Error ? e.message : String(e),
+      at: Date.now(), scope: "sendInviteDirectly", event, orderId,
+      error: e instanceof Error ? e.message : String(e),
     }).catch(()=>{});
   }
 }
