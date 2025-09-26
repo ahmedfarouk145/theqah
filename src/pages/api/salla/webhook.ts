@@ -4,6 +4,7 @@ import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
 import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
 import { sendSms, buildInviteSMS } from "@/server/messaging/send-sms";
+import { tryChannels } from "@/server/messaging/send-invite";
 
 export const config = { api: { bodyParser: false } };
 
@@ -183,7 +184,6 @@ async function ensureInviteForOrder(
   if (!customer || (!customer.email && !customer.mobile)) {
     customer = (eventRaw["customer"] as SallaCustomer) || customer;
   }
-  // NEW: Try nested order.customer if exists
   if ((!customer || (!customer.email && !customer.mobile)) && (eventRaw["order"] && typeof eventRaw["order"] === "object")) {
     const nestedOrder = eventRaw["order"] as UnknownRecord;
     customer = (nestedOrder["customer"] as SallaCustomer) || customer;
@@ -236,7 +236,7 @@ async function ensureInviteForOrder(
     channel: "multi",
   });
 
-  await db.collection("review_invites").add({
+  await db.collection("review_invites").doc(tokenId).set({
     tokenId,
     orderId,
     platform: "salla",
@@ -254,58 +254,19 @@ async function ensureInviteForOrder(
     publicUrl,
   });
 
-  // Send messages
+  // استخدم tryChannels للإرسال الموحد
   const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
-  const tasks: Array<Promise<unknown>> = [];
-
-  if (customerValidation.hasMobile && customerValidation.mobile) {
-    const mobile = customerValidation.mobile.replace(/\s+/g, "");
-    const smsText = buildInviteSMS(storeName, publicUrl);
-    tasks.push(
-      sendSms(mobile, smsText, {
-        defaultCountry: "SA",
-        msgClass: "transactional",
-        priority: 1,
-        requestDlr: true,
-      }).catch((error) => {
-        console.error("[SALLA][SMS] failed to send", {
-          orderId, mobile,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      })
-    );
-  }
-
-  if (customerValidation.hasEmail && customerValidation.email) {
-    const name = customer?.name || "عميلنا العزيز";
-    const emailHtml = `
-      <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
-        <p>مرحباً ${name},</p>
-        <p>قيّم تجربتك من <strong>${storeName}</strong>.</p>
-        <p><a href="${publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
-        <p style="color:#64748b">فريق ثقة</p>
-      </div>`;
-    tasks.push(
-      sendEmail(customerValidation.email, "قيّم تجربتك معنا", emailHtml).catch((error) => {
-        console.error("[SALLA][EMAIL] failed to send", {
-          orderId,
-          email: customerValidation.email,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      })
-    );
-  }
-
-  if (tasks.length > 0) {
-    await Promise.allSettled(tasks);
-    console.log("[SALLA][INVITE] sent", {
-      orderId,
-      smsCount: customerValidation.hasMobile ? 1 : 0,
-      emailCount: customerValidation.hasEmail ? 1 : 0
-    });
-  } else {
-    console.warn("[SALLA][INVITE] no messages sent - no valid contact methods", { orderId });
-  }
+  await tryChannels({
+    inviteId: tokenId,
+    country: "sa",
+    phone: customerValidation.mobile,
+    email: customerValidation.email,
+    customerName: customer?.name,
+    storeName: storeName,
+    url: publicUrl,
+    strategy: "all",
+    order: ["sms", "email"],
+  });
 }
 
 async function voidInvitesForOrder(
