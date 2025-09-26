@@ -181,12 +181,16 @@ async function ensureInviteForOrder(
   // Try to get customer from all possible places
   let customer = order.customer as SallaCustomer | undefined;
   if (!customer || (!customer.email && !customer.mobile)) {
-    // Try fallback from eventRaw
     customer = (eventRaw["customer"] as SallaCustomer) || customer;
+  }
+  // NEW: Try nested order.customer if exists
+  if ((!customer || (!customer.email && !customer.mobile)) && (eventRaw["order"] && typeof eventRaw["order"] === "object")) {
+    const nestedOrder = eventRaw["order"] as UnknownRecord;
+    customer = (nestedOrder["customer"] as SallaCustomer) || customer;
   }
   const customerValidation = validateCustomerData(customer);
   if (!customerValidation.isValid) {
-    console.log("[SALLA][INVITE] skipping - no valid customer contact info", { orderId });
+    console.log("[SALLA][INVITE] skipping - no valid customer contact info", { orderId, customer });
     return;
   }
 
