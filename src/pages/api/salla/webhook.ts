@@ -23,34 +23,20 @@ interface SallaOrder {
 }
 interface SallaWebhookBody {
   event: string;
-  merchant?: string | number;     // لأحداث app.*
+  merchant?: string | number;     // لأحداث app.* (لو استخدمتها)
   data?: SallaOrder | UnknownRecord;
 }
 
-type SallaAppEvent =
-  | "app.store.authorize"
-  | "app.installed"
-  | "app.updated"
-  | "app.uninstalled"
-  | "app.trial.started"
-  | "app.trial.expired"
-  | "app.trial.canceled"
-  | "app.subscription.started"
-  | "app.subscription.expired"
-  | "app.subscription.canceled"
-  | "app.subscription.renewed"
-  | "app.feedback.created"
-  | "app.settings.updated";
-
 // -------------------- Consts & helpers --------------------
-const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
+const WEBHOOK_SECRET  = (process.env.SALLA_WEBHOOK_SECRET || "").trim(); // يفضل للـ Signature
+const WEBHOOK_TOKEN   = (process.env.SALLA_WEBHOOK_TOKEN  || "").trim(); // للـ Token / fallback
 const DONE  = new Set(["paid","fulfilled","delivered","completed","complete"]);
 const CANCEL= new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const keyOf = (event: string, orderId?: string, status?: string) =>
   `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
 
-// ===== DOMAIN HELPERS (from your “keep as is”) =====
+// ===== DOMAIN HELPERS =====
 function toDomainBase(domain: string | null | undefined): string | null {
   if (!domain) return null;
   try {
@@ -80,8 +66,7 @@ function readRawBody(req: NextApiRequest): Promise<Buffer> {
   });
 }
 function timingSafeEq(a: string, b: string) {
-  const A = Buffer.from(a);
-  const B = Buffer.from(b);
+  const A = Buffer.from(a); const B = Buffer.from(b);
   if (A.length !== B.length) return false;
   return crypto.timingSafeEqual(A, B);
 }
@@ -92,13 +77,58 @@ function getHeader(req: NextApiRequest, name: string): string {
 function extractProvidedToken(req: NextApiRequest): string {
   const auth = getHeader(req, "authorization").trim();
   if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
-  const h1 = getHeader(req, "x-webhook-token").trim();
-  if (h1) return h1;
-  const h2 = getHeader(req, "x-salla-token").trim();
-  if (h2) return h2;
+  const hToken = getHeader(req, "x-salla-token").trim() || getHeader(req, "x-webhook-token").trim();
+  if (hToken) return hToken;
   const q = typeof req.query.t === "string" ? req.query.t.trim() : "";
   return q;
 }
+
+// ===== Security (Signature / Token) =====
+// الدوكس: X-Salla-Security-Strategy + X-Salla-Signature (للـ Signature)  و Token كخيار آخر
+// https://docs.salla.dev/421119m0  (Security Strategies / Verify Webhooks Using Signature / Timeout & Retries)
+function sha256Hex(data: Buffer | string) {
+  return crypto.createHash("sha256").update(data).digest("hex");
+}
+function hmacSha256Hex(key: string, data: Buffer | string) {
+  return crypto.createHmac("sha256", key).update(data).digest("hex");
+}
+
+function verifyBySignature(raw: Buffer, headerSig: string): boolean {
+  const secret = WEBHOOK_SECRET || WEBHOOK_TOKEN; // مرونة لو حدّثت متغيرات البيئة
+  if (!secret || !headerSig) return false;
+
+  // طريقتين للتحقق (لتغطية غموض الصياغة في الدوكس): sha256(body+secret) أو HMAC(secret, body)
+  const try1 = sha256Hex(Buffer.concat([raw, Buffer.from(secret)]));
+  const try2 = hmacSha256Hex(secret, raw);
+  return timingSafeEq(headerSig, try1) || timingSafeEq(headerSig, try2);
+}
+
+function verifyByToken(provided: string): boolean {
+  if (!WEBHOOK_TOKEN) return false;
+  if (!provided) return false;
+  return timingSafeEq(provided, WEBHOOK_TOKEN);
+}
+
+function verifySallaRequest(req: NextApiRequest, raw: Buffer): { ok: boolean; strategy?: string; reason?: string } {
+  const strategy = lc(getHeader(req, "x-salla-security-strategy") || "");
+  const sigHeader = (getHeader(req, "x-salla-signature") || "").trim();
+  const tok = extractProvidedToken(req);
+
+  // لو الاستراتيجية محددة، نتبعها. لو لأ، نحاول الاثنين بترتيب: Signature ثم Token.
+  if (strategy === "signature") {
+    const ok = verifyBySignature(raw, sigHeader);
+    return { ok, strategy: "signature", reason: ok ? undefined : "bad_signature" };
+  } else if (strategy === "token") {
+    const ok = verifyByToken(tok);
+    return { ok, strategy: "token", reason: ok ? undefined : "bad_token" };
+  } else {
+    // غير محدد: نجرب Signature ثم Token
+    if (sigHeader && verifyBySignature(raw, sigHeader)) return { ok: true, strategy: "signature" };
+    if (verifyByToken(tok)) return { ok: true, strategy: "token" };
+    return { ok: false, reason: "no_valid_strategy" };
+  }
+}
+
 function pickName(obj: unknown): string | undefined {
   if (obj && typeof obj === "object" && "name" in obj) {
     const n = (obj as { name?: unknown }).name;
@@ -125,7 +155,7 @@ function extractProductIds(items?: SallaItem[]): string[] {
   return [...ids];
 }
 
-// -------------------- Order snapshot & invites --------------------
+// -------------------- DB ops --------------------
 async function upsertOrderSnapshot(
   db: FirebaseFirestore.Firestore,
   order: SallaOrder,
@@ -206,7 +236,6 @@ async function ensureInviteForOrder(
   const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
   const smsText = buildInviteSMS(storeName, publicUrl);
 
-  // ⬇️ نرسل القناتين معًا (متوازي) + نمرّر إعدادات السعودية للـSMS
   const tasks: Array<Promise<unknown>> = [];
   if (buyer.mobile) {
     const mobile = String(buyer.mobile).replace(/\s+/g, "");
@@ -241,158 +270,57 @@ async function voidInvitesForOrder(db: FirebaseFirestore.Firestore, orderId: str
   await batch.commit();
 }
 
-// -------------------- Handle app.* events --------------------
-async function handleAppEvent(
-  db: FirebaseFirestore.Firestore,
-  event: SallaAppEvent,
-  merchant: string | number | undefined,
-  data: UnknownRecord
-) {
-  const uid = merchant != null ? `salla:${String(merchant)}` : "salla:unknown";
+// ===== Domain saver (عند authorize/installed إن وُجد) =====
+async function maybeSaveDomain(db: FirebaseFirestore.Firestore, uid: string, data: UnknownRecord, event: string) {
+  const domainRaw =
+    (data as Record<string, unknown>)?.["domain"] ??
+    (data as Record<string, unknown>)?.["store_url"] ??
+    (data as Record<string, unknown>)?.["url"] ??
+    ((data as Record<string, unknown>)?.["store"] as UnknownRecord | undefined)?.["domain"];
 
-  await db.collection("salla_app_events").add({ uid, event, merchant: merchant ?? null, data, at: Date.now() });
-
-  // ========= NEW: extract & store domain (on authorize/installed) =========
-  const maybeSaveDomain = async () => {
-    // نحاول نلاقي حقل دومين من البيانات (حسب اللي سلة بترجعه)
-    // شائعة: domain / store.domain / store_url / url
-    // كمان ممكن يجي رابط لوحة (فيه path) فنطبّعه إلى origin أو origin/dev-*
-    const domainRaw =
-      (data as Record<string, unknown>)?.["domain"] ??
-      (data as Record<string, unknown>)?.["store_url"] ??
-      (data as Record<string, unknown>)?.["url"] ??
-      ((data as Record<string, unknown>)?.["store"] as UnknownRecord | undefined)?.["domain"];
-
-    const base = toDomainBase(typeof domainRaw === "string" ? domainRaw : String(domainRaw ?? ""));
-    if (!base) {
-      console.log("[SALLA][DOMAIN] no domain found in event data", { event, uid });
-      return;
-    }
-
-    const key = encodeUrlForFirestore(base);
-    console.log("[SALLA][DOMAIN] detected & normalized", { event, uid, domainRaw, base, key });
-
-    // نخزّنها في documents سهلة للرجوع:
-    // - stores/{uid}: domain.base + domain.key
-    // - domains/{key}: reverse lookup
-    await db.collection("stores").doc(uid).set({
-      domain: { base, key, updatedAt: Date.now() },
-      updatedAt: Date.now(),
-    }, { merge: true });
-
-    await db.collection("domains").doc(key).set({
-      base,
-      key,
-      uid,
-      provider: "salla",
-      updatedAt: Date.now(),
-    }, { merge: true });
-
-    console.log("[SALLA][DOMAIN] saved", { uid, base, key });
-  };
-  // ========================================================================
-
-  if (event === "app.store.authorize") {
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const access_token  = String((data as any)?.access_token || "");
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const refresh_token = ((data as any)?.refresh_token as string) || null;
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const expires       = Number((data as any)?.expires || 0);
-    const expiresAt     = expires ? Date.now() + expires * 1000 : null;
-
-    if (access_token) {
-      await db.collection("salla_tokens").doc(uid).set({
-        uid,
-        provider: "salla",
-        storeId: merchant ?? null,
-        accessToken: access_token,
-        refreshToken: refresh_token,
-        expiresAt,
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        scope: (data as any)?.scope || null,
-        obtainedAt: Date.now(),
-      }, { merge: true });
-      console.log("[SALLA][AUTH] token stored", { uid, hasAccessToken: !!access_token, expiresAt });
-    }
-
-    await db.collection("stores").doc(uid).set({
-      uid,
-      platform: "salla",
-      salla: { storeId: merchant ?? null, connected: true, installed: true, installedAt: Date.now() },
-      updatedAt: Date.now(),
-    }, { merge: true });
-    console.log("[SALLA][APP] store.authorize stored flags", { uid, merchant });
-
-    // ⬅️ نحاول حفظ الدومين (لو موجود في البيانات)
-    await maybeSaveDomain();
+  const base = toDomainBase(typeof domainRaw === "string" ? domainRaw : String(domainRaw ?? ""));
+  if (!base) {
+    console.log("[SALLA][DOMAIN] no domain found in event data", { event, uid });
+    return;
   }
+  const key = encodeUrlForFirestore(base);
 
-  if (event === "app.installed") {
-    await db.collection("stores").doc(uid).set({
-      uid,
-      platform: "salla",
-      salla: { storeId: merchant ?? null, installed: true, installedAt: Date.now() },
-      updatedAt: Date.now(),
-    }, { merge: true });
-    console.log("[SALLA][APP] installed", { uid, merchant });
+  await db.collection("stores").doc(uid).set({
+    domain: { base, key, updatedAt: Date.now() },
+    updatedAt: Date.now(),
+  }, { merge: true });
 
-    await maybeSaveDomain();
-  }
+  await db.collection("domains").doc(key).set({
+    base, key, uid, provider: "salla", updatedAt: Date.now(),
+  }, { merge: true });
 
-  if (event === "app.uninstalled") {
-    await db.collection("stores").doc(uid).set({
-      uid,
-      platform: "salla",
-      salla: { storeId: merchant ?? null, installed: false, connected: false, uninstalledAt: Date.now() },
-      updatedAt: Date.now(),
-    }, { merge: true });
-    console.log("[SALLA][APP] uninstalled", { uid, merchant });
-  }
-
-  if (event.startsWith("app.trial.") || event.startsWith("app.subscription.")) {
-    await db.collection("stores").doc(uid).set({
-      uid,
-      platform: "salla",
-      salla: { storeId: merchant ?? null, subscription: { lastEvent: event, data, updatedAt: Date.now() } },
-      updatedAt: Date.now(),
-    }, { merge: true });
-    console.log("[SALLA][APP] subscription/trial event saved", { uid, event });
-  }
-
-  if (event === "app.settings.updated") {
-    await db.collection("stores").doc(uid).set({
-      uid,
-      platform: "salla",
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      salla: { storeId: merchant ?? null, settings: (data as any)?.settings ?? {} },
-      updatedAt: Date.now(),
-    }, { merge: true });
-    console.log("[SALLA][APP] settings updated", { uid });
-  }
-
-  if (event === "app.feedback.created") {
-    await db.collection("stores").doc(uid).collection("app_feedback").add({ at: Date.now(), data });
-    console.log("[SALLA][APP] feedback stored", { uid });
-  }
+  console.log("[SALLA][DOMAIN] saved", { uid, base, key });
 }
 
 // -------------------- Handler --------------------
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
-  // ✅ يقبل Bearer / x-webhook-token / x-salla-token / ?t=
-  const provided = extractProvidedToken(req);
-  if (!WEBHOOK_TOKEN || !provided || !timingSafeEq(provided, WEBHOOK_TOKEN)) {
-    console.error("[SALLA][AUTH] invalid token", {
-      hasProvidedToken: !!provided,
-      hasExpectedToken: !!WEBHOOK_TOKEN,
+  const raw = await readRawBody(req);
+
+  // تحقق أمني حسب الدوكس (Signature/Token + الهيدر X-Salla-Security-Strategy)
+  const v = verifySallaRequest(req, raw);
+  if (!v.ok) {
+    console.error("[SALLA][AUTH] invalid request", {
+      strategy: getHeader(req, "x-salla-security-strategy") || "auto",
+      reason: v.reason,
+      hasSecret: !!WEBHOOK_SECRET,
+      hasToken: !!WEBHOOK_TOKEN,
       from: req.headers["x-forwarded-for"] || req.socket.remoteAddress,
     });
-    return res.status(401).json({ error: "invalid_webhook_token" });
+    return res.status(401).json({ error: "unauthorized" });
   }
 
-  const raw = await readRawBody(req);
+  // ✅ الرد السريع (سلة قد تعيد المحاولة 3 مرات خلال ~5 دقائق إن لم تحصل على 2xx)
+  // نردّ 202 و نكمل المعالجة بالخلفية
+  res.status(202).json({ ok: true, accepted: true });
+
+  // من هنا نكمل في الخلفية
   const db = dbAdmin();
 
   let body: SallaWebhookBody = { event: "" };
@@ -400,7 +328,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     body = JSON.parse(raw.toString("utf8") || "{}") as SallaWebhookBody;
   } catch {
     console.error("[SALLA][PARSE] invalid_json");
-    return res.status(400).json({ error: "invalid_json" });
+    // نسجل ونخرج فقط (الرد أُرسل بالفعل)
+    await db.collection("webhook_errors").add({
+      at: Date.now(), scope: "parse", error: "invalid_json",
+      headers: req.headers, rawLen: raw.length,
+    }).catch(()=>{});
+    return;
   }
 
   const event = String(body.event || "");
@@ -412,15 +345,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     orderId: String(asOrder.id ?? asOrder.order_id ?? "") || null,
     hasCustomer: !!asOrder.customer,
     customerEmail: asOrder.customer?.email || null,
+    strategy: v.strategy,
     at: new Date().toISOString(),
   });
 
-  // Idempotency (يشمل كل الأحداث)
-  const idemKey = crypto.createHash("sha256").update(provided + "|").update(raw).digest("hex");
+  // Idempotency — باستخدام raw+secret
+  const idemKey = crypto.createHash("sha256")
+    .update((WEBHOOK_SECRET || WEBHOOK_TOKEN) + "|")
+    .update(raw)
+    .digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
   if ((await idemRef.get()).exists) {
     console.log("[SALLA][IDEMP] deduped", { event });
-    return res.status(200).json({ ok: true, deduped: true });
+    return;
   }
   await idemRef.set({
     at: Date.now(),
@@ -429,55 +366,82 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     status: lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? ""),
     paymentStatus: lc(asOrder.payment_status ?? ""),
     merchant: body.merchant ?? null,
+    strategy: v.strategy ?? "auto",
   });
 
-  // فرع أحداث Partner Portal (app.*)
-  if (event.startsWith("app.")) {
-    await handleAppEvent(db, event as SallaAppEvent, body.merchant, dataRaw);
-    await db.collection("processed_events").doc(keyOf(event)).set({ at: Date.now(), event, processed: true }, { merge: true });
-    console.log("[SALLA][OK] app.* handled", { event });
-    return res.status(200).json({ ok: true });
+  // ====== domain (لو حدث مناسب) ======
+  if (event === "app.store.authorize" || event === "app.installed") {
+    const uid = (dataRaw?.["merchant"] != null)
+      ? `salla:${String(dataRaw["merchant"])}`
+      : (asOrder?.merchant?.id != null ? `salla:${String(asOrder.merchant!.id)}` : "salla:unknown");
+    if (uid !== "salla:unknown") {
+      await maybeSaveDomain(db, uid, dataRaw, event).catch(()=>{});
+    }
   }
 
-  // أوامر الطلبات / الشحن
-  const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
-  const status = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
-  const paymentStatus = lc(asOrder.payment_status ?? "");
-  const storeUidFromEvent = pickStoreUidFromSalla(dataRaw) || null;
+  // ====== التعامل مع الأحداث الرسمية ======
+  // المرجع: List of Salla Store Events (orders/products/customers/shipment..)
+  // https://docs.salla.dev/421119m0
+  try {
+    const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
+    const status = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
+    const paymentStatus = lc(asOrder.payment_status ?? "");
+    const storeUidFromEvent = pickStoreUidFromSalla(dataRaw) || null;
 
-  await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
+    // snapshots (لو الحدث له علاقة بالطلبات/الشحن)
+    if (event.startsWith("order.") || event.startsWith("shipment.")) {
+      await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
+    }
 
-  // القواعد:
-  // - after_payment: عبر order.payment.updated بحالة paid/authorized/captured
-  // - after_delivery: عبر shipment.updated (delivered) أو order.status.updated (completed)
-  // - أي cancel/refund قبل الإرسال ⇒ void
-  if (event === "order.payment.updated") {
-    if (["paid","authorized","captured"].includes(paymentStatus)) {
-      console.log("[SALLA][RULE] after_payment → ensureInvite", { orderId, paymentStatus });
-      await ensureInviteForOrder(db, asOrder, dataRaw);
+    // قواعد الإرسال (حسب منطقك التجاري)
+    if (event === "order.payment.updated") {
+      if (["paid","authorized","captured"].includes(paymentStatus)) {
+        console.log("[SALLA][RULE] after_payment → ensureInvite", { orderId, paymentStatus });
+        await ensureInviteForOrder(db, asOrder, dataRaw);
+      }
+    } else if (event === "shipment.updated") {
+      if (DONE.has(status) || ["delivered","completed"].includes(status)) {
+        console.log("[SALLA][RULE] after_delivery → ensureInvite", { orderId, status });
+        await ensureInviteForOrder(db, asOrder, dataRaw);
+      }
+    } else if (event === "order.status.updated") {
+      if (DONE.has(status)) {
+        console.log("[SALLA][RULE] status.done → ensureInvite", { orderId, status });
+        await ensureInviteForOrder(db, asOrder, dataRaw);
+      }
+    } else if (event === "order.cancelled") {
+      console.log("[SALLA][RULE] cancelled → voidInvites", { orderId });
+      await voidInvitesForOrder(db, orderId, "order_cancelled");
+    } else if (event === "order.refunded") {
+      console.log("[SALLA][RULE] refunded → voidInvites", { orderId });
+      await voidInvitesForOrder(db, orderId, "order_refunded");
+    } else if (
+      // أحداث معروفة أخرى: نسجّلها فقط الآن — ممكن تضيف سلوك لاحقًا
+      event.startsWith("order.") || event.startsWith("shipment.") ||
+      event.startsWith("product.") || event.startsWith("customer.") ||
+      event.startsWith("category.") || event.startsWith("brand.") ||
+      event.startsWith("store.") || event.startsWith("cart.") ||
+      event.startsWith("invoice.") || event.startsWith("specialoffer.") ||
+      event === "review.added"
+    ) {
+      await db.collection("webhooks_salla_known").add({ at: Date.now(), event, data: dataRaw }).catch(()=>{});
+    } else {
+      // غير مذكور في اللستة → نسجله لنتتبعه
+      await db.collection("webhooks_salla_unhandled").add({ at: Date.now(), event, data: dataRaw }).catch(()=>{});
+      console.log("[SALLA][OK] unhandled event stored", { event });
     }
-  } else if (event === "shipment.updated") {
-    if (DONE.has(status) || ["delivered","completed"].includes(status)) {
-      console.log("[SALLA][RULE] after_delivery → ensureInvite", { orderId, status });
-      await ensureInviteForOrder(db, asOrder, dataRaw);
-    }
-  } else if (event === "order.status.updated") {
-    if (DONE.has(status)) {
-      console.log("[SALLA][RULE] status.done → ensureInvite", { orderId, status });
-      await ensureInviteForOrder(db, asOrder, dataRaw);
-    }
-  } else if (event === "order.cancelled") {
-    console.log("[SALLA][RULE] cancelled → voidInvites", { orderId });
-    await voidInvitesForOrder(db, orderId, "order_cancelled");
-  } else if (event === "order.refunded") {
-    console.log("[SALLA][RULE] refunded → voidInvites", { orderId });
-    await voidInvitesForOrder(db, orderId, "order_refunded");
+
+    await db.collection("processed_events")
+      .doc(keyOf(event, orderId, status))
+      .set({ at: Date.now(), event, processed: true, status }, { merge: true });
+
+    console.log("[SALLA][OK] handled", { event, orderId, status });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[SALLA][ERROR] handler_failed", { event, error: msg });
+    await db.collection("webhook_errors").add({
+      at: Date.now(), scope: "handler", event,
+      error: msg,
+    }).catch(()=>{});
   }
-
-  await db.collection("processed_events")
-    .doc(keyOf(event, orderId, status))
-    .set({ at: Date.now(), event, processed: true, status }, { merge: true });
-
-  console.log("[SALLA][OK] order/shipment handled", { event, orderId, status });
-  return res.status(200).json({ ok: true });
 }
