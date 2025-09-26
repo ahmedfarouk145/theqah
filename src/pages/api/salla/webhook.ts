@@ -400,7 +400,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       hasSecret: !!WEBHOOK_SECRET,
       hasToken: !!WEBHOOK_TOKEN,
       from: req.headers["x-forwarded-for"] || req.socket.remoteAddress,
-      body: raw.toString("utf8")
+      body: raw.toString("utf8"),
+      reason: "signature/token mismatch or duplicate"
     });
     return res.status(401).json({ error: "unauthorized" });
   }
