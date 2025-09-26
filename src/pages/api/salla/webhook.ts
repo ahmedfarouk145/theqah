@@ -42,6 +42,10 @@ function verifySallaSignature(raw: Buffer, req: NextApiRequest): boolean {
   const sigHeader = getHeader(req, "x-salla-signature");
   if (!WEBHOOK_SECRET || !sigHeader) return false;
   const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(raw).digest("hex");
+  // DEBUG LOGGING
+  console.log("[DEBUG][SALLA] sigHeader:", sigHeader);
+  console.log("[DEBUG][SALLA] expected :", expected);
+  console.log("[DEBUG][SALLA] raw (first 200):", raw.toString("utf8").slice(0, 200));
   return crypto.timingSafeEqual(Buffer.from(sigHeader), Buffer.from(expected));
 }
 function extractProvidedToken(req: NextApiRequest): string {
