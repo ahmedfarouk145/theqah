@@ -27,7 +27,10 @@ interface SallaWebhookBody {
 
 const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
-const DONE = new Set(["paid","fulfilled","delivered","completed","complete"]);
+const DONE = new Set([
+  "paid", "fulfilled", "delivered", "completed", "complete",
+  "تم التوصيل", "مكتمل", "تم التنفيذ"
+]);
 const CANCEL = new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const keyOf = (event: string, orderId?: string, status?: string) =>
