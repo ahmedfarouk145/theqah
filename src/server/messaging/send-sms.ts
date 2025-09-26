@@ -1,17 +1,16 @@
-// src/server/messaging/send-sms.ts
 // عميل إرسال SMS عبر OurSMS + قالب الرسالة الموحد + رابر sendSms(to, text, opts?)
 
 type MsgClass = "transactional" | "promotional" | "";
 
 export type SendSMSParams = {
-  to: string | string[];         // رقم واحد أو مجموعة أرقام (E.164 مفضل)
-  text: string;                  // نص الرسالة
-  customId?: string | null;      // معرف خاص بك يظهر في تقاريرهم (اختياري)
-  priority?: 0 | 1 | 2 | 3 | 4;  // 1 أعلى أولوية - 0 = تلقائي (افتراضي)
-  delayMinutes?: number;         // تأخير بالدقائق (افتراضي 0)
-  validityMinutes?: number;      // صلاحية بالدقائق (افتراضي 0 = أقصى مدة)
-  msgClass?: MsgClass;           // "transactional" | "promotional" | ""
-  requestDlr?: boolean;          // DLR لو مدعوم (افتراضي false)
+  to: string | string[];
+  text: string;
+  customId?: string | null;
+  priority?: 0 | 1 | 2 | 3 | 4;
+  delayMinutes?: number;
+  validityMinutes?: number;
+  msgClass?: MsgClass;
+  requestDlr?: boolean;
 };
 
 export type OursmsSendResult = {
@@ -38,7 +37,6 @@ export type SendSmsOptions = {
   validityMinutes?: number;
 };
 
-// النتيجة القياسية المتوقّعة من بقية المشروع (تتوافق مع tryChannels)
 export type SendSmsResult = {
   ok: boolean;
   id: string | null;
@@ -53,19 +51,14 @@ function env(name: string, fallback?: string) {
 // ---------- القالب الموحّد ----------
 export function buildInviteSMS(storeName: string | null | undefined, link: string) {
   const s = (storeName || "").trim() || "متجرك";
-
-  // قابل للتخصيص من ENV (اختياري):
-  // INVITE_SMS_TEMPLATE="مرحباً، قيّم تجربتك من {{store}}: {{link}} وساهم في إسعاد يتيم!"
-  const tpl = env("INVITE_SMS_TEMPLATE");
+  const tpl = env("INVITE_SMS_TEMPLATE"); // اختياري
   if (tpl) {
     return tpl.replace(/\{\{store\}\}/g, s).replace(/\{\{link\}\}/g, link);
   }
-
-  // الافتراضي المطلوب
   return `مرحباً، قيّم تجربتك من ${s}: ${link} وساهم في إسعاد يتيم!`;
 }
 
-// ---------- تطبيع رقم الهاتف إلى E.164 (مبسّط لـ SA/EG) ----------
+// ---------- تطبيع رقم الهاتف ----------
 function normalizePhone(raw: string, def?: "SA" | "EG"): string {
   const digits = String(raw).replace(/[^\d+]/g, "");
   if (digits.startsWith("+")) return digits;
@@ -79,26 +72,36 @@ function normalizePhone(raw: string, def?: "SA" | "EG"): string {
   return digits;
 }
 
+// util: Timeout لطلبات fetch
+async function fetchWithTimeout(input: RequestInfo, init: RequestInit & { timeoutMs?: number } = {}) {
+  const { timeoutMs = 20000, ...rest } = init;
+  const ac = new AbortController();
+  const id = setTimeout(() => ac.abort(), timeoutMs);
+  try {
+    const res = await fetch(input, { ...rest, signal: ac.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 // ---------- الإرسال عبر OurSMS ----------
 export async function sendSMSViaOursms(params: SendSMSParams) {
   const API_KEY = env("OURSMS_API_KEY");
-  if (!API_KEY) {
-    throw new Error("OURSMS_API_KEY is missing");
-  }
+  if (!API_KEY) throw new Error("OURSMS_API_KEY is missing");
 
   const BASE = env("OURSMS_BASE_URL", "https://api.oursms.com");
-  const SENDER = env("OURSMS_SENDER"); // يجب أن يكون مُعتمد في بعض الدول
+  const SENDER = env("OURSMS_SENDER");
 
   const {
     to,
     text,
-    //eslint-disable-next-line @typescript-eslint/no-unused-vars
     customId = null,
-    priority = 0,
+    priority = 1,
     delayMinutes = 0,
     validityMinutes = 0,
-    msgClass = "",
-    requestDlr = false,
+    msgClass = "transactional",
+    requestDlr = true,
   } = params;
 
   const dests = Array.isArray(to) ? to : [to];
@@ -115,16 +118,16 @@ export async function sendSMSViaOursms(params: SendSMSParams) {
     dlr: requestDlr ? 1 : 0,
     prevDups: 0,
     msgClass: msgClass || undefined,
-    // customId: يمكن إضافته إذا كان حسابك يدعمه في هذا المسار
   };
 
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
+    timeoutMs: 20000,
   });
 
   if (!res.ok) {
@@ -160,9 +163,7 @@ export async function getOursmsCredits() {
   if (!API_KEY) throw new Error("OURSMS_API_KEY is missing");
 
   const url = `${BASE.replace(/\/+$/, "")}/billing/credits`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${API_KEY}` },
-  });
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${API_KEY}` } });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     throw new Error(`oursms_http_${res.status}${t ? `: ${t}` : ""}`);
@@ -176,13 +177,8 @@ export async function getOursmsDlrs(count = 100) {
   const BASE = env("OURSMS_BASE_URL", "https://api.oursms.com");
   if (!API_KEY) throw new Error("OURSMS_API_KEY is missing");
 
-  const url = `${BASE.replace(/\/+$/, "")}/inbox/dlrs?count=${Math.min(
-    Math.max(1, count),
-    500
-  )}`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${API_KEY}` },
-  });
+  const url = `${BASE.replace(/\/+$/, "")}/inbox/dlrs?count=${Math.min(Math.max(1, count), 500)}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${API_KEY}` } });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     throw new Error(`oursms_http_${res.status}${t ? `: ${t}` : ""}`);
@@ -190,20 +186,18 @@ export async function getOursmsDlrs(count = 100) {
   return res.json();
 }
 
-// ---------- الرابر الموحّد المطلوب من بقية المشروع ----------
+// ---------- الرابر ----------
 export async function sendSms(
   to: string | string[],
   text: string,
   opts?: SendSmsOptions
 ): Promise<SendSmsResult> {
-  // 🇸🇦 افتراض السعودية الآن
   const defaultCountry: "SA" = (opts?.defaultCountry ?? "SA") as "SA";
 
   const dests = (Array.isArray(to) ? to : [to]).map((n) =>
     normalizePhone(n, defaultCountry)
   );
 
-  // إعدادات افتراضية مسرِّعة للتسليم في KSA
   const msgClass: MsgClass = opts?.msgClass ?? "transactional";
   const priority: 0 | 1 | 2 | 3 | 4 = opts?.priority ?? 1;
   const requestDlr = opts?.requestDlr ?? true;
@@ -229,5 +223,4 @@ export async function sendSms(
   }
 }
 
-// اجعل الرابر هو الـ default export أيضاً
 export default sendSms;

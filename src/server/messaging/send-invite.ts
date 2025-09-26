@@ -1,14 +1,12 @@
-// src/server/messaging/send-invite.ts
 import { getDb } from "@/server/firebase-admin";
 import { sendSms } from "./send-sms";
 import { sendEmailDmail } from "./email-dmail";
 import { warn } from "@/lib/logger";
 import { buildReviewSms } from "./templates";
 
-export type Country = "sa"; // السعودية فقط الآن
+export type Country = "sa";
 export type Channel = "sms" | "email";
 
-// نضيف timestamp داخل Attempt عشان نعرف أول قناة نجحت فعليًا حتى مع التنفيذ المتوازي
 type MessageResult = { ok: boolean; id?: string | null; error?: string | null };
 
 export async function recordInviteChannel(
@@ -36,18 +34,13 @@ export async function recordInviteChannel(
 
 export interface TryChannelsOptions {
   inviteId?: string;
-  country: Country; // ثابت "sa"
+  country: Country;
   phone?: string;
   email?: string;
   customerName?: string;
   storeName?: string;
   url: string;
-  /**
-   * "all": ابعت كل القنوات معًا (متوازي) — (الموصى به)
-   * "first_success": يكتفي بأول نجاح (هنحدده بعد التنفيذ المتوازي حسب أسرع نجاح)
-   */
   strategy?: "all" | "first_success";
-  /** ترتيب القنوات (لأولوية تحديد أول نجاح فقط) */
   order?: Channel[];
 }
 
@@ -56,7 +49,7 @@ export type Attempt = {
   ok: boolean;
   id?: string | null;
   error?: string | null;
-  at?: number; // وقت اكتمال المحاولة (ms)
+  at?: number;
 };
 
 export type TryChannelsResult = {
@@ -65,7 +58,6 @@ export type TryChannelsResult = {
   attempts: Attempt[];
 };
 
-/** تطبيع نتيجة أي مزوّد لشكل موحّد */
 function asMessageResult(r: unknown): MessageResult {
   if (r && typeof r === "object") {
     const o = r as Record<string, unknown>;
@@ -78,24 +70,24 @@ function asMessageResult(r: unknown): MessageResult {
   return { ok: false, id: null, error: "INVALID_RESULT" };
 }
 
-/**
- * ✅ تعديل جذري:
- * - نجمع مهام الإرسال في Array ونشغّلها معًا بـ Promise.allSettled
- * - نرفع أولوية SMS + transactional + نطلب DLR + نثبّت الدولة للسعودية
- * - نرجّع أول قناة نجحت فعليًا (الأسرع) باستخدام timestamps
- */
+// helper: timeout لكل قناة
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const id = setTimeout(() => reject(new Error(`${label}_timeout_${ms}ms`)), ms);
+    p.then((v) => { clearTimeout(id); resolve(v); }, (e) => { clearTimeout(id); reject(e); });
+  });
+}
+
 export async function tryChannels(opts: TryChannelsOptions): Promise<TryChannelsResult> {
   const strategy = opts.strategy || "all";
   const name = opts.customerName || "العميل";
   const store = opts.storeName || "المتجر";
 
-  // نصوص القنوات
   const smsText = buildReviewSms(name, store, opts.url);
   const html = `
     <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.8">
       <p>مرحباً ${name}،</p>
-      <p>يعطيك العافية على طلبك من <strong>${store}</strong>.</p>
-      <p>وش رأيك تشاركنا رأيك؟ تقييمك يهمنا ويساعد غيرك 😊</p>
+      <p>طلبك من <strong>${store}</strong> تم. شاركنا رأيك لو تكرّمت.</p>
       <p>
         <a href="${opts.url}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block">
           اضغط للتقييم الآن
@@ -105,15 +97,12 @@ export async function tryChannels(opts: TryChannelsOptions): Promise<TryChannels
     </div>
   `.trim();
 
-  // الترتيب الافتراضي: SMS ثم Email
   const defaultOrder: Channel[] = ["sms", "email"];
   const order: Channel[] = (opts.order && opts.order.length ? opts.order : defaultOrder);
 
-  // نجمع المهام المتاحة (حسب وجود phone/email)
   type Task = () => Promise<Attempt>;
   const tasks: Task[] = [];
 
-  // helper: يسجّل Attempt ويكتب في review_invites لو فيه inviteId
   const finalizeAttempt = async (attempt: Attempt) => {
     if (opts.inviteId) {
       await recordInviteChannel(opts.inviteId, attempt.channel, {
@@ -125,35 +114,40 @@ export async function tryChannels(opts: TryChannelsOptions): Promise<TryChannels
     return attempt;
   };
 
-  // 🇸🇦 خيارات SMS للسعودية فقط + تسريع التسليم:
   const smsOpts = {
     defaultCountry: "SA" as const,
     msgClass: "transactional" as const,
-    priority: 1 as const,      // أعلى من الافتراضي
-    requestDlr: true as const, // نحتاج تتبع التسليم
+    priority: 1 as const,
+    requestDlr: true as const,
   };
+
+  // مهلة صارمة لكل قناة
+  const CHANNEL_TIMEOUT_MS = 25000;
 
   if (opts.phone) {
     tasks.push(async () => {
       try {
-        const r = await sendSms(opts.phone!, smsText, smsOpts);
+        const r = await withTimeout(
+          sendSms(opts.phone!, smsText, smsOpts),
+          CHANNEL_TIMEOUT_MS,
+          "sms"
+        );
         const mr = asMessageResult(r);
-        const attempt: Attempt = {
+        return finalizeAttempt({
           channel: "sms",
           ok: mr.ok,
           id: mr.id ?? null,
           error: mr.error ?? null,
           at: Date.now(),
-        };
-        return finalizeAttempt(attempt);
+        });
       } catch (e) {
-        const errMsg = e instanceof Error ? e.message : String(e);
-        warn("sms.send.failed", { e: errMsg });
+        const msg = e instanceof Error ? e.message : String(e);
+        warn("sms.send.failed", { e: msg });
         return finalizeAttempt({
           channel: "sms",
           ok: false,
           id: null,
-          error: errMsg,
+          error: msg,
           at: Date.now(),
         });
       }
@@ -163,59 +157,55 @@ export async function tryChannels(opts: TryChannelsOptions): Promise<TryChannels
   if (opts.email) {
     tasks.push(async () => {
       try {
-        const r = await sendEmailDmail(opts.email!, "وش رأيك؟ نبي نسمع منك", html);
+        const r = await withTimeout(
+          sendEmailDmail(opts.email!, "وش رأيك؟ نبي نسمع منك", html),
+          CHANNEL_TIMEOUT_MS,
+          "email"
+        );
         const mr = asMessageResult(r);
-        const attempt: Attempt = {
+        return finalizeAttempt({
           channel: "email",
           ok: mr.ok,
           id: mr.id ?? null,
           error: mr.error ?? null,
           at: Date.now(),
-        };
-        return finalizeAttempt(attempt);
+        });
       } catch (e) {
-        const errMsg = e instanceof Error ? e.message : String(e);
-        warn("email.send.failed", { e: errMsg });
+        const msg = e instanceof Error ? e.message : String(e);
+        warn("email.send.failed", { e: msg });
         return finalizeAttempt({
           channel: "email",
           ok: false,
           id: null,
-          error: errMsg,
+          error: msg,
           at: Date.now(),
         });
       }
     });
   }
 
-  // لو مفيش ولا قناة متاحة
   if (tasks.length === 0) {
     return { ok: false, firstSuccessChannel: null, attempts: [] };
   }
 
-  // ✅ تنفيذ متوازي للقنوات
   const settled = await Promise.allSettled(tasks.map((t) => t()));
   const attempts: Attempt[] = settled.map((s) =>
-    s.status === "fulfilled" ? s.value : { channel: "sms", ok: false, id: null, error: "TASK_FAILED", at: Date.now() }
+    s.status === "fulfilled" ? s.value : {
+      channel: "sms", ok: false, id: null, error: "TASK_FAILED", at: Date.now()
+    }
   );
 
-  // ok العام:
   const ok = attempts.some((a) => a.ok);
 
-  // تحديد أول قناة نجحت فعليًا (الأسرع) بناءً على at + ترتيب تفضيلي (order)
   let firstSuccessChannel: Channel | null = null;
   const successAttempts = attempts.filter((a) => a.ok && a.at);
   if (successAttempts.length > 0) {
-    // رتب حسب الزمن أولًا، ولو تعادل نرجّح حسب order
     successAttempts.sort((a, b) => {
       if ((a.at! - b.at!) !== 0) return a.at! - b.at!;
-      // ترجيح حسب order لو متساويين في الزمن
       return order.indexOf(a.channel) - order.indexOf(b.channel);
     });
     firstSuccessChannel = successAttempts[0].channel;
   }
-
-  // لو الاستراتيجية first_success وكان فيه نجاح — تمام. لو مفيش نجاح — ok=false بالفعل
-  // في "all" إحنا دايمًا شغّلنا الاثنين معًا؛ ده المطلوب علشان يصلوا في نفس الوقت.
 
   return { ok, firstSuccessChannel, attempts };
 }

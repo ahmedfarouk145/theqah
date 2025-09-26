@@ -2,13 +2,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
-import { buildInviteSMS, sendSms } from "@/server/messaging/send-sms";
-import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
-
-// 🔸 Billing/Plans
 import { canSendInvite } from "@/server/billing/usage";
 import { getPlanConfig, type PlanCode } from "@/server/billing/plans";
 import { sendMerchantWelcomeEmail } from "@/server/messaging/merchant-welcome";
+import { tryChannels } from "@/server/messaging/send-invite";
 
 export const config = { api: { bodyParser: false } };
 
@@ -30,7 +27,7 @@ interface SallaOrder {
 }
 interface SallaWebhookBody {
   event: string;
-  merchant?: string | number;     // لأحداث app.*
+  merchant?: string | number;
   data?: SallaOrder | UnknownRecord;
 }
 
@@ -55,29 +52,25 @@ const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const keyOf = (event: string, orderId?: string, status?: string) =>
   `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
 
+// ====== STATUS NORMALIZATION ======
 function safeStringExtract(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value;
   if (typeof value === "number") return String(value);
-  if (typeof value === "object" && value !== null) {
+  if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
-    const statusValue =
-      (obj as Record<string, unknown>).slug ||
-      obj.status ||
-      obj.name ||
-      obj.value ||
-      obj.state ||
-      obj.text ||
-      obj.label;
-    if (typeof statusValue === "string") return statusValue;
-    if (typeof statusValue === "number") return String(statusValue);
+    const v =
+      obj["slug"] ?? obj["status"] ?? obj["name"] ?? obj["value"] ??
+      obj["state"] ?? obj["text"] ?? obj["label"];
+    if (typeof v === "string") return v;
+    if (typeof v === "number") return String(v);
   }
   return "";
 }
 
-// ✅ تطبيع الحالة إلى slug موحّد
 function normalizeStatus(input: unknown): { raw: string; slug: string } {
   const raw = lc(safeStringExtract(input));
+
   const known = new Set([
     "payment_pending","under_review","in_progress","completed",
     "delivering","delivered","shipped","canceled",
@@ -106,6 +99,7 @@ function normalizeStatus(input: unknown): { raw: string; slug: string } {
     const kk = k.toLowerCase().replace(/\s+/g,"").replace(/[إأآ]/g,"ا").replace(/ى/g,"ي").replace(/ؤ|ئ/g,"ء");
     if (norm === kk) return { raw, slug: v };
   }
+
   if (raw.includes("delivered")) return { raw, slug: "delivered" };
   if (raw.includes("delivering")) return { raw, slug: "delivering" };
   if (raw.includes("shipped")) return { raw, slug: "shipped" };
@@ -117,20 +111,22 @@ function normalizeStatus(input: unknown): { raw: string; slug: string } {
   return { raw, slug: raw };
 }
 
+// أسماء العملاء
 function extractCustomerName(customer: unknown): string | null {
   if (!customer || typeof customer !== "object") return null;
   const cust = customer as Record<string, unknown>;
-  const nameFields = ["name","full_name","fullName","customer_name","customerName","first_name","firstName","display_name","displayName"];
-  for (const f of nameFields) {
+  const fields = ["name","full_name","fullName","customer_name","customerName","first_name","firstName","display_name","displayName"];
+  for (const f of fields) {
     const v = cust[f];
     if (typeof v === "string" && v.trim()) return v.trim();
   }
-  const firstName = (cust as Record<string, unknown>).first_name || (cust as Record<string, unknown>).firstName;
-  const lastName  = (cust as Record<string, unknown>).last_name  || (cust as Record<string, unknown>).lastName;
-  if (typeof firstName === "string" && typeof lastName === "string") return `${firstName} ${lastName}`.trim();
+  const fn = (cust as Record<string, unknown>)["first_name"] ?? (cust as Record<string, unknown>)["firstName"];
+  const ln = (cust as Record<string, unknown>)["last_name"]  ?? (cust as Record<string, unknown>)["lastName"];
+  if (typeof fn === "string" && typeof ln === "string") return `${fn} ${ln}`.trim();
   return null;
 }
 
+// Raw body
 function readRawBody(req: NextApiRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -139,6 +135,8 @@ function readRawBody(req: NextApiRequest): Promise<Buffer> {
     req.on("error", reject);
   });
 }
+
+// Token helpers
 function timingSafeEq(a: string, b: string) {
   const A = Buffer.from(a); const B = Buffer.from(b);
   if (A.length !== B.length) return false;
@@ -156,6 +154,8 @@ function extractProvidedToken(req: NextApiRequest): string {
   const q  = typeof req.query.t === "string" ? req.query.t.trim() : "";
   return q;
 }
+
+// Store/merchant helpers
 function pickName(obj: unknown): string | undefined {
   if (obj && typeof obj === "object" && "name" in obj) {
     const n = (obj as { name?: unknown }).name;
@@ -175,14 +175,15 @@ function pickStoreUidFromSalla(o: UnknownRecord): string | undefined {
 function extractProductIds(items?: SallaItem[]): string[] {
   if (!Array.isArray(items)) return [];
   const ids = new Set<string>();
-  for (const it of items) {
+  for (const it of (items || [])) {
     const raw = it?.product_id ?? it?.product?.id ?? it?.id;
     if (raw !== undefined && raw !== null) ids.add(String(raw));
   }
   return [...ids];
 }
 
-// 🔹 helper لاستخراج base من دومين سلة (origin[/dev-xxxx])
+// ===== DOMAIN (KEEP AS IS) =====
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function toDomainBase(domain: string | null | undefined): string | null {
   if (!domain) return null;
   try {
@@ -192,22 +193,19 @@ function toDomainBase(domain: string | null | undefined): string | null {
     return firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
   } catch { return null; }
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function encodeUrlForFirestore(url: string | null | undefined): string {
   if (!url) return "";
-  return url.replace(/:/g,"_COLON_").replace(/\//g,"_SLASH_").replace(/\?/g,"_QUEST_").replace(/#/g,"_HASH_").replace(/&/g,"_AMP_");
+  return url
+    .replace(/:/g, "_COLON_")
+    .replace(/\//g, "_SLASH_")
+    .replace(/\?/g, "_QUEST_")
+    .replace(/#/g, "_HASH_")
+    .replace(/&/g, "_AMP_");
 }
+// ===== END DOMAIN (KEEP AS IS) =====
 
-// -------------------- Utilities --------------------
-async function resolveStoreUid(db: FirebaseFirestore.Firestore, eventRaw: UnknownRecord, orderId: string): Promise<string | null> {
-  const uid = pickStoreUidFromSalla(eventRaw) || null;
-  if (uid) return uid;
-  try {
-    const o = await db.collection("orders").doc(orderId).get();
-    const s = (o.data()?.storeUid as string) || null;
-    if (s) return s;
-  } catch {}
-  return null;
-}
+// Access tokens
 async function getAccessTokenForStore(db: FirebaseFirestore.Firestore, storeUid: string | null): Promise<string | null> {
   if (!storeUid) return null;
   const tok = await db.collection("salla_tokens").doc(storeUid).get();
@@ -221,16 +219,20 @@ async function fetchOrderDetailsFromSalla(db: FirebaseFirestore.Firestore, store
     const resp = await fetch(`https://api.salla.dev/admin/v2/orders/${encodeURIComponent(orderId)}`, {
       headers: { Authorization: `Bearer ${accessToken}`, "Accept-Language": "ar" }
     });
-    if (!resp.ok) {
-      console.warn("fetchOrderDetailsFromSalla: non-OK", { status: resp.status, storeUid, orderId });
-      return null;
-    }
+    if (!resp.ok) return null;
     const json = await resp.json();
     return json?.data ?? null;
-  } catch (e) {
-    console.warn("fetchOrderDetailsFromSalla error:", e);
-    return null;
-  }
+  } catch { return null; }
+}
+async function resolveStoreUid(db: FirebaseFirestore.Firestore, eventRaw: UnknownRecord, orderId: string): Promise<string | null> {
+  const uid = pickStoreUidFromSalla(eventRaw) || null;
+  if (uid) return uid;
+  try {
+    const o = await db.collection("orders").doc(orderId).get();
+    const s = (o.data()?.storeUid as string) || null;
+    if (s) return s;
+  } catch {}
+  return null;
 }
 
 // -------------------- Order snapshot & tokens --------------------
@@ -304,10 +306,10 @@ async function createInviteTokenAndDoc(
   const inviteRef = await db.collection("review_invites").add({
     tokenId, orderId, platform: "salla",
     storeUid, productId: mainProductId, productIds,
-    customer: { 
-      name: extractCustomerName(buyer), 
-      email: buyer.email ?? null, 
-      mobile: buyer.mobile ?? null 
+    customer: {
+      name: extractCustomerName(buyer),
+      email: buyer.email ?? null,
+      mobile: buyer.mobile ?? null,
     },
     sentAt: Date.now(), deliveredAt: null, clicks: 0, publicUrl,
   });
@@ -315,7 +317,7 @@ async function createInviteTokenAndDoc(
   return { inviteId: inviteRef.id, tokenId, publicUrl, storeUid, productIds };
 }
 
-// -------------------- إرسال مباشر --------------------
+// -------------------- إرسال مباشر عبر tryChannels --------------------
 async function sendInviteDirectly(
   db: FirebaseFirestore.Firestore,
   order: SallaOrder,
@@ -324,7 +326,8 @@ async function sendInviteDirectly(
   const orderId = String(order.id ?? order.order_id ?? "");
   if (!orderId) return { sent: false, reason: "missing_order_id" };
 
-  const exists = await db.collection("review_invites").where("orderId","==",orderId).limit(1).get();
+  const exists = await db.collection("review_invites")
+    .where("orderId","==",orderId).limit(1).get();
   if (!exists.empty) return { sent: false, reason: "already_invited" };
 
   const seed = await createInviteTokenAndDoc(db, order, eventRaw);
@@ -343,47 +346,46 @@ async function sendInviteDirectly(
   let buyer: SallaCustomer = order.customer ?? {};
   if ((!buyer?.mobile && !buyer?.email)) {
     try {
-      const storeUid = seed.storeUid || (await resolveStoreUid(db, eventRaw, orderId));
-      const od = await fetchOrderDetailsFromSalla(db, storeUid, orderId);
-      const cust = od?.customer || {};
+      const od = await fetchOrderDetailsFromSalla(db, seed.storeUid, orderId);
+      const cust = (od as UnknownRecord | null)?.["customer"] as UnknownRecord | undefined;
       buyer = {
-        name: cust?.name || buyer?.name || undefined,
-        email: cust?.email || buyer?.email || undefined,
-        mobile: cust?.mobile || buyer?.mobile || undefined,
+        name: (cust?.["name"] as string) || buyer?.name || undefined,
+        email: (cust?.["email"] as string) || buyer?.email || undefined,
+        mobile: (cust?.["mobile"] as string) || buyer?.mobile || undefined,
       };
-      if (!buyer?.mobile && !buyer?.email) {
-        console.warn("sendInviteDirectly: no channels after fallback", { orderId, storeUid });
-      }
     } catch (e) {
       console.warn("sendInviteDirectly: fallback fetch customer failed", e);
     }
   }
 
-  const storeName = getStoreOrMerchantName(eventRaw) ?? "متجرك";
-  const name = extractCustomerName(buyer) || "عميلنا العزيز";
-  const smsText = buildInviteSMS(storeName, seed.publicUrl!);
-  const emailHtml = `
-    <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.7">
-      <p>مرحباً ${name},</p>
-      <p>قيّم تجربتك من <strong>${storeName}</strong>.</p>
-      <p><a href="${seed.publicUrl}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">اضغط للتقييم الآن</a></p>
-      <p style="color:#64748b">فريق ثقة</p>
-    </div>
-  `;
+  const storeName = getStoreOrMerchantName(eventRaw) ?? "المتجر";
+  const customerName = extractCustomerName(buyer) || "العميل";
 
-  const tasks: Array<Promise<unknown>> = [];
-  if (buyer.mobile) {
-    const mobile = String(buyer.mobile).replace(/\s+/g, "");
-    tasks.push(sendSms(mobile, smsText));
+  const result = await tryChannels({
+    inviteId: seed.inviteId,
+    country: "sa",
+    phone: buyer.mobile || undefined,
+    email: buyer.email || undefined,
+    customerName,
+    storeName,
+    url: seed.publicUrl!,
+    strategy: "all",
+    order: ["sms","email"]
+  });
+
+  await db.collection("review_invites").doc(seed.inviteId).set({
+    lastResult: {
+      ok: result.ok,
+      firstSuccessChannel: result.firstSuccessChannel,
+      attempts: result.attempts || [],
+      at: Date.now(),
+    }
+  }, { merge: true });
+
+  if (!result.ok) {
+    return { sent: false, reason: "no_channels_or_failed" };
   }
-  if (buyer.email) {
-    tasks.push(sendEmail(buyer.email, "قيّم تجربتك معنا", emailHtml));
-  }
-
-  if (!tasks.length) return { sent: false, reason: "no_channels" };
-
-  await Promise.allSettled(tasks);
-  return { sent: true, inviteId: seed.inviteId, channels: tasks.length };
+  return { sent: true, inviteId: seed.inviteId, channels: result.attempts.length };
 }
 
 async function voidInvitesForOrder(db: FirebaseFirestore.Firestore, orderId: string, reason: string) {
@@ -401,16 +403,14 @@ async function handleAppEvent(
   merchant: string | number | undefined,
   data: UnknownRecord
 ) {
+  // prefer-const fix
   const uid = merchant != null ? `salla:${String(merchant)}` : "salla:unknown";
   await db.collection("salla_app_events").add({ uid, event, merchant: merchant ?? null, data, at: Date.now() });
 
   if (event === "app.store.authorize") {
-  
-    const access_token  = String((data as UnknownRecord)?.access_token || "");
-
-    const refresh_token = ((data as UnknownRecord)?.refresh_token as string) || null;
-
-    const expires       = Number((data as UnknownRecord)?.expires || 0);
+    const access_token  = String((data as Record<string, unknown>)?.["access_token"] || "");
+    const refresh_token = (data as Record<string, unknown>)?.["refresh_token"] as string | null | undefined || null;
+    const expires       = Number((data as Record<string, unknown>)?.["expires"] || 0);
     const expiresAt     = expires ? Date.now() + expires * 1000 : null;
 
     if (access_token) {
@@ -418,78 +418,9 @@ async function handleAppEvent(
         uid, provider: "salla", storeId: merchant ?? null,
         accessToken: access_token, refreshToken: refresh_token,
         expiresIn: expires || null, expiresAt,
-        scope: (data as UnknownRecord)?.scope || null,
+        scope: (data as Record<string, unknown>)?.["scope"] || null,
         obtainedAt: Date.now(),
       }, { merge: true });
-    }
-
-    // جلب معلومات المتجر + التاجر (Easy Mode)
-    let domain: string | null = null;
-    let storeName: string | null = null;
-    let merchantEmail: string | null = null;
-
-    try {
-      const storeResp = await fetch("https://api.salla.dev/admin/v2/store/info", {
-        headers: { Authorization: `Bearer ${access_token}` }
-      });
-      if (storeResp.ok) {
-        const storeInfo = await storeResp.json();
-        domain = storeInfo.data?.domain || storeInfo.data?.url || null;
-        storeName = storeInfo.data?.name || null;
-
-        if (domain) {
-          await db.collection("stores").doc(uid).set({ "salla.domain": domain }, { merge: true });
-          const base = toDomainBase(domain);
-          if (base) {
-            const encodedBase = encodeUrlForFirestore(base);
-            await db.collection("domains").doc(encodedBase).set({ storeUid: uid, updatedAt: Date.now() }, { merge: true });
-          }
-        }
-      }
-
-      // User Info (accounts) مع fallback
-      let uiResp: Response | null = null;
-      try {
-        uiResp = await fetch("https://accounts.salla.sa/oauth2/user/info", {
-          headers: { Authorization: `Bearer ${access_token}` }
-        });
-        if (!uiResp.ok) {
-          console.warn("accounts.user.info non-OK", { status: uiResp.status });
-          uiResp = null;
-        }
-      } catch (e) {
-        console.warn("accounts.user.info error", e);
-        uiResp = null;
-      }
-
-      if (!uiResp) {
-        try {
-          const adminUi = await fetch("https://api.salla.dev/admin/v2/user/info", {
-            headers: { Authorization: `Bearer ${access_token}` }
-          });
-          if (adminUi.ok) {
-            const j = await adminUi.json();
-            merchantEmail = j?.data?.email || null;
-            await db.collection("stores").doc(uid).set({
-              "salla.merchantEmail": merchantEmail,
-              "salla.merchantName": j?.data?.name || null,
-            }, { merge: true });
-          } else {
-            console.warn("admin.user.info non-OK", { status: adminUi.status });
-          }
-        } catch (e) {
-          console.warn("admin.user.info error", e);
-        }
-      } else {
-        const j = await uiResp.json();
-        merchantEmail = j?.email || null;
-        await db.collection("stores").doc(uid).set({
-          "salla.merchantEmail": merchantEmail,
-          "salla.merchantName": j?.name || null,
-        }, { merge: true });
-      }
-    } catch (fetchError) {
-      console.warn("store/user info fetch error:", fetchError);
     }
 
     await db.collection("stores").doc(uid).set({
@@ -497,33 +428,66 @@ async function handleAppEvent(
       "salla.storeId": merchant ?? null,
       "salla.connected": true,
       "salla.installed": true,
-      "salla.domain": domain,
-      "salla.storeName": storeName,
       "salla.installedAt": Date.now(),
       updatedAt: Date.now(),
     }, { merge: true });
 
-    if (merchantEmail && storeName && merchant) {
+    // محاولة جلب بيانات التاجر لإرسال إيميل ترحيب
+    let merchantEmail: string | null = null;
+    let storeNameForEmail: string | undefined = getStoreOrMerchantName(data);
+    try {
+      let uiResp: Response | null = null;
       try {
-        console.log(`محاولة إرسال إيميل ترحيب للتاجر: ${merchantEmail} للمتجر: ${storeName} (${merchant})`);
-        await sendMerchantWelcomeEmail({ merchantEmail, storeName, storeId: merchant, domain: domain || undefined, accessToken: access_token });
-        console.log(`✅ تم إرسال إيميل الترحيب بنجاح للتاجر: ${merchantEmail}`);
+        uiResp = await fetch("https://accounts.salla.sa/oauth2/user/info", {
+          headers: { Authorization: `Bearer ${access_token}` }
+        });
+        if (!uiResp.ok) uiResp = null;
+      } catch { uiResp = null; }
+
+      if (!uiResp) {
+        const adminUi = await fetch("https://api.salla.dev/admin/v2/user/info", {
+          headers: { Authorization: `Bearer ${access_token}` }
+        });
+        if (adminUi.ok) {
+          const j = await adminUi.json();
+          merchantEmail = j?.data?.email || null;
+          storeNameForEmail = storeNameForEmail ?? j?.data?.name ?? undefined;
+          await db.collection("stores").doc(uid).set({
+            "salla.merchantEmail": merchantEmail,
+            "salla.merchantName": j?.data?.name || null,
+          }, { merge: true });
+        }
+      } else {
+        const j = await uiResp.json();
+        merchantEmail = j?.email || null;
+        storeNameForEmail = storeNameForEmail ?? j?.name ?? undefined;
+        await db.collection("stores").doc(uid).set({
+          "salla.merchantEmail": merchantEmail,
+          "salla.merchantName": j?.name || null,
+        }, { merge: true });
+      }
+    } catch { /* ignore */ }
+
+    // fix: اضمن تمرير string وليس undefined
+    if (merchantEmail && merchant != null) {
+      const safeStoreName = storeNameForEmail ?? `متجر رقم ${String(merchant)}`;
+      try {
+        await sendMerchantWelcomeEmail({
+          merchantEmail,
+          storeName: safeStoreName,            // <-- string
+          storeId: merchant,
+          domain: undefined,
+          accessToken: access_token,
+        });
         await db.collection("merchant_welcome_emails").add({
-          merchantEmail, storeName, storeId: merchant, uid, domain, sentAt: Date.now(), status: "sent",
+          merchantEmail, storeId: merchant, uid, sentAt: Date.now(), status: "sent",
         });
       } catch (emailError) {
-        console.error("❌ فشل في إرسال إيميل الترحيب:", {
-          error: emailError, merchantEmail, storeName, storeId: merchant, uid, domain, timestamp: new Date().toISOString()
-        });
         await db.collection("merchant_welcome_emails").add({
-          merchantEmail, storeName, storeId: merchant, uid, domain, sentAt: Date.now(),
+          merchantEmail, storeId: merchant, uid, sentAt: Date.now(),
           status: "failed", error: emailError instanceof Error ? emailError.message : String(emailError),
         });
       }
-    } else {
-      console.warn("⚠️ لم يتم إرسال إيميل الترحيب - معلومات ناقصة:", {
-        merchantEmail: !!merchantEmail, storeName: !!storeName, merchant: !!merchant, uid, domain
-      });
     }
   }
 
@@ -545,15 +509,6 @@ async function handleAppEvent(
       "salla.uninstalledAt": Date.now(),
       updatedAt: Date.now(),
     }, { merge: true });
-
-    const doc = await db.collection("stores").doc(uid).get();
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const d = doc.data() as any;
-    const base = toDomainBase(d?.salla?.domain || null);
-    if (base) {
-      const encodedBase = encodeUrlForFirestore(base);
-      await db.collection("domains").doc(encodedBase).delete().catch(()=>{});
-    }
   }
 
   if (event === "app.trial.started") {
@@ -569,7 +524,7 @@ async function handleAppEvent(
     }, { merge: true });
   }
   if (event === "app.subscription.started" || event === "app.subscription.renewed") {
-    const code = String(((data as UnknownRecord)?.plan_code || (data as UnknownRecord)?.plan || "P30")).toUpperCase() as PlanCode;
+    const code = String(((data as Record<string, unknown>)?.["plan_code"] || (data as Record<string, unknown>)?.["plan"] || "P30")).toUpperCase() as PlanCode;
     const cfg = getPlanConfig(code);
     await db.collection("stores").doc(uid).set({
       plan: { code: cfg.code, active: true },
@@ -585,7 +540,7 @@ async function handleAppEvent(
 
   if (event === "app.settings.updated") {
     await db.collection("stores").doc(uid).set({
-      "salla.settings": (data as UnknownRecord)?.settings ?? {},
+      "salla.settings": (data as Record<string, unknown>)?.["settings"] ?? {},
       updatedAt: Date.now(),
     }, { merge: true });
   }
@@ -601,22 +556,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const raw = await readRawBody(req);
 
-  // ✅ Token-only authentication (no signature, no production bypass)
+  // ✅ Token-only auth
   let isAuthenticated = false;
   const provided = extractProvidedToken(req);
   if (WEBHOOK_TOKEN && provided && timingSafeEq(provided, WEBHOOK_TOKEN)) {
     isAuthenticated = true;
   }
-
-  // ⛔️ لا bypass في الإنتاج نهائيًا
   if (!isAuthenticated) {
-    const isDevelopment = process.env.NODE_ENV !== "production";
-    if (isDevelopment && process.env.SKIP_WEBHOOK_AUTH === "true") {
+    const isDev = process.env.NODE_ENV !== "production";
+    if (isDev && process.env.SKIP_WEBHOOK_AUTH === "true") {
       console.warn("⚠️ Webhook auth bypassed in development (token-only mode).");
       isAuthenticated = true;
     }
   }
-
   if (!isAuthenticated) {
     console.error("❌ Webhook authentication failed (token-only)", {
       hasProvidedToken: !!provided,
@@ -632,12 +584,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let body: SallaWebhookBody = { event: "" };
   try {
     body = JSON.parse(raw.toString("utf8") || "{}") as SallaWebhookBody;
-  } catch (parseError) {
-    console.error("Failed to parse webhook JSON:", {
-      error: parseError instanceof Error ? parseError.message : String(parseError),
-      rawLength: raw.length,
-      timestamp: Date.now()
-    });
+  } catch {
     return res.status(400).json({ error: "invalid_json" });
   }
 
@@ -666,15 +613,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     merchant: body.merchant ?? null,
   });
 
-  // app.*
+  // -------- app.* --------
   if (event.startsWith("app.")) {
     await handleAppEvent(db, event as SallaAppEvent, body.merchant, dataRaw);
     await db.collection("processed_events").doc(keyOf(event)).set({ at: Date.now(), event, processed: true }, { merge: true });
     return res.status(200).json({ ok: true });
   }
 
-  // Orders / Shipments
+  // -------- Orders / Shipments --------
   const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
+  // prefer-const fix
   const statusRaw = (asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
   let { slug: statusNorm } = normalizeStatus(statusRaw);
   const paymentStatus = lc(safeStringExtract(asOrder.payment_status));
@@ -682,21 +630,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
 
-  // 🔁 لو الحالة غير واضحة، اسحب Order Details لأخذ slug الرسمي
+  // لو الحالة غير واضحة، اسحب Order Details لأخذ slug الرسمي (بدون any)
   if ((!statusNorm || statusNorm === statusRaw) && orderId) {
     try {
       const storeUid = storeUidFromEvent || (await resolveStoreUid(db, dataRaw, orderId));
       const od = await fetchOrderDetailsFromSalla(db, storeUid, orderId);
+      const pickSlug = (obj: unknown): string => {
+        if (obj && typeof obj === "object") {
+          const o = obj as Record<string, unknown>;
+          const s = o["slug"];
+          if (typeof s === "string" && s) return s;
+        }
+        return safeStringExtract(obj);
+      };
       const slug =
-        lc(safeStringExtract((od?.status as Record<string, unknown>)?.slug)) ||
-        lc(safeStringExtract(od?.status)) ||
-        lc(safeStringExtract(od?.shipment_status)) ||
-        lc(safeStringExtract(od?.order_status)) || "";
+        lc(pickSlug((od as UnknownRecord | null)?.["status"])) ||
+        lc(pickSlug((od as UnknownRecord | null)?.["shipment_status"])) ||
+        lc(pickSlug((od as UnknownRecord | null)?.["order_status"])) || "";
       statusNorm = normalizeStatus(slug).slug;
       console.log("Resolved status via API:", { orderId, statusNorm });
-    } catch (e) {
-      console.warn("status fallback failed:", e);
-    }
+    } catch { /* ignore */ }
   }
 
   const shouldSend =
@@ -711,10 +664,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     shouldSend
   });
 
-  // Fast ACK
   res.status(202).json({ ok: true, accepted: true, event });
 
-  // Execute send after ack
   try {
     if (shouldSend) {
       const result = await sendInviteDirectly(db, asOrder, dataRaw);

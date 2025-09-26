@@ -35,23 +35,39 @@ export async function sendEmailDmail(
   const transporter = nodemailer.createTransport({
     host,
     port,
-    secure: port === 465,
+    secure: port === 465, // SMTPS
     auth: { user, pass },
+
+    // ⚡️ تحسينات السرعة/الاستقرار
+    pool: true,             // إعادة استخدام الاتصال
+    maxConnections: 5,
+    maxMessages: 50,
+    rateDelta: 60_000,      // نافذة دقيقة
+    rateLimit: 100,         // حد 100 رسالة/دقيقة عبر البوول
+
+    connectionTimeout: 15_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   });
 
   try {
     console.log(`محاولة إرسال إيميل إلى: ${to} باستخدام SMTP: ${host}:${port}`);
-    
+
     const info = await transporter.sendMail({
       from,
       to,
       subject,
       html,
       text: textFallback ?? stripHtml(html),
+      priority: "high", // Nodemailer-level priority
+      headers: {
+        "X-Priority": "1 (Highest)",
+        "X-MSMail-Priority": "High",
+        Importance: "high",
+      },
     });
-    
+
     console.log(`✅ تم إرسال الإيميل بنجاح - Message ID: ${info.messageId}`);
-    
     return { ok: true, id: info.messageId || null };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -59,3 +75,7 @@ export async function sendEmailDmail(
     return { ok: false, error: msg };
   }
 }
+
+// ✅ طرق تصدير متعددة للتوافق مع الاستيراد القديم
+export default sendEmailDmail;          // يسمح: import sendEmailDmail from "..."
+export { sendEmailDmail as sendEmail }; // يسمح: import { sendEmail } from "..."
