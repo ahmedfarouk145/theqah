@@ -1,3 +1,4 @@
+//src/pages/api/admin/reports/resolve.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { dbAdmin } from '@/lib/firebaseAdmin';
 import { verifyAdmin } from '@/utils/verifyAdmin';

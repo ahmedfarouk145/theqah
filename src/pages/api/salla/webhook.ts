@@ -2,8 +2,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { createShortLink } from "@/server/short-links";
-import { sendEmailDmail as sendEmail } from "@/server/messaging/email-dmail";
-import { sendSms, buildInviteSMS } from "@/server/messaging/send-sms";
 import { tryChannels } from "@/server/messaging/send-invite";
 
 export const config = { api: { bodyParser: false } };
@@ -32,7 +30,6 @@ const DONE = new Set([
   "paid", "fulfilled", "delivered", "completed", "complete",
   "تم التوصيل", "مكتمل", "تم التنفيذ"
 ]);
-const CANCEL = new Set(["canceled","cancelled","refunded","returned"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const keyOf = (event: string, orderId?: string, status?: string) =>
   `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
