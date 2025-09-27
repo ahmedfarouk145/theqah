@@ -63,6 +63,7 @@ export default function LoginPage() {
 
       if (role === 'admin') router.push('/admin/dashboard');
       else router.push('/dashboard');
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Login error:', err?.code, err?.message);
       setError(errMsg(String(err?.code || '')));
