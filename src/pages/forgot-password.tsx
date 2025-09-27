@@ -30,6 +30,7 @@ export default function ForgotPasswordPage() {
       };
       await sendPasswordResetEmail(auth, email.trim(), actionCodeSettings);
       setOkMsg('✅ تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني.');
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const code = String(err?.code || '');
       const map: Record<string, string> = {
