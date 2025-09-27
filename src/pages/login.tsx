@@ -6,17 +6,33 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { Loader2 } from 'lucide-react';
-import { loginUser } from '@/lib/auth/login';
 
-type LoginResult = { role: 'admin' | 'user' };
+// Firebase
+import { app } from '@/lib/firebase';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
+} from 'firebase/auth';
 
 export default function LoginPage() {
   const router = useRouter();
+  const auth = getAuth(app);
 
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+
+  const errMsg = (code: string) =>
+    ({
+      'auth/invalid-email': 'البريد الإلكتروني غير صالح.',
+      'auth/user-disabled': 'تم تعطيل هذا الحساب.',
+      'auth/user-not-found': 'لا يوجد حساب مسجّل بهذا البريد.',
+      'auth/wrong-password': 'كلمة المرور غير صحيحة.',
+      'auth/too-many-requests': 'محاولات كثيرة. حاول لاحقًا.',
+      'auth/network-request-failed': 'انقطاع بالشبكة. حاول مجددًا.',
+    } as Record<string, string>)[code] || 'تعذّر تسجيل الدخول حالياً.';
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -24,12 +40,32 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { role } = (await loginUser(email.trim(), password)) as LoginResult;
+      const userEmail = email.trim();
+
+      // 1) هل البريد مسجّل أصلاً؟ وبأي مزوّد؟
+      const methods = await fetchSignInMethodsForEmail(auth, userEmail);
+      if (!methods.length) {
+        setError('لا يوجد حساب مسجّل بهذا البريد.');
+        return;
+      }
+      if (!methods.includes('password')) {
+        // لو الحساب بمزوّد مختلف (مثلاً Google)
+        setError('هذا البريد مسجّل بمزوّد مختلف (مثل Google). جرّب الدخول بنفس المزوّد.');
+        return;
+      }
+
+      // 2) تسجيل الدخول فعليًا
+      const cred = await signInWithEmailAndPassword(auth, userEmail, password);
+
+      // 3) قراءة الـ role من الـ Custom Claims (لو موجود)
+      const tokenResult = await cred.user.getIdTokenResult(true);
+      const role = (tokenResult.claims?.role as string) || 'user';
+
       if (role === 'admin') router.push('/admin/dashboard');
       else router.push('/dashboard');
-    } catch (err) {
-      console.error('Login error:', err);
-      setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+    } catch (err: any) {
+      console.error('Login error:', err?.code, err?.message);
+      setError(errMsg(String(err?.code || '')));
     } finally {
       setLoading(false);
     }
