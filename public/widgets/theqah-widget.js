@@ -571,14 +571,14 @@
         const rowLeftChildren = [
           Stars(Number(r.stars || 0)),
           trusted
-            ? h("span", { class: "badge", title: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer") }, [
+            ? h("span", { class: "badge", title: (lang === "ar" ? "مشتري ثقة" : "Verified Buyer") }, [
                 h("img", {
                   class: "badge-logo",
                   src: LOGO_URL,
-                  alt: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer"),
+                  alt: (lang === "ar" ? "مشتري ثقة" : "Verified Buyer"),
                   loading: "lazy"
                 }),
-                h("span", { class: "label" }, "مشتري موثق")
+                h("span", { class: "label" }, "مشتري ثقة")
               ])
             : null,
         ];

@@ -93,7 +93,7 @@ export default function EmbeddedReviews() {
                 <StarRow stars={r.stars} />
                 {r.buyerVerified && (
                   <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">
-                    ✅ مشتري موثق
+                    ✅ مشتري ثقة
                   </span>
                 )}
               </div>
