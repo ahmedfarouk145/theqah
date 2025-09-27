@@ -1,3 +1,4 @@
+// src/pages/signup.tsx
 'use client';
 
 import { useState, FormEvent } from 'react';
@@ -40,7 +41,6 @@ export default function SignupPage() {
       });
 
       toast.success('🎉 تم إنشاء الحساب — اختر منصة الربط في الخطوة التالية');
-      // بدلاً من فرض /connect/zid نحول لصفحة الاختيار
       router.push('/connect');
     } catch (err) {
       const error = err as AuthError;
@@ -66,8 +66,8 @@ export default function SignupPage() {
       >
         {/* Header */}
         <div className="text-center space-y-4">
-          <Image src="/logo.png" alt="Logo" width={60} height={60} className="mx-auto" />
-          <h1 className="text-2xl font-bold text-[#004225]">✨ أنشئ حسابك في ثِقَة</h1>
+          <Image src="/logo.png" alt="شعار مشتري موثّق" width={60} height={60} className="mx-auto" />
+          <h1 className="text-2xl font-bold text-[#004225]">✨ أنشئ حسابك في مشتري موثّق</h1>
           <p className="text-sm text-gray-600">سجّل خلال دقيقة، ثم اختر ربط زد أو سلّة</p>
         </div>
 

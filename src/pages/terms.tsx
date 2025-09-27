@@ -9,10 +9,10 @@ export default function TermsPage() {
   return (
     <>
       <Head>
-        <title>الشروط والأحكام - ثقة</title>
+        <title>الشروط والأحكام - مشتري موثق</title>
         <meta
           name="description"
-          content="تعرف على الشروط والأحكام لاستخدام منصة ثقة لجمع التقييمات."
+          content="تعرف على الشروط والأحكام لاستخدام منصة مشتري موثق لجمع التقييمات."
         />
       </Head>
 
@@ -27,7 +27,7 @@ export default function TermsPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1 }}
           >
-            <Image src="/logo.png" alt="شعار ثقة" width={110} height={110} />
+            <Image src="/logo.png" alt="شعار مشتري موثق" width={110} height={110} />
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
@@ -44,7 +44,7 @@ export default function TermsPage() {
           {[
             {
               title: '١. الموافقة على الشروط',
-              text: 'باستخدامك لمنصة ثقة، فإنك توافق على الالتزام بجميع الشروط والسياسات المعلنة.',
+              text: 'باستخدامك لمنصة مشتري موثق، فإنك توافق على الالتزام بجميع الشروط والسياسات المعلنة.',
             },
             {
               title: '٢. الاستخدام القانوني',
@@ -52,7 +52,7 @@ export default function TermsPage() {
             },
             {
               title: '٣. التعديلات',
-              text: 'تحتفظ ثقة بالحق في تعديل الشروط والأحكام في أي وقت، ويتم إعلامك بذلك عبر البريد الإلكتروني أو إشعار داخل المنصة.',
+              text: 'تحتفظ منصة مشتري موثق بالحق في تعديل الشروط والأحكام في أي وقت، ويتم إعلامك بذلك عبر البريد الإلكتروني أو إشعار داخل المنصة.',
             },
             {
               title: '٤. الاستمرارية',
@@ -75,7 +75,7 @@ export default function TermsPage() {
 
         {/* Footer */}
         <footer className="bg-green-100 py-6 text-center text-sm text-green-900 border-t border-green-200">
-          <p>© 2025 ثقة - جميع الحقوق محفوظة</p>
+          <p>© 2025 مشتري موثق - جميع الحقوق محفوظة</p>
         </footer>
       </main>
     </>

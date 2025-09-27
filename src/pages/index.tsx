@@ -1,3 +1,4 @@
+// src/pages/index.tsx
 'use client';
 
 import Image from 'next/image';
@@ -26,12 +27,12 @@ export default function LandingPage() {
             transition={{ duration: 1 }}
             className="z-10 max-w-2xl space-y-6"
           >
-            <Image src="/logo.png" alt="ثقة" width={100} height={100} className="mx-auto" />
+            <Image src="/logo.png" alt="مشتري موثّق" width={100} height={100} className="mx-auto" />
             <h1 className="text-4xl md:text-5xl font-extrabold text-green-900 leading-tight">
-              ثقة - تقييم سعودي بثقة
+              مشتري موثّق — تقييمات حقيقية بعد الشراء
             </h1>
             <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
-              اجمع تقييمات العملاء تلقائياً بعد الشراء وانشرها على صفحة عامة موثوقة.
+              اجمع تقييمات العملاء تلقائيًا بعد الشراء وانشرها على صفحة عامة موثوقة.
             </p>
             <Link href="/signup">
               <motion.button
@@ -48,12 +49,12 @@ export default function LandingPage() {
         {/* Features Section */}
         <section className="py-24 px-6 bg-[#f9f9f9]">
           <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-14 text-green-800">لماذا تختار ثقة؟</h2>
+            <h2 className="text-3xl font-bold mb-14 text-green-800">لماذا تختار مشتري موثّق؟</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
               {[
                 { icon: '💬', title: 'إرسال تلقائي للرسائل', desc: 'SMS / واتساب / بريد إلكتروني بعد كل عملية شراء' },
                 { icon: '🧠', title: 'ذكاء اصطناعي فلتر', desc: 'منع التقييمات المسيئة تلقائيًا وبذكاء' },
-                { icon: '🌟', title: 'صفحة عامة للتقييمات', desc: 'عرض التقييمات بثقة مع وسم "مشتري ثقة"' },
+                { icon: '🌟', title: 'صفحة عامة للتقييمات', desc: 'عرض التقييمات بعلامة “مشتري موثّق”' },
               ].map((feat, i) => (
                 <motion.div
                   key={i}
@@ -77,10 +78,10 @@ export default function LandingPage() {
         {/* Steps Section */}
         <section className="py-20 px-6 bg-white">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-12 text-green-800">كيف يعمل ثقة؟</h2>
+            <h2 className="text-3xl font-bold mb-12 text-green-800">كيف يعمل مشتري موثّق؟</h2>
             <div className="space-y-8 text-right">
               {[
-                'اربط متجرك مع ثقة (سلة / زد / Webhook)',
+                'اربط متجرك مع مشتري موثّق (سلة / زد / Webhook)',
                 'نرسل رابط التقييم تلقائيًا بعد الشراء',
                 'العميل يقيّم المنتج أو الخدمة بسهولة',
                 'نعرض التقييمات الموثوقة في صفحة عامة',
@@ -107,7 +108,7 @@ export default function LandingPage() {
             <Link href="/terms" className="hover:underline">الشروط والأحكام</Link>
             <Link href="/support" className="hover:underline">الدعم والمساعدة</Link>
           </div>
-          <p>© 2025 ثقة - جميع الحقوق محفوظة</p>
+          <p>© 2025 مشتري موثّق - جميع الحقوق محفوظة</p>
         </footer>
       </main>
     </>

@@ -1,3 +1,4 @@
+// src/pages/login.tsx
 'use client';
 
 import { useState, FormEvent } from 'react';
@@ -36,22 +37,35 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-green-50 to-white px-4">
-      <form onSubmit={handleLogin} className="w-full max-w-md bg-white p-8 rounded-xl shadow-md border" noValidate>
+      <form
+        onSubmit={handleLogin}
+        className="w-full max-w-md bg-white p-8 rounded-xl shadow-md border"
+        noValidate
+        aria-labelledby="login-title"
+      >
         <div className="text-center space-y-3 mb-6">
-          <Image src="/logo.png" alt="ثقة" width={56} height={56} className="mx-auto rounded" />
-          <h1 className="text-2xl font-extrabold text-green-900">تسجيل الدخول إلى ثقة</h1>
+          <Image src="/logo.png" alt="مشتري موثّق" width={56} height={56} className="mx-auto rounded" />
+          <h1 id="login-title" className="text-2xl font-extrabold text-green-900">
+            تسجيل الدخول إلى مشتري موثّق
+          </h1>
           <p className="text-sm text-gray-600">مرحبًا بك، أدخل بياناتك للمتابعة</p>
         </div>
 
         {error && (
-          <div role="alert" className="mb-4 text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2 text-sm text-center">
+          <div
+            role="alert"
+            className="mb-4 text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2 text-sm text-center"
+          >
             {error}
           </div>
         )}
 
         <div className="mb-4">
-          <label className="block mb-1 text-sm font-medium text-gray-700">البريد الإلكتروني</label>
+          <label className="block mb-1 text-sm font-medium text-gray-700" htmlFor="email">
+            البريد الإلكتروني
+          </label>
           <input
+            id="email"
             type="email"
             required
             autoComplete="email"
@@ -65,9 +79,12 @@ export default function LoginPage() {
           />
         </div>
 
-        <div className="mb-6">
-          <label className="block mb-1 text-sm font-medium text-gray-700">كلمة المرور</label>
+        <div className="mb-2">
+          <label className="block mb-1 text-sm font-medium text-gray-700" htmlFor="password">
+            كلمة المرور
+          </label>
           <input
+            id="password"
             type="password"
             required
             autoComplete="current-password"
@@ -78,6 +95,13 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={!!error}
           />
+        </div>
+
+        {/* Forgot password */}
+        <div className="text-left text-xs mb-6">
+          <Link href="/forgot-password" className="text-green-700 hover:underline">
+            نسيت كلمة المرور؟
+          </Link>
         </div>
 
         <button

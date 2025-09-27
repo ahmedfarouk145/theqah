@@ -27,7 +27,7 @@ export default function FAQPage() {
             transition={{ duration: 1 }}
             className="z-10 max-w-3xl space-y-5"
           >
-            <Image src="/logo.png" alt="ثقة" width={84} height={84} className="mx-auto" />
+            <Image src="/logo.png" alt="مشتري موثّق" width={84} height={84} className="mx-auto" />
             <h1 className="text-4xl md:text-5xl font-extrabold text-green-900 leading-tight">
               الأسئلة الشائعة — مشتري موثّق
             </h1>
@@ -55,7 +55,7 @@ export default function FAQPage() {
                 <p className="text-gray-700 leading-relaxed">
                   خدمة تضمن مصداقية التقييمات في المتاجر الإلكترونية. بعد الشراء، يُرسل رابط تقييم حصري للمشتري عبر
                   <strong> SMS / واتساب / البريد الإلكتروني</strong> ويُستخدم مرة واحدة فقط. يمرّ التقييم بفلترة
-                  <strong> ذكاء اصطناعي</strong> قبل النشر ويظهر مع وسم <strong>“مشتري ثقة”</strong>.
+                  <strong> ذكاء اصطناعي</strong> قبل النشر ويظهر مع وسم <strong>“مشتري موثّق”</strong>.
                 </p>
               </motion.div>
 
@@ -74,7 +74,7 @@ export default function FAQPage() {
                   <li>يفتح المشتري الرابط ويضيف التقييم (نص + نجوم).</li>
                   <li>تقوم خوارزميات الذكاء الاصطناعي بفلترة المحتوى.</li>
                   <li>يتم التحقق آليًا من صحة المشتري.</li>
-                  <li>يُنشر التقييم في صفحة المتجر مع وسم “مشتري ثقة”.</li>
+                  <li>يُنشر التقييم في صفحة المتجر مع وسم “مشتري موثّق”.</li>
                 </ol>
               </motion.div>
 
@@ -193,7 +193,7 @@ export default function FAQPage() {
               >
                 <h3 className="text-xl font-semibold mb-2 text-green-900">كيف أبدأ؟</h3>
                 <p className="text-gray-700 leading-relaxed">
-                  اربط متجرك مع ثقة (سُلّة/زِد/‎Webhook‎)، وفَعِّل قنوات الإرسال، واضبط إعدادات النشر. ابدأ الآن من
+                  اربط متجرك مع مشتري موثّق (سُلّة/زِد/‎Webhook‎)، وفَعِّل قنوات الإرسال، واضبط إعدادات النشر. ابدأ الآن من
                   <Link href="/signup" className="text-green-700 font-semibold hover:underline ml-1">
                     صفحة التسجيل
                   </Link>
@@ -209,7 +209,7 @@ export default function FAQPage() {
           <div className="max-w-3xl mx-auto text-center">
             <h3 className="text-2xl font-bold text-green-900 mb-3">جاهز تفعّل مشتري موثّق في متجرك؟</h3>
             <p className="text-gray-600 mb-6">
-              ابدأ بجمع تقييمات حقيقية بعد الشراء وانشرها بعلامة “مشتري ثقة”.
+              ابدأ بجمع تقييمات حقيقية بعد الشراء وانشرها بعلامة “مشتري موثّق”.
             </p>
             <Link href="/signup">
               <motion.button
@@ -230,7 +230,7 @@ export default function FAQPage() {
             <Link href="/terms" className="hover:underline">الشروط والأحكام</Link>
             <Link href="/support" className="hover:underline">الدعم والمساعدة</Link>
           </div>
-          <p>© 2025 ثقة - جميع الحقوق محفوظة</p>
+          <p>© 2025 مشتري موثّق - جميع الحقوق محفوظة</p>
         </footer>
 
         {/* SEO: FAQ Schema */}
@@ -247,7 +247,7 @@ export default function FAQPage() {
                   acceptedAnswer: {
                     '@type': 'Answer',
                     text:
-                      'خدمة تضمن مصداقية التقييمات. بعد الشراء يُرسل رابط تقييم حصري للمشتري ويُستخدم مرة واحدة فقط، ويُفلتر التقييم بالذكاء الاصطناعي ويُعرض بوسم “مشتري ثقة”.',
+                      'خدمة تضمن مصداقية التقييمات. بعد الشراء يُرسل رابط تقييم حصري للمشتري ويُستخدم مرة واحدة فقط، ويُفلتر التقييم بالذكاء الاصطناعي ويُعرض بوسم “مشتري موثّق”.',
                   },
                 },
                 {
@@ -256,7 +256,7 @@ export default function FAQPage() {
                   acceptedAnswer: {
                     '@type': 'Answer',
                     text:
-                      'يكمل المشتري الشراء، يُرسل الرابط تلقائياً، يضيف التقييم، تُفلتره الخوارزميات، يتحقق النظام من هوية المشتري، ثم يُنشر مع وسم “مشتري ثقة”.',
+                      'يكمل المشتري الشراء، يُرسل الرابط تلقائياً، يضيف التقييم، تُفلتره الخوارزميات، يتحقق النظام من هوية المشتري، ثم يُنشر مع وسم “مشتري موثّق”.',
                   },
                 },
                 {

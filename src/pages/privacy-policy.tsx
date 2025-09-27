@@ -1,3 +1,4 @@
+// src/pages/privacy-policy.tsx
 'use client';
 
 import NavbarLanding from '@/components/NavbarLanding';
@@ -16,7 +17,7 @@ export default function PrivacyPolicyPage() {
       {/* Hero Section with parallax logo */}
       <section className="relative flex flex-col items-center pt-12 pb-20 bg-gradient-to-b from-green-50 to-white">
         <motion.div style={{ y }} className="pointer-events-none">
-          <Image src="/logo.png" alt="ثقة" width={120} height={120} />
+          <Image src="/logo.png" alt="مشتري موثّق" width={120} height={120} />
         </motion.div>
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
@@ -49,7 +50,7 @@ export default function PrivacyPolicyPage() {
           {
             title: '٤. موافقتك',
             content:
-              'باستخدامك لمنصة ثقة، فإنك تقر بموافقتك على جمع واستخدام معلوماتك كما هو موضح في هذه السياسة.',
+              'باستخدامك لمنصة مشتري موثّق، فإنك تقر بموافقتك على جمع واستخدام معلوماتك كما هو موضح في هذه السياسة.',
           },
         ].map((section, idx) => (
           <motion.div
@@ -76,7 +77,7 @@ export default function PrivacyPolicyPage() {
       </div>
 
       <footer className="bg-green-100 py-6 text-center text-sm text-green-900 border-t border-green-200">
-        <p>© 2025 ثقة - جميع الحقوق محفوظة</p>
+        <p>© 2025 مشتري موثّق - جميع الحقوق محفوظة</p>
       </footer>
     </main>
   );
