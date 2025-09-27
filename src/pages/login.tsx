@@ -9,29 +9,34 @@ import { Loader2 } from 'lucide-react';
 
 // Firebase
 import { app } from '@/lib/firebase';
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
-} from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function LoginPage() {
   const router = useRouter();
   const auth = getAuth(app);
+
+  // (اختياري للتأكد من المشروع وقت التطوير)
+  if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    
+    const opts = auth.app?.options || {};
+    console.log('[Firebase Debug]', { projectId: opts.projectId, authDomain: opts.authDomain });
+  }
 
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const errMsg = (code: string) =>
+  const mapError = (code: string) =>
     ({
       'auth/invalid-email': 'البريد الإلكتروني غير صالح.',
       'auth/user-disabled': 'تم تعطيل هذا الحساب.',
-      'auth/user-not-found': 'لا يوجد حساب مسجّل بهذا البريد.',
-      'auth/wrong-password': 'كلمة المرور غير صحيحة.',
       'auth/too-many-requests': 'محاولات كثيرة. حاول لاحقًا.',
       'auth/network-request-failed': 'انقطاع بالشبكة. حاول مجددًا.',
+      // لمنع التعداد: Firebase قد يرجّع invalid-credential بدل wrong-password/user-not-found
+      'auth/invalid-credential': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+      'auth/wrong-password': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+      'auth/user-not-found': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
     } as Record<string, string>)[code] || 'تعذّر تسجيل الدخول حالياً.';
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -40,33 +45,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const userEmail = email.trim();
-
-      // 1) هل البريد مسجّل أصلاً؟ وبأي مزوّد؟
-      const methods = await fetchSignInMethodsForEmail(auth, userEmail);
-      if (!methods.length) {
-        setError('لا يوجد حساب مسجّل بهذا البريد.');
-        return;
-      }
-      if (!methods.includes('password')) {
-        // لو الحساب بمزوّد مختلف (مثلاً Google)
-        setError('هذا البريد مسجّل بمزوّد مختلف (مثل Google). جرّب الدخول بنفس المزوّد.');
-        return;
-      }
-
-      // 2) تسجيل الدخول فعليًا
-      const cred = await signInWithEmailAndPassword(auth, userEmail, password);
-
-      // 3) قراءة الـ role من الـ Custom Claims (لو موجود)
-      const tokenResult = await cred.user.getIdTokenResult(true);
-      const role = (tokenResult.claims?.role as string) || 'user';
-
-      if (role === 'admin') router.push('/admin/dashboard');
-      else router.push('/dashboard');
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const token = await cred.user.getIdTokenResult(true);
+      const role = (token.claims?.role as string) || 'user';
+      router.push(role === 'admin' ? '/admin/dashboard' : '/dashboard');
       //eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Login error:', err?.code, err?.message);
-      setError(errMsg(String(err?.code || '')));
+      setError(mapError(String(err?.code || '')));
     } finally {
       setLoading(false);
     }
@@ -134,7 +120,6 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* Forgot password */}
         <div className="text-left text-xs mb-6">
           <Link href="/forgot-password" className="text-green-700 hover:underline">
             نسيت كلمة المرور؟
