@@ -1,4 +1,4 @@
-// src/pages/api/admin/resolve.ts
+// src/pages/api/public/reviews/resolve.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
@@ -7,13 +7,8 @@ import { dbAdmin } from "@/lib/firebaseAdmin";
 function normalizeUrl(raw: unknown): URL | null {
   const s = String(raw || "").trim();
   if (!s) return null;
-  // أضف بروتوكول لو ناقص
   const withProto = /^https?:\/\//i.test(s) ? s : `https://${s}`;
-  try {
-    return new URL(withProto);
-  } catch {
-    return null;
-  }
+  try { return new URL(withProto); } catch { return null; }
 }
 
 /** يستخرج:
@@ -24,11 +19,9 @@ function normalizeUrl(raw: unknown): URL | null {
 function parseHrefBase(raw: unknown): { base: string; host: string; isTrial: boolean } {
   const u = normalizeUrl(raw);
   if (!u) return { base: "", host: "", isTrial: false };
-
   const origin = u.origin.toLowerCase();
   const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
   const isTrial = firstSeg.startsWith("dev-");
-
   const base = isTrial ? `${origin}/${firstSeg}` : origin;
   return { base, host: u.host.toLowerCase(), isTrial };
 }
@@ -41,7 +34,6 @@ function toDomainBase(domain: string | null | undefined): string | null {
   if (!domain) return null;
   const u = normalizeUrl(domain);
   if (!u) return null;
-
   const origin = u.origin.toLowerCase();
   const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
   return firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
@@ -74,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const storeUidParam = typeof req.query.storeUid === "string" ? req.query.storeUid.trim() : "";
     if (storeUidParam) {
-      // لو جالك storeUid جاهز رجّعه كما هو (سلوكك السابق)
+      // لو جالك storeUid جاهز رجّعه كما هو
       return res.status(200).json({ storeUid: storeUidParam });
     }
 
@@ -87,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let doc: FirebaseFirestore.DocumentSnapshot | null = null;
 
     if (base) {
-      // (1) محاولة مباشرة على stores بالسطر الواحد (base كما هو)
+      // (1) salla.domain (قديم) ثم domain.base (جديد)
       const directSnap = await db
         .collection("stores")
         .where("salla.domain", "==", base)
@@ -95,40 +87,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .where("salla.installed", "==", true)
         .limit(1)
         .get();
-
       if (!directSnap.empty) {
         doc = directSnap.docs[0];
       }
 
-      // (2) lookup عبر مجموعة domains (id = encoded base) ثم fallback إلى base نفسه
+      if (!doc) {
+        const snapNew = await db
+          .collection("stores")
+          .where("domain.base", "==", base)
+          .limit(1)
+          .get();
+        if (!snapNew.empty) doc = snapNew.docs[0];
+      }
+
+      // (2) lookup في domains (id = encoded base) ثم fallback للـ base نفسه
       if (!doc) {
         try {
           const encodedBase = encodeUrlForFirestore(base);
           let domainDoc = await db.collection("domains").doc(encodedBase).get();
 
           if (!domainDoc.exists) {
-            try {
-              domainDoc = await db.collection("domains").doc(base).get();
-            } catch {
-              // تجاهل أخطاء المسارات غير الصالحة (لو كان base فيه '/')
-            }
+            try { domainDoc = await db.collection("domains").doc(base).get(); } catch {}
           }
 
           if (domainDoc.exists) {
-            const domainData = domainDoc.data() as { storeUid?: string };
-            const fromDomainUid = domainData?.storeUid;
+            const domainData = domainDoc.data() as { storeUid?: string; uid?: string };
+            const fromDomainUid = domainData?.storeUid || domainData?.uid;
             if (fromDomainUid) {
               const storeDoc = await db.collection("stores").doc(fromDomainUid).get();
               if (storeDoc.exists) {
-                const s = storeDoc.data() as Record<string, unknown>;
-                if (s?.["salla.connected"] === true && s?.["salla.installed"] === true) {
-                  doc = storeDoc;
-                }
+                doc = storeDoc; // السماح حتى لو flags مش متوفرة — أنت بتعرض ريفيوهات عامة
               }
             }
           }
 
-          // (2b) جرّب normalizedBase لو مختلف عن base
+          // (2b) normalizedBase لو مختلف
           if (!doc) {
             const normalizedBase = toDomainBase(base);
             if (normalizedBase && normalizedBase !== base) {
@@ -136,22 +129,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               let normDoc = await db.collection("domains").doc(encNorm).get();
 
               if (!normDoc.exists) {
-                try {
-                  normDoc = await db.collection("domains").doc(normalizedBase).get();
-                } catch {
-                  // تجاهل أخطاء المسارات
-                }
+                try { normDoc = await db.collection("domains").doc(normalizedBase).get(); } catch {}
               }
 
               if (normDoc.exists) {
-                const d = normDoc.data() as { storeUid?: string };
-                if (d?.storeUid) {
-                  const storeDoc = await db.collection("stores").doc(d.storeUid).get();
+                const d = normDoc.data() as { storeUid?: string; uid?: string };
+                const fromUid = d?.storeUid || d?.uid;
+                if (fromUid) {
+                  const storeDoc = await db.collection("stores").doc(fromUid).get();
                   if (storeDoc.exists) {
-                    const s = storeDoc.data() as Record<string, unknown>;
-                    if (s?.["salla.connected"] === true && s?.["salla.installed"] === true) {
-                      doc = storeDoc;
-                    }
+                    doc = storeDoc;
                   }
                 }
               }
@@ -162,7 +149,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      // (3) تنويعات الدومين — تُجرَّب فقط لو **مش متجر تجريبي**
+      // (3) تنويعات الدومين — مجرّبة فقط لو **مش Trial**
       if (!doc && !isTrial) {
         const normalizedBase = toDomainBase(base);
         const variations = [
@@ -184,18 +171,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .where("salla.installed", "==", true)
             .limit(1)
             .get();
-          if (!snapVar.empty) {
-            doc = snapVar.docs[0];
-            break;
-          }
+          if (!snapVar.empty) { doc = snapVar.docs[0]; break; }
+
+          const snapVarNew = await db
+            .collection("stores")
+            .where("domain.base", "==", v)
+            .limit(1)
+            .get();
+          if (!snapVarNew.empty) { doc = snapVarNew.docs[0]; break; }
         }
       }
+
     } else {
-      // (4) fallback بالـ storeId/uid لو مفيش base
+      // (4) fallback بالـ storeId/uid
       const storeId = typeof req.query.storeId === "string" && req.query.storeId.trim()
         ? req.query.storeId.trim()
         : undefined;
-
       if (!storeId) return res.status(400).json({ error: "INVALID_HREF" });
 
       const snapNum = await db
@@ -205,7 +196,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .where("salla.installed", "==", true)
         .limit(1)
         .get();
-
       if (!snapNum.empty) {
         doc = snapNum.docs[0];
       } else {
@@ -216,7 +206,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .where("salla.installed", "==", true)
           .limit(1)
           .get();
-
         if (!snapStr.empty) {
           doc = snapStr.docs[0];
         } else {
@@ -227,7 +216,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .where("salla.installed", "==", true)
             .limit(1)
             .get();
-
           if (!snapUid.empty) {
             doc = snapUid.docs[0];
           }
@@ -236,23 +224,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (!doc) {
-      console.warn("[resolve] Store not found:", {
-        baseTried: base,
-        host,
-        href,
-        timestamp: new Date().toISOString(),
-      });
-
+      console.warn("[resolve] Store not found:", { baseTried: base, host, href, timestamp: new Date().toISOString() });
       return res.status(404).json({
         error: "STORE_NOT_FOUND",
         message: "لم يتم العثور على متجر لهذا الدومين أو المعرف. تأكد من أن التطبيق مثبت وأن الدومين أو المعرف مسجل.",
         baseTried: base,
         hostTried: host,
-        debug: {
-          parsedBase: base,
-          parsedHost: host,
-          originalHref: href,
-        },
+        debug: { parsedBase: base, parsedHost: host, originalHref: href },
       });
     }
 
@@ -273,20 +251,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     console.log("[resolve] Store resolved successfully:", {
-      resolvedUid,
-      baseTried: base,
-      host,
-      timestamp: new Date().toISOString(),
+      resolvedUid, baseTried: base, host, timestamp: new Date().toISOString(),
     });
 
     return res.status(200).json({ storeUid: resolvedUid });
+
   } catch (e) {
-  
-    console.error(
-      "[resolve] unexpected",
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      typeof e === "object" && e && "message" in (e as any) ? (e as any).message : e
-    );
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    console.error("[resolve] unexpected", typeof e === "object" && e && "message" in (e as any) ? (e as any).message : e);
     return res.status(500).json({ error: "RESOLVE_FAILED" });
   }
 }
