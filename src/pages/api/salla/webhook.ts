@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { fetchUserInfo } from "@/lib/sallaClient";
-import { tryChannels } from "@/server/messaging/send-invite";
+import { canSendInvite, onInviteSent } from "@/server/subscription/usage";
 
 export const config = { api: { bodyParser: false } };
 
@@ -52,7 +52,6 @@ function timingSafeEq(a: string, b: string) {
   } catch { return false; }
 }
 
-/** --- Security per docs (Signature / Token) --- */
 function verifySignature(raw: Buffer, req: NextApiRequest): boolean {
   const sig = getHeader(req, "x-salla-signature");
   if (!WEBHOOK_SECRET || !sig) return false;
@@ -79,7 +78,6 @@ function verifySallaRequest(req: NextApiRequest, raw: Buffer): { ok: boolean; st
   return { ok: false, strategy: "none" };
 }
 
-/** --- Domain helpers --- */
 function toDomainBase(domain: string | null | undefined): string | null {
   if (!domain) return null;
   try {
@@ -131,7 +129,6 @@ function validEmailOrPhone(c?: SallaCustomer) {
   return { ok: hasEmail || hasMobile, email: hasEmail ? email : undefined, mobile: hasMobile ? mobile : undefined };
 }
 
-/** --- Safe write: بدون undefined --- */
 async function saveDomainAndFlags(
   db: FirebaseFirestore.Firestore,
   uid: string,
@@ -141,9 +138,7 @@ async function saveDomainAndFlags(
 ) {
   const now = Date.now();
   const numericStoreId =
-    typeof merchantId === "number"
-      ? merchantId
-      : Number(String(merchantId ?? "").trim() || NaN);
+    typeof merchantId === "number" ? merchantId : Number(String(merchantId ?? "").trim() || NaN);
 
   const storeDoc: Record<string, unknown> = {
     uid,
@@ -158,7 +153,6 @@ async function saveDomainAndFlags(
     },
     ...(base ? { domain: { base, key: encodeUrlForFirestore(base), updatedAt: now } } : {}),
   };
-
   await db.collection("stores").doc(uid).set(storeDoc, { merge: true });
 
   if (base) {
@@ -168,9 +162,9 @@ async function saveDomainAndFlags(
     }, { merge: true });
   }
 
-  await db.collection("salla_app_events")
-    .add({ at: now, event, type: "domain_flags_saved", uid, base: base ?? null })
-    .catch(() => {});
+  await db.collection("salla_app_events").add({
+    at: now, event, type: "domain_flags_saved", uid, base: base ?? null,
+  }).catch(() => {});
 }
 
 async function upsertOrderSnapshot(
@@ -218,6 +212,14 @@ async function ensureInviteForOrder(
     storeUid = orderDoc?.data()?.storeUid ?? null;
   }
 
+  const planCheck = storeUid ? await canSendInvite(storeUid) : { ok: true as const };
+  if (!planCheck.ok) {
+    await db.collection("quota_events").add({
+      at: Date.now(), storeUid, orderId, type: "invite_blocked", reason: planCheck.reason
+    }).catch(()=>{});
+    return;
+  }
+
   const productIds = extractProductIds(order.items);
   const mainProductId = productIds[0] || orderId;
 
@@ -241,24 +243,16 @@ async function ensureInviteForOrder(
     sentAt: Date.now(), deliveredAt: null, clicks: 0, publicUrl,
   });
 
-  const storeName = getStoreOrMerchantName(rawData) ?? "متجرك";
+  // TODO: اربط بقناة الإرسال لديك (SMS/Email)
+  await db.collection("invite_sends").add({
+    at: Date.now(), tokenId, orderId, storeUid, via: ["sms","email"], publicUrl
+  }).catch(()=>{});
 
-  await tryChannels({
-    inviteId: tokenId,
-    country: "sa",
-    phone: cv.mobile,
-    email: cv.email,
-    customerName: customer?.name,
-    storeName,
-    url: publicUrl,
-    strategy: "all",
-    order: ["sms","email"],
-  });
+  if (storeUid) await onInviteSent(storeUid);
 }
 
 const keyOf = (event: string, orderId?: string, status?: string) => `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
 
-/** ========== Handler ========== */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
@@ -266,12 +260,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const verification = verifySallaRequest(req, raw);
   if (!verification.ok) return res.status(401).json({ error: "unauthorized" });
 
-  // Fast ACK
+  // ACK سريع
   res.status(202).json({ ok: true, accepted: true });
 
   const db = dbAdmin();
+  let body: SallaWebhookBody = { event: "" };
 
-  let body: SallaWebhookBody;
   try {
     body = JSON.parse(raw.toString("utf8") || "{}");
   } catch (e) {
@@ -306,7 +300,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch {}
 
   try {
-    // A) Partner App Events (install/authorize/updated)
+    // A) تثبيت/تفويض/تحديث (يحمل توكنات)
     if (event === "app.store.authorize" || event === "app.installed" || event === "app.updated") {
       const merchantId =
         body.merchant ??
@@ -328,12 +322,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ((dataRaw["merchant"] as any)?.url as string) ||
         null;
 
-      let base = toDomainBase(domainInPayload);
+      const base = toDomainBase(domainInPayload);
 
       if (storeUid) {
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         await saveDomainAndFlags(db, storeUid, merchantId as any, base, event);
-        // خزّن OAuth لو التوكين جالك في authorize payload
+
+        // خزّن OAuth لو موجود
         const token   = String((dataRaw["access_token"] ?? (dataRaw["token"] as UnknownRecord)?.["access_token"] ?? "") || "");
         const refresh = String((dataRaw["refresh_token"] ?? (dataRaw["token"] as UnknownRecord)?.["refresh_token"] ?? "") || "");
         const expires = Number(dataRaw["expires"] ?? (dataRaw["token"] as UnknownRecord)?.["expires"] ?? 0);
@@ -354,28 +349,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }, { merge: true });
         }
 
-        // userinfo → تأكيد الدومين + حفظ ميتاداتا
+        // userinfo لتثبيت الدومين واسم المتجر
         try {
           const info = await fetchUserInfo(storeUid);
-          const domainFromInfo =
-            //eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (info as any)?.merchant?.domain ||
-            //eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (info as any)?.store?.domain ||
-            //eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (info as any)?.domain ||
-            //eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (info as any)?.url || null;
-          const baseFromInfo = toDomainBase(domainFromInfo);
-          if (baseFromInfo) base = baseFromInfo;
-
           await db.collection("stores").doc(storeUid).set({
             uid: storeUid, provider: "salla",
             meta: { userinfo: info, updatedAt: Date.now() },
             updatedAt: Date.now(),
           }, { merge: true });
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await saveDomainAndFlags(db, storeUid, merchantId as any, base, event);
         } catch (e) {
           await db.collection("webhook_errors").add({
             at: Date.now(), scope: "userinfo", event,
@@ -385,13 +366,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // B) Order/Shipment snapshots
+    // B) أحداث الاشتراك من سلة (فعّل خطتك الداخلية)
+    if (event.startsWith("app.subscription.") || event.startsWith("app.trial.")) {
+      const merchantId =
+        body.merchant ??
+        dataRaw["merchant_id"] ??
+        (dataRaw["merchant"] as UnknownRecord | undefined)?.["id"];
+      const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
+
+      // أمثلة حقول محتملة: plan_name, plan_type, period, start_date, end_date ...
+      const payload = dataRaw as UnknownRecord;
+      const planName = String(payload["plan_name"] ?? payload["name"] ?? "").toLowerCase();
+      // mapping بسيط — عدّله حسب تعريفاتك في Partner Portal
+      const map: Record<string, string> = {
+        "start": "P30",
+        "growth": "P60",
+        "scale": "P120",
+        "trial": "TRIAL",
+        "elite": "ELITE",
+      };
+      const planId = (map[planName] || "").toUpperCase() || (event.includes(".trial.") ? "TRIAL" : "P30");
+
+      if (storeUid) {
+        await db.collection("stores").doc(storeUid).set({
+          uid: storeUid,
+          subscription: {
+            planId,
+            raw: payload,
+            updatedAt: Date.now(),
+          },
+          updatedAt: Date.now(),
+        }, { merge: true });
+      }
+    }
+
+    // C) Snapshots للطلبات/الشحن
     if (event.startsWith("order.") || event.startsWith("shipment.")) {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant) || null;
       await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
     }
 
-    // C) Invites
+    // D) دعوات بناءً على حالات التوصيل/الدفع
     if (event === "order.payment.updated") {
       const ps = lc(asOrder.payment_status ?? "");
       if (["paid","authorized","captured"].includes(ps)) {
@@ -419,7 +434,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // D) Logs + processed flag
+    // E) علامات نجاح + لوج
     const orderId = String(asOrder.id ?? asOrder.order_id ?? "") || "none";
     const statusFin = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
     await db.collection("processed_events").doc(keyOf(event, orderId, statusFin)).set({
