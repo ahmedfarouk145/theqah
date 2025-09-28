@@ -5,10 +5,12 @@ import { dbAdmin } from "@/lib/firebaseAdmin";
 import { fetchStoreInfo, fetchUserInfo, getOwnerAccessToken } from "@/lib/sallaClient";
 import { canSendInvite, onInviteSent } from "@/server/subscription/usage";
 import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
+import { sendBothNow } from "@/server/messaging/send-invite";
 
+export const runtime = "nodejs";
 export const config = { api: { bodyParser: false } };
 
-// ---------- Types ----------
+/* ===================== Types ===================== */
 type Dict = Record<string, unknown>;
 
 interface SallaCustomer { name?: string; email?: string; mobile?: string; }
@@ -28,52 +30,15 @@ interface SallaWebhookBody {
   created_at?: string;
 }
 
-// ---------- Env ----------
+/* ===================== Env ===================== */
 const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
 const WEBHOOK_TOKEN  = (process.env.SALLA_WEBHOOK_TOKEN  || "").trim();
 const APP_BASE_URL   = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/,"");
 
-// ---------- Consts ----------
-const DONE = new Set(["paid","fulfilled","delivered","completed","complete","تم التوصيل","مكتمل","تم التنفيذ"]);
+/* ===================== Utils ===================== */
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
+const DONE = new Set(["paid","fulfilled","delivered","completed","complete","تم التوصيل","مكتمل","تم التنفيذ"]);
 
-// ---------- Logging helper ----------
-type LogLevel = "debug" | "info" | "warn" | "error";
-async function fbLog(
-  db: FirebaseFirestore.Firestore,
-  entry: {
-    level: LogLevel;
-    scope: string;
-    msg: string;
-    event?: string | null;
-    idemKey?: string | null;
-    merchant?: string | number | null;
-    orderId?: string | null;
-    meta?: Dict;
-  }
-) {
-  const payload = {
-    at: Date.now(),
-    level: entry.level,
-    scope: entry.scope,
-    msg: entry.msg,
-    event: entry.event ?? null,
-    idemKey: entry.idemKey ?? null,
-    merchant: entry.merchant ?? null,
-    orderId: entry.orderId ?? null,
-    meta: entry.meta ?? null,
-  };
-
-  try { await db.collection("webhook_firebase").add(payload); }
-  catch (e) { console.error("[WEBHOOK_LOG][WRITE_FAIL]", e); }
-
-  const line = `[${entry.level.toUpperCase()}][${entry.scope}] ${entry.msg} :: ${JSON.stringify({
-    event: payload.event, merchant: payload.merchant, orderId: payload.orderId, idemKey: payload.idemKey
-  })}`;
-  (entry.level === "error" || entry.level === "warn") ? console.error(line) : console.log(line);
-}
-
-// ---------- Utils ----------
 function getHeader(req: NextApiRequest, name: string): string {
   const v = req.headers[name.toLowerCase()];
   return Array.isArray(v) ? (v[0] || "") : (v || "");
@@ -94,12 +59,12 @@ function timingSafeEq(a: string, b: string) {
   } catch { return false; }
 }
 
-// Security
+/* ---------- Security (signature/token/auto) ---------- */
 function verifySignature(raw: Buffer, req: NextApiRequest): boolean {
-  const sig = getHeader(req, "x-salla-signature");
-  if (!WEBHOOK_SECRET || !sig) return false;
+  const sigHeader = getHeader(req, "x-salla-signature");
+  if (!WEBHOOK_SECRET || !sigHeader) return false;
   const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(raw).digest("hex");
-  return timingSafeEq(sig, expected);
+  return timingSafeEq(sigHeader, expected);
 }
 function extractProvidedToken(req: NextApiRequest): string {
   const auth = getHeader(req, "authorization").trim();
@@ -121,7 +86,7 @@ function verifySallaRequest(req: NextApiRequest, raw: Buffer): { ok: boolean; st
   return { ok: false, strategy: "none" };
 }
 
-// Domain helpers
+/* ---------- Domain helpers ---------- */
 function toDomainBase(domain: string | null | undefined): string | null {
   if (!domain) return null;
   try {
@@ -147,6 +112,9 @@ function pickName(obj: unknown): string | undefined {
   }
   return undefined;
 }
+function getStoreOrMerchantName(ev: Dict): string | undefined {
+  return pickName(ev["store"]) ?? pickName(ev["merchant"]);
+}
 function pickStoreUidFromSalla(eventData: Dict, bodyMerchant?: string | number): string | undefined {
   if (bodyMerchant !== undefined && bodyMerchant !== null) return `salla:${String(bodyMerchant)}`;
   const store = eventData["store"] as Dict | undefined;
@@ -171,7 +139,7 @@ function validEmailOrPhone(c?: SallaCustomer) {
 }
 const keyOf = (event: string, orderId?: string, status?: string) => `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
 
-// ---------- Firestore ops ----------
+/* ===================== Firestore Ops ===================== */
 async function saveDomainAndFlags(
   db: FirebaseFirestore.Firestore,
   uid: string,
@@ -197,7 +165,7 @@ async function saveDomainAndFlags(
     ...(base ? { domain: { base, key: encodeUrlForFirestore(base), updatedAt: now } } : {}),
   };
 
-  // منع undefined
+  // نظّف أي undefined
   Object.keys(storeDoc).forEach((k) => (storeDoc as Dict)[k] === undefined && delete (storeDoc as Dict)[k]);
 
   await db.collection("stores").doc(uid).set(storeDoc, { merge: true });
@@ -259,6 +227,7 @@ async function ensureInviteForOrder(
     storeUid = (orderDoc?.data() as Dict | undefined)?.["storeUid"] as string | null ?? null;
   }
 
+  // فحص الخطة (لو عندك usage limits)
   const planCheck = storeUid ? await canSendInvite(storeUid) : { ok: true as const };
   if (!planCheck.ok) {
     await db.collection("quota_events").add({
@@ -290,21 +259,29 @@ async function ensureInviteForOrder(
     sentAt: Date.now(), deliveredAt: null, clicks: 0, publicUrl,
   });
 
-  await db.collection("invite_sends").add({
-    at: Date.now(), tokenId, orderId, storeUid, via: ["sms","email"], publicUrl
-  }).catch(()=>{});
+  // ——— إرسال فوري عبر الـ sender القديم بتاعك
+  const storeName = getStoreOrMerchantName(rawData) ?? "متجرك";
+  await sendBothNow({
+    inviteId: tokenId,
+    phone: cv.mobile,
+    email: cv.email,
+    customerName: customer?.name,
+    storeName,
+    url: publicUrl,
+    perChannelTimeoutMs: 15000,
+  });
 
   if (storeUid) await onInviteSent(storeUid);
 }
 
-// ---------- Handler ----------
+/* ===================== Handler ===================== */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
   const raw = await readRawBody(req);
   const db = dbAdmin();
 
-  // (1) auth
+  // (1) Security check + basic log row
   const verification = verifySallaRequest(req, raw);
   await fbLog(db, {
     level: verification.ok ? "info" : "warn",
@@ -323,7 +300,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // (2) Fast ACK
   res.status(202).json({ ok: true, accepted: true });
 
-  // (3) parse
+  // (3) Parse body
   let body: SallaWebhookBody = { event: "" };
   try {
     body = JSON.parse(raw.toString("utf8") || "{}");
@@ -356,7 +333,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     typeof merchantIdRaw === "string" ? merchantIdRaw :
     null;
 
-  // (4) idempotency
+  // (4) Idempotency
   const sigHeader = getHeader(req, "x-salla-signature") || "";
   const idemKey = crypto.createHash("sha256").update(sigHeader + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
@@ -380,24 +357,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await fbLog(db, { level: "warn", scope: "idempotency", msg: "idem set failed (continue)", event, idemKey, merchant: merchantId, orderId, meta: { err: String(e) } });
   }
 
-  // (5) main
+  // (5) Main processing
   try {
     await fbLog(db, { level: "info", scope: "handler", msg: "processing start", event, idemKey, merchant: merchantId, orderId });
 
-    // A) authorize/installed/updated: حفظ الدومين + الفلاجز + OAuth (لو موجود) + محاولة قراءة store/info + userinfo + إرسال إيميل
-    if (event === "app.store.authorize" || event === "app.installed" || event === "app.updated") {
+    // A) authorize/installed/updated → flags/domain + oauth + store/info + userinfo + password email
+    if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
 
-      // توكن من البودي إن وُجد
+      // access_token من البودي (إن وُجد)
       const tokenFromPayload =
-        typeof (dataRaw["access_token"]) === "string" && dataRaw["access_token"].trim()
+        (typeof (dataRaw["access_token"]) === "string" && (dataRaw["access_token"] as string).trim())
           ? (dataRaw["access_token"] as string).trim()
-          : (typeof (dataRaw["token"]) === "object" && dataRaw["token"]
-              && typeof (dataRaw["token"] as Dict)["access_token"] === "string"
+          : (typeof (dataRaw["token"]) === "object" && dataRaw["token"] && typeof (dataRaw["token"] as Dict)["access_token"] === "string"
               ? ((dataRaw["token"] as Dict)["access_token"] as string).trim()
               : "");
 
-      // دومين في البودي (إن وُجد)
+      // دومين من البودي (إن وُجد)
       const domainInPayload =
         (typeof dataRaw["domain"] === "string" ? (dataRaw["domain"] as string) : undefined) ??
         (typeof dataRaw["store_url"] === "string" ? (dataRaw["store_url"] as string) : undefined) ??
@@ -405,15 +381,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (typeof (dataRaw["store"] as Dict | undefined)?.["domain"] === "string" ? ((dataRaw["store"] as Dict)["domain"] as string) : undefined) ??
         (typeof (dataRaw["merchant"] as Dict | undefined)?.["domain"] === "string" ? ((dataRaw["merchant"] as Dict)["domain"] as string) : undefined);
 
-      // حدّد base إن أمكن
       let base = toDomainBase(domainInPayload);
 
-      // خزّن الفلاجز + (الدومين لو معروف)
       if (storeUid) {
         await saveDomainAndFlags(db, storeUid, merchantId, base, event);
       }
 
-      // خزّن OAuth إن وُجد
+      // خزّن OAuth لو متاح
       const refresh =
         typeof dataRaw["refresh_token"] === "string" ? (dataRaw["refresh_token"] as string) :
         (typeof (dataRaw["token"] as Dict | undefined)?.["refresh_token"] === "string"
@@ -443,7 +417,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await fbLog(db, { level: "info", scope: "oauth", msg: "owner oauth saved", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, hasRefresh: !!refresh } });
       }
 
-      // جلب store/info (لو base لسه مش معروف)
+      // لو base مش معروف → حاول store/info
       if (storeUid && !base) {
         const token = tokenFromPayload || (await getOwnerAccessToken(db, storeUid)) || "";
         if (token) {
@@ -466,51 +440,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      // --- userinfo + حفظ + إرسال إيميل تعيين كلمة المرور ---
+      // userinfo + حفظ + إيميل تعيين كلمة المرور + تحسين الدومين لو أمكن
       if (storeUid) {
         const token = tokenFromPayload || (await getOwnerAccessToken(db, storeUid)) || "";
         if (token) {
           try {
             const uinfo = await fetchUserInfo(token);
 
-            // احفظ اليوزر إنفو في المتجر
             await db.collection("stores").doc(storeUid).set({
               uid: storeUid, provider: "salla",
               meta: { userinfo: uinfo, updatedAt: Date.now() },
               updatedAt: Date.now(),
             }, { merge: true });
-
             await fbLog(db, { level: "info", scope: "userinfo", msg: "userinfo saved", event, idemKey, merchant: merchantId, orderId, meta: { storeUid } });
 
-            // حاول تحسين الدومين من userinfo إن أمكن
+            const u = uinfo as Dict;
             const domainFromInfo =
-              (typeof uinfo.merchant?.domain === "string" ? uinfo.merchant.domain : undefined) ??
-              (typeof uinfo.store?.domain === "string" ? uinfo.store.domain : undefined) ??
-              (typeof uinfo.domain === "string" ? uinfo.domain : undefined) ??
-              (typeof uinfo.url === "string" ? uinfo.url : undefined);
+              (typeof u.merchant === "object" && typeof (u.merchant as Dict)?.domain === "string" ? (u.merchant as Dict).domain as string : undefined) ??
+              (typeof u.store === "object" && typeof (u.store as Dict)?.domain === "string" ? (u.store as Dict).domain as string : undefined) ??
+              (typeof u.domain === "string" ? u.domain as string : undefined) ??
+              (typeof u.url === "string" ? u.url as string : undefined);
 
-            const baseFromInfo = toDomainBase(domainFromInfo ?? null);
-            if (baseFromInfo && baseFromInfo !== base) {
-              await saveDomainAndFlags(db, storeUid, merchantId, baseFromInfo, event);
-              await fbLog(db, { level: "info", scope: "domain", msg: "domain updated from userinfo", event, idemKey, merchant: merchantId, orderId, meta: { baseFromInfo } });
-            }
-
-            // استخرج الإيميل + اسم المتجر
             const infoEmail =
-              (typeof uinfo.email === "string" ? uinfo.email : undefined) ??
-              (typeof uinfo.merchant?.email === "string" ? uinfo.merchant.email : undefined) ??
-              (typeof uinfo.user?.email === "string" ? uinfo.user.email : undefined);
+              (typeof u.email === "string" ? u.email as string : undefined) ??
+              (typeof u.merchant === "object" && typeof (u.merchant as Dict).email === "string" ? (u.merchant as Dict).email as string : undefined) ??
+              (typeof u.user === "object" && typeof (u.user as Dict).email === "string" ? (u.user as Dict).email as string : undefined);
 
             const storeName =
-              (typeof uinfo.merchant?.name === "string" ? uinfo.merchant.name : undefined) ??
-              (typeof uinfo.store?.name === "string" ? uinfo.store.name : undefined) ??
+              (typeof u.merchant === "object" && typeof (u.merchant as Dict).name === "string" ? (u.merchant as Dict).name as string : undefined) ??
+              (typeof u.store === "object" && typeof (u.store as Dict).name === "string" ? (u.store as Dict).name as string : undefined) ??
               "متجرك";
 
-            // fallback: لو البودي فيه إيميل
             const payloadEmail = typeof (dataRaw as Dict)["email"] === "string" ? ((dataRaw as Dict)["email"] as string) : undefined;
             const targetEmail = infoEmail || payloadEmail;
 
-            // أرسل إيميل تعيين كلمة المرور
             if (targetEmail) {
               const r = await sendPasswordSetupEmail({ email: targetEmail, storeUid, storeName });
               if (!r.ok) {
@@ -561,7 +524,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await fbLog(db, { level: "info", scope: "orders", msg: "order snapshot upserted", event, idemKey, merchant: merchantId, orderId, meta: { storeUidFromEvent } });
     }
 
-    // D) Invites (paid/delivered)
+    // D) Invites (paid/delivered) + void on cancel/refund
     if (event === "order.payment.updated") {
       const ps = lc(asOrder.payment_status ?? "");
       if (["paid","authorized","captured"].includes(ps)) {
@@ -616,4 +579,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }).catch(()=>{});
     await idemRef.set({ statusFlag: "failed", lastError: err, processingFinishedAt: Date.now() }, { merge: true });
   }
+}
+
+/* ===================== Logging helper (after handler for hoist clarity) ===================== */
+type LogLevel = "debug" | "info" | "warn" | "error";
+async function fbLog(
+  db: FirebaseFirestore.Firestore,
+  entry: {
+    level: LogLevel;
+    scope: string;
+    msg: string;
+    event?: string | null;
+    idemKey?: string | null;
+    merchant?: string | number | null;
+    orderId?: string | null;
+    meta?: Dict;
+  }
+) {
+  const payload = {
+    at: Date.now(),
+    level: entry.level,
+    scope: entry.scope,
+    msg: entry.msg,
+    event: entry.event ?? null,
+    idemKey: entry.idemKey ?? null,
+    merchant: entry.merchant ?? null,
+    orderId: entry.orderId ?? null,
+    meta: entry.meta ?? null,
+  };
+
+  try { await db.collection("webhook_firebase").add(payload); }
+  catch (e) { console.error("[WEBHOOK_LOG][WRITE_FAIL]", e); }
+
+  const line = `[${entry.level.toUpperCase()}][${entry.scope}] ${entry.msg} :: ${JSON.stringify({
+    event: payload.event, merchant: payload.merchant, orderId: payload.orderId, idemKey: payload.idemKey
+  })}`;
+  (entry.level === "error" || entry.level === "warn") ? console.error(line) : console.log(line);
 }
