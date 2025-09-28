@@ -3,7 +3,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { fetchUserInfo } from "@/lib/sallaClient"; // يستعمل توكن مخزن حسب متجر
-import { canSendInvite, onInviteSent } from "@/server/subscription/usage";
+import { onInviteSent } from "@/server/subscription/usage";
+import { canSendInvite } from "@/server/billing/usage";
 
 export const config = { api: { bodyParser: false } };
 
