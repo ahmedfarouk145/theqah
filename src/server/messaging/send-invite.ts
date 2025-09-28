@@ -1,211 +1,157 @@
+// src/server/messaging/try-channels-fast.ts
 import { getDb } from "@/server/firebase-admin";
 import { sendSms } from "./send-sms";
 import { sendEmailDmail } from "./email-dmail";
 import { warn } from "@/lib/logger";
-import { buildReviewSms } from "./templates";
+import { buildInviteSMS as buildInviteSmsDefault } from "./send-sms";
 
-export type Country = "sa";
 export type Channel = "sms" | "email";
-
 type MessageResult = { ok: boolean; id?: string | null; error?: string | null };
-
-export async function recordInviteChannel(
-  inviteId: string,
-  channel: Channel,
-  result: { ok: boolean; error?: string | null; id?: string | null }
-) {
-  const db = getDb();
-  const ref = db.collection("review_invites").doc(inviteId);
-  await ref.set(
-    {
-      lastSentAt: Date.now(),
-      sentChannels: {
-        [channel]: {
-          ok: !!result.ok,
-          id: result.id ?? null,
-          error: result.error ?? null,
-          at: Date.now(),
-        },
-      },
-    },
-    { merge: true }
-  );
-}
-
-export interface TryChannelsOptions {
-  inviteId?: string;
-  country: Country;
-  phone?: string;
-  email?: string;
-  customerName?: string;
-  storeName?: string;
-  url: string;
-  strategy?: "all" | "first_success";
-  order?: Channel[];
-}
-
-export type Attempt = {
-  channel: Channel;
-  ok: boolean;
-  id?: string | null;
-  error?: string | null;
-  at?: number;
-};
-
-export type TryChannelsResult = {
-  ok: boolean;
-  firstSuccessChannel: Channel | null;
-  attempts: Attempt[];
-};
 
 function asMessageResult(r: unknown): MessageResult {
   if (r && typeof r === "object") {
     const o = r as Record<string, unknown>;
     const ok = Boolean(o.ok);
-    const id =
-      typeof o.id === "string" ? o.id : o.id == null ? null : String(o.id);
+    const id = typeof o.id === "string" ? o.id : o.id == null ? null : String(o.id);
     const error = typeof o.error === "string" ? o.error : null;
     return { ok, id: id ?? null, error };
   }
   return { ok: false, id: null, error: "INVALID_RESULT" };
 }
 
-// helper: timeout لكل قناة
+async function recordInviteChannel(
+  inviteId: string | undefined,
+  channel: Channel,
+  res: MessageResult
+) {
+  if (!inviteId) return;
+  const db = getDb();
+  await db.collection("review_invites").doc(inviteId).set({
+    lastSentAt: Date.now(),
+    sentChannels: {
+      [channel]: {
+        ok: !!res.ok,
+        id: res.id ?? null,
+        error: res.error ?? null,
+        at: Date.now(),
+      },
+    },
+  }, { merge: true });
+}
+
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
     const id = setTimeout(() => reject(new Error(`${label}_timeout_${ms}ms`)), ms);
-    p.then((v) => { clearTimeout(id); resolve(v); }, (e) => { clearTimeout(id); reject(e); });
+    p.then(
+      (v) => { clearTimeout(id); resolve(v); },
+      (e) => { clearTimeout(id); reject(e); }
+    );
   });
 }
 
-export async function tryChannels(opts: TryChannelsOptions): Promise<TryChannelsResult> {
-  const strategy = opts.strategy || "all";
-  const name = opts.customerName || "العميل";
-  const store = opts.storeName || "المتجر";
+export interface SendBothOptions {
+  inviteId?: string;
+  phone?: string;
+  email?: string;
+  customerName?: string;
+  storeName?: string;
+  url: string;
 
-  const smsText = buildReviewSms(name, store, opts.url);
-  const html = `
-    <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.8">
-      <p>مرحباً ${name}،</p>
-      <p>طلبك من <strong>${store}</strong> تم. شاركنا رأيك لو تكرّمت.</p>
-      <p>
-        <a href="${opts.url}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block">
-          اضغط للتقييم الآن
-        </a>
-      </p>
-      <p style="color:#64748b">شكراً لك — فريق ثقة</p>
-    </div>
-  `.trim();
+  // تخصيصات اختيارية
+  smsTextOverride?: string;
+  emailSubjectOverride?: string;
+  emailHtmlOverride?: string;
 
-  const defaultOrder: Channel[] = ["sms", "email"];
-  const order: Channel[] = (opts.order && opts.order.length ? opts.order : defaultOrder);
+  // مهلة لكل قناة (افتراضي 15 ثانية)
+  perChannelTimeoutMs?: number;
+}
 
-  type Task = () => Promise<Attempt>;
-  const tasks: Task[] = [];
+/** يرسل SMS و Email بالتوازي فورًا. يرجّع النتيجة بعد استقرار القناتين (settled). */
+export async function sendBothNow(opts: SendBothOptions) {
+  const name = (opts.customerName || "العميل").trim();
+  const store = (opts.storeName || "المتجر").trim();
+  const timeout = opts.perChannelTimeoutMs ?? 15_000;
 
-  const finalizeAttempt = async (attempt: Attempt) => {
-    if (opts.inviteId) {
-      await recordInviteChannel(opts.inviteId, attempt.channel, {
-        ok: attempt.ok,
-        id: attempt.id ?? null,
-        error: attempt.error ?? null,
-      });
-    }
-    return attempt;
-  };
+  const smsText =
+    (opts.smsTextOverride && opts.smsTextOverride.trim()) ||
+    buildInviteSmsDefault(store, opts.url);
 
-  const smsOpts = {
-    defaultCountry: "SA" as const,
-    msgClass: "transactional" as const,
-    priority: 1 as const,
-    requestDlr: true as const,
-  };
+  const emailSubject =
+    (opts.emailSubjectOverride && opts.emailSubjectOverride.trim()) ||
+    "وش رأيك؟ نبي نسمع منك";
 
-  // مهلة صارمة لكل قناة
-  const CHANNEL_TIMEOUT_MS = 25000;
+  const emailHtml =
+    (opts.emailHtmlOverride && opts.emailHtmlOverride.trim()) ||
+    `
+      <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.8">
+        <p>مرحباً ${name}،</p>
+        <p>طلبك من <strong>${store}</strong> تم. شاركنا رأيك لو تكرّمت.</p>
+        <p>
+          <a href="${opts.url}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block">
+            اضغط للتقييم الآن
+          </a>
+        </p>
+        <p style="color:#64748b">شكراً لك — فريق ثقة</p>
+      </div>
+    `.trim();
+
+  const jobs: Promise<void>[] = [];
 
   if (opts.phone) {
-    tasks.push(async () => {
-      try {
-        const r = await withTimeout(
-          sendSms(opts.phone!, smsText, smsOpts),
-          CHANNEL_TIMEOUT_MS,
-          "sms"
-        );
-        const mr = asMessageResult(r);
-        return finalizeAttempt({
-          channel: "sms",
-          ok: mr.ok,
-          id: mr.id ?? null,
-          error: mr.error ?? null,
-          at: Date.now(),
-        });
-      } catch (e) {
+    const job = withTimeout(
+      sendSms(opts.phone, smsText, {
+        defaultCountry: "SA",
+        msgClass: "transactional",
+        priority: 1,
+        requestDlr: true,
+      }),
+      timeout,
+      "sms"
+    )
+      .then(asMessageResult)
+      .catch((e) => {
         const msg = e instanceof Error ? e.message : String(e);
-        warn("sms.send.failed", { e: msg });
-        return finalizeAttempt({
-          channel: "sms",
-          ok: false,
-          id: null,
-          error: msg,
-          at: Date.now(),
-        });
-      }
-    });
+        warn?.("sms.send.failed", { e: msg });
+        return { ok: false, id: null, error: msg } as MessageResult;
+      })
+      .then((res) => recordInviteChannel(opts.inviteId, "sms", res));
+
+    jobs.push(job);
   }
 
   if (opts.email) {
-    tasks.push(async () => {
-      try {
-        const r = await withTimeout(
-          sendEmailDmail(opts.email!, "وش رأيك؟ نبي نسمع منك", html),
-          CHANNEL_TIMEOUT_MS,
-          "email"
-        );
-        const mr = asMessageResult(r);
-        return finalizeAttempt({
-          channel: "email",
-          ok: mr.ok,
-          id: mr.id ?? null,
-          error: mr.error ?? null,
-          at: Date.now(),
-        });
-      } catch (e) {
+    const job = withTimeout(
+      sendEmailDmail(opts.email, emailSubject, emailHtml),
+      timeout,
+      "email"
+    )
+      .then(asMessageResult)
+      .catch((e) => {
         const msg = e instanceof Error ? e.message : String(e);
-        warn("email.send.failed", { e: msg });
-        return finalizeAttempt({
-          channel: "email",
-          ok: false,
-          id: null,
-          error: msg,
-          at: Date.now(),
-        });
-      }
-    });
+        warn?.("email.send.failed", { e: msg });
+        return { ok: false, id: null, error: msg } as MessageResult;
+      })
+      .then((res) => recordInviteChannel(opts.inviteId, "email", res));
+
+    jobs.push(job);
   }
 
-  if (tasks.length === 0) {
-    return { ok: false, firstSuccessChannel: null, attempts: [] };
+  if (jobs.length === 0) {
+    return {
+      ok: false,
+      attempts: [],
+      note: "no_channel_available",
+    };
   }
 
-  const settled = await Promise.allSettled(tasks.map((t) => t()));
-  const attempts: Attempt[] = settled.map((s) =>
-    s.status === "fulfilled" ? s.value : {
-      channel: "sms", ok: false, id: null, error: "TASK_FAILED", at: Date.now()
-    }
-  );
+  const settled = await Promise.allSettled(jobs);
 
-  const ok = attempts.some((a) => a.ok);
-
-  let firstSuccessChannel: Channel | null = null;
-  const successAttempts = attempts.filter((a) => a.ok && a.at);
-  if (successAttempts.length > 0) {
-    successAttempts.sort((a, b) => {
-      if ((a.at! - b.at!) !== 0) return a.at! - b.at!;
-      return order.indexOf(a.channel) - order.indexOf(b.channel);
-    });
-    firstSuccessChannel = successAttempts[0].channel;
-  }
-
-  return { ok, firstSuccessChannel, attempts };
+  const ok = settled.some((s) => s.status === "fulfilled");
+  return {
+    ok,
+    attempts: settled.map((s) => ({
+      status: s.status,
+      error: s.status === "rejected" ? (s.reason?.message || String(s.reason)) : null,
+    })),
+  };
 }

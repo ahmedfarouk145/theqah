@@ -2,7 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
-import { tryChannels } from "@/server/messaging/send-invite"; // استخدمه إن كان متوفرًا لديك
+import { sendBothNow } from "@/server/messaging/send-invite";
 
 export const runtime = "nodejs";
 export const config = { api: { bodyParser: false } };
@@ -159,43 +159,44 @@ const keyOf = (event: string, orderId?: string, status?: string) => `salla:${lc(
 
 /* ===================== Firestore Ops ===================== */
 
-async function saveDomain(
+async function saveDomainAndFlags(
   db: FirebaseFirestore.Firestore,
   uid: string,
-  data: UnknownRecord,
+  merchantId: string | number | undefined,
+  base: string | null | undefined,
   event: string
 ) {
-  const candidates = [
-    data?.["domain"],
-    data?.["store_url"],
-    data?.["url"],
-    (data?.["store"] as UnknownRecord)?.["domain"],
-    (data?.["store"] as UnknownRecord)?.["url"],
-    (data?.["merchant"] as UnknownRecord)?.["domain"],
-    (data?.["merchant"] as UnknownRecord)?.["url"],
-  ];
-  const raw = candidates.find((x) => typeof x === "string" && x.trim()) as string|undefined;
-  if (!raw) return;
-  const base = toDomainBase(raw);
-  if (!base) return;
-  const key = encodeUrlForFirestore(base);
+  const key = base ? encodeUrlForFirestore(base) : undefined;
+
+  const numericStoreId =
+    typeof merchantId === "number" ? merchantId :
+    Number(String(merchantId ?? "").trim() || NaN);
 
   await db.collection("stores").doc(uid).set({
     uid, provider: "salla",
-    domain: { base, key, updatedAt: Date.now() },
-    salla: { domain: base }, // legacy compat
+    domain: base ? { base, key, updatedAt: Date.now() } : undefined,  // canonical
+    salla: {                                                          // legacy + flags for /resolve
+      uid,
+      storeId: Number.isFinite(numericStoreId) ? numericStoreId : String(merchantId ?? ""),
+      domain: base || undefined,
+      connected: true,
+      installed: true,
+    },
     updatedAt: Date.now(),
   }, { merge: true });
 
-  await db.collection("domains").doc(key).set({
-    base, key,
-    uid, storeUid: uid,
-    provider: "salla",
-    updatedAt: Date.now(),
-  }, { merge: true });
+  if (base && key) {
+    await db.collection("domains").doc(key).set({
+      base, key,
+      uid,           // canonical
+      storeUid: uid, // legacy used by /resolve
+      provider: "salla",
+      updatedAt: Date.now(),
+    }, { merge: true });
+  }
 
   await db.collection("salla_app_events").add({
-    at: Date.now(), event, type: "domain_saved", uid, base
+    at: Date.now(), event, type: "domain_flags_saved", uid, base: base || null
   }).catch(() => {});
 }
 
@@ -227,7 +228,6 @@ async function ensureInviteForOrder(
   const orderId = String(order.id ?? order.order_id ?? "");
   if (!orderId) return;
 
-  // استخرج العميل من كل مكان ممكن
   let customer = order.customer as SallaCustomer | undefined;
   if (!customer?.email && !customer?.mobile) customer = (rawData["customer"] as SallaCustomer) || customer;
   if ((!customer?.email && !customer?.mobile) && rawData["order"] && typeof rawData["order"] === "object") {
@@ -236,7 +236,6 @@ async function ensureInviteForOrder(
   const cv = validEmailOrPhone(customer);
   if (!cv.ok) return;
 
-  // Idempotency: لو فيه دعوة لنفس orderId
   const exists = await db.collection("review_invites").where("orderId", "==", orderId).limit(1).get();
   if (!exists.empty) return;
 
@@ -253,7 +252,7 @@ async function ensureInviteForOrder(
 
   const tokenId = crypto.randomBytes(10).toString("hex");
   const reviewUrl = `${APP_BASE_URL}/review/${tokenId}`;
-  const publicUrl = reviewUrl; // غيّرها لو عندك خدمة اختصار روابط
+  const publicUrl = reviewUrl; // بدّلها لو عندك Short Link
 
   await db.collection("review_tokens").doc(tokenId).set({
     id: tokenId, platform: "salla", orderId, storeUid,
@@ -270,17 +269,16 @@ async function ensureInviteForOrder(
   });
 
   const storeName = getStoreOrMerchantName(rawData) ?? "متجرك";
-  // أرسل عبر قنواتك إن كانت متاحة
-  await tryChannels?.({
+
+  // 🔥 إرسال متوازي الآن (SMS + Email) بأسرع شكل:
+  await sendBothNow({
     inviteId: tokenId,
-    country: "sa",
     phone: cv.mobile,
     email: cv.email,
     customerName: customer?.name,
     storeName,
     url: publicUrl,
-    strategy: "all",
-    order: ["sms", "email"],
+    perChannelTimeoutMs: 15000,
   });
 }
 
@@ -324,12 +322,7 @@ async function registerDefaultWebhooks(accessToken: string, webhookUrl: string, 
   ];
   for (const ev of events) {
     const body = JSON.stringify({ ...bodyBase, name: `auto:${ev}`, event: ev });
-    try {
-      await fetch(`${SALLA_API_BASE}/webhooks/subscribe`, { method: "POST", headers, body });
-    } catch (e) {
-      // نسجّل الخطأ في handler
-      throw new Error(`subscribe:${ev}:${(e as Error)?.message || e}`);
-    }
+    await fetch(`${SALLA_API_BASE}/webhooks/subscribe`, { method: "POST", headers, body });
   }
 }
 
@@ -338,16 +331,13 @@ async function registerDefaultWebhooks(accessToken: string, webhookUrl: string, 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
-  // 1) اقرأ الجسم الخام (للتوقيع)
   const raw = await readRawBody(req);
 
-  // 2) تحقّق الأمان
   const verification = verifySallaRequest(req, raw);
   if (!verification.ok) {
     return res.status(401).json({ error: "unauthorized" });
   }
 
-  // 3) Parse + DB init
   let body: SallaWebhookBody;
   try {
     body = JSON.parse(raw.toString("utf8") || "{}");
@@ -374,7 +364,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const dataRaw = (body.data ?? {}) as UnknownRecord;
   const asOrder = dataRaw as SallaOrder;
 
-  // 4) Idempotency
+  // Idempotency
   try {
     const sigHeader = getHeader(req, "x-salla-signature") || "";
     const idemKey = crypto.createHash("sha256").update(sigHeader + "|").update(raw).digest("hex");
@@ -398,9 +388,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "idempotency_failed" });
   }
 
-  // 5) معالجة فورية (بدون Outbox/Workers)
+  // معالجة
   try {
-    /* (أ) Easy Mode: token + userinfo + domain + subscribe */
+    // (أ) Easy Mode + تنصيب/تحديث: token + userinfo + domain + flags + subscribe
     if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
       const token   = String((dataRaw["access_token"] ?? (dataRaw["token"] as UnknownRecord)?.["access_token"] ?? "") || "");
       const refresh = String((dataRaw["refresh_token"] ?? (dataRaw["token"] as UnknownRecord)?.["refresh_token"] ?? "") || "");
@@ -413,9 +403,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (dataRaw["merchant"] as UnknownRecord | undefined)?.["id"];
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
 
-      // app.installed قد لا يحمل توكن — نحفظ الدومين لو موجود
-      if (event === "app.installed" && storeUid) {
-        await saveDomain(db, storeUid, dataRaw, event).catch(() => {});
+      const domainInPayload =
+        (dataRaw["domain"] as string) ||
+        (dataRaw["store_url"] as string) ||
+        (dataRaw["url"] as string) ||
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ((dataRaw["store"] as any)?.domain as string) ||
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ((dataRaw["store"] as any)?.url as string) ||
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ((dataRaw["merchant"] as any)?.domain as string) ||
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ((dataRaw["merchant"] as any)?.url as string) ||
+        null;
+
+      let base = toDomainBase(domainInPayload);
+
+      if (storeUid) {
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await saveDomainAndFlags(db, storeUid, merchantId as any, base, event);
       }
 
       if (token && storeUid) {
@@ -425,26 +431,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             access_token: token,
             refresh_token: refresh || null,
             scope: scope || null,
-            expires: Number.isFinite(expires) ? expires : null, // seconds per docs
+            expires: Number.isFinite(expires) ? expires : null, // seconds
             receivedAt: Date.now(),
             strategy: "easy_mode",
           },
           updatedAt: Date.now(),
         }, { merge: true });
 
-        // userinfo + domain
         try {
           const info = await fetchUserInfo(token);
+          const domainFromInfo =
           //eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const domain = (info as any)?.store?.domain || (info as any)?.domain || (info as any)?.url || null;
-          if (domain) {
-            await saveDomain(db, storeUid, { domain }, event);
-          }
+            (info as any)?.merchant?.domain ||
+            //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (info as any)?.store?.domain ||
+            //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (info as any)?.domain ||
+            //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (info as any)?.url || null;
+          const baseFromInfo = toDomainBase(domainFromInfo);
+          if (baseFromInfo) base = baseFromInfo;
+
           await db.collection("stores").doc(storeUid).set({
             uid: storeUid, provider: "salla",
             meta: { userinfo: info, updatedAt: Date.now() },
             updatedAt: Date.now(),
           }, { merge: true });
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await saveDomainAndFlags(db, storeUid, merchantId as any, base, event);
         } catch (e) {
           await db.collection("webhook_errors").add({
             at: Date.now(), scope: "userinfo", event,
@@ -452,10 +466,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }).catch(() => {});
         }
 
-        // subscribe webhooks
         if (WEBHOOK_SECRET && APP_BASE_URL) {
           try {
-            await registerDefaultWebhooks(token, `${APP_BASE_URL}/api/salla/webhook`, WEBHOOK_SECRET);
+            const webhookUrl = `${APP_BASE_URL}/api/salla/webhook`;
+            const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+            const bodyBase = { url: webhookUrl, version: 2, secret: WEBHOOK_SECRET };
+            const events = [
+              "order.payment.updated",
+              "order.status.updated",
+              "shipment.updated",
+              "order.cancelled",
+              "order.refunded",
+              "app.store.authorize",
+              "app.installed",
+              "app.updated",
+              "app.uninstalled",
+              "app.trial.started",
+              "app.trial.expired",
+              "app.trial.canceled",
+              "app.subscription.started",
+              "app.subscription.canceled",
+              "app.subscription.expired",
+              "app.subscription.renewed",
+            ];
+            for (const ev of events) {
+              const body = JSON.stringify({ ...bodyBase, name: `auto:${ev}`, event: ev });
+              await fetch(`${SALLA_API_BASE}/webhooks/subscribe`, { method: "POST", headers, body });
+            }
           } catch (e) {
             await db.collection("webhook_errors").add({
               at: Date.now(), scope: "subscribe", event,
@@ -466,13 +503,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    /* (ب) سنابشوت الطلب */
+    // (ب) سنابشوت الطلب
     if (event.startsWith("order.") || event.startsWith("shipment.")) {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant) || null;
       await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
     }
 
-    /* (ج) دعوات/إبطال */
+    // (ج) دعوات/إبطال
     if (event === "order.payment.updated") {
       const paymentStatus = lc(asOrder.payment_status ?? "");
       if (["paid","authorized","captured"].includes(paymentStatus)) {
@@ -496,7 +533,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await voidInvitesForOrder(db, orderId, "order_refunded");
     }
 
-    /* (د) لوج/علامة processed */
+    // (د) processed + logging
     const orderId = String(asOrder.id ?? asOrder.order_id ?? "") || "none";
     const statusFin = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
     await db.collection("processed_events").doc(keyOf(event, orderId, statusFin)).set({
@@ -517,6 +554,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "handler_failed" });
   }
 
-  // 6) الرد بعد إتمام كل شيء الضروري
   return res.status(202).json({ ok: true, accepted: true });
 }
