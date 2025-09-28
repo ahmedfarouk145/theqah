@@ -2,7 +2,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
-import { sendBothNow } from "@/server/messaging/send-invite";
+import { sendBothNow } from "@/server/messaging/send-invite"; // عندك مسبقاً
+import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
 
 export const runtime = "nodejs";
 export const config = { api: { bodyParser: false } };
@@ -46,7 +47,6 @@ function getHeader(req: NextApiRequest, name: string): string {
   const v = req.headers[name.toLowerCase()];
   return Array.isArray(v) ? (v[0] || "") : (v || "");
 }
-
 function readRawBody(req: NextApiRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -55,7 +55,6 @@ function readRawBody(req: NextApiRequest): Promise<Buffer> {
     req.on("error", reject);
   });
 }
-
 function timingSafeEq(a: string, b: string) {
   try {
     const A = Buffer.from(a, "utf8"), B = Buffer.from(b, "utf8");
@@ -72,7 +71,6 @@ function verifySignature(raw: Buffer, req: NextApiRequest): boolean {
   const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(raw).digest("hex");
   return timingSafeEq(sigHeader, expected);
 }
-
 function extractProvidedToken(req: NextApiRequest): string {
   const auth = getHeader(req, "authorization").trim();
   if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
@@ -80,12 +78,10 @@ function extractProvidedToken(req: NextApiRequest): string {
          getHeader(req, "x-webhook-token").trim() ||
          (typeof req.query.t === "string" ? req.query.t.trim() : "");
 }
-
 function verifyToken(req: NextApiRequest): boolean {
   const provided = extractProvidedToken(req);
   return !!WEBHOOK_TOKEN && !!provided && timingSafeEq(provided, WEBHOOK_TOKEN);
 }
-
 function verifySallaRequest(req: NextApiRequest, raw: Buffer): { ok: boolean; strategy: "signature"|"token"|"none" } {
   const strategy = lc(getHeader(req, "x-salla-security-strategy") || "");
   if (strategy === "signature") return { ok: verifySignature(raw, req), strategy: "signature" };
@@ -106,7 +102,6 @@ function toDomainBase(domain: string | null | undefined): string | null {
     return firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
   } catch { return null; }
 }
-
 function encodeUrlForFirestore(url: string | null | undefined): string {
   if (!url) return "";
   return url
@@ -116,7 +111,6 @@ function encodeUrlForFirestore(url: string | null | undefined): string {
     .replace(/#/g, "_HASH_")
     .replace(/&/g, "_AMP_");
 }
-
 function pickName(obj: unknown): string | undefined {
   if (obj && typeof obj === "object" && "name" in obj) {
     const n = (obj as { name?: unknown }).name;
@@ -124,11 +118,9 @@ function pickName(obj: unknown): string | undefined {
   }
   return undefined;
 }
-
 function getStoreOrMerchantName(ev: UnknownRecord): string | undefined {
   return pickName(ev["store"]) ?? pickName(ev["merchant"]);
 }
-
 function pickStoreUidFromSalla(eventData: UnknownRecord, bodyMerchant?: string | number): string | undefined {
   if (bodyMerchant !== undefined && bodyMerchant !== null) return `salla:${String(bodyMerchant)}`;
   const store = eventData["store"] as UnknownRecord | undefined;
@@ -136,7 +128,6 @@ function pickStoreUidFromSalla(eventData: UnknownRecord, bodyMerchant?: string |
   const sid = store?.["id"] ?? merchant?.["id"];
   return sid !== undefined ? `salla:${String(sid)}` : undefined;
 }
-
 function extractProductIds(items?: SallaItem[]): string[] {
   if (!Array.isArray(items)) return [];
   const ids = new Set<string>();
@@ -146,14 +137,12 @@ function extractProductIds(items?: SallaItem[]): string[] {
   }
   return [...ids];
 }
-
 function validEmailOrPhone(c?: SallaCustomer) {
   const email = c?.email?.trim(); const mobile = c?.mobile?.trim();
   const hasEmail = !!email && email.includes("@");
   const hasMobile = !!mobile && mobile.length > 5;
   return { ok: hasEmail || hasMobile, email: hasEmail ? email : undefined, mobile: hasMobile ? mobile : undefined };
 }
-
 const keyOf = (event: string, orderId?: string, status?: string) => `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
 
 /* ===================== Firestore Ops ===================== */
@@ -166,7 +155,6 @@ async function saveDomainAndFlags(
   event: string
 ) {
   const key = base ? encodeUrlForFirestore(base) : undefined;
-
   const numericStoreId =
     typeof merchantId === "number" ? merchantId :
     Number(String(merchantId ?? "").trim() || NaN);
@@ -174,7 +162,7 @@ async function saveDomainAndFlags(
   await db.collection("stores").doc(uid).set({
     uid, provider: "salla",
     domain: base ? { base, key, updatedAt: Date.now() } : undefined,  // canonical
-    salla: {                                                          // legacy + flags for /resolve
+    salla: {                                                          // legacy + flags
       uid,
       storeId: Number.isFinite(numericStoreId) ? numericStoreId : String(merchantId ?? ""),
       domain: base || undefined,
@@ -188,7 +176,7 @@ async function saveDomainAndFlags(
     await db.collection("domains").doc(key).set({
       base, key,
       uid,           // canonical
-      storeUid: uid, // legacy used by /resolve
+      storeUid: uid, // legacy لـ /resolve
       provider: "salla",
       updatedAt: Date.now(),
     }, { merge: true });
@@ -269,6 +257,7 @@ async function ensureInviteForOrder(
 
   const storeName = getStoreOrMerchantName(rawData) ?? "متجرك";
 
+  // إرسال متوازي (SMS + Email) بسرعة داخل الطلب
   await sendBothNow({
     inviteId: tokenId,
     phone: cv.mobile,
@@ -304,14 +293,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     body = JSON.parse(raw.toString("utf8") || "{}");
   } catch (e) {
-    try {
-      await dbAdmin().collection("webhook_errors").add({
-        at: Date.now(), scope: "parse",
-        error: e instanceof Error ? e.message : String(e),
-        raw: raw.toString("utf8").slice(0, 2000),
-        headers: req.headers
-      });
-    } catch {}
+    await dbAdmin().collection("webhook_errors").add({
+      at: Date.now(), scope: "parse",
+      error: e instanceof Error ? e.message : String(e),
+      raw: raw.toString("utf8").slice(0, 2000),
+      headers: req.headers
+    }).catch(() => {});
     return res.status(400).json({ error: "invalid_json" });
   }
 
@@ -321,21 +308,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const dataRaw = (body.data ?? {}) as UnknownRecord;
   const asOrder = dataRaw as SallaOrder;
 
-  // -------- Idempotency with status --------
+  // -------- Idempotency (statusFlag) --------
   const sigHeader = getHeader(req, "x-salla-signature") || "";
   const idemKey = crypto.createHash("sha256").update(sigHeader + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
 
   const existing = await idemRef.get().catch(() => null);
   const prev = existing?.data() as (UnknownRecord | undefined);
-  const prevStatus = (prev?.status as string | undefined) || "none";
-
-  // نسمح بإعادة المعالجة لو مش "done"
-  if (prevStatus === "done") {
+  const prevFlag = (prev?.statusFlag as string | undefined) || "none";
+  if (prevFlag === "done") {
     return res.status(202).json({ ok: true, duplicate: true });
   }
-
-  // سجّل/حدّث الحالة إلى processing
   await idemRef.set({
     at: Date.now(),
     event,
@@ -348,11 +331,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     statusFlag: "processing",
   }, { merge: true });
 
-  // Fast ACK حتى لو كمّلنا في نفس الطلب
-  res.status(202).json({ ok: true, accepted: true });
-
   try {
-    // (أ) أحداث التنصيب/التفويض: اكتب store/domain أولاً بغض النظر عن بقية المعالجة
+    // (A) install/authorize => خزّن المتجر/الدومين + OAuth + userinfo + أرسل إيميل تعيين كلمة المرور
     if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
       const merchantId =
         body.merchant ??
@@ -377,18 +357,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       let base = toDomainBase(domainInPayload);
 
       if (storeUid) {
-        // اكتب stores/domains + flags مبكرًا
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         await saveDomainAndFlags(db, storeUid, merchantId as any, base, event);
       }
 
-      // Easy mode tokens (إن وجدت)
       const token   = String((dataRaw["access_token"] ?? (dataRaw["token"] as UnknownRecord)?.["access_token"] ?? "") || "");
       const refresh = String((dataRaw["refresh_token"] ?? (dataRaw["token"] as UnknownRecord)?.["refresh_token"] ?? "") || "");
       const expires = Number(dataRaw["expires"] ?? (dataRaw["token"] as UnknownRecord)?.["expires"] ?? 0);
       const scope   = String((dataRaw["scope"] ?? (dataRaw["token"] as UnknownRecord)?.["scope"] ?? "") || "") || undefined;
 
+      let info: UnknownRecord | undefined;
       if (token && storeUid) {
+        // خزّن OAuth للمالك
         await db.collection("owners").doc(storeUid).set({
           uid: storeUid, provider: "salla",
           oauth: {
@@ -402,9 +382,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           updatedAt: Date.now(),
         }, { merge: true });
 
-        // جرّب تجيب domain من userinfo لو ما كانش في البودي
+        // اسحب userinfo واحفظه وراجع الدومين منه
         try {
-          const info = await fetchUserInfo(token);
+          info = await fetchUserInfo(token);
           const domainFromInfo =
             //eslint-disable-next-line @typescript-eslint/no-explicit-any
             (info as any)?.merchant?.domain ||
@@ -430,16 +410,80 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             error: e instanceof Error ? e.message : String(e), merchant: storeUid
           }).catch(() => {});
         }
+
+        // 🔔 إرسال إيميل تعيين كلمة المرور
+        try {
+          const infoEmail =
+            //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (info as any)?.email ||
+            //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (info as any)?.merchant?.email ||
+            //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (info as any)?.user?.email ||
+            undefined;
+
+          const payloadEmail =
+            //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (typeof (dataRaw as any)?.email === "string" ? (dataRaw as any).email : undefined);
+
+          const targetEmail = infoEmail || payloadEmail;
+
+          if (targetEmail && storeUid) {
+            const storeName =
+              //eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (info as any)?.merchant?.name ||
+              //eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (info as any)?.store?.name ||
+              //eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (dataRaw as any)?.store?.name ||
+              //eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (dataRaw as any)?.merchant?.name ||
+              "متجرك";
+
+            const r = await sendPasswordSetupEmail({
+              email: targetEmail,
+              storeUid,
+              storeName,
+              // redirectUrlBase: process.env.NEXT_PUBLIC_DASHBOARD_URL || undefined,
+            });
+
+            if (!r.ok) {
+              await db.collection("webhook_errors").add({
+                at: Date.now(),
+                scope: "password_email",
+                event,
+                error: r.error,
+                email: targetEmail,
+                storeUid
+              }).catch(() => {});
+            } else {
+              await db.collection("salla_app_events").add({
+                at: Date.now(),
+                event,
+                type: "password_email_sent",
+                email: targetEmail,
+                storeUid
+              }).catch(() => {});
+            }
+          }
+        } catch (e) {
+          await db.collection("webhook_errors").add({
+            at: Date.now(),
+            scope: "password_email_exception",
+            event,
+            error: e instanceof Error ? e.message : String(e)
+          }).catch(() => {});
+        }
       }
     }
 
-    // (ب) سنابشوت الطلب
+    // (B) لقطات الطلب
     if (event.startsWith("order.") || event.startsWith("shipment.")) {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant) || null;
       await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
     }
 
-    // (ج) دعوات/إبطال
+    // (C) دعوات/إبطال
     if (event === "order.payment.updated") {
       const paymentStatus = lc(asOrder.payment_status ?? "");
       if (["paid","authorized","captured"].includes(paymentStatus)) {
@@ -455,25 +499,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (DONE.has(status)) {
         await ensureInviteForOrder(db, asOrder, dataRaw, body.merchant);
       }
-    } else if (event === "order.cancelled") {
+    } else if (event === "order.cancelled" || event === "order.refunded") {
       const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
-      await db.collection("review_tokens").where("orderId","==",orderId).get().then((q)=>{
-        if (q.empty) return;
-        const batch = db.batch();
-        q.docs.forEach((d)=>batch.update(d.ref, { voidedAt: Date.now(), voidReason: "order_cancelled" }));
-        return batch.commit();
-      });
-    } else if (event === "order.refunded") {
-      const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
-      await db.collection("review_tokens").where("orderId","==",orderId).get().then((q)=>{
-        if (q.empty) return;
-        const batch = db.batch();
-        q.docs.forEach((d)=>batch.update(d.ref, { voidedAt: Date.now(), voidReason: "order_refunded" }));
-        return batch.commit();
-      });
+      const q = await db.collection("review_tokens").where("orderId","==",orderId).get();
+      if (!q.empty) {
+        const reason = event === "order.cancelled" ? "order_cancelled" : "order_refunded";
+        const batch = db.batch(); q.docs.forEach((d)=>batch.update(d.ref, { voidedAt: Date.now(), voidReason: reason }));
+        await batch.commit();
+      }
     }
 
-    // (د) processed + logging
+    // (D) processed + logging
     const orderId = String(asOrder.id ?? asOrder.order_id ?? "") || "none";
     const statusFin = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
     await db.collection("processed_events").doc(keyOf(event, orderId, statusFin)).set({
@@ -485,22 +521,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await db.collection(isKnown ? "webhooks_salla_known" : "webhooks_salla_unhandled")
       .add({ at: Date.now(), event, data: dataRaw }).catch(()=>{});
 
-    // 👌 علّم الـ idempotency إنه خلّص
     await idemRef.set({ statusFlag: "done", processingFinishedAt: Date.now() }, { merge: true });
 
+    return res.status(202).json({ ok: true, accepted: true });
+
   } catch (e) {
-    // سجّل الفشل وخليه يسمح بإعادة المحاولة في نفس الـ key
+    const err = e instanceof Error ? e.message : String(e);
+
     await idemRef.set({
       statusFlag: "failed",
-      lastError: e instanceof Error ? e.message : String(e),
+      lastError: err,
       processingFinishedAt: Date.now()
     }, { merge: true });
 
     await db.collection("webhook_errors").add({
       at: Date.now(), scope: "handler", event,
-      error: e instanceof Error ? e.message : String(e),
-      raw: raw.toString("utf8").slice(0, 2000)
+      error: err, raw: raw.toString("utf8").slice(0, 2000)
     }).catch(() => {});
-    // مفيش رجوع تاني هنا — كنا بالفعل رجعنا 202 فوق.
+
+    return res.status(500).json({ error: "handler_failed", message: err });
   }
 }
