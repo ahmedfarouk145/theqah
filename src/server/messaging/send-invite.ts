@@ -155,3 +155,107 @@ export async function sendBothNow(opts: SendBothOptions) {
     })),
   };
 }
+
+export type Attempt = {
+  channel: Channel;
+  ok: boolean;
+  id?: string | null;
+  error?: string | null;
+  at?: number;
+};
+
+export type TryChannelsResult = {
+  ok: boolean;
+  firstSuccessChannel: Channel | null;
+  attempts: Attempt[];
+};
+
+/**
+ * يرسل القنوات حسب الترتيب والاستراتيجية المطلوبة (كل القنوات أو أول نجاح).
+ */
+export async function tryChannels(options: {
+  inviteId?: string;
+  phone?: string;
+  email?: string;
+  url: string;
+  storeName?: string;
+  customerName?: string;
+  country?: string;
+  strategy?: "all" | "first_success";
+  order?: Channel[];
+}): Promise<TryChannelsResult> {
+  const {
+    inviteId,
+    phone,
+    email,
+    url,
+    storeName,
+    customerName,
+    country = "SA",
+    strategy = "all",
+    order,
+  } = options;
+
+  const channels: Channel[] = order && order.length ? order : ["sms", "email"];
+  const attempts: Attempt[] = [];
+  let firstSuccessChannel: Channel | null = null;
+
+  for (const channel of channels) {
+    let res: MessageResult = { ok: false, id: null, error: null };
+    if (channel === "sms" && phone) {
+      try {
+        res = asMessageResult(
+          await sendSms(phone, buildInviteSmsDefault(storeName ?? "", url), {
+            defaultCountry: country === "EG" ? "EG" : "SA",
+            msgClass: "transactional",
+            priority: 1,
+            requestDlr: true,
+          })
+        );
+      } catch (e) {
+        res = { ok: false, id: null, error: String(e) };
+      }
+      await recordInviteChannel(inviteId, "sms", res);
+    }
+    if (channel === "email" && email) {
+      try {
+        res = asMessageResult(
+          await sendEmailDmail(
+            email,
+            "وش رأيك؟ نبي نسمع منك",
+            `
+            <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.8">
+              <p>مرحباً ${customerName ?? "العميل"}،</p>
+              <p>طلبك من <strong>${storeName ?? "المتجر"}</strong> تم. شاركنا رأيك لو تكرّمت.</p>
+              <p>
+                <a href="${url}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block">
+                  اضغط للتقييم الآن
+                </a>
+              </p>
+              <p style="color:#64748b">شكراً لك — فريق ثقة</p>
+            </div>
+            `.trim()
+          )
+        );
+      } catch (e) {
+        res = { ok: false, id: null, error: String(e) };
+      }
+      await recordInviteChannel(inviteId, "email", res);
+    }
+    attempts.push({
+      channel,
+      ok: res.ok,
+      id: res.id ?? null,
+      error: res.error ?? null,
+      at: Date.now(),
+    });
+    if (res.ok && !firstSuccessChannel) firstSuccessChannel = channel;
+    if (strategy === "first_success" && res.ok) break;
+  }
+
+  return {
+    ok: attempts.some((a) => a.ok),
+    firstSuccessChannel,
+    attempts,
+  };
+}
