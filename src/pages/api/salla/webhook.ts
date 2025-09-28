@@ -41,7 +41,6 @@ const USERINFO_URL   = "https://accounts.salla.sa/oauth2/user/info";
 
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 const DONE = new Set(["paid","fulfilled","delivered","completed","complete","تم التوصيل","مكتمل","تم التنفيذ"]);
-const CANCEL = new Set(["canceled","cancelled","refunded","returned"]);
 
 function getHeader(req: NextApiRequest, name: string): string {
   const v = req.headers[name.toLowerCase()];
@@ -252,7 +251,7 @@ async function ensureInviteForOrder(
 
   const tokenId = crypto.randomBytes(10).toString("hex");
   const reviewUrl = `${APP_BASE_URL}/review/${tokenId}`;
-  const publicUrl = reviewUrl; // بدّلها لو عندك Short Link
+  const publicUrl = reviewUrl;
 
   await db.collection("review_tokens").doc(tokenId).set({
     id: tokenId, platform: "salla", orderId, storeUid,
@@ -270,7 +269,6 @@ async function ensureInviteForOrder(
 
   const storeName = getStoreOrMerchantName(rawData) ?? "متجرك";
 
-  // 🔥 إرسال متوازي الآن (SMS + Email) بأسرع شكل:
   await sendBothNow({
     inviteId: tokenId,
     phone: cv.mobile,
@@ -282,48 +280,12 @@ async function ensureInviteForOrder(
   });
 }
 
-async function voidInvitesForOrder(db: FirebaseFirestore.Firestore, orderId: string, reason: string) {
-  if (!orderId) return;
-  const q = await db.collection("review_tokens").where("orderId", "==", orderId).get();
-  if (q.empty) return;
-  const batch = db.batch();
-  q.docs.forEach((doc) => batch.update(doc.ref, { voidedAt: Date.now(), voidReason: reason }));
-  await batch.commit();
-}
-
 /* ===================== Salla API helpers ===================== */
 
 async function fetchUserInfo(accessToken: string) {
   const resp = await fetch(USERINFO_URL, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!resp.ok) throw new Error(`userinfo ${resp.status}`);
   return resp.json() as Promise<UnknownRecord>;
-}
-
-async function registerDefaultWebhooks(accessToken: string, webhookUrl: string, secret: string) {
-  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` };
-  const bodyBase = { url: webhookUrl, version: 2, secret };
-  const events = [
-    "order.payment.updated",
-    "order.status.updated",
-    "shipment.updated",
-    "order.cancelled",
-    "order.refunded",
-    "app.store.authorize",
-    "app.installed",
-    "app.updated",
-    "app.uninstalled",
-    "app.trial.started",
-    "app.trial.expired",
-    "app.trial.canceled",
-    "app.subscription.started",
-    "app.subscription.canceled",
-    "app.subscription.expired",
-    "app.subscription.renewed",
-  ];
-  for (const ev of events) {
-    const body = JSON.stringify({ ...bodyBase, name: `auto:${ev}`, event: ev });
-    await fetch(`${SALLA_API_BASE}/webhooks/subscribe`, { method: "POST", headers, body });
-  }
 }
 
 /* ===================== Handler ===================== */
@@ -353,50 +315,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "invalid_json" });
   }
 
-  let db: FirebaseFirestore.Firestore;
-  try {
-    db = dbAdmin();
-  } catch {
-    return res.status(500).json({ error: "db_init_failed" });
-  }
+  const db = dbAdmin();
 
   const event = String(body.event || "");
   const dataRaw = (body.data ?? {}) as UnknownRecord;
   const asOrder = dataRaw as SallaOrder;
 
-  // Idempotency
-  try {
-    const sigHeader = getHeader(req, "x-salla-signature") || "";
-    const idemKey = crypto.createHash("sha256").update(sigHeader + "|").update(raw).digest("hex");
-    const idemRef = db.collection("webhooks_salla").doc(idemKey);
-    if ((await idemRef.get()).exists) {
-      return res.status(202).json({ ok: true, duplicate: true });
-    }
-    await idemRef.set({
-      at: Date.now(),
-      event,
-      orderId: String(asOrder.id ?? asOrder.order_id ?? "") || null,
-      status: lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? ""),
-      paymentStatus: lc(asOrder.payment_status ?? ""),
-      merchant: body.merchant ?? null,
-      strategy: verification.strategy
-    });
-  } catch (e) {
-    await db.collection("webhook_errors").add({
-      at: Date.now(), scope: "idempotency", event, error: e instanceof Error ? e.message : String(e)
-    }).catch(() => {});
-    return res.status(500).json({ error: "idempotency_failed" });
+  // -------- Idempotency with status --------
+  const sigHeader = getHeader(req, "x-salla-signature") || "";
+  const idemKey = crypto.createHash("sha256").update(sigHeader + "|").update(raw).digest("hex");
+  const idemRef = db.collection("webhooks_salla").doc(idemKey);
+
+  const existing = await idemRef.get().catch(() => null);
+  const prev = existing?.data() as (UnknownRecord | undefined);
+  const prevStatus = (prev?.status as string | undefined) || "none";
+
+  // نسمح بإعادة المعالجة لو مش "done"
+  if (prevStatus === "done") {
+    return res.status(202).json({ ok: true, duplicate: true });
   }
 
-  // معالجة
-  try {
-    // (أ) Easy Mode + تنصيب/تحديث: token + userinfo + domain + flags + subscribe
-    if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
-      const token   = String((dataRaw["access_token"] ?? (dataRaw["token"] as UnknownRecord)?.["access_token"] ?? "") || "");
-      const refresh = String((dataRaw["refresh_token"] ?? (dataRaw["token"] as UnknownRecord)?.["refresh_token"] ?? "") || "");
-      const expires = Number(dataRaw["expires"] ?? (dataRaw["token"] as UnknownRecord)?.["expires"] ?? 0);
-      const scope   = String((dataRaw["scope"] ?? (dataRaw["token"] as UnknownRecord)?.["scope"] ?? "") || "") || undefined;
+  // سجّل/حدّث الحالة إلى processing
+  await idemRef.set({
+    at: Date.now(),
+    event,
+    orderId: String(asOrder.id ?? asOrder.order_id ?? "") || null,
+    status: lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? ""),
+    paymentStatus: lc(asOrder.payment_status ?? ""),
+    merchant: body.merchant ?? null,
+    strategy: verification.strategy,
+    processingStartedAt: Date.now(),
+    statusFlag: "processing",
+  }, { merge: true });
 
+  // Fast ACK حتى لو كمّلنا في نفس الطلب
+  res.status(202).json({ ok: true, accepted: true });
+
+  try {
+    // (أ) أحداث التنصيب/التفويض: اكتب store/domain أولاً بغض النظر عن بقية المعالجة
+    if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
       const merchantId =
         body.merchant ??
         dataRaw["merchant_id"] ??
@@ -420,9 +377,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       let base = toDomainBase(domainInPayload);
 
       if (storeUid) {
+        // اكتب stores/domains + flags مبكرًا
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         await saveDomainAndFlags(db, storeUid, merchantId as any, base, event);
       }
+
+      // Easy mode tokens (إن وجدت)
+      const token   = String((dataRaw["access_token"] ?? (dataRaw["token"] as UnknownRecord)?.["access_token"] ?? "") || "");
+      const refresh = String((dataRaw["refresh_token"] ?? (dataRaw["token"] as UnknownRecord)?.["refresh_token"] ?? "") || "");
+      const expires = Number(dataRaw["expires"] ?? (dataRaw["token"] as UnknownRecord)?.["expires"] ?? 0);
+      const scope   = String((dataRaw["scope"] ?? (dataRaw["token"] as UnknownRecord)?.["scope"] ?? "") || "") || undefined;
 
       if (token && storeUid) {
         await db.collection("owners").doc(storeUid).set({
@@ -431,17 +395,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             access_token: token,
             refresh_token: refresh || null,
             scope: scope || null,
-            expires: Number.isFinite(expires) ? expires : null, // seconds
+            expires: Number.isFinite(expires) ? expires : null,
             receivedAt: Date.now(),
             strategy: "easy_mode",
           },
           updatedAt: Date.now(),
         }, { merge: true });
 
+        // جرّب تجيب domain من userinfo لو ما كانش في البودي
         try {
           const info = await fetchUserInfo(token);
           const domainFromInfo =
-          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            //eslint-disable-next-line @typescript-eslint/no-explicit-any
             (info as any)?.merchant?.domain ||
             //eslint-disable-next-line @typescript-eslint/no-explicit-any
             (info as any)?.store?.domain ||
@@ -464,41 +429,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             at: Date.now(), scope: "userinfo", event,
             error: e instanceof Error ? e.message : String(e), merchant: storeUid
           }).catch(() => {});
-        }
-
-        if (WEBHOOK_SECRET && APP_BASE_URL) {
-          try {
-            const webhookUrl = `${APP_BASE_URL}/api/salla/webhook`;
-            const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
-            const bodyBase = { url: webhookUrl, version: 2, secret: WEBHOOK_SECRET };
-            const events = [
-              "order.payment.updated",
-              "order.status.updated",
-              "shipment.updated",
-              "order.cancelled",
-              "order.refunded",
-              "app.store.authorize",
-              "app.installed",
-              "app.updated",
-              "app.uninstalled",
-              "app.trial.started",
-              "app.trial.expired",
-              "app.trial.canceled",
-              "app.subscription.started",
-              "app.subscription.canceled",
-              "app.subscription.expired",
-              "app.subscription.renewed",
-            ];
-            for (const ev of events) {
-              const body = JSON.stringify({ ...bodyBase, name: `auto:${ev}`, event: ev });
-              await fetch(`${SALLA_API_BASE}/webhooks/subscribe`, { method: "POST", headers, body });
-            }
-          } catch (e) {
-            await db.collection("webhook_errors").add({
-              at: Date.now(), scope: "subscribe", event,
-              error: e instanceof Error ? e.message : String(e), merchant: storeUid
-            }).catch(() => {});
-          }
         }
       }
     }
@@ -527,10 +457,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     } else if (event === "order.cancelled") {
       const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
-      await voidInvitesForOrder(db, orderId, "order_cancelled");
+      await db.collection("review_tokens").where("orderId","==",orderId).get().then((q)=>{
+        if (q.empty) return;
+        const batch = db.batch();
+        q.docs.forEach((d)=>batch.update(d.ref, { voidedAt: Date.now(), voidReason: "order_cancelled" }));
+        return batch.commit();
+      });
     } else if (event === "order.refunded") {
       const orderId = String(asOrder.id ?? asOrder.order_id ?? "");
-      await voidInvitesForOrder(db, orderId, "order_refunded");
+      await db.collection("review_tokens").where("orderId","==",orderId).get().then((q)=>{
+        if (q.empty) return;
+        const batch = db.batch();
+        q.docs.forEach((d)=>batch.update(d.ref, { voidedAt: Date.now(), voidReason: "order_refunded" }));
+        return batch.commit();
+      });
     }
 
     // (د) processed + logging
@@ -545,14 +485,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await db.collection(isKnown ? "webhooks_salla_known" : "webhooks_salla_unhandled")
       .add({ at: Date.now(), event, data: dataRaw }).catch(()=>{});
 
+    // 👌 علّم الـ idempotency إنه خلّص
+    await idemRef.set({ statusFlag: "done", processingFinishedAt: Date.now() }, { merge: true });
+
   } catch (e) {
+    // سجّل الفشل وخليه يسمح بإعادة المحاولة في نفس الـ key
+    await idemRef.set({
+      statusFlag: "failed",
+      lastError: e instanceof Error ? e.message : String(e),
+      processingFinishedAt: Date.now()
+    }, { merge: true });
+
     await db.collection("webhook_errors").add({
       at: Date.now(), scope: "handler", event,
       error: e instanceof Error ? e.message : String(e),
       raw: raw.toString("utf8").slice(0, 2000)
     }).catch(() => {});
-    return res.status(500).json({ error: "handler_failed" });
+    // مفيش رجوع تاني هنا — كنا بالفعل رجعنا 202 فوق.
   }
-
-  return res.status(202).json({ ok: true, accepted: true });
 }
