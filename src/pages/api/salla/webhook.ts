@@ -2,15 +2,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
-import { fetchUserInfo } from "@/lib/sallaClient"; // يستعمل توكن مخزن حسب متجر
-import { onInviteSent } from "@/server/subscription/usage";
-import { canSendInvite } from "@/server/billing/usage";
+import { fetchStoreInfo, fetchUserInfo, getOwnerAccessToken } from "@/lib/sallaClient";
+import { canSendInvite, onInviteSent } from "@/server/subscription/usage";
+import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
 
 export const config = { api: { bodyParser: false } };
 
-/* ===================== Types ===================== */
-
-type UnknownRecord = Record<string, unknown>;
+// ---------- Types ----------
+type Dict = Record<string, unknown>;
 
 interface SallaCustomer { name?: string; email?: string; mobile?: string; }
 interface SallaItem { id?: string|number; product?: { id?: string|number }|null; product_id?: string|number; }
@@ -25,34 +24,32 @@ interface SallaOrder {
 interface SallaWebhookBody {
   event: string;
   merchant?: string | number;
-  data?: SallaOrder | UnknownRecord;
+  data?: SallaOrder | Dict;
   created_at?: string;
 }
 
-/* ===================== Env & const ===================== */
-
+// ---------- Env ----------
 const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
 const WEBHOOK_TOKEN  = (process.env.SALLA_WEBHOOK_TOKEN  || "").trim();
 const APP_BASE_URL   = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/,"");
 
+// ---------- Consts ----------
 const DONE = new Set(["paid","fulfilled","delivered","completed","complete","تم التوصيل","مكتمل","تم التنفيذ"]);
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 
+// ---------- Logging helper ----------
 type LogLevel = "debug" | "info" | "warn" | "error";
-
-/* ===================== Logging helper ===================== */
-
 async function fbLog(
   db: FirebaseFirestore.Firestore,
   entry: {
     level: LogLevel;
     scope: string;
     msg: string;
-    event?: string;
-    idemKey?: string;
+    event?: string | null;
+    idemKey?: string | null;
     merchant?: string | number | null;
     orderId?: string | null;
-    meta?: Record<string, unknown>;
+    meta?: Dict;
   }
 ) {
   const payload = {
@@ -67,22 +64,16 @@ async function fbLog(
     meta: entry.meta ?? null,
   };
 
+  try { await db.collection("webhook_firebase").add(payload); }
+  catch (e) { console.error("[WEBHOOK_LOG][WRITE_FAIL]", e); }
+
   const line = `[${entry.level.toUpperCase()}][${entry.scope}] ${entry.msg} :: ${JSON.stringify({
     event: payload.event, merchant: payload.merchant, orderId: payload.orderId, idemKey: payload.idemKey
   })}`;
-
-  if (entry.level === "error" || entry.level === "warn") {
-    console.error(line);
-  } else {
-    console.log(line);
-  }
-
-  try { await db.collection("webhook_firebase").add(payload); }
-  catch (e) { console.error("[WEBHOOK_LOG][WRITE_FAIL]", e); }
+  (entry.level === "error" || entry.level === "warn") ? console.error(line) : console.log(line);
 }
 
-/* ===================== Utils ===================== */
-
+// ---------- Utils ----------
 function getHeader(req: NextApiRequest, name: string): string {
   const v = req.headers[name.toLowerCase()];
   return Array.isArray(v) ? (v[0] || "") : (v || "");
@@ -103,8 +94,7 @@ function timingSafeEq(a: string, b: string) {
   } catch { return false; }
 }
 
-/* ---------- Security ---------- */
-
+// Security
 function verifySignature(raw: Buffer, req: NextApiRequest): boolean {
   const sig = getHeader(req, "x-salla-signature");
   if (!WEBHOOK_SECRET || !sig) return false;
@@ -131,8 +121,7 @@ function verifySallaRequest(req: NextApiRequest, raw: Buffer): { ok: boolean; st
   return { ok: false, strategy: "none" };
 }
 
-/* ---------- Domain helpers ---------- */
-
+// Domain helpers
 function toDomainBase(domain: string | null | undefined): string | null {
   if (!domain) return null;
   try {
@@ -151,11 +140,18 @@ function encodeUrlForFirestore(url: string | null | undefined): string {
     .replace(/#/g, "_HASH_")
     .replace(/&/g, "_AMP_");
 }
-function pickStoreUidFromSalla(eventData: UnknownRecord, bodyMerchant?: string | number): string | undefined {
+function pickName(obj: unknown): string | undefined {
+  if (obj && typeof obj === "object" && "name" in obj) {
+    const n = (obj as { name?: unknown }).name;
+    return typeof n === "string" ? n : undefined;
+  }
+  return undefined;
+}
+function pickStoreUidFromSalla(eventData: Dict, bodyMerchant?: string | number): string | undefined {
   if (bodyMerchant !== undefined && bodyMerchant !== null) return `salla:${String(bodyMerchant)}`;
-  const store = eventData["store"] as UnknownRecord | undefined;
-  const merchant = eventData["merchant"] as UnknownRecord | undefined;
-  const sid = (store?.["id"] as unknown) ?? (merchant?.["id"] as unknown);
+  const store = eventData["store"] as Dict | undefined;
+  const merchant = eventData["merchant"] as Dict | undefined;
+  const sid = store?.["id"] ?? merchant?.["id"];
   return sid !== undefined ? `salla:${String(sid)}` : undefined;
 }
 function extractProductIds(items?: SallaItem[]): string[] {
@@ -173,39 +169,9 @@ function validEmailOrPhone(c?: SallaCustomer) {
   const hasMobile = !!mobile && mobile.length > 5;
   return { ok: hasEmail || hasMobile, email: hasEmail ? email : undefined, mobile: hasMobile ? mobile : undefined };
 }
+const keyOf = (event: string, orderId?: string, status?: string) => `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
 
-/* ---------- Schema helpers ---------- */
-
-// مفاتيح متوقعة بشكل خفيف لكل حدث (راقب التغييرات)
-const EXPECTED_KEYS: Record<string, string[]> = {
-  "app.store.authorize": ["access_token", "expires", "refresh_token", "scope", "token_type"],
-  "app.installed": ["id", "app_name", "app_type", "installation_date", "store_type"],
-  // زوّد حسب الحاجة...
-};
-
-function validateSchema(event: string, data: UnknownRecord) {
-  const issues: string[] = [];
-  if (event === "app.store.authorize") {
-    const tok = (data["access_token"] ??
-      (typeof data["token"] === "object" && data["token"]
-        ? (data["token"] as UnknownRecord)["access_token"]
-        : undefined));
-    if (typeof tok !== "string" || !tok) issues.push("access_token missing for authorize");
-  }
-  // في installed/updated التوكنات اختيارية — لا نعتبرها خطأ
-  return { ok: issues.length === 0, issues };
-}
-function diffKeys(event: string, data: UnknownRecord) {
-  const expected = EXPECTED_KEYS[event];
-  if (!expected) return { missing: [] as string[], extra: [] as string[] };
-  const got = Object.keys(data || {});
-  const missing = expected.filter(k => !got.includes(k));
-  const extra = got.filter(k => !expected.includes(k));
-  return { missing, extra };
-}
-
-/* ===================== Firestore Ops ===================== */
-
+// ---------- Firestore ops ----------
 async function saveDomainAndFlags(
   db: FirebaseFirestore.Firestore,
   uid: string,
@@ -214,23 +180,25 @@ async function saveDomainAndFlags(
   event: string
 ) {
   const now = Date.now();
-  const numericStoreId =
-    typeof merchantId === "number" ? merchantId : Number(String(merchantId ?? "").trim() || NaN);
-
-  // نبني الدوكيومنت بدون undefined
-  const storeDoc: Record<string, unknown> = {
+  const storeDoc: Dict = {
     uid,
     provider: "salla",
     updatedAt: now,
     salla: {
       uid,
-      storeId: Number.isFinite(numericStoreId) ? numericStoreId : (merchantId !== null ? String(merchantId) : null),
+      storeId:
+        typeof merchantId === "number" ? merchantId :
+        typeof merchantId === "string" ? merchantId :
+        null,
       connected: true,
       installed: true,
       ...(base ? { domain: base } : {}),
     },
     ...(base ? { domain: { base, key: encodeUrlForFirestore(base), updatedAt: now } } : {}),
   };
+
+  // منع undefined
+  Object.keys(storeDoc).forEach((k) => (storeDoc as Dict)[k] === undefined && delete (storeDoc as Dict)[k]);
 
   await db.collection("stores").doc(uid).set(storeDoc, { merge: true });
 
@@ -268,7 +236,7 @@ async function upsertOrderSnapshot(
 async function ensureInviteForOrder(
   db: FirebaseFirestore.Firestore,
   order: SallaOrder,
-  rawData: UnknownRecord,
+  rawData: Dict,
   bodyMerchant?: string|number
 ) {
   const orderId = String(order.id ?? order.order_id ?? "");
@@ -277,7 +245,7 @@ async function ensureInviteForOrder(
   let customer = order.customer as SallaCustomer | undefined;
   if (!customer?.email && !customer?.mobile) customer = (rawData["customer"] as SallaCustomer) || customer;
   if ((!customer?.email && !customer?.mobile) && rawData["order"] && typeof rawData["order"] === "object") {
-    customer = (rawData["order"] as UnknownRecord)["customer"] as SallaCustomer || customer;
+    customer = (rawData["order"] as Dict)["customer"] as SallaCustomer || customer;
   }
   const cv = validEmailOrPhone(customer);
   if (!cv.ok) return;
@@ -288,7 +256,7 @@ async function ensureInviteForOrder(
   let storeUid: string|null = pickStoreUidFromSalla(rawData, bodyMerchant) || null;
   if (!storeUid) {
     const orderDoc = await db.collection("orders").doc(orderId).get().catch(() => null);
-    storeUid = orderDoc?.data()?.storeUid ?? null;
+    storeUid = (orderDoc?.data() as Dict | undefined)?.["storeUid"] as string | null ?? null;
   }
 
   const planCheck = storeUid ? await canSendInvite(storeUid) : { ok: true as const };
@@ -329,45 +297,39 @@ async function ensureInviteForOrder(
   if (storeUid) await onInviteSent(storeUid);
 }
 
-/* ===================== Handler ===================== */
-
-const keyOf = (event: string, orderId?: string, status?: string) => `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
-
+// ---------- Handler ----------
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
   const raw = await readRawBody(req);
   const db = dbAdmin();
 
-  // (1) Security check + log
+  // (1) auth
   const verification = verifySallaRequest(req, raw);
   await fbLog(db, {
     level: verification.ok ? "info" : "warn",
     scope: "auth",
     msg: verification.ok ? "verification ok" : "verification failed",
+    event: null, idemKey: null, merchant: null, orderId: null,
     meta: {
       strategyHeader: getHeader(req, "x-salla-security-strategy") || "auto",
-      hasSecret: !!WEBHOOK_SECRET,
-      hasToken: !!WEBHOOK_TOKEN,
+      hasSecret: !!WEBHOOK_SECRET, hasToken: !!WEBHOOK_TOKEN,
       sigLen: (getHeader(req, "x-salla-signature") || "").length,
       from: req.headers["x-forwarded-for"] || req.socket.remoteAddress
     }
   });
-
   if (!verification.ok) return res.status(401).json({ error: "unauthorized" });
 
-  // (2) Fast ACK (نرد فورًا ثم نكمل المعالجة بالخلفية)
+  // (2) Fast ACK
   res.status(202).json({ ok: true, accepted: true });
 
-  // (3) Parse body + schema logs
+  // (3) parse
   let body: SallaWebhookBody = { event: "" };
   try {
     body = JSON.parse(raw.toString("utf8") || "{}");
   } catch (e) {
-    await fbLog(db, {
-      level: "error", scope: "parse", msg: "invalid json",
-      meta: { err: e instanceof Error ? e.message : String(e), rawFirst2000: raw.toString("utf8").slice(0, 2000) }
-    });
+    await fbLog(db, { level: "error", scope: "parse", msg: "invalid json", event: null, idemKey: null, merchant: null, orderId: null,
+      meta: { err: e instanceof Error ? e.message : String(e), rawFirst2000: raw.toString("utf8").slice(0, 2000) } });
     await db.collection("webhook_errors").add({
       at: Date.now(), scope: "parse", error: e instanceof Error ? e.message : String(e),
       raw: raw.toString("utf8").slice(0, 2000), headers: req.headers
@@ -376,153 +338,206 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const event = String(body.event || "");
-  const dataRaw = (body.data ?? {}) as UnknownRecord;
+  const dataRaw = (body.data ?? {}) as Dict;
   const asOrder = dataRaw as SallaOrder;
 
-  // استخرج merchantId كبدائي فقط (string|number|null)
+  const orderId = (() => {
+    const v = asOrder?.id ?? asOrder?.order_id;
+    return v == null ? null : String(v);
+  })();
+
   const merchantIdRaw =
     body.merchant ??
-    dataRaw["merchant_id"] ??
-    (typeof dataRaw["merchant"] === "object" && dataRaw["merchant"]
-      ? (dataRaw["merchant"] as { id?: unknown }).id
-      : undefined);
+    (dataRaw["merchant_id"] as unknown) ??
+    (dataRaw["merchant"] && typeof dataRaw["merchant"] === "object" ? (dataRaw["merchant"] as Dict)["id"] : undefined);
 
   const merchantId: string | number | null =
-    typeof merchantIdRaw === "number" || typeof merchantIdRaw === "string"
-      ? merchantIdRaw
-      : null;
+    typeof merchantIdRaw === "number" ? merchantIdRaw :
+    typeof merchantIdRaw === "string" ? merchantIdRaw :
+    null;
 
-  const storeUid = merchantId !== null ? `salla:${String(merchantId)}` : undefined;
-
-  const isOrderEvent = event.startsWith("order.") || event.startsWith("shipment.");
-  const orderId: string | null = isOrderEvent
-    ? (String(asOrder.id ?? asOrder.order_id ?? "") || null)
-    : null;
-
-  // فحص بسيط للمخطط + diff keys
-  const schema = validateSchema(event, dataRaw);
-  await fbLog(db, {
-    level: schema.ok ? "info" : "warn",
-    scope: "schema",
-    msg: schema.ok ? "payload matches minimal spec" : "payload mismatches minimal spec",
-    event, merchant: merchantId, orderId, meta: { issues: schema.issues }
-  });
-
-  const keyDiff = diffKeys(event, dataRaw);
-  if (keyDiff.missing.length || keyDiff.extra.length) {
-    await fbLog(db, {
-      level: "warn", scope: "schema.diff",
-      msg: "payload keys differ from expected",
-      event, merchant: merchantId, orderId, meta: keyDiff
-    });
-  }
-
-  // (4) Idempotency (يدعم signature أو token)
+  // (4) idempotency
   const sigHeader = getHeader(req, "x-salla-signature") || "";
-  const idemKey = sigHeader
-    ? crypto.createHash("sha256").update(sigHeader + "|").update(raw).digest("hex")
-    : crypto.createHash("sha256").update("token|" + raw).digest("hex");
+  const idemKey = crypto.createHash("sha256").update(sigHeader + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
 
   try {
     const ex = await idemRef.get();
     if (ex.exists) {
-      await fbLog(db, { level: "info", scope: "idempotency", msg: "duplicate detected; skip processing", event, idemKey, merchant: merchantId, orderId });
+      await fbLog(db, { level: "info", scope: "idempotency", msg: "duplicate detected; skip", event, idemKey, merchant: merchantId, orderId });
       await idemRef.set({ statusFlag: "duplicate", lastSeenAt: Date.now() }, { merge: true });
       return;
     }
     await idemRef.set({
-      at: Date.now(),
-      event,
-      orderId,
+      at: Date.now(), event, orderId,
       status: lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? ""),
       paymentStatus: lc(asOrder.payment_status ?? ""),
-      merchant: merchantId,
-      strategy: verification.strategy,
-      statusFlag: "processing",
-      processingStartedAt: Date.now()
+      merchant: merchantId, strategy: verification.strategy,
+      statusFlag: "processing", processingStartedAt: Date.now()
     }, { merge: true });
     await fbLog(db, { level: "debug", scope: "idempotency", msg: "idem stored", event, idemKey, merchant: merchantId, orderId });
   } catch (e) {
     await fbLog(db, { level: "warn", scope: "idempotency", msg: "idem set failed (continue)", event, idemKey, merchant: merchantId, orderId, meta: { err: String(e) } });
   }
 
-  // (5) Main processing
+  // (5) main
   try {
     await fbLog(db, { level: "info", scope: "handler", msg: "processing start", event, idemKey, merchant: merchantId, orderId });
 
-    // A) app.* (authorize/installed/updated) → flags/domain + oauth + userinfo
+    // A) authorize/installed/updated: حفظ الدومين + الفلاجز + OAuth (لو موجود) + محاولة قراءة store/info + userinfo + إرسال إيميل
     if (event === "app.store.authorize" || event === "app.installed" || event === "app.updated") {
+      const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
+
+      // توكن من البودي إن وُجد
+      const tokenFromPayload =
+        typeof (dataRaw["access_token"]) === "string" && dataRaw["access_token"].trim()
+          ? (dataRaw["access_token"] as string).trim()
+          : (typeof (dataRaw["token"]) === "object" && dataRaw["token"]
+              && typeof (dataRaw["token"] as Dict)["access_token"] === "string"
+              ? ((dataRaw["token"] as Dict)["access_token"] as string).trim()
+              : "");
+
+      // دومين في البودي (إن وُجد)
       const domainInPayload =
-        (dataRaw["domain"] as string) ||
-        (dataRaw["store_url"] as string) ||
-        (dataRaw["url"] as string) ||
-        (typeof dataRaw["store"] === "object" && dataRaw["store"] ? (dataRaw["store"] as UnknownRecord)["domain"] as string : undefined) ||
-        (typeof dataRaw["store"] === "object" && dataRaw["store"] ? (dataRaw["store"] as UnknownRecord)["url"] as string : undefined) ||
-        (typeof dataRaw["merchant"] === "object" && dataRaw["merchant"] ? (dataRaw["merchant"] as UnknownRecord)["domain"] as string : undefined) ||
-        (typeof dataRaw["merchant"] === "object" && dataRaw["merchant"] ? (dataRaw["merchant"] as UnknownRecord)["url"] as string : undefined) ||
-        null;
+        (typeof dataRaw["domain"] === "string" ? (dataRaw["domain"] as string) : undefined) ??
+        (typeof dataRaw["store_url"] === "string" ? (dataRaw["store_url"] as string) : undefined) ??
+        (typeof dataRaw["url"] === "string" ? (dataRaw["url"] as string) : undefined) ??
+        (typeof (dataRaw["store"] as Dict | undefined)?.["domain"] === "string" ? ((dataRaw["store"] as Dict)["domain"] as string) : undefined) ??
+        (typeof (dataRaw["merchant"] as Dict | undefined)?.["domain"] === "string" ? ((dataRaw["merchant"] as Dict)["domain"] as string) : undefined);
 
-      const base = toDomainBase(domainInPayload);
-      await fbLog(db, { level: "debug", scope: "domain", msg: "domain parsed", event, idemKey, merchant: merchantId, orderId, meta: { domainInPayload, base } });
+      // حدّد base إن أمكن
+      let base = toDomainBase(domainInPayload);
 
+      // خزّن الفلاجز + (الدومين لو معروف)
       if (storeUid) {
-        await fbLog(db, { level: "debug", scope: "store", msg: "saving flags/domain...", event, idemKey, merchant: merchantId, orderId, meta: { storeUid } });
         await saveDomainAndFlags(db, storeUid, merchantId, base, event);
-        await fbLog(db, { level: "info", scope: "store", msg: "store saved", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, base } });
+      }
 
-        // OAuth (إن وُجد في authorize، اختياري في باقي الأحداث)
-        const token   = String((dataRaw["access_token"] ??
-                        (typeof dataRaw["token"] === "object" && dataRaw["token"]
-                          ? (dataRaw["token"] as UnknownRecord)["access_token"] : "")) || "");
-        const refresh = String((dataRaw["refresh_token"] ??
-                        (typeof dataRaw["token"] === "object" && dataRaw["token"]
-                          ? (dataRaw["token"] as UnknownRecord)["refresh_token"] : "")) || "");
-        const expires = Number(dataRaw["expires"] ??
-                        (typeof dataRaw["token"] === "object" && dataRaw["token"]
-                          ? (dataRaw["token"] as UnknownRecord)["expires"] : 0));
-        const scope   = String((dataRaw["scope"] ??
-                        (typeof dataRaw["token"] === "object" && dataRaw["token"]
-                          ? (dataRaw["token"] as UnknownRecord)["scope"] : "")) || "") || undefined;
+      // خزّن OAuth إن وُجد
+      const refresh =
+        typeof dataRaw["refresh_token"] === "string" ? (dataRaw["refresh_token"] as string) :
+        (typeof (dataRaw["token"] as Dict | undefined)?.["refresh_token"] === "string"
+          ? ((dataRaw["token"] as Dict)["refresh_token"] as string) : "");
 
+      const expiresNumRaw = (dataRaw["expires"] as unknown) ?? (dataRaw["token"] as Dict | undefined)?.["expires"];
+      const expires = typeof expiresNumRaw === "number" ? expiresNumRaw : Number(expiresNumRaw ?? 0);
+
+      const scopeStr =
+        typeof dataRaw["scope"] === "string" ? (dataRaw["scope"] as string) :
+        (typeof (dataRaw["token"] as Dict | undefined)?.["scope"] === "string"
+          ? ((dataRaw["token"] as Dict)["scope"] as string) : "");
+
+      if (storeUid && tokenFromPayload) {
+        await db.collection("owners").doc(storeUid).set({
+          uid: storeUid, provider: "salla",
+          oauth: {
+            access_token: tokenFromPayload,
+            refresh_token: refresh || null,
+            scope: scopeStr || null,
+            expires: Number.isFinite(expires) ? expires : null,
+            receivedAt: Date.now(),
+            strategy: "easy_mode",
+          },
+          updatedAt: Date.now(),
+        }, { merge: true });
+        await fbLog(db, { level: "info", scope: "oauth", msg: "owner oauth saved", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, hasRefresh: !!refresh } });
+      }
+
+      // جلب store/info (لو base لسه مش معروف)
+      if (storeUid && !base) {
+        const token = tokenFromPayload || (await getOwnerAccessToken(db, storeUid)) || "";
         if (token) {
-          await db.collection("owners").doc(storeUid).set({
-            uid: storeUid, provider: "salla",
-            oauth: {
-              access_token: token,
-              refresh_token: refresh || null,
-              scope: scope || null,
-              expires: Number.isFinite(expires) ? expires : null,
-              receivedAt: Date.now(),
-              strategy: "easy_mode",
-            },
-            updatedAt: Date.now(),
-          }, { merge: true });
-          await fbLog(db, { level: "info", scope: "oauth", msg: "owner oauth saved", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, hasRefresh: !!refresh } });
+          try {
+            const info = await fetchStoreInfo(token);
+            const d = info?.data?.domain && typeof info.data.domain === "string" ? info.data.domain : null;
+            const resolvedBase = toDomainBase(d);
+            if (resolvedBase) {
+              base = resolvedBase;
+              await saveDomainAndFlags(db, storeUid, merchantId, base, event);
+              await fbLog(db, { level: "info", scope: "domain", msg: "domain saved from store/info", event, idemKey, merchant: merchantId, orderId, meta: { base } });
+            } else {
+              await fbLog(db, { level: "warn", scope: "domain", msg: "store/info returned no usable domain", event, idemKey, merchant: merchantId, orderId, meta: { rawDomain: d } });
+            }
+          } catch (e) {
+            await fbLog(db, { level: "warn", scope: "domain", msg: "store/info fetch failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
+          }
         } else {
-          await fbLog(db, { level: "debug", scope: "oauth", msg: "no access_token in payload (ok for installed/updated)", event, idemKey, merchant: merchantId, orderId });
+          await fbLog(db, { level: "warn", scope: "domain", msg: "no token available to fetch store/info", event, idemKey, merchant: merchantId, orderId });
         }
+      }
 
-        // UserInfo (اختياري) — يثبت الدومين والاسم ويُخزَّن للمرجع
-        try {
-          const info = await fetchUserInfo(storeUid);
-          await db.collection("stores").doc(storeUid).set({
-            uid: storeUid, provider: "salla",
-            meta: { userinfo: info, updatedAt: Date.now() },
-            updatedAt: Date.now(),
-          }, { merge: true });
-          await fbLog(db, { level: "info", scope: "userinfo", msg: "userinfo saved", event, idemKey, merchant: merchantId, orderId, meta: { storeUid } });
-        } catch (e) {
-          await fbLog(db, { level: "warn", scope: "userinfo", msg: "userinfo fetch failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
+      // --- userinfo + حفظ + إرسال إيميل تعيين كلمة المرور ---
+      if (storeUid) {
+        const token = tokenFromPayload || (await getOwnerAccessToken(db, storeUid)) || "";
+        if (token) {
+          try {
+            const uinfo = await fetchUserInfo(token);
+
+            // احفظ اليوزر إنفو في المتجر
+            await db.collection("stores").doc(storeUid).set({
+              uid: storeUid, provider: "salla",
+              meta: { userinfo: uinfo, updatedAt: Date.now() },
+              updatedAt: Date.now(),
+            }, { merge: true });
+
+            await fbLog(db, { level: "info", scope: "userinfo", msg: "userinfo saved", event, idemKey, merchant: merchantId, orderId, meta: { storeUid } });
+
+            // حاول تحسين الدومين من userinfo إن أمكن
+            const domainFromInfo =
+              (typeof uinfo.merchant?.domain === "string" ? uinfo.merchant.domain : undefined) ??
+              (typeof uinfo.store?.domain === "string" ? uinfo.store.domain : undefined) ??
+              (typeof uinfo.domain === "string" ? uinfo.domain : undefined) ??
+              (typeof uinfo.url === "string" ? uinfo.url : undefined);
+
+            const baseFromInfo = toDomainBase(domainFromInfo ?? null);
+            if (baseFromInfo && baseFromInfo !== base) {
+              await saveDomainAndFlags(db, storeUid, merchantId, baseFromInfo, event);
+              await fbLog(db, { level: "info", scope: "domain", msg: "domain updated from userinfo", event, idemKey, merchant: merchantId, orderId, meta: { baseFromInfo } });
+            }
+
+            // استخرج الإيميل + اسم المتجر
+            const infoEmail =
+              (typeof uinfo.email === "string" ? uinfo.email : undefined) ??
+              (typeof uinfo.merchant?.email === "string" ? uinfo.merchant.email : undefined) ??
+              (typeof uinfo.user?.email === "string" ? uinfo.user.email : undefined);
+
+            const storeName =
+              (typeof uinfo.merchant?.name === "string" ? uinfo.merchant.name : undefined) ??
+              (typeof uinfo.store?.name === "string" ? uinfo.store.name : undefined) ??
+              "متجرك";
+
+            // fallback: لو البودي فيه إيميل
+            const payloadEmail = typeof (dataRaw as Dict)["email"] === "string" ? ((dataRaw as Dict)["email"] as string) : undefined;
+            const targetEmail = infoEmail || payloadEmail;
+
+            // أرسل إيميل تعيين كلمة المرور
+            if (targetEmail) {
+              const r = await sendPasswordSetupEmail({ email: targetEmail, storeUid, storeName });
+              if (!r.ok) {
+                await fbLog(db, { level: "warn", scope: "password_email", msg: "send failed", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail, error: r.error } });
+                await db.collection("webhook_errors").add({
+                  at: Date.now(), scope: "password_email", event,
+                  error: r.error, email: targetEmail, storeUid
+                }).catch(() => {});
+              } else {
+                await fbLog(db, { level: "info", scope: "password_email", msg: "sent ok", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail } });
+              }
+            } else {
+              await fbLog(db, { level: "debug", scope: "password_email", msg: "no email found in userinfo/payload", event, idemKey, merchant: merchantId, orderId });
+            }
+          } catch (e) {
+            await fbLog(db, { level: "warn", scope: "userinfo", msg: "userinfo fetch failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
+          }
+        } else {
+          await fbLog(db, { level: "warn", scope: "userinfo", msg: "no token available to fetch userinfo", event, idemKey, merchant: merchantId, orderId });
         }
-      } else {
-        await fbLog(db, { level: "warn", scope: "store", msg: "missing storeUid (no merchantId)", event, idemKey, merchant: merchantId, orderId });
       }
     }
 
-    // B) Subscription/Trial → set plan (إن أتت من سلة)
+    // B) Subscription/Trial → set plan
     if (event.startsWith("app.subscription.") || event.startsWith("app.trial.")) {
-      const payload = dataRaw as UnknownRecord;
+      const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
+      const payload = dataRaw as Dict;
       const planName = String(payload["plan_name"] ?? payload["name"] ?? "").toLowerCase();
       const map: Record<string, string> = { start: "P30", growth: "P60", scale: "P120", elite: "ELITE", trial: "TRIAL" };
       const planId = (map[planName] || "").toUpperCase() || (event.includes(".trial.") ? "TRIAL" : "P30");
@@ -540,7 +555,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // C) Order/Shipment snapshot
-    if (isOrderEvent) {
+    if (event.startsWith("order.") || event.startsWith("shipment.")) {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant) || null;
       await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
       await fbLog(db, { level: "info", scope: "orders", msg: "order snapshot upserted", event, idemKey, merchant: merchantId, orderId, meta: { storeUidFromEvent } });
@@ -566,7 +581,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await fbLog(db, { level: "info", scope: "invite", msg: "invite ensured via order status", event, idemKey, merchant: merchantId, orderId, meta: { st } });
       }
     } else if (event === "order.cancelled" || event === "order.refunded") {
-      const oid = String(asOrder.id ?? asOrder.order_id ?? "");
+      const oid = orderId;
       if (oid) {
         const q = await db.collection("review_tokens").where("orderId","==",oid).get();
         if (!q.empty) {
@@ -579,11 +594,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // E) processed + known/unhandled logs
-    const orderIdFin = isOrderEvent
-      ? (String(asOrder.id ?? asOrder.order_id ?? "") || "none")
-      : "none";
+    const orderIdFin = orderId ?? "none";
     const statusFin = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
-
     await db.collection("processed_events").doc(keyOf(event, orderIdFin, statusFin)).set({
       at: Date.now(), event, processed: true, status: statusFin
     }, { merge: true });

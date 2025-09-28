@@ -1,72 +1,91 @@
-import * as admin from "firebase-admin";
+// src/lib/sallaClient.ts
+export type Json = Record<string, unknown>;
 
-type UnknownRecord = Record<string, unknown>;
-
-export type SallaAuth = {
-  access_token: string;
-  refresh_token?: string | null;
-  scope?: string | null;
-  expires?: number | null;   // unix seconds
-  receivedAt?: number | null;
-};
-
-const API_BASE = "https://api.salla.dev/admin/v2";
-const USERINFO_URL = "https://accounts.salla.sa/oauth2/user/info";
-const APP_ID = (process.env.SALLA_APP_ID || "").trim();
-
-function firestore() {
-  return admin.firestore();
-}
-
-async function loadAuth(storeUid: string): Promise<SallaAuth | null> {
-  const db = firestore();
-  const doc = await db.collection("owners").doc(storeUid).get();
-  const data = doc.data() as UnknownRecord | undefined;
-  const oauth = data?.oauth as UnknownRecord | undefined;
-  if (!oauth?.access_token) return null;
-  return {
-    access_token: String(oauth.access_token),
-    refresh_token: oauth.refresh_token ? String(oauth.refresh_token) : null,
-    scope: oauth.scope ? String(oauth.scope) : null,
-    expires: typeof oauth.expires === "number" ? oauth.expires : null,
-    receivedAt: typeof oauth.receivedAt === "number" ? oauth.receivedAt : null,
+/** /admin/v2/store/info */
+export interface StoreInfoResponse {
+  status?: number;
+  success?: boolean;
+  data?: {
+    id?: number;
+    name?: string;
+    type?: string;
+    status?: string;
+    plan?: string;
+    currency?: string;
+    domain?: string; // نقرأه ونطبّعه في الويبهوك
   };
 }
 
-// بإمكانك لاحقًا تنفيذ refresh حقيقي إن توفر
-async function refreshIfNeeded(storeUid: string): Promise<SallaAuth | null> {
-  const auth = await loadAuth(storeUid);
-  if (!auth) return null;
-  const exp = auth.expires;
-  if (!exp) return auth;
-  const nowSec = Math.floor(Date.now() / 1000);
-  if (nowSec < exp - 60) return auth;
-  // TODO: نفّذ ريفرش عبر سيرفر OAuth لو لديك
-  return auth; // مؤقتًا
-}
-
-export async function sallaFetch(storeUid: string, path: string, init?: RequestInit): Promise<Response> {
-  const auth = (await refreshIfNeeded(storeUid)) || (await loadAuth(storeUid));
-  if (!auth?.access_token) throw new Error("missing_access_token");
-  const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${auth.access_token}`,
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    ...(init?.headers as Record<string, string> | undefined),
+/** /oauth2/user/info — الحد الأدنى اللي نحتاجه للإيميل/اسم المتجر/الدومين */
+export interface UserInfoResponse {
+  email?: string;
+  user?: {
+    email?: string;
+    name?: string;
+    id?: number;
   };
-  return fetch(url, { ...init, headers });
+  merchant?: {
+    id?: number;
+    name?: string;
+    email?: string;
+    domain?: string;
+    url?: string;
+  };
+  store?: {
+    id?: number;
+    name?: string;
+    domain?: string;
+    url?: string;
+    type?: string; // demo...
+  };
+  domain?: string;
+  url?: string;
 }
 
-export async function fetchUserInfo(storeUid: string): Promise<UnknownRecord> {
-  const res = await sallaFetch(storeUid, USERINFO_URL, { method: "GET" });
-  if (!res.ok) throw new Error(`userinfo ${res.status}`);
-  return res.json() as Promise<UnknownRecord>;
+export async function fetchStoreInfo(accessToken: string): Promise<StoreInfoResponse> {
+  const resp = await fetch("https://api.salla.dev/admin/v2/store/info", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!resp.ok) throw new Error(`store/info ${resp.status}`);
+  return (await resp.json()) as StoreInfoResponse;
 }
 
-export async function fetchAppSubscriptions(storeUid: string): Promise<UnknownRecord> {
-  if (!APP_ID) throw new Error("SALLA_APP_ID not configured");
-  const res = await sallaFetch(storeUid, `/apps/${APP_ID}/subscriptions`, { method: "GET" });
-  if (!res.ok) throw new Error(`subscriptions ${res.status}`);
-  return res.json() as Promise<UnknownRecord>;
+export async function fetchUserInfo(accessToken: string): Promise<UserInfoResponse> {
+  const resp = await fetch("https://accounts.salla.sa/oauth2/user/info", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!resp.ok) throw new Error(`userinfo ${resp.status}`);
+  return (await resp.json()) as UserInfoResponse;
+}
+
+/** احصل على access_token من owners/{storeUid} لو موجود */
+export async function getOwnerAccessToken(
+  db: FirebaseFirestore.Firestore,
+  storeUid: string
+): Promise<string | null> {
+  try {
+    const doc = await db.collection("owners").doc(storeUid).get();
+    const data = doc.data() as Json | undefined;
+    const oauth = (data?.oauth ?? {}) as Json;
+    const token = typeof oauth["access_token"] === "string" ? (oauth["access_token"] as string) : null;
+    return token && token.trim() ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchAppSubscriptions(storeUid: string): Promise<unknown> {
+  // مثال: استدعاء API سلة لجلب الاشتراكات
+  // يمكنك تعديل الرابط حسب توثيق سلة
+  const url = `https://api.salla.dev/admin/v2/stores/${encodeURIComponent(storeUid)}/subscriptions`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${process.env.SALLA_API_TOKEN}`,
+      Accept: "application/json",
+    },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch subscriptions: ${res.status}`);
+  return await res.json();
 }

@@ -37,3 +37,10 @@ export async function onInviteSent(storeUid: string) {
     }
   });
 }
+
+export async function canSendInvite(storeUid: string): Promise<{ ok: boolean; reason?: string }> {
+  // مثال: تحقق من الاشتراك أو الكوتا
+  // يمكنك تخصيص المنطق حسب نظامك
+  // افتراضياً يسمح دائماً
+  return { ok: true };
+}
