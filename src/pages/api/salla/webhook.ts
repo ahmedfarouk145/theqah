@@ -258,29 +258,52 @@ async function ensureInviteForOrder(
   rawData: Dict,
   bodyMerchant?: string|number
 ) {
+  console.log(`[INVITE FLOW] Starting invite creation for order...`);
+  
   const orderId = String(order.id ?? order.order_id ?? "");
-  if (!orderId) return;
+  console.log(`[INVITE FLOW] 1. OrderId check: ${orderId || "MISSING"}`);
+  if (!orderId) {
+    console.log(`[INVITE FLOW] ❌ FAILED: No orderId found`);
+    return;
+  }
 
   let customer = order.customer as SallaCustomer | undefined;
   if (!customer?.email && !customer?.mobile) customer = (rawData["customer"] as SallaCustomer) || customer;
   if ((!customer?.email && !customer?.mobile) && rawData["order"] && typeof rawData["order"] === "object") {
     customer = (rawData["order"] as Dict)["customer"] as SallaCustomer || customer;
   }
+  console.log(`[INVITE FLOW] 2. Customer found: email=${customer?.email || "none"}, mobile=${customer?.mobile || "none"}`);
+  
   const cv = validEmailOrPhone(customer);
-  if (!cv.ok) return;
+  console.log(`[INVITE FLOW] 3. Customer validation: ${cv.ok ? "PASSED" : "FAILED"}`);
+  if (!cv.ok) {
+    console.log(`[INVITE FLOW] ❌ FAILED: No valid email or mobile`);
+    return;
+  }
 
+  console.log(`[INVITE FLOW] 4. Checking for existing invites...`);
   const exists = await db.collection("review_invites").where("orderId", "==", orderId).limit(1).get();
-  if (!exists.empty) return;
+  console.log(`[INVITE FLOW] 5. Existing invites: ${exists.size} found`);
+  if (!exists.empty) {
+    console.log(`[INVITE FLOW] ❌ FAILED: Invite already exists for order ${orderId}`);
+    return;
+  }
 
   let storeUid: string|null = pickStoreUidFromSalla(rawData, bodyMerchant) || null;
+  console.log(`[INVITE FLOW] 6. StoreUid from payload: ${storeUid || "none"}`);
   if (!storeUid) {
     const orderDoc = await db.collection("orders").doc(orderId).get().catch(() => null);
     storeUid = (orderDoc?.data() as Dict | undefined)?.["storeUid"] as string | null ?? null;
+    console.log(`[INVITE FLOW] 7. StoreUid from orders collection: ${storeUid || "none"}`);
   }
 
+  console.log(`[INVITE FLOW] 8. Final storeUid: ${storeUid || "MISSING"}`);
+  
   // فحص الخطة (لو عندك usage limits)
   const planCheck = storeUid ? await canSendInvite(storeUid) : { ok: true as const };
+  console.log(`[INVITE FLOW] 9. Plan check: ${planCheck.ok ? "PASSED" : "FAILED"} - ${JSON.stringify(planCheck)}`);
   if (!planCheck.ok) {
+    console.log(`[INVITE FLOW] ❌ FAILED: Quota exceeded - ${planCheck.reason}`);
     await db.collection("quota_events").add({
       at: Date.now(), storeUid, orderId, type: "invite_blocked", reason: planCheck.reason
     }).catch(()=>{});
@@ -289,12 +312,19 @@ async function ensureInviteForOrder(
 
   const productIds = extractProductIds(order.items);
   const mainProductId = productIds[0] || orderId;
+  console.log(`[INVITE FLOW] 10. Product IDs extracted: ${productIds.length} items, main: ${mainProductId}`);
 
-  if (!APP_BASE_URL) throw new Error("BASE_URL not configured");
+  if (!APP_BASE_URL) {
+    console.log(`[INVITE FLOW] ❌ FAILED: APP_BASE_URL not configured`);
+    throw new Error("BASE_URL not configured");
+  }
+  console.log(`[INVITE FLOW] 11. APP_BASE_URL: ${APP_BASE_URL}`);
 
   const tokenId = crypto.randomBytes(10).toString("hex");
   const reviewUrl = `${APP_BASE_URL}/review/${tokenId}`;
   const publicUrl = reviewUrl;
+  console.log(`[INVITE FLOW] 12. Generated tokenId: ${tokenId}`);
+  console.log(`[INVITE FLOW] 13. Review URL: ${reviewUrl}`);
 
   await db.collection("review_tokens").doc(tokenId).set({
     id: tokenId, platform: "salla", orderId, storeUid,
@@ -316,17 +346,32 @@ async function ensureInviteForOrder(
     console.log(`[REVIEW_LINK] orderId=${orderId} tokenId=${tokenId} url=${publicUrl}`);
     await db.collection("webhook_firebase").add({ at: Date.now(), level: "info", scope: "review", msg: "review link", orderId, tokenId, url: publicUrl }).catch(()=>{});
   }
-  await sendBothNow({
-    inviteId: tokenId,
-    phone: cv.mobile,
-    email: cv.email,
-    customerName: customer?.name,
-    storeName,
-    url: publicUrl,
-    perChannelTimeoutMs: 15000,
-  });
+  console.log(`[INVITE FLOW] 14. Sending invitations...`);
+  try {
+    await sendBothNow({
+      inviteId: tokenId,
+      phone: cv.mobile,
+      email: cv.email,
+      customerName: customer?.name,
+      storeName,
+      url: publicUrl,
+      perChannelTimeoutMs: 15000,
+    });
+    console.log(`[INVITE FLOW] 15. ✅ Invitations sent successfully`);
+  } catch (sendError) {
+    console.log(`[INVITE FLOW] 15. ⚠️ Send failed but token created: ${sendError}`);
+  }
 
-  if (storeUid) await onInviteSent(storeUid);
+  if (storeUid) {
+    try {
+      await onInviteSent(storeUid);
+      console.log(`[INVITE FLOW] 16. ✅ Usage counter updated for ${storeUid}`);
+    } catch (usageError) {
+      console.log(`[INVITE FLOW] 16. ⚠️ Usage update failed: ${usageError}`);
+    }
+  }
+  
+  console.log(`[INVITE FLOW] 🎉 COMPLETED: Review token ${tokenId} created for order ${orderId}`);
 }
 
 /* ===================== Handler ===================== */
