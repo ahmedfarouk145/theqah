@@ -41,8 +41,8 @@ function withTimeout(ms: number) {
   return { signal: controller.signal, cancel: () => clearTimeout(t) };
 }
 const toErr = (e: unknown) => (e instanceof Error ? e.message : String(e));
-const redact = (tok?: string | null) =>
-  !tok ? null : tok.length <= 12 ? `${tok.length}ch:${tok}` : `${tok.length}ch:${tok.slice(0,6)}…${tok.slice(-6)}`;
+// const redact = (tok?: string | null) =>
+//   !tok ? null : tok.length <= 12 ? `${tok.length}ch:${tok}` : `${tok.length}ch:${tok.slice(0,6)}…${tok.slice(-6)}`;
 const randHex = (len=16) => crypto.randomBytes(len).toString("hex");
 
 async function fetchWithTrace(url: string, init: RequestInit, opts?: { label?: string; timeoutMs?: number }) {

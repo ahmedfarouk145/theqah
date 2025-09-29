@@ -492,6 +492,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Auto-save domain for ANY incoming event if payload includes store.domain or merchant.domain
     try {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant);
+      console.log(`[AUTO-DOMAIN] Full payload inspection:`, JSON.stringify(dataRaw, null, 2));
+      
       const payloadDomainGeneric =
         (typeof (dataRaw["store"] as Dict | undefined)?.["domain"] === "string" ? ((dataRaw["store"] as Dict)["domain"] as string) : undefined) ??
         (typeof (dataRaw["merchant"] as Dict | undefined)?.["domain"] === "string" ? ((dataRaw["merchant"] as Dict)["domain"] as string) : undefined) ??
@@ -501,6 +503,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const baseGeneric = toDomainBase(payloadDomainGeneric);
       console.log(`[AUTO-DOMAIN] Event: ${event}, StoreUid: ${storeUidFromEvent}, Domain: ${payloadDomainGeneric}, Base: ${baseGeneric}`);
+      
+      // FORCE SAVE if we have storeUidFromEvent but no domain - try to fetch it
+      if (storeUidFromEvent && !baseGeneric && merchantId) {
+        console.log(`[AUTO-DOMAIN] No domain in payload, attempting to fetch store info for merchant ${merchantId}`);
+        try {
+          const storeInfoUrl = `https://api.salla.dev/admin/v2/store`;
+          const response = await fetch(storeInfoUrl, {
+            headers: {
+              'Authorization': 'Bearer ' + (process.env.SALLA_APP_TOKEN || 'dummy'),
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const storeInfo = await response.json();
+            const fetchedDomain = storeInfo?.data?.domain || storeInfo?.domain;
+            if (fetchedDomain) {
+              console.log(`[AUTO-DOMAIN] Fetched domain from API: ${fetchedDomain}`);
+              await saveDomainAndFlags(db, storeUidFromEvent, merchantId, fetchedDomain, event);
+              await saveMultipleDomainFormats(db, storeUidFromEvent, fetchedDomain);
+              await fbLog(db, { level: "info", scope: "domain", msg: "fetched and saved domain from store API", event, idemKey, merchant: merchantId, orderId, meta: { domain: fetchedDomain, storeUid: storeUidFromEvent } });
+              return; // Exit early after successful fetch
+            }
+          }
+        } catch (fetchErr) {
+          console.log(`[AUTO-DOMAIN] Failed to fetch store info: ${fetchErr}`);
+        }
+      }
+
       if (storeUidFromEvent && baseGeneric) {
         const keyGeneric = encodeUrlForFirestore(baseGeneric);
         const existsGeneric = await db.collection("domains").doc(keyGeneric).get().then(d => d.exists).catch(() => false);
@@ -515,6 +546,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       } else {
         console.log(`[AUTO-DOMAIN] Skipping - missing storeUid (${!!storeUidFromEvent}) or base (${!!baseGeneric})`);
+        console.log(`[AUTO-DOMAIN] Available keys in payload:`, Object.keys(dataRaw as Record<string, unknown>));
       }
     } catch (e) {
       await fbLog(db, { level: "warn", scope: "domain", msg: "auto-save domain failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
