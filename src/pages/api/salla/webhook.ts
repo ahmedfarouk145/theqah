@@ -455,6 +455,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // A) authorize/installed/updated → flags/domain + oauth + store/info + userinfo + password email
+    console.log(`[SALLA STEP] A) Checking install/auth events for: ${event}`);
     if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
 
@@ -596,6 +597,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // B) Subscription/Trial → set plan
+    console.log(`[SALLA STEP] B) Checking subscription events for: ${event}`);
     if (event.startsWith("app.subscription.") || event.startsWith("app.trial.")) {
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
       const payload = dataRaw as Dict;
@@ -616,6 +618,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // C) Order/Shipment snapshot
+    console.log(`[SALLA STEP] C) Checking order/shipment events for: ${event}`);
     if (event.startsWith("order.") || event.startsWith("shipment.")) {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant) || null;
       await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
@@ -623,6 +626,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // D) Invites (paid/delivered) + void on cancel/refund
+    console.log(`[SALLA STEP] D) Checking invite events for: ${event}`);
     if (event === "order.payment.updated") {
       const ps = lc(asOrder.payment_status ?? "");
       if (["paid","authorized","captured"].includes(ps)) {
@@ -655,6 +659,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // E) processed + known/unhandled logs
+    console.log(`[SALLA STEP] E) Final processing for: ${event}`);
     const orderIdFin = orderId ?? "none";
     const statusFin = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
     await db.collection("processed_events").doc(keyOf(event, orderIdFin, statusFin)).set({
