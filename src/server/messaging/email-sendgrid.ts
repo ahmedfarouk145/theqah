@@ -64,15 +64,15 @@ export async function sendEmailSendGrid(
       id: response[0]?.headers?.['x-message-id'] || null 
     };
     
-  } catch (error: any) {
-    const errorMessage = error?.response?.body?.errors?.[0]?.message || 
-                        error?.message || 
+  } catch (error: unknown) {
+    const errorMessage = (error as { response?: { body?: { errors?: { message?: string }[] } }; message?: string })?.response?.body?.errors?.[0]?.message || 
+                        (error as Error)?.message || 
                         String(error);
                         
     console.error(`[SENDGRID] ❌ Failed to send email to ${to}:`, {
       error: errorMessage,
       subject,
-      statusCode: error?.code || error?.response?.statusCode
+      statusCode: (error as { code?: number; response?: { statusCode?: number } })?.code || (error as { response?: { statusCode?: number } })?.response?.statusCode
     });
     
     return { 

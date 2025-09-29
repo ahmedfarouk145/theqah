@@ -96,7 +96,7 @@ export async function sendSMSViaOursms(params: SendSMSParams) {
   const {
     to,
     text,
-    customId = null,
+    customId = null, // Used in response
     priority = 1,
     delayMinutes = 0,
     validityMinutes = 0,
