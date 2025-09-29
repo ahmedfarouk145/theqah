@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:webhook": "node tools/salla-webhook-tester.js"
+    "test:webhook": "node tools/salla-webhook-tester.js",
+    "test:review": "node tools/test-review-sending.js"
   },
   "dependencies": {
     "@fontsource/cairo": "^5.2.6",
