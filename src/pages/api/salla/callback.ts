@@ -244,10 +244,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     const destBase = APP_BASE || "";
-    const dest = (onboardingUrl || `${destBase}${AFTER_PATH}`) + `&uid=${encodeURIComponent(uid)}`;
+    const dest = (returnTo || onboardingUrl || `${destBase}${AFTER_PATH}`) + `&uid=${encodeURIComponent(uid)}`;
+    console.log(`[SALLA_CALLBACK] Using redirect URL: ${dest} ${returnTo ? '(custom returnTo)' : '(default)'}`);
 
     if (debugRequested) {
-      return res.status(200).json({ ok: true, uid, ownerUid, storeId, storeName, storeDomain, redirect_to: dest });
+      return res.status(200).json({ ok: true, uid, ownerUid, storeId, storeName, storeDomain, returnTo, redirect_to: dest });
     }
     return res.redirect(302, dest);
   } catch (e) {

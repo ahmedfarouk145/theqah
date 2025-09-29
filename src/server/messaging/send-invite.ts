@@ -1,6 +1,6 @@
 // src/server/messaging/send-invite.ts
 import { sendSms, type SendSmsResult } from "./send-sms";
-import { sendEmailDmail, type EmailSendResult } from "./email-dmail";
+import { sendEmailSendGrid as sendEmailDmail, type EmailSendResult } from "./email-sendgrid";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 // بناء نص SMS افتراضي

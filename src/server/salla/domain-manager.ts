@@ -135,7 +135,7 @@ export async function saveDomainMapping(
           );
         } catch (error) {
           // Some domains might not be valid Firestore doc IDs
-          console.warn(`[DOMAIN] Could not create direct domain doc for: ${variation}`);
+          console.warn(`[DOMAIN] Could not create direct domain doc for: ${variation}`, error);
         }
       }
     }
@@ -252,6 +252,7 @@ export async function removeDomainMapping(storeUid: string): Promise<void> {
           batch.delete(db.collection("domains").doc(variation));
         } catch (error) {
           // Ignore errors for invalid doc IDs
+          console.debug(`[DOMAIN] Skipping invalid doc ID: ${variation}`, error);
         }
       }
     }

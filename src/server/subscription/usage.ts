@@ -8,6 +8,7 @@ function monthKey(ts: number = Date.now()): string {
 }
 
 export async function onInviteSent(storeUid: string) {
+  console.log(`[USAGE] Recording invite sent for store: ${storeUid}`);
   const db = dbAdmin();
   const key = monthKey();
 
@@ -41,6 +42,7 @@ export async function onInviteSent(storeUid: string) {
 export async function canSendInvite(storeUid: string): Promise<{ ok: boolean; reason?: string }> {
   // مثال: تحقق من الاشتراك أو الكوتا
   // يمكنك تخصيص المنطق حسب نظامك
+  console.log(`[USAGE] Checking invite permission for store: ${storeUid}`);
   // افتراضياً يسمح دائماً
   return { ok: true };
 }

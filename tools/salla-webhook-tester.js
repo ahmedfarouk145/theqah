@@ -161,11 +161,38 @@ async function main() {
     await sleep(500);
   }
 
+  if (RUN === 'updated_order' || RUN === 'all') {
+    await sendUpdatedOrder(oid);
+    await sleep(500);
+  }
+
   if (RUN === 'dup' || RUN === 'all') {
     await sendDuplicate();
   }
 
   console.log('\nDone. Check your Vercel logs and Firestore collections.');
+}
+
+async function sendUpdatedOrder(oid) {
+  const orderId = oid || (Math.floor(Math.random() * 900000) + 100000);
+  const payload = {
+    event: 'updated_order',
+    merchant: MERCHANT_ID,
+    data: {
+      id: orderId,
+      order_id: orderId,
+      number: `ORD${orderId}`,
+      status: 'completed',
+      order_status: 'completed',
+      previous_status: 'processing',
+      old_status: 'processing',  
+      new_status: 'completed',
+      customer: { name: 'أحمد محمد (محدث)', email: 'updated@example.com', mobile: '+966555888999' },
+      items: [{ id: 201, name: 'منتج محدث', quantity: 2, price: 149.99 }],
+    },
+  };
+  
+  return await send(payload, 'Updated Order State Change');
 }
 
 main().catch((e) => {

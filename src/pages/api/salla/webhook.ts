@@ -13,7 +13,7 @@ export const config = { api: { bodyParser: false } };
 /* ===================== Types ===================== */
 type Dict = Record<string, unknown>;
 
-interface SallaCustomer { name?: string; email?: string; mobile?: string; }
+interface SallaCustomer { name?: string; email?: string; mobile?: string | number; }
 interface SallaItem { id?: string|number; product?: { id?: string|number }|null; product_id?: string|number; }
 interface SallaOrder {
   id?: string|number; order_id?: string|number; number?: string|number;
@@ -46,6 +46,12 @@ const LOG_REVIEW_URLS = (process.env.LOG_REVIEW_URLS || "").trim().toLowerCase()
 /* ===================== Utils ===================== */
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 // const DONE = new Set(["paid","fulfilled","delivered","completed","complete","تم التوصيل","مكتمل","تم التنفيذ"]); // unused for now
+
+// Safe mobile number handling - convert to string and handle null/undefined
+function safeMobile(mobile: string | number | null | undefined): string | null {
+  if (!mobile) return null;
+  return typeof mobile === 'string' ? mobile.trim() : String(mobile).trim();
+}
 
 function getHeader(req: NextApiRequest, name: string): string {
   const v = req.headers[name.toLowerCase()];
@@ -189,7 +195,8 @@ function extractProductIds(items?: SallaItem[]): string[] {
   return [...ids];
 }
 function validEmailOrPhone(c?: SallaCustomer) {
-  const email = c?.email?.trim(); const mobile = c?.mobile?.trim();
+  const email = c?.email?.trim(); 
+  const mobile = safeMobile(c?.mobile);
   const hasEmail = !!email && email.includes("@");
   const hasMobile = !!mobile && mobile.length > 5;
   return { ok: hasEmail || hasMobile, email: hasEmail ? email : undefined, mobile: hasMobile ? mobile : undefined };
@@ -251,7 +258,7 @@ async function upsertOrderSnapshot(
     number: order.number ?? null,
     status: lc(order.status ?? order.order_status ?? order.new_status ?? order.shipment_status ?? ""),
     paymentStatus: lc(order.payment_status ?? ""),
-    customer: { name: order.customer?.name ?? null, email: order.customer?.email ?? null, mobile: order.customer?.mobile ?? null },
+    customer: { name: order.customer?.name ?? null, email: order.customer?.email ?? null, mobile: safeMobile(order.customer?.mobile) },
     storeUid: storeUid ?? null,
     platform: "salla",
     updatedAt: Date.now(),
@@ -278,9 +285,52 @@ async function ensureInviteForOrder(
   if ((!customer?.email && !customer?.mobile) && rawData["order"] && typeof rawData["order"] === "object") {
     customer = (rawData["order"] as Dict)["customer"] as SallaCustomer || customer;
   }
-  console.log(`[INVITE FLOW] 2. Customer found: email=${customer?.email || "none"}, mobile=${customer?.mobile || "none"}`);
   
-  const cv = validEmailOrPhone(customer);
+  // Enhanced email and mobile extraction - try multiple sources
+  let customerEmail = customer?.email || "";
+  let customerMobile = customer?.mobile || "";
+  
+  if (!customerEmail || !customerMobile) {
+    const orderData = rawData["order"] as Dict | undefined;
+    
+    if (!customerEmail) {
+      customerEmail = 
+        (orderData?.customer as Dict)?.email as string || 
+        (orderData?.billing_address as Dict)?.email as string ||
+        (orderData?.shipping_address as Dict)?.email as string ||
+        "";
+    }
+    
+    if (!customerMobile) {
+      const mobiles = [
+        (orderData?.customer as Dict)?.mobile,
+        (orderData?.billing_address as Dict)?.mobile || (orderData?.billing_address as Dict)?.phone,
+        (orderData?.shipping_address as Dict)?.mobile || (orderData?.shipping_address as Dict)?.phone,
+        customer?.mobile
+      ];
+      
+      for (const mob of mobiles) {
+        if (mob) {
+          customerMobile = typeof mob === 'string' ? mob : String(mob);
+          break;
+        }
+      }
+    }
+  }
+  
+  // Normalize mobile format safely
+  const normalizedMobile = safeMobile(customerMobile) || '';
+  
+  // If still no email, use mobile as fallback for SMS-only  
+  const finalCustomer = customer ? {
+    ...customer,
+    email: customerEmail.trim() || customer.email || "",
+    mobile: normalizedMobile
+  } : undefined;
+  
+  console.log(`[INVITE FLOW] 2. Customer found: email=${customerEmail || "none"}, mobile=${finalCustomer?.mobile || "none"}`);
+  
+  const cv = validEmailOrPhone(finalCustomer);
   console.log(`[INVITE FLOW] 3. Customer validation: ${cv.ok ? "PASSED" : "FAILED"}`);
   if (!cv.ok) {
     console.log(`[INVITE FLOW] ❌ FAILED: No valid email or mobile`);
@@ -342,7 +392,7 @@ async function ensureInviteForOrder(
   await db.collection("review_invites").doc(tokenId).set({
     tokenId, orderId, platform: "salla", storeUid,
     productId: mainProductId, productIds,
-    customer: { name: customer?.name ?? null, email: cv.email ?? null, mobile: cv.mobile ?? null },
+    customer: { name: finalCustomer?.name ?? null, email: customerEmail || null, mobile: finalCustomer?.mobile ?? null },
     sentAt: Date.now(), deliveredAt: null, clicks: 0, publicUrl,
   });
 
@@ -356,9 +406,9 @@ async function ensureInviteForOrder(
   try {
     await sendBothNow({
       inviteId: tokenId,
-      phone: cv.mobile,
-      email: cv.email,
-      customerName: customer?.name,
+      phone: finalCustomer?.mobile,
+      email: customerEmail,
+      customerName: finalCustomer?.name,
       storeName,
       url: publicUrl,
       perChannelTimeoutMs: 15000,
@@ -723,10 +773,60 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // C) Order/Shipment snapshot
+    // C) Order/Shipment snapshot + Custom updated_order event
     console.log(`[SALLA STEP] C) Checking order/shipment events for: ${event}`);
-    if (event.startsWith("order.") || event.startsWith("shipment.")) {
+    if (event.startsWith("order.") || event.startsWith("shipment.") || event === "updated_order") {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant) || null;
+      
+      // Special handling for updated_order event
+      if (event === "updated_order") {
+        console.log(`[UPDATED_ORDER] Processing order state change for ${orderId}`);
+        
+        // Extract previous and current states if available
+        const dataRecord = dataRaw as Record<string, unknown>;
+        const previousState = (dataRecord?.previous_status as string) || (dataRecord?.old_status as string);
+        const currentState = asOrder.status || asOrder.order_status || (dataRecord?.new_status as string);
+        
+        console.log(`[UPDATED_ORDER] State change: ${previousState || 'unknown'} → ${currentState || 'unknown'}`);
+        
+        // Log the state change
+        await fbLog(db, { 
+          level: "info", 
+          scope: "orders", 
+          msg: "order state updated", 
+          event, 
+          idemKey, 
+          merchant: merchantId, 
+          orderId, 
+          meta: { 
+            storeUidFromEvent, 
+            previousState, 
+            currentState,
+            changeDetected: true
+          } 
+        });
+        
+        // Save state change history
+        try {
+          await db.collection("order_state_changes").add({
+            orderId,
+            storeUid: storeUidFromEvent,
+            previousState: previousState || null,
+            currentState: currentState || null,
+            event,
+            merchant: merchantId,
+            timestamp: Date.now(),
+            webhookData: {
+              idemKey,
+              rawDataKeys: Object.keys(dataRaw as Record<string, unknown>)
+            }
+          });
+          console.log(`[UPDATED_ORDER] State change recorded for order ${orderId}`);
+        } catch (historyErr) {
+          console.error(`[UPDATED_ORDER] Failed to record state change:`, historyErr);
+        }
+      }
+      
       try {
         await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
         fbLog(db, { level: "info", scope: "orders", msg: "order snapshot upserted", event, idemKey, merchant: merchantId, orderId, meta: { storeUidFromEvent } });
@@ -739,8 +839,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // D) Auto-create review invites for ALL orders + void on cancel/refund  
     console.log(`[SALLA STEP] D) Checking invite events for: ${event}`);
-    if (event.startsWith("order.") && !["order.cancelled", "order.refunded"].includes(event)) {
-      // Create invite for ANY order event (created, updated, payment, etc.)
+    if ((event.startsWith("order.") && !["order.cancelled", "order.refunded"].includes(event)) || event === "updated_order") {
+      // Create invite for ANY order event (created, updated, payment, etc.) + custom updated_order
       console.log(`[INVITE DEBUG] Auto-creating invite for order event: ${event}`);
       
       // Enhanced invitation creation with fallback mechanisms
@@ -772,7 +872,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             customer: {
               name: asOrder.customer?.name || "عميل",
               email: asOrder.customer?.email || null,
-              mobile: asOrder.customer?.mobile || null,
+              mobile: safeMobile(asOrder.customer?.mobile),
             },
             productIds: extractProductIds(asOrder.items || []),
             createdAt: Date.now(),
