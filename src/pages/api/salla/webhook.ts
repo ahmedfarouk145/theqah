@@ -629,21 +629,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`[SALLA STEP] D) Checking invite events for: ${event}`);
     if (event === "order.payment.updated") {
       const ps = lc(asOrder.payment_status ?? "");
+      console.log(`[INVITE DEBUG] Payment event - status: ${ps}, triggers: ${["paid","authorized","captured"].includes(ps)}`);
       if (["paid","authorized","captured"].includes(ps)) {
         await ensureInviteForOrder(db, asOrder, dataRaw, body.merchant);
         await fbLog(db, { level: "info", scope: "invite", msg: "invite ensured via payment", event, idemKey, merchant: merchantId, orderId, meta: { ps } });
       }
     } else if (event === "shipment.updated") {
       const st = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
+      console.log(`[INVITE DEBUG] Shipment event - status: ${st}, DONE has: ${DONE.has(st)}, delivered/completed: ${["delivered","completed"].includes(st)}`);
       if (DONE.has(st) || ["delivered","completed"].includes(st)) {
         await ensureInviteForOrder(db, asOrder, dataRaw, body.merchant);
         await fbLog(db, { level: "info", scope: "invite", msg: "invite ensured via shipment", event, idemKey, merchant: merchantId, orderId, meta: { st } });
       }
     } else if (event === "order.status.updated") {
       const st = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
+      console.log(`[INVITE DEBUG] Order status event - status: ${st}, DONE has: ${DONE.has(st)}`);
       if (DONE.has(st)) {
         await ensureInviteForOrder(db, asOrder, dataRaw, body.merchant);
         await fbLog(db, { level: "info", scope: "invite", msg: "invite ensured via order status", event, idemKey, merchant: merchantId, orderId, meta: { st } });
+      }
+    } else if (event === "order.created") {
+      // Debug: Check if order.created should trigger invites
+      const st = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
+      const ps = lc(asOrder.payment_status ?? "");
+      console.log(`[INVITE DEBUG] Order created - status: ${st}, payment: ${ps}, should trigger: ${st === 'paid' || ps === 'paid' || DONE.has(st)}`);
+      // Optionally trigger on creation if already paid/delivered
+      if (st === 'paid' || ps === 'paid' || DONE.has(st)) {
+        console.log(`[INVITE DEBUG] Triggering invite for order.created with status ${st}/${ps}`);
+        await ensureInviteForOrder(db, asOrder, dataRaw, body.merchant);
+        await fbLog(db, { level: "info", scope: "invite", msg: "invite ensured via order created (pre-paid)", event, idemKey, merchant: merchantId, orderId, meta: { st, ps } });
       }
     } else if (event === "order.cancelled" || event === "order.refunded") {
       const oid = orderId;
