@@ -1,8 +1,9 @@
 // src/pages/review/[token].tsx
 import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { CheckCircle, AlertCircle, Star, Loader2 } from "lucide-react";
 import FirebaseStorageWidget from "@/components/FirebaseStorageWidget";
@@ -177,15 +178,25 @@ export default function ReviewByTokenPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg" 
+          className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg"
           dir="rtl"
         >
+          {/* ✅ اللوجو */}
+          <div className="flex justify-center mb-4">
+            <Image src="/logo.png" alt="Logo" width={140} height={40} className="h-10 w-auto" priority />
+          </div>
+
           <div className="flex items-center gap-3 mb-4">
             <AlertCircle className="h-6 w-6 text-red-500" />
             <h1 className="text-xl font-bold text-red-700">الرابط غير صالح</h1>
           </div>
-          <p className="text-gray-600 mb-6">يرجى التأكد من فتح الرابط الكامل المرسل إليك عبر SMS أو البريد الإلكتروني.</p>
-          <Link href="/" className="inline-block px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition">
+          <p className="text-gray-600 mb-6">
+            يرجى التأكد من فتح الرابط الكامل المرسل إليك عبر SMS أو البريد الإلكتروني.
+          </p>
+          <Link
+            href="/"
+            className="inline-block px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition"
+          >
             العودة للصفحة الرئيسية
           </Link>
         </motion.div>
@@ -219,9 +230,14 @@ export default function ReviewByTokenPage() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg text-center" 
+            className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg text-center"
             dir="rtl"
           >
+            {/* ✅ اللوجو */}
+            <div className="flex justify-center mb-4">
+              <Image src="/logo.png" alt="Logo" width={160} height={48} className="h-12 w-auto" priority />
+            </div>
+
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
@@ -236,8 +252,8 @@ export default function ReviewByTokenPage() {
               <br />
               تقييمك يساهم في تحسين تجربة العملاء الآخرين.
             </p>
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="inline-block px-6 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-medium"
             >
               العودة للصفحة الرئيسية
@@ -254,23 +270,35 @@ export default function ReviewByTokenPage() {
         <title>قيّم تجربتك | ثقة</title>
         <meta name="robots" content="noindex" />
       </Head>
+
       <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-lime-50 p-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-2xl w-full bg-white border rounded-2xl p-8 shadow-lg" 
+          className="max-w-2xl w-full bg-white border rounded-2xl p-8 shadow-lg"
           dir="rtl"
         >
+          {/* ✅ اللوجو في الهيدر */}
           <div className="text-center mb-6">
+            <div className="flex justify-center mb-3">
+              <Image src="/logo.png" alt="Logo" width={180} height={56} className="h-12 w-auto" priority />
+            </div>
             <h1 className="text-3xl font-bold text-emerald-800 mb-2">قيّم تجربتك</h1>
             <p className="text-gray-600">
-              {tokenInfo?.storeName
-                ? <>نحن نقدر رأيك في تجربتك مع <span className="font-semibold text-emerald-700">{tokenInfo.storeName}</span>{tokenInfo.customerName ? <> — {tokenInfo.customerName}</> : null}</>
-                : "الرجاء مشاركة رأيك لتحسين الخدمة"}
+              {tokenInfo?.storeName ? (
+                <>
+                  نحن نقدر رأيك في تجربتك مع{" "}
+                  <span className="font-semibold text-emerald-700">{tokenInfo.storeName}</span>
+                  {tokenInfo.customerName ? <> — {tokenInfo.customerName}</> : null}
+                </>
+              ) : (
+                "الرجاء مشاركة رأيك لتحسين الخدمة"
+              )}
             </p>
           </div>
 
+          {/* النجوم */}
           <div className="mb-6">
             <label className="block text-lg font-medium text-gray-700 mb-3">كيف تقيم تجربتك؟</label>
             <div className="flex justify-center gap-2" role="radiogroup" aria-label="تقييم النجوم">
@@ -281,10 +309,12 @@ export default function ReviewByTokenPage() {
                   onClick={() => setStars(n)}
                   whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.9 }}
-                  className={`text-4xl transition-colors ${n <= stars ? "text-yellow-400" : "text-gray-300 hover:text-yellow-200"}`}
+                  className={`text-4xl transition-colors ${
+                    n <= stars ? "text-yellow-400" : "text-gray-300 hover:text-yellow-200"
+                  }`}
                   aria-checked={n === stars}
                   role="radio"
-                  aria-label={`تقييم ${n} ${n === 1 ? 'نجمة' : 'نجوم'}`}
+                  aria-label={`تقييم ${n} ${n === 1 ? "نجمة" : "نجوم"}`}
                 >
                   <Star className="h-10 w-10" fill={n <= stars ? "currentColor" : "none"} />
                 </motion.button>
@@ -300,6 +330,7 @@ export default function ReviewByTokenPage() {
             </p>
           </div>
 
+          {/* النص */}
           <div className="mb-6">
             <label className="block text-lg font-medium text-gray-700 mb-3">شاركنا تفاصيل تجربتك (اختياري)</label>
             <textarea
@@ -315,12 +346,14 @@ export default function ReviewByTokenPage() {
             </div>
           </div>
 
+          {/* الصور */}
           <div className="mb-8">
             <label className="block text-lg font-medium text-gray-700 mb-3">صور التجربة (اختياري)</label>
             <p className="text-sm text-gray-500 mb-3">أضف صور المنتج أو التجربة لتجعل تقييمك أكثر فائدة</p>
             <FirebaseStorageWidget value={attachments} onChange={setAttachments} />
           </div>
 
+          {/* تنبيهات صلاحية التوكن */}
           {tokenInfo?.expired && (
             <div className="flex items-center gap-3 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
               <AlertCircle className="h-5 w-5 flex-shrink-0" />
@@ -334,6 +367,7 @@ export default function ReviewByTokenPage() {
             </div>
           )}
 
+          {/* أخطاء الإرسال */}
           {error && (
             <div className="flex items-center gap-3 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
               <AlertCircle className="h-5 w-5 flex-shrink-0" />
@@ -341,6 +375,7 @@ export default function ReviewByTokenPage() {
             </div>
           )}
 
+          {/* زر الإرسال */}
           <motion.button
             type="button"
             onClick={submit}
@@ -362,6 +397,7 @@ export default function ReviewByTokenPage() {
             )}
           </motion.button>
 
+          {/* فوتر صغير */}
           <div className="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-400 space-y-1">
             <div>رمز التوكن: {token ?? "—"}</div>
             <div>رقم الطلب: {orderId || "—"}</div>
