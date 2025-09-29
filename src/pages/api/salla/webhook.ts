@@ -420,10 +420,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await fbLog(db, { level: "info", scope: "handler", msg: "processing start", event, idemKey, merchant: merchantId, orderId });
     
     // Early debug logging
-    console.log(`[SALLA PROCESSING] Starting - Event: ${event}, OrderId: ${orderId}, MerchantId: ${merchantId}`);
-    console.log(`[SALLA PROCESSING] Data keys: ${Object.keys(dataRaw).join(', ')}`);
-    console.log(`[SALLA PROCESSING] Customer exists: ${!!dataRaw.customer}`);
-    console.log(`[SALLA PROCESSING] Items exist: ${!!dataRaw.items}`);
+    console.log(`[SALLA PROCESSING] Starting - Event: ${event}, OrderId: ${orderId}` + (merchantId ? `, MerchantId: ${merchantId}` : ''));
+    console.log(`[SALLA PROCESSING] Data keys: ${Object.keys(dataRaw as Record<string, unknown>).join(', ')}`);
+    console.log(`[SALLA PROCESSING] Customer exists: ${!!(dataRaw as Record<string, unknown>).customer}`);
+    console.log(`[SALLA PROCESSING] Items exist: ${!!(dataRaw as Record<string, unknown>).items}`);
 
     // A) authorize/installed/updated → flags/domain + oauth + store/info + userinfo + password email
     if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
@@ -660,8 +660,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       meta: { 
         error: err, 
         stack: stack?.substring(0, 500),
-        hasCustomerData: !!(dataRaw.customer || (dataRaw as Record<string, unknown>).order?.customer),
-        hasProductData: !!(dataRaw.items || (dataRaw as Record<string, unknown>).order?.items),
+        hasCustomerData: !!((dataRaw as Record<string, unknown>).customer || (dataRaw as Record<string, unknown>).order?.customer),
+        hasProductData: !!((dataRaw as Record<string, unknown>).items || (dataRaw as Record<string, unknown>).order?.items),
         dataKeys: Object.keys(dataRaw)
       } 
     });
@@ -670,9 +670,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: err, stack: stack?.substring(0, 1000), 
       raw: raw.toString("utf8").slice(0, 2000),
       debugData: {
-        hasCustomerData: !!(dataRaw.customer || (dataRaw as Record<string, unknown>).order?.customer),
-        hasProductData: !!(dataRaw.items || (dataRaw as Record<string, unknown>).order?.items),
-        dataKeys: Object.keys(dataRaw)
+        hasCustomerData: !!((dataRaw as Record<string, unknown>).customer || (dataRaw as Record<string, unknown>).order?.customer),
+        hasProductData: !!((dataRaw as Record<string, unknown>).items || (dataRaw as Record<string, unknown>).order?.items),
+        dataKeys: Object.keys(dataRaw as Record<string, unknown>)
       }
     }).catch(()=>{});
     await idemRef.set({ statusFlag: "failed", lastError: err, processingFinishedAt: Date.now(), errorStack: stack?.substring(0, 500) }, { merge: true });
