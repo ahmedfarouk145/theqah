@@ -96,6 +96,55 @@ function toDomainBase(domain: string | null | undefined): string | null {
     return firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
   } catch { return null; }
 }
+
+function normalizeUrl(url: string): URL | null {
+  try {
+    return new URL(url.startsWith('http') ? url : `https://${url}`);
+  } catch {
+    return null;
+  }
+}
+
+function saveMultipleDomainFormats(
+  db: FirebaseFirestore.Firestore,
+  uid: string,
+  originalDomain: string | null | undefined
+) {
+  if (!originalDomain) return Promise.resolve();
+  
+  const u = normalizeUrl(originalDomain);
+  if (!u) return Promise.resolve();
+  
+  const hostname = u.host.toLowerCase();
+  const origin = u.origin.toLowerCase();
+  const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
+  
+  const domainsToSave = [
+    origin, // https://demostore.salla.sa
+    hostname, // demostore.salla.sa
+  ];
+  
+  if (firstSeg.startsWith("dev-")) {
+    domainsToSave.push(`${origin}/${firstSeg}`, `${hostname}/${firstSeg}`);
+  }
+  
+  console.log(`[webhook] Saving multiple domain formats for ${uid}:`, domainsToSave);
+  
+  const promises = domainsToSave.map(domain => 
+    db.collection("domains").doc(encodeUrlForFirestore(domain)).set({
+      base: domain,
+      key: encodeUrlForFirestore(domain),
+      uid,
+      storeUid: uid,
+      provider: "salla",
+      updatedAt: Date.now(),
+    }, { merge: true }).catch(err => 
+      console.warn(`[webhook] Failed to save domain ${domain}:`, err)
+    )
+  );
+  
+  return Promise.all(promises);
+}
 function encodeUrlForFirestore(url: string | null | undefined): string {
   if (!url) return "";
   return url
@@ -299,6 +348,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // (2) Fast ACK
   res.status(202).json({ ok: true, accepted: true });
+  
+  // TEMPORARY DEBUG - Remove after fixing
+  console.log('🔍 [SALLA DEBUG]', {
+    event: body.event,
+    merchant: body.merchant,
+    hasData: !!body.data,
+    dataKeys: body.data ? Object.keys(body.data) : Object.keys(body),
+    timestamp: new Date().toISOString()
+  });
 
   // (3) Parse body
   let body: SallaWebhookBody = { event: "" };
@@ -385,6 +443,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (storeUid) {
         await saveDomainAndFlags(db, storeUid, merchantId, base, event);
+        // Also save multiple domain formats for better resolution
+        await saveMultipleDomainFormats(db, storeUid, domainInPayload);
       }
 
       // خزّن OAuth لو متاح
@@ -428,7 +488,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (resolvedBase) {
               base = resolvedBase;
               await saveDomainAndFlags(db, storeUid, merchantId, base, event);
-              await fbLog(db, { level: "info", scope: "domain", msg: "domain saved from store/info", event, idemKey, merchant: merchantId, orderId, meta: { base } });
+              // Also save multiple domain formats
+              await saveMultipleDomainFormats(db, storeUid, d);
+              await fbLog(db, { level: "info", scope: "domain", msg: " multiple domain formats saved from store/info", event, idemKey, merchant: merchantId, orderId, meta: { base } });
             } else {
               await fbLog(db, { level: "warn", scope: "domain", msg: "store/info returned no usable domain", event, idemKey, merchant: merchantId, orderId, meta: { rawDomain: d } });
             }
