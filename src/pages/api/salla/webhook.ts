@@ -425,6 +425,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`[SALLA PROCESSING] Customer exists: ${!!(dataRaw as Record<string, unknown>).customer}`);
     console.log(`[SALLA PROCESSING] Items exist: ${!!(dataRaw as Record<string, unknown>).items}`);
 
+    // Auto-save domain for ANY incoming event if payload includes store.domain or merchant.domain
+    try {
+      const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant);
+      const payloadDomainGeneric =
+        (typeof (dataRaw["store"] as Dict | undefined)?.["domain"] === "string" ? ((dataRaw["store"] as Dict)["domain"] as string) : undefined) ??
+        (typeof (dataRaw["merchant"] as Dict | undefined)?.["domain"] === "string" ? ((dataRaw["merchant"] as Dict)["domain"] as string) : undefined) ??
+        (typeof dataRaw["domain"] === "string" ? (dataRaw["domain"] as string) : undefined) ??
+        (typeof dataRaw["store_url"] === "string" ? (dataRaw["store_url"] as string) : undefined) ??
+        (typeof dataRaw["url"] === "string" ? (dataRaw["url"] as string) : undefined);
+
+      const baseGeneric = toDomainBase(payloadDomainGeneric);
+      if (storeUidFromEvent && baseGeneric) {
+        const keyGeneric = encodeUrlForFirestore(baseGeneric);
+        const existsGeneric = await db.collection("domains").doc(keyGeneric).get().then(d => d.exists).catch(() => false);
+        if (!existsGeneric) {
+          await saveDomainAndFlags(db, storeUidFromEvent, merchantId, baseGeneric, event);
+          await saveMultipleDomainFormats(db, storeUidFromEvent, payloadDomainGeneric);
+          await fbLog(db, { level: "info", scope: "domain", msg: "auto-saved domain from event payload", event, idemKey, merchant: merchantId, orderId, meta: { base: baseGeneric, storeUid: storeUidFromEvent } });
+        }
+      }
+    } catch (e) {
+      await fbLog(db, { level: "warn", scope: "domain", msg: "auto-save domain failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
+    }
+
     // A) authorize/installed/updated → flags/domain + oauth + store/info + userinfo + password email
     if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
