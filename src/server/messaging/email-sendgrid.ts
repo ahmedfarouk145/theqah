@@ -50,12 +50,12 @@ async function logEmailAttempt(
     const statsRef = db.collection("email_stats").doc("summary");
     await db.runTransaction(async (transaction) => {
       const statsDoc = await transaction.get(statsRef);
-      const currentStats = statsDoc.exists ? statsDoc.data() : {};
+      const currentStats = (statsDoc.exists ? statsDoc.data() : {}) || {};
       
       transaction.set(statsRef, {
-        totalAttempts: (currentStats.totalAttempts || 0) + 1,
-        successful: success ? (currentStats.successful || 0) + 1 : (currentStats.successful || 0),
-        failed: success ? (currentStats.failed || 0) : (currentStats.failed || 0) + 1,
+        totalAttempts: (currentStats?.totalAttempts || 0) + 1,
+        successful: success ? (currentStats?.successful || 0) + 1 : (currentStats?.successful || 0),
+        failed: success ? (currentStats?.failed || 0) : (currentStats?.failed || 0) + 1,
         lastAttempt: Date.now(),
         updatedAt: Date.now()
       }, { merge: true });
@@ -73,7 +73,6 @@ export async function sendEmailSendGrid(
   textFallback?: string
 ): Promise<EmailSendResult> {
   let messageId: string | null = null;
-  let success = false;
   let errorMessage = "";
 
   try {
@@ -106,7 +105,6 @@ export async function sendEmailSendGrid(
 
     const response = await sgMail.send(msg);
     messageId = response[0]?.headers?.['x-message-id'] || null;
-    success = true;
     
     console.log(`[SENDGRID] ✅ Email sent successfully - Message ID: ${messageId || 'unknown'}`);
     

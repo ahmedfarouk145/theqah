@@ -96,7 +96,7 @@ export async function sendSMSViaOursms(params: SendSMSParams) {
   const {
     to,
     text,
-    customId = null, // Used in response (line 144)
+    customId = null, // Used in API response
     priority = 1,
     delayMinutes = 0,
     validityMinutes = 0,
@@ -141,7 +141,7 @@ export async function sendSMSViaOursms(params: SendSMSParams) {
     ok: true as const,
     result: {
       jobId: String(json.jobId || ""),
-      customId: (json.customId ?? null) as string | null,
+      customId: customId ?? (json.customId ?? null) as string | null,
       total: Number(json.total ?? 0),
       rejected: Number(json.rejected ?? 0),
       accepted: Number(json.accepted ?? 0),
