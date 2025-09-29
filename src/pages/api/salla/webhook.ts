@@ -733,8 +733,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log(`[UPDATED_ORDER] Processing order state change for ${orderId}`);
         
         // Extract previous and current states if available
-        const previousState = (dataRaw as any)?.previous_status || (dataRaw as any)?.old_status;
-        const currentState = asOrder.status || asOrder.order_status || (dataRaw as any)?.new_status;
+        const dataRecord = dataRaw as Record<string, unknown>;
+        const previousState = (dataRecord?.previous_status as string) || (dataRecord?.old_status as string);
+        const currentState = asOrder.status || asOrder.order_status || (dataRecord?.new_status as string);
         
         console.log(`[UPDATED_ORDER] State change: ${previousState || 'unknown'} → ${currentState || 'unknown'}`);
         

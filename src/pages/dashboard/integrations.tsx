@@ -7,6 +7,14 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 export default function DashboardIntegrationsRedirect() {
   const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState(true);
+  
+  useEffect(() => {
+    console.log(`[INTEGRATIONS] Redirect status: ${isRedirecting}`);
+    if (isRedirecting) {
+      router.replace("/dashboard");
+      setIsRedirecting(false);
+    }
+  }, [router, isRedirecting]);
 
   const handleRedirect = () => {
     setIsRedirecting(false);

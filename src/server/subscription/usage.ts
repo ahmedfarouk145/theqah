@@ -8,6 +8,7 @@ function monthKey(ts: number = Date.now()): string {
 }
 
 export async function onInviteSent(storeUid: string) {
+  console.log(`[USAGE] Recording invite sent for store: ${storeUid}`);
   const db = dbAdmin();
   const key = monthKey();
 

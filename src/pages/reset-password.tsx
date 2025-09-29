@@ -36,6 +36,7 @@ export default function ResetPasswordPage() {
         setEmail(mail);
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (err: any) {
+        console.error('[RESET_PASSWORD] Verification error:', err);
         setErrMsg('الرابط منتهي أو غير صالح. برجاء طلب رابط جديد.');
       } finally {
         setLoading(false);
