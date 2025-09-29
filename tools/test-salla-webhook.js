@@ -1,5 +1,5 @@
 // Test tool for Salla webhook debugging
-
+//eslint-disable-next-line
 const crypto = require('crypto');
 
 // Sample Salla webhook payloads for testing

@@ -14,8 +14,7 @@
  * 
  * Available events: install, order, payment, status, cancel, refund, uninstall
  */
-
-const crypto = require('crypto');
+import { createHmac } from 'crypto';
 
 // Configuration from environment
 const TARGET = process.env.TARGET || 'http://localhost:3000/api/salla/webhook-v2';
@@ -120,7 +119,7 @@ const EVENT_TEMPLATES = {
 };
 
 function signPayload(payload, secret) {
-  return crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return createHmac('sha256', secret).update(payload).digest('hex');
 }
 
 async function sendWebhook(eventType) {

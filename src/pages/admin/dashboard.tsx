@@ -1,4 +1,4 @@
-// src/app/admin/AdminDashboard.tsx أو src/pages/admin/index.tsx حسب مشروعك
+// src/pages/admin/dashboard.tsx
 'use client';
 
 import { useState } from 'react';
@@ -6,14 +6,16 @@ import AdminReviews from '@/components/admin/AdminReviews';
 import AdminReports from '@/components/admin/AdminReports';
 import AdminStores from '@/components/admin/AdminStores';
 import AdminAnalytics from '@/components/admin/AdminAnalytics';
-import TestNotifyTab from '@/components/admin/tabs/TestNotifyTab'; // ← التاب الجديد
+import TestNotifyTab from '@/components/admin/tabs/TestNotifyTab';
+import AdminSubscriptions from '@/components/admin/AdminSubscriptions'; // ← جديد
 
 const adminTabs = [
   'مراجعة التقييمات',
   'بلاغات التقييمات',
   'المتاجر',
   'الإحصائيات العامة',
-  'اختبار القنوات', // ← جديد
+  'إدارة الاشتراكات', // ← جديد
+  'اختبار القنوات',
 ] as const;
 
 type Tab = typeof adminTabs[number];
@@ -25,7 +27,6 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
       <h1 className="text-3xl font-bold mb-6 text-green-800">لوحة تحكم المشرف</h1>
 
-      {/* التبويبات */}
       <div className="flex space-x-2 mb-6 rtl:space-x-reverse">
         {adminTabs.map((tab) => (
           <button
@@ -42,13 +43,13 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* المحتوى حسب التبويب */}
       <div className="bg-white p-6 rounded-xl shadow">
         {activeTab === 'مراجعة التقييمات' && <AdminReviews />}
         {activeTab === 'بلاغات التقييمات' && <AdminReports />}
         {activeTab === 'المتاجر' && <AdminStores />}
         {activeTab === 'الإحصائيات العامة' && <AdminAnalytics />}
-        {activeTab === 'اختبار القنوات' && <TestNotifyTab />} {/* ← جديد */}
+        {activeTab === 'إدارة الاشتراكات' && <AdminSubscriptions />}{/* ← جديد */}
+        {activeTab === 'اختبار القنوات' && <TestNotifyTab />}
       </div>
     </div>
   );
