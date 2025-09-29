@@ -346,8 +346,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
   if (!verification.ok) return res.status(401).json({ error: "unauthorized" });
 
-  // (2) Fast ACK
-  res.status(202).json({ ok: true, accepted: true });
+  // (2) Proceed synchronously (no early ACK). Vercel Node runtime may stop work after responding.
 
   // (3) Parse body
   let body: SallaWebhookBody = { event: "" };
@@ -663,6 +662,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await fbLog(db, { level: "info", scope: "handler", msg: "processing finished ok", event, idemKey, merchant: merchantId, orderId });
     await idemRef.set({ statusFlag: "done", processingFinishedAt: Date.now() }, { merge: true });
+    try { res.status(200).json({ ok: true }); } catch {}
 
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e);
@@ -700,6 +700,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }).catch(()=>{});
     await idemRef.set({ statusFlag: "failed", lastError: err, processingFinishedAt: Date.now(), errorStack: stack?.substring(0, 500) }, { merge: true });
+    try { res.status(500).json({ ok: false, error: err }); } catch {}
   }
 }
 
