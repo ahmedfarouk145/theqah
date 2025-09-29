@@ -64,6 +64,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { base, host, isTrial } = parseHrefBase(href);
     const hrefUrl = normalizeUrl(href);
+    
+    console.log(`[RESOLVE] Starting resolution for: ${href}`);
+    console.log(`[RESOLVE] Parsed - base: ${base}, host: ${host}, isTrial: ${isTrial}`);
+    
     const db = dbAdmin();
     let doc: FirebaseFirestore.DocumentSnapshot | null = null;
 
@@ -275,27 +279,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Quick check what stores actually exist
       const allSallaStores = await db.collection("stores")
         .where("provider", "==", "salla")
-        .where("salla.connected", "==", true)
-        .limit(5)
+        .limit(10) // Get more stores for debugging
         .get();
       
-      console.error(`[RESOLVE DEBUG] Found ${allSallaStores.size} connected Salla stores in database:`);
+      console.error(`[RESOLVE DEBUG] Found ${allSallaStores.size} Salla stores in database (any status):`);
       allSallaStores.docs.forEach(doc => {
         const data = doc.data();
-        console.error(`[RESOLVE DEBUG] - Store: ${data.uid}, domain: ${data.salla?.domain || data.domain?.base}, storeId: ${data.salla?.storeId}`);
+        console.error(`[RESOLVE DEBUG] - Store: ${data.uid}, domain: ${data.salla?.domain || data.domain?.base}, storeId: ${data.salla?.storeId}, connected: ${data.salla?.connected}, installed: ${data.salla?.installed}`);
       });
-      
-      console.warn("[resolve] Store not found:", { baseTried: base, host, href, identifier, ts: new Date().toISOString() });
-      return res.status(404).json({
-        error: "STORE_NOT_FOUND",
-        message: "لم يتم العثور على متجر لهذا الدومين/المعرف.",
-        baseTried: base, hostTried: host, identifier,
-        debug: { parsedBase: base, parsedHost: host, originalHref: href, identifier },
-        availableStores: allSallaStores.docs.map(d => {
-          const data = d.data();
-          return { uid: data.uid, domain: data.salla?.domain || data.domain?.base, storeId: data.salla?.storeId };
-        })
-      });
+
+      // DEVELOPMENT FALLBACK: Use any available store for testing
+      const isDevelopment = process.env.NODE_ENV === "development" || req.headers.host?.includes("localhost");
+      if (isDevelopment && allSallaStores.size > 0) {
+        console.warn(`[RESOLVE DEBUG] DEVELOPMENT MODE: Using first available store as fallback`);
+        doc = allSallaStores.docs[0];
+        const fallbackData = doc.data();
+        console.warn(`[RESOLVE DEBUG] Using fallback store: ${fallbackData.uid}`);
+      } else {
+        console.warn("[resolve] Store not found:", { baseTried: base, host, href, identifier, ts: new Date().toISOString() });
+        return res.status(404).json({
+          error: "STORE_NOT_FOUND",
+          message: "لم يتم العثور على متجر لهذا الدومين/المعرف.",
+          baseTried: base, hostTried: host, identifier,
+          debug: { parsedBase: base, parsedHost: host, originalHref: href, identifier },
+          availableStores: allSallaStores.docs.map(d => {
+            const data = d.data();
+            return { uid: data.uid, domain: data.salla?.domain || data.domain?.base, storeId: data.salla?.storeId, connected: data.salla?.connected };
+          })
+        });
+      }
     }
 
     const data = doc.data() as {
