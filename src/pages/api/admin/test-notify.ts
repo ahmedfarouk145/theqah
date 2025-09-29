@@ -1,32 +1,30 @@
 // src/pages/api/admin/test-notify.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import {
-  tryChannels,
-  type Channel,
-  type TryChannelsResult,
+  sendBothNow,
+  type SendBothOptions,
   type Attempt,
+  buildInviteSmsDefault,
 } from "@/server/messaging/send-invite";
 import { verifyAdmin } from "@/utils/verifyAdmin";
-
-type Strategy = "all" | "first_success";
 
 type Body = {
   to?: string;
   email?: string;
-  locale?: "ar" | "en";
   url?: string;
   storeName?: string;
   customerName?: string;
-  /** ترتيب القنوات المطلوب (اختياري) */
-  order?: Channel[];
   inviteId?: string;
-  strategy?: Strategy;
+  strategy?: "all" | "first_success";
 };
 
 type ApiResult = {
   ok: boolean;
-  firstSuccessChannel: Channel | null;
-  attempts: Attempt[];
+  attempts: Array<{
+    status: "fulfilled" | "rejected";
+    error: string | null;
+  }>;
+  note?: string;
 };
 
 export default async function handler(
@@ -46,8 +44,6 @@ export default async function handler(
       storeName,
       customerName,
       inviteId,
-      strategy,
-      order,
     } = (req.body || {}) as Body;
 
     if (!to || !url || !storeName) {
@@ -56,16 +52,14 @@ export default async function handler(
         .json({ error: "to, url, storeName are required" });
     }
 
-    const result: TryChannelsResult = await tryChannels({
+    const result = await sendBothNow({
       phone: String(to),
       email: email ? String(email) : undefined,
       url: String(url),
       storeName: String(storeName),
       customerName: customerName ? String(customerName) : "عميل",
-      country: "sa",
       inviteId: inviteId ? String(inviteId) : undefined,
-      strategy: strategy === "first_success" ? "first_success" : "all",
-      order, // ✅ بقت جزء من النوع
+      perChannelTimeoutMs: 10_000,
     });
 
     return res.status(200).json(result);

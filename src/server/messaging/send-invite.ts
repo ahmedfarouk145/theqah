@@ -1,6 +1,6 @@
 // src/server/messaging/send-invite.ts
 import { sendSms, type SendSmsResult } from "./send-sms";
-import { sendEmailDmail } from "./email-dmail";
+import { sendEmailDmail, type EmailSendResult } from "./email-dmail";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 // بناء نص SMS افتراضي
@@ -14,8 +14,12 @@ type MessageResult = {
   error: string | null;
 };
 
-function asMessageResult(r: SendSmsResult): MessageResult {
-  return { ok: r.ok, id: r.messageId || null, error: r.error || null };
+function asMessageResult(r: SendSmsResult | EmailSendResult): MessageResult {
+  if (r.ok) {
+    return { ok: true, id: ('id' in r ? r.id : null) || null, error: null };
+  } else {
+    return { ok: false, id: null, error: ('error' in r ? r.error : 'unknown error') || null };
+  }
 }
 
 type Channel = "sms" | "email";
