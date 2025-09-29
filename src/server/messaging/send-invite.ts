@@ -1,43 +1,44 @@
-// src/server/messaging/try-channels-fast.ts
-import { getDb } from "@/server/firebase-admin";
-import { sendSms } from "./send-sms";
+// src/server/messaging/send-invite.ts
+import { sendSms, type SendSmsResult } from "./send-sms";
 import { sendEmailDmail } from "./email-dmail";
-import { warn } from "@/lib/logger";
-import { buildInviteSMS as buildInviteSmsDefault } from "./send-sms";
+import { dbAdmin } from "@/lib/firebaseAdmin";
 
-export type Channel = "sms" | "email";
-type MessageResult = { ok: boolean; id?: string | null; error?: string | null };
-
-function asMessageResult(r: unknown): MessageResult {
-  if (r && typeof r === "object") {
-    const o = r as Record<string, unknown>;
-    const ok = Boolean(o.ok);
-    const id = typeof o.id === "string" ? o.id : o.id == null ? null : String(o.id);
-    const error = typeof o.error === "string" ? o.error : null;
-    return { ok, id: id ?? null, error };
-  }
-  return { ok: false, id: null, error: "INVALID_RESULT" };
+// بناء نص SMS افتراضي
+export function buildInviteSmsDefault(storeName: string, url: string): string {
+  return `مرحباً، طلبك من ${storeName} تم. شاركنا رأيك: ${url} — فريق ثقة`;
 }
 
-async function recordInviteChannel(
-  inviteId: string | undefined,
-  channel: Channel,
-  res: MessageResult
-) {
+type MessageResult = {
+  ok: boolean;
+  id: string | null;
+  error: string | null;
+};
+
+function asMessageResult(r: SendSmsResult): MessageResult {
+  return { ok: r.ok, id: r.messageId || null, error: r.error || null };
+}
+
+type Channel = "sms" | "email";
+
+async function recordInviteChannel(inviteId: string | undefined, channel: Channel, result: MessageResult) {
   if (!inviteId) return;
-  const db = getDb();
-  await db.collection("review_invites").doc(inviteId).set({
-    lastSentAt: Date.now(),
-    sentChannels: {
-      [channel]: {
-        ok: !!res.ok,
-        id: res.id ?? null,
-        error: res.error ?? null,
-        at: Date.now(),
-      },
-    },
-  }, { merge: true });
+  try {
+    const db = dbAdmin();
+    await db.collection("invite_channels").add({
+      inviteId,
+      channel,
+      ok: result.ok,
+      messageId: result.id,
+      error: result.error,
+      sentAt: Date.now(),
+    });
+  } catch (e) {
+    console.warn(`Failed to record ${channel} channel:`, e);
+  }
 }
+
+// تسجيل تحذيرات اختياري
+const warn = console.warn;
 
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -62,7 +63,7 @@ export interface SendBothOptions {
   emailSubjectOverride?: string;
   emailHtmlOverride?: string;
 
-  // مهلة لكل قناة (افتراضي 15 ثانية)
+  // مهلة لكل قناة
   perChannelTimeoutMs?: number;
 }
 
@@ -159,103 +160,6 @@ export async function sendBothNow(opts: SendBothOptions) {
 export type Attempt = {
   channel: Channel;
   ok: boolean;
-  id?: string | null;
-  error?: string | null;
-  at?: number;
+  messageId: string | null;
+  error: string | null;
 };
-
-export type TryChannelsResult = {
-  ok: boolean;
-  firstSuccessChannel: Channel | null;
-  attempts: Attempt[];
-};
-
-/**
- * يرسل القنوات حسب الترتيب والاستراتيجية المطلوبة (كل القنوات أو أول نجاح).
- */
-export async function tryChannels(options: {
-  inviteId?: string;
-  phone?: string;
-  email?: string;
-  url: string;
-  storeName?: string;
-  customerName?: string;
-  country?: string;
-  strategy?: "all" | "first_success";
-  order?: Channel[];
-}): Promise<TryChannelsResult> {
-  const {
-    inviteId,
-    phone,
-    email,
-    url,
-    storeName,
-    customerName,
-    country = "SA",
-    strategy = "all",
-    order,
-  } = options;
-
-  const channels: Channel[] = order && order.length ? order : ["sms", "email"];
-  const attempts: Attempt[] = [];
-  let firstSuccessChannel: Channel | null = null;
-
-  for (const channel of channels) {
-    let res: MessageResult = { ok: false, id: null, error: null };
-    if (channel === "sms" && phone) {
-      try {
-        res = asMessageResult(
-          await sendSms(phone, buildInviteSmsDefault(storeName ?? "", url), {
-            defaultCountry: country === "EG" ? "EG" : "SA",
-            msgClass: "transactional",
-            priority: 1,
-            requestDlr: true,
-          })
-        );
-      } catch (e) {
-        res = { ok: false, id: null, error: String(e) };
-      }
-      await recordInviteChannel(inviteId, "sms", res);
-    }
-    if (channel === "email" && email) {
-      try {
-        res = asMessageResult(
-          await sendEmailDmail(
-            email,
-            "وش رأيك؟ نبي نسمع منك",
-            `
-            <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.8">
-              <p>مرحباً ${customerName ?? "العميل"}،</p>
-              <p>طلبك من <strong>${storeName ?? "المتجر"}</strong> تم. شاركنا رأيك لو تكرّمت.</p>
-              <p>
-                <a href="${url}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block">
-                  اضغط للتقييم الآن
-                </a>
-              </p>
-              <p style="color:#64748b">شكراً لك — فريق ثقة</p>
-            </div>
-            `.trim()
-          )
-        );
-      } catch (e) {
-        res = { ok: false, id: null, error: String(e) };
-      }
-      await recordInviteChannel(inviteId, "email", res);
-    }
-    attempts.push({
-      channel,
-      ok: res.ok,
-      id: res.id ?? null,
-      error: res.error ?? null,
-      at: Date.now(),
-    });
-    if (res.ok && !firstSuccessChannel) firstSuccessChannel = channel;
-    if (strategy === "first_success" && res.ok) break;
-  }
-
-  return {
-    ok: attempts.some((a) => a.ok),
-    firstSuccessChannel,
-    attempts,
-  };
-}
