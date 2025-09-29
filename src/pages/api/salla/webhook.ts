@@ -34,6 +34,7 @@ interface SallaWebhookBody {
 const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
 const WEBHOOK_TOKEN  = (process.env.SALLA_WEBHOOK_TOKEN  || "").trim();
 const APP_BASE_URL   = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/,"");
+const WEBHOOK_LOG_DEST = (process.env.WEBHOOK_LOG_DEST || "console").trim().toLowerCase(); // console | firestore
 
 /* ===================== Utils ===================== */
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
@@ -731,22 +732,19 @@ async function fbLog(
     meta: entry.meta ?? null,
   };
 
-  try { 
-    await Promise.race([
-      db.collection("webhook_firebase").add(payload),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Log timeout')), 5000))
-    ]);
-  } catch { 
-    // Silently skip Firebase logging on timeout - not critical for functionality
-    console.warn("[WEBHOOK_LOG][TIMEOUT]", entry.level, entry.scope); 
+  if (WEBHOOK_LOG_DEST === "firestore") {
+    try { 
+      await Promise.race([
+        db.collection("webhook_firebase").add(payload),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Log timeout')), 2500))
+      ]);
+    } catch { 
+      // Silently skip Firebase logging on timeout - not critical for functionality
+      console.warn("[WEBHOOK_LOG][TIMEOUT]", entry.level, entry.scope); 
+    }
   }
 
-  const line = `[${entry.level.toUpperCase()}][${entry.scope}] ${entry.msg} :: ${JSON.stringify({
-    event: payload.event, merchant: payload.merchant, orderId: payload.orderId, idemKey: payload.idemKey
-  })}`;
-  if (entry.level === "error" || entry.level === "warn") {
-    console.error(line);
-  } else {
-    console.log(line);
-  }
+  const lineObj = { event: payload.event, merchant: payload.merchant, orderId: payload.orderId, idemKey: payload.idemKey };
+  const line = `[${entry.level.toUpperCase()}][${entry.scope}] ${entry.msg} :: ${JSON.stringify(lineObj)}`;
+  if (entry.level === "error" || entry.level === "warn") console.error(line); else console.log(line);
 }
