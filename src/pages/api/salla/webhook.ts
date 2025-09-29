@@ -660,8 +660,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       meta: { 
         error: err, 
         stack: stack?.substring(0, 500),
-        hasCustomerData: !!(dataRaw.customer || (dataRaw as any).order?.customer),
-        hasProductData: !!(dataRaw.items || (dataRaw as any).order?.items),
+        hasCustomerData: !!(dataRaw.customer || (dataRaw as Record<string, unknown>).order?.customer),
+        hasProductData: !!(dataRaw.items || (dataRaw as Record<string, unknown>).order?.items),
         dataKeys: Object.keys(dataRaw)
       } 
     });
@@ -670,8 +670,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: err, stack: stack?.substring(0, 1000), 
       raw: raw.toString("utf8").slice(0, 2000),
       debugData: {
-        hasCustomerData: !!(dataRaw.customer || (dataRaw as any).order?.customer),
-        hasProductData: !!(dataRaw.items || (dataRaw as any).order?.items),
+        hasCustomerData: !!(dataRaw.customer || (dataRaw as Record<string, unknown>).order?.customer),
+        hasProductData: !!(dataRaw.items || (dataRaw as Record<string, unknown>).order?.items),
         dataKeys: Object.keys(dataRaw)
       }
     }).catch(()=>{});
@@ -711,7 +711,7 @@ async function fbLog(
       db.collection("webhook_firebase").add(payload),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Log timeout')), 5000))
     ]);
-  } catch (e) { 
+  } catch { 
     // Silently skip Firebase logging on timeout - not critical for functionality
     console.warn("[WEBHOOK_LOG][TIMEOUT]", entry.level, entry.scope); 
   }
