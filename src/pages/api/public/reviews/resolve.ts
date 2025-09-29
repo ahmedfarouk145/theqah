@@ -24,7 +24,13 @@ function toDomainBase(domain: string | null | undefined): string | null {
   if (!u) return null;
   const origin = u.origin.toLowerCase();
   const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
-  return firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
+  
+  // For Salla dev stores, we need to try both with and without dev segment
+  if (firstSeg.startsWith("dev-")) {
+    console.log(`[resolve] Detected dev store: ${origin}/${firstSeg}`);
+    return `${origin}/${firstSeg}`;
+  }
+  return origin;
 }
 
 function encodeUrlForFirestore(url: string | null | undefined): string {
@@ -61,19 +67,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let doc: FirebaseFirestore.DocumentSnapshot | null = null;
 
     if (base) {
-      // direct: salla.domain (قديم) ثم domain.base (جديد)
-     const directSnap = await db.collection("stores")
-        .where("salla.domain", "==", base)
-        .where("salla.connected", "==", true)
-        .where("salla.installed", "==", true)
-        .limit(1).get();
-      if (!directSnap.empty) doc = directSnap.docs[0];
-
-      if (!doc) {
-        const snapNew = await db.collection("stores")
-          .where("domain.base", "==", base)
+      console.log(`[resolve] Looking for store with base: ${base}, host: ${host}`);
+      
+      // Try multiple domain formats for Salla stores
+      const domainVariations = [
+        base, // Full URL: https://demostore.salla.sa/dev-6pvf7vguhv841foi
+        `${host}${base.includes('/') ? base.substring(base.indexOf('/', 8)) : ''}`, // Host + path: demostore.salla.sa/dev-6pvf7vguhv841foi
+        host, // Just hostname: demostore.salla.sa
+      ];
+      
+      console.log(`[resolve] Trying variations:`, domainVariations);
+      
+      for (const variation of domainVariations) {
+        // direct: salla.domain (قديم) ثم domain.base (جديد)
+        const directSnap = await db.collection("stores")
+          .where("salla.domain", "==", variation)
+          .where("salla.connected", "==", true)
+          .where("salla.installed", "==", true)
           .limit(1).get();
-        if (!snapNew.empty) doc = snapNew.docs[0];
+        if (!directSnap.empty) {
+          doc = directSnap.docs[0];
+          console.log(`[resolve] Found store via salla.domain: ${variation}`);
+          break;
+        }
+
+        if (!doc) {
+          const snapNew = await db.collection("stores")
+            .where("domain.base", "==", variation)
+            .limit(1).get();
+          if (!snapNew.empty) {
+            doc = snapNew.docs[0];
+            console.log(`[resolve] Found store via domain.base: ${variation}`);
+            break;
+          }
+        }
       }
 
       // via domains
