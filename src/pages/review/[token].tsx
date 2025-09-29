@@ -401,7 +401,7 @@ export default function ReviewByTokenPage() {
           <div className="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-400 space-y-1">
             <div>رمز التوكن: {token ?? "—"}</div>
             <div>رقم الطلب: {orderId || "—"}</div>
-            <p className="text-center mt-3">محمي بواسطة ثقة - منصة التقييمات الموثوقة</p>
+            <p className="text-center mt-3">محمي بواسطة مشتري موثق - منصة التقييمات الموثوقة</p>
           </div>
         </motion.div>
       </main>
