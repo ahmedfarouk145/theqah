@@ -348,20 +348,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // (2) Fast ACK
   res.status(202).json({ ok: true, accepted: true });
-  
-  // TEMPORARY DEBUG - Remove after fixing
-  console.log('🔍 [SALLA DEBUG]', {
-    event: body.event,
-    merchant: body.merchant,
-    hasData: !!body.data,
-    dataKeys: body.data ? Object.keys(body.data) : Object.keys(body),
-    timestamp: new Date().toISOString()
-  });
 
   // (3) Parse body
   let body: SallaWebhookBody = { event: "" };
   try {
     body = JSON.parse(raw.toString("utf8") || "{}");
+    
+    // TEMPORARY DEBUG - Remove after fixing
+    console.log('🔍 [SALLA DEBUG]', {
+      event: body.event,
+      merchant: body.merchant,
+      hasData: !!body.data,
+      dataKeys: body.data ? Object.keys(body.data) : Object.keys(body),
+      timestamp: new Date().toISOString()
+    });
   } catch (e) {
     await fbLog(db, { level: "error", scope: "parse", msg: "invalid json", event: null, idemKey: null, merchant: null, orderId: null,
       meta: { err: e instanceof Error ? e.message : String(e), rawFirst2000: raw.toString("utf8").slice(0, 2000) } });
@@ -517,11 +517,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             await fbLog(db, { level: "info", scope: "userinfo", msg: "userinfo saved", event, idemKey, merchant: merchantId, orderId, meta: { storeUid } });
 
             const u = uinfo as Dict;
-            const domainFromInfo =
+            // Domain extraction from userinfo (not currently used but available for future)
+            /* const domainFromInfo =
               (typeof u.merchant === "object" && typeof (u.merchant as Dict)?.domain === "string" ? (u.merchant as Dict).domain as string : undefined) ??
               (typeof u.store === "object" && typeof (u.store as Dict)?.domain === "string" ? (u.store as Dict).domain as string : undefined) ??
               (typeof u.domain === "string" ? u.domain as string : undefined) ??
-              (typeof u.url === "string" ? u.url as string : undefined);
+              (typeof u.url === "string" ? u.url as string : undefined); */
 
             const infoEmail =
               (typeof u.email === "string" ? u.email as string : undefined) ??
@@ -676,5 +677,9 @@ async function fbLog(
   const line = `[${entry.level.toUpperCase()}][${entry.scope}] ${entry.msg} :: ${JSON.stringify({
     event: payload.event, merchant: payload.merchant, orderId: payload.orderId, idemKey: payload.idemKey
   })}`;
-  (entry.level === "error" || entry.level === "warn") ? console.error(line) : console.log(line);
+  if (entry.level === "error" || entry.level === "warn") {
+    console.error(line);
+  } else {
+    console.log(line);
+  }
 }
