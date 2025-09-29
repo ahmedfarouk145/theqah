@@ -418,6 +418,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // (5) Main processing
   try {
     await fbLog(db, { level: "info", scope: "handler", msg: "processing start", event, idemKey, merchant: merchantId, orderId });
+    
+    // Early debug logging
+    console.log(`[SALLA PROCESSING] Starting - Event: ${event}, OrderId: ${orderId}, MerchantId: ${merchantId}`);
+    console.log(`[SALLA PROCESSING] Data keys: ${Object.keys(dataRaw).join(', ')}`);
+    console.log(`[SALLA PROCESSING] Customer exists: ${!!dataRaw.customer}`);
+    console.log(`[SALLA PROCESSING] Items exist: ${!!dataRaw.items}`);
 
     // A) authorize/installed/updated → flags/domain + oauth + store/info + userinfo + password email
     if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
@@ -636,11 +642,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e);
-    await fbLog(db, { level: "error", scope: "handler", msg: "processing failed", event, idemKey, merchant: merchantId, orderId, meta: { err } });
+    const stack = e instanceof Error ? e.stack : undefined;
+    
+    // Enhanced error logging with stack trace
+    console.error(`[SALLA WEBHOOK ERROR] Event: ${event}, OrderId: ${orderId}, Merchant: ${merchantId}`);
+    console.error(`[SALLA WEBHOOK ERROR] Error: ${err}`);
+    if (stack) console.error(`[SALLA WEBHOOK ERROR] Stack: ${stack}`);
+    
+    await fbLog(db, { 
+      level: "error", 
+      scope: "handler", 
+      msg: "processing failed", 
+      event, 
+      idemKey, 
+      merchant: merchantId, 
+      orderId, 
+      meta: { 
+        error: err, 
+        stack: stack?.substring(0, 500),
+        hasCustomerData: !!(dataRaw.customer || (dataRaw as any).order?.customer),
+        hasProductData: !!(dataRaw.items || (dataRaw as any).order?.items),
+        dataKeys: Object.keys(dataRaw)
+      } 
+    });
     await db.collection("webhook_errors").add({
-      at: Date.now(), scope: "handler", event, error: err, raw: raw.toString("utf8").slice(0, 2000)
+      at: Date.now(), scope: "handler", event, orderId: orderId || "unknown", merchantId, 
+      error: err, stack: stack?.substring(0, 1000), 
+      raw: raw.toString("utf8").slice(0, 2000),
+      debugData: {
+        hasCustomerData: !!(dataRaw.customer || (dataRaw as any).order?.customer),
+        hasProductData: !!(dataRaw.items || (dataRaw as any).order?.items),
+        dataKeys: Object.keys(dataRaw)
+      }
     }).catch(()=>{});
-    await idemRef.set({ statusFlag: "failed", lastError: err, processingFinishedAt: Date.now() }, { merge: true });
+    await idemRef.set({ statusFlag: "failed", lastError: err, processingFinishedAt: Date.now(), errorStack: stack?.substring(0, 500) }, { merge: true });
   }
 }
 
