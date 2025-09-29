@@ -723,10 +723,59 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // C) Order/Shipment snapshot
+    // C) Order/Shipment snapshot + Custom updated_order event
     console.log(`[SALLA STEP] C) Checking order/shipment events for: ${event}`);
-    if (event.startsWith("order.") || event.startsWith("shipment.")) {
+    if (event.startsWith("order.") || event.startsWith("shipment.") || event === "updated_order") {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant) || null;
+      
+      // Special handling for updated_order event
+      if (event === "updated_order") {
+        console.log(`[UPDATED_ORDER] Processing order state change for ${orderId}`);
+        
+        // Extract previous and current states if available
+        const previousState = (dataRaw as any)?.previous_status || (dataRaw as any)?.old_status;
+        const currentState = asOrder.status || asOrder.order_status || (dataRaw as any)?.new_status;
+        
+        console.log(`[UPDATED_ORDER] State change: ${previousState || 'unknown'} → ${currentState || 'unknown'}`);
+        
+        // Log the state change
+        await fbLog(db, { 
+          level: "info", 
+          scope: "orders", 
+          msg: "order state updated", 
+          event, 
+          idemKey, 
+          merchant: merchantId, 
+          orderId, 
+          meta: { 
+            storeUidFromEvent, 
+            previousState, 
+            currentState,
+            changeDetected: true
+          } 
+        });
+        
+        // Save state change history
+        try {
+          await db.collection("order_state_changes").add({
+            orderId,
+            storeUid: storeUidFromEvent,
+            previousState: previousState || null,
+            currentState: currentState || null,
+            event,
+            merchant: merchantId,
+            timestamp: Date.now(),
+            webhookData: {
+              idemKey,
+              rawDataKeys: Object.keys(dataRaw as Record<string, unknown>)
+            }
+          });
+          console.log(`[UPDATED_ORDER] State change recorded for order ${orderId}`);
+        } catch (historyErr) {
+          console.error(`[UPDATED_ORDER] Failed to record state change:`, historyErr);
+        }
+      }
+      
       try {
         await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
         fbLog(db, { level: "info", scope: "orders", msg: "order snapshot upserted", event, idemKey, merchant: merchantId, orderId, meta: { storeUidFromEvent } });
@@ -739,8 +788,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // D) Auto-create review invites for ALL orders + void on cancel/refund  
     console.log(`[SALLA STEP] D) Checking invite events for: ${event}`);
-    if (event.startsWith("order.") && !["order.cancelled", "order.refunded"].includes(event)) {
-      // Create invite for ANY order event (created, updated, payment, etc.)
+    if ((event.startsWith("order.") && !["order.cancelled", "order.refunded"].includes(event)) || event === "updated_order") {
+      // Create invite for ANY order event (created, updated, payment, etc.) + custom updated_order
       console.log(`[INVITE DEBUG] Auto-creating invite for order event: ${event}`);
       
       // Enhanced invitation creation with fallback mechanisms

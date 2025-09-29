@@ -9,7 +9,8 @@
     "lint": "next lint",
     "test:webhook": "node tools/salla-webhook-tester.js",
     "test:webhook-v2": "node tools/webhook-tester-v2.js",
-    "test:review": "node tools/test-review-sending.js"
+    "test:review": "node tools/test-review-sending.js",
+    "test:updated-order": "cross-env RUN=updated_order node tools/salla-webhook-tester.js"
   },
   "dependencies": {
     "@fontsource/cairo": "^5.2.6",
