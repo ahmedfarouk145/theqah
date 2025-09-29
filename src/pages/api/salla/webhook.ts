@@ -13,7 +13,7 @@ export const config = { api: { bodyParser: false } };
 /* ===================== Types ===================== */
 type Dict = Record<string, unknown>;
 
-interface SallaCustomer { name?: string; email?: string; mobile?: string; }
+interface SallaCustomer { name?: string; email?: string; mobile?: string | number; }
 interface SallaItem { id?: string|number; product?: { id?: string|number }|null; product_id?: string|number; }
 interface SallaOrder {
   id?: string|number; order_id?: string|number; number?: string|number;
@@ -46,6 +46,12 @@ const LOG_REVIEW_URLS = (process.env.LOG_REVIEW_URLS || "").trim().toLowerCase()
 /* ===================== Utils ===================== */
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
 // const DONE = new Set(["paid","fulfilled","delivered","completed","complete","تم التوصيل","مكتمل","تم التنفيذ"]); // unused for now
+
+// Safe mobile number handling - convert to string and handle null/undefined
+function safeMobile(mobile: string | number | null | undefined): string | null {
+  if (!mobile) return null;
+  return typeof mobile === 'string' ? mobile.trim() : String(mobile).trim();
+}
 
 function getHeader(req: NextApiRequest, name: string): string {
   const v = req.headers[name.toLowerCase()];
@@ -190,7 +196,7 @@ function extractProductIds(items?: SallaItem[]): string[] {
 }
 function validEmailOrPhone(c?: SallaCustomer) {
   const email = c?.email?.trim(); 
-  const mobile = typeof c?.mobile === 'string' ? c.mobile.trim() : String(c?.mobile || '').trim();
+  const mobile = safeMobile(c?.mobile);
   const hasEmail = !!email && email.includes("@");
   const hasMobile = !!mobile && mobile.length > 5;
   return { ok: hasEmail || hasMobile, email: hasEmail ? email : undefined, mobile: hasMobile ? mobile : undefined };
@@ -252,7 +258,7 @@ async function upsertOrderSnapshot(
     number: order.number ?? null,
     status: lc(order.status ?? order.order_status ?? order.new_status ?? order.shipment_status ?? ""),
     paymentStatus: lc(order.payment_status ?? ""),
-    customer: { name: order.customer?.name ?? null, email: order.customer?.email ?? null, mobile: order.customer?.mobile ?? null },
+    customer: { name: order.customer?.name ?? null, email: order.customer?.email ?? null, mobile: safeMobile(order.customer?.mobile) },
     storeUid: storeUid ?? null,
     platform: "salla",
     updatedAt: Date.now(),
@@ -312,14 +318,14 @@ async function ensureInviteForOrder(
     }
   }
   
-  // Normalize mobile format
-  const normalizedMobile = typeof customerMobile === 'string' ? customerMobile : String(customerMobile || '');
+  // Normalize mobile format safely
+  const normalizedMobile = safeMobile(customerMobile) || '';
   
   // If still no email, use mobile as fallback for SMS-only  
   const finalCustomer = customer ? {
     ...customer,
     email: customerEmail.trim() || customer.email || "",
-    mobile: normalizedMobile.trim()
+    mobile: normalizedMobile
   } : undefined;
   
   console.log(`[INVITE FLOW] 2. Customer found: email=${customerEmail || "none"}, mobile=${finalCustomer?.mobile || "none"}`);
@@ -866,7 +872,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             customer: {
               name: asOrder.customer?.name || "عميل",
               email: asOrder.customer?.email || null,
-              mobile: typeof asOrder.customer?.mobile === 'string' ? asOrder.customer.mobile : String(asOrder.customer?.mobile || '') || null,
+              mobile: safeMobile(asOrder.customer?.mobile),
             },
             productIds: extractProductIds(asOrder.items || []),
             createdAt: Date.now(),
