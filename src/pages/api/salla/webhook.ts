@@ -189,7 +189,8 @@ function extractProductIds(items?: SallaItem[]): string[] {
   return [...ids];
 }
 function validEmailOrPhone(c?: SallaCustomer) {
-  const email = c?.email?.trim(); const mobile = c?.mobile?.trim();
+  const email = c?.email?.trim(); 
+  const mobile = typeof c?.mobile === 'string' ? c.mobile.trim() : String(c?.mobile || '').trim();
   const hasEmail = !!email && email.includes("@");
   const hasMobile = !!mobile && mobile.length > 5;
   return { ok: hasEmail || hasMobile, email: hasEmail ? email : undefined, mobile: hasMobile ? mobile : undefined };
@@ -279,21 +280,46 @@ async function ensureInviteForOrder(
     customer = (rawData["order"] as Dict)["customer"] as SallaCustomer || customer;
   }
   
-  // Enhanced email extraction - try multiple sources
+  // Enhanced email and mobile extraction - try multiple sources
   let customerEmail = customer?.email || "";
-  if (!customerEmail) {
+  let customerMobile = customer?.mobile || "";
+  
+  if (!customerEmail || !customerMobile) {
     const orderData = rawData["order"] as Dict | undefined;
-    customerEmail = 
-      (orderData?.customer as Dict)?.email as string || 
-      (orderData?.billing_address as Dict)?.email as string ||
-      (orderData?.shipping_address as Dict)?.email as string ||
-      "";
+    
+    if (!customerEmail) {
+      customerEmail = 
+        (orderData?.customer as Dict)?.email as string || 
+        (orderData?.billing_address as Dict)?.email as string ||
+        (orderData?.shipping_address as Dict)?.email as string ||
+        "";
+    }
+    
+    if (!customerMobile) {
+      const mobiles = [
+        (orderData?.customer as Dict)?.mobile,
+        (orderData?.billing_address as Dict)?.mobile || (orderData?.billing_address as Dict)?.phone,
+        (orderData?.shipping_address as Dict)?.mobile || (orderData?.shipping_address as Dict)?.phone,
+        customer?.mobile
+      ];
+      
+      for (const mob of mobiles) {
+        if (mob) {
+          customerMobile = typeof mob === 'string' ? mob : String(mob);
+          break;
+        }
+      }
+    }
   }
   
-  // If still no email, use mobile as fallback for SMS-only
+  // Normalize mobile format
+  const normalizedMobile = typeof customerMobile === 'string' ? customerMobile : String(customerMobile || '');
+  
+  // If still no email, use mobile as fallback for SMS-only  
   const finalCustomer = customer ? {
     ...customer,
-    email: customerEmail.trim() || customer.email || ""
+    email: customerEmail.trim() || customer.email || "",
+    mobile: normalizedMobile.trim()
   } : undefined;
   
   console.log(`[INVITE FLOW] 2. Customer found: email=${customerEmail || "none"}, mobile=${finalCustomer?.mobile || "none"}`);
@@ -840,7 +866,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             customer: {
               name: asOrder.customer?.name || "عميل",
               email: asOrder.customer?.email || null,
-              mobile: asOrder.customer?.mobile || null,
+              mobile: typeof asOrder.customer?.mobile === 'string' ? asOrder.customer.mobile : String(asOrder.customer?.mobile || '') || null,
             },
             productIds: extractProductIds(asOrder.items || []),
             createdAt: Date.now(),
