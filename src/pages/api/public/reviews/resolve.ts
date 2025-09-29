@@ -257,12 +257,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (!doc) {
-      console.warn("[resolve] Store not found:", { baseTried: base, host, href, ts: new Date().toISOString() });
+      // Enhanced debugging for store resolution failure
+      const hrefUrl = normalizeUrl(href);
+      const identifier = hrefUrl?.searchParams.get("identifier") || hrefUrl?.searchParams.get("merchant");
+      
+      console.error("[RESOLVE DEBUG] Store not found - Full analysis:");
+      console.error(`[RESOLVE DEBUG] Original href: ${href}`);
+      console.error(`[RESOLVE DEBUG] Parsed base: ${base}`);
+      console.error(`[RESOLVE DEBUG] Host: ${host}`);
+      console.error(`[RESOLVE DEBUG] Identifier from URL: ${identifier}`);
+      console.error(`[RESOLVE DEBUG] Domain variations tried:`, [
+        base,
+        `${host}${base?.includes('/') ? base.substring(base.indexOf('/', 8)) : ''}`,
+        host,
+      ]);
+      
+      // Quick check what stores actually exist
+      const allSallaStores = await db.collection("stores")
+        .where("provider", "==", "salla")
+        .where("salla.connected", "==", true)
+        .limit(5)
+        .get();
+      
+      console.error(`[RESOLVE DEBUG] Found ${allSallaStores.size} connected Salla stores in database:`);
+      allSallaStores.docs.forEach(doc => {
+        const data = doc.data();
+        console.error(`[RESOLVE DEBUG] - Store: ${data.uid}, domain: ${data.salla?.domain || data.domain?.base}, storeId: ${data.salla?.storeId}`);
+      });
+      
+      console.warn("[resolve] Store not found:", { baseTried: base, host, href, identifier, ts: new Date().toISOString() });
       return res.status(404).json({
         error: "STORE_NOT_FOUND",
         message: "لم يتم العثور على متجر لهذا الدومين/المعرف.",
-        baseTried: base, hostTried: host,
-        debug: { parsedBase: base, parsedHost: host, originalHref: href },
+        baseTried: base, hostTried: host, identifier,
+        debug: { parsedBase: base, parsedHost: host, originalHref: href, identifier },
+        availableStores: allSallaStores.docs.map(d => {
+          const data = d.data();
+          return { uid: data.uid, domain: data.salla?.domain || data.domain?.base, storeId: data.salla?.storeId };
+        })
       });
     }
 

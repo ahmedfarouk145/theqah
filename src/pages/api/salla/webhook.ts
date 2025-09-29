@@ -486,14 +486,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (typeof dataRaw["url"] === "string" ? (dataRaw["url"] as string) : undefined);
 
       const baseGeneric = toDomainBase(payloadDomainGeneric);
+      console.log(`[AUTO-DOMAIN] Event: ${event}, StoreUid: ${storeUidFromEvent}, Domain: ${payloadDomainGeneric}, Base: ${baseGeneric}`);
       if (storeUidFromEvent && baseGeneric) {
         const keyGeneric = encodeUrlForFirestore(baseGeneric);
         const existsGeneric = await db.collection("domains").doc(keyGeneric).get().then(d => d.exists).catch(() => false);
+        console.log(`[AUTO-DOMAIN] Domain key "${keyGeneric}" exists: ${existsGeneric}`);
         if (!existsGeneric) {
+          console.log(`[AUTO-DOMAIN] Saving new domain for ${storeUidFromEvent}: ${baseGeneric}`);
           await saveDomainAndFlags(db, storeUidFromEvent, merchantId, baseGeneric, event);
           await saveMultipleDomainFormats(db, storeUidFromEvent, payloadDomainGeneric);
           await fbLog(db, { level: "info", scope: "domain", msg: "auto-saved domain from event payload", event, idemKey, merchant: merchantId, orderId, meta: { base: baseGeneric, storeUid: storeUidFromEvent } });
+        } else {
+          console.log(`[AUTO-DOMAIN] Domain already exists, skipping save`);
         }
+      } else {
+        console.log(`[AUTO-DOMAIN] Skipping - missing storeUid (${!!storeUidFromEvent}) or base (${!!baseGeneric})`);
       }
     } catch (e) {
       await fbLog(db, { level: "warn", scope: "domain", msg: "auto-save domain failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
@@ -523,9 +530,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       let base = toDomainBase(domainInPayload);
 
       if (storeUid) {
+        console.log(`[DOMAIN SAVE] Saving domain for ${storeUid}: base="${base}", original="${domainInPayload}"`);
         await saveDomainAndFlags(db, storeUid, merchantId, base, event);
         // Also save multiple domain formats for better resolution
         await saveMultipleDomainFormats(db, storeUid, domainInPayload);
+        console.log(`[DOMAIN SAVE] Domain saving completed for ${storeUid}`);
       }
 
       // خزّن OAuth لو متاح
