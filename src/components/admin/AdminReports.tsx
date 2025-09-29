@@ -34,12 +34,23 @@ export default function AdminReports() {
   }, []);
 
   useEffect(() => {
-    const auth = getAuth(app);
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    // Skip Firebase auth during build time
+    if (typeof window === 'undefined') {
       setAuthLoading(false);
-    });
-    return () => unsubscribe();
+      return;
+    }
+    
+    try {
+      const auth = getAuth(app);
+      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
+        setAuthLoading(false);
+      });
+      return () => unsubscribe();
+    } catch (error) {
+      console.warn('[AdminReports] Firebase auth error:', error);
+      setAuthLoading(false);
+    }
   }, []);
 
   const fetchReports = useCallback(async () => {

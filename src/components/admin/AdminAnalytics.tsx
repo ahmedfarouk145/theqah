@@ -127,12 +127,24 @@ export default function AdminAnalytics() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    const auth = getAuth(app);
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    // Skip Firebase auth during build time
+    if (typeof window === 'undefined') {
       setAuthLoading(false);
-    });
-    return unsubscribe;
+      return;
+    }
+    
+    try {
+      const auth = getAuth(app);
+      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
+        setAuthLoading(false);
+      });
+      return unsubscribe;
+    } catch (error) {
+      console.warn('[AdminAnalytics] Firebase auth error:', error);
+      setAuthLoading(false);
+      setError({ message: 'مشكلة في الاتصال بخدمة المصادقة' });
+    }
   }, []);
 
   const fetchStats = useCallback(async () => {

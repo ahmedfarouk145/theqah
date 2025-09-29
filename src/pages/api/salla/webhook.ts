@@ -35,11 +35,12 @@ const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
 const WEBHOOK_TOKEN  = (process.env.SALLA_WEBHOOK_TOKEN  || "").trim();
 const APP_BASE_URL   = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/,"");
 const WEBHOOK_LOG_DEST = (process.env.WEBHOOK_LOG_DEST || "console").trim().toLowerCase(); // console | firestore
+const ENABLE_FIRESTORE_LOGS = process.env.ENABLE_FIRESTORE_LOGS === "true"; // Better env control
 const LOG_REVIEW_URLS = (process.env.LOG_REVIEW_URLS || "").trim().toLowerCase(); // "1"/"true" to log review url
 
 /* ===================== Utils ===================== */
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
-const DONE = new Set(["paid","fulfilled","delivered","completed","complete","تم التوصيل","مكتمل","تم التنفيذ"]);
+// const DONE = new Set(["paid","fulfilled","delivered","completed","complete","تم التوصيل","مكتمل","تم التنفيذ"]); // unused for now
 
 function getHeader(req: NextApiRequest, name: string): string {
   const v = req.headers[name.toLowerCase()];
@@ -665,9 +666,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           subscription: { planId, raw: payload, updatedAt: Date.now() },
           updatedAt: Date.now(),
         }, { merge: true });
-        await fbLog(db, { level: "info", scope: "subscription", msg: "plan set", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, planName, planId } });
+        fbLog(db, { level: "info", scope: "subscription", msg: "plan set", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, planName, planId } });
       } else {
-        await fbLog(db, { level: "warn", scope: "subscription", msg: "missing storeUid for subscription event", event, idemKey, merchant: merchantId, orderId, meta: { planName } });
+        fbLog(db, { level: "warn", scope: "subscription", msg: "missing storeUid for subscription event", event, idemKey, merchant: merchantId, orderId, meta: { planName } });
       }
     }
 
@@ -675,8 +676,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`[SALLA STEP] C) Checking order/shipment events for: ${event}`);
     if (event.startsWith("order.") || event.startsWith("shipment.")) {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant) || null;
-      await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
-      await fbLog(db, { level: "info", scope: "orders", msg: "order snapshot upserted", event, idemKey, merchant: merchantId, orderId, meta: { storeUidFromEvent } });
+      try {
+        await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
+        fbLog(db, { level: "info", scope: "orders", msg: "order snapshot upserted", event, idemKey, merchant: merchantId, orderId, meta: { storeUidFromEvent } });
+      } catch (err) {
+        console.error(`[ORDER_SNAPSHOT_ERROR] Failed to upsert order ${orderId}:`, err);
+        fbLog(db, { level: "error", scope: "orders", msg: "order snapshot failed", event, idemKey, merchant: merchantId, orderId, meta: { error: (err as Error).message } });
+      }
     }
 
     // D) Auto-create review invites for ALL orders + void on cancel/refund
@@ -684,8 +690,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (event.startsWith("order.") && !["order.cancelled", "order.refunded"].includes(event)) {
       // Create invite for ANY order event (created, updated, payment, etc.)
       console.log(`[INVITE DEBUG] Auto-creating invite for order event: ${event}`);
-      await ensureInviteForOrder(db, asOrder, dataRaw, body.merchant);
-      await fbLog(db, { level: "info", scope: "invite", msg: "invite auto-created for order", event, idemKey, merchant: merchantId, orderId });
+      try {
+        await Promise.race([
+          ensureInviteForOrder(db, asOrder, dataRaw, body.merchant),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Invite creation timeout')), 20000))
+        ]);
+        fbLog(db, { level: "info", scope: "invite", msg: "invite auto-created for order", event, idemKey, merchant: merchantId, orderId });
+      } catch (err) {
+        console.error(`[INVITE_ERROR] Failed to create invite for order ${orderId}:`, err);
+        fbLog(db, { level: "error", scope: "invite", msg: "invite creation failed", event, idemKey, merchant: merchantId, orderId, meta: { error: (err as Error).message } });
+      }
     } else if (event === "order.cancelled" || event === "order.refunded") {
       const oid = orderId;
       if (oid) {
@@ -694,7 +708,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const reason = event === "order.cancelled" ? "order_cancelled" : "order_refunded";
           const batch = db.batch(); q.docs.forEach((d)=>batch.update(d.ref, { voidedAt: Date.now(), voidReason: reason }));
           await batch.commit();
-          await fbLog(db, { level: "info", scope: "invite", msg: "tokens voided", event, idemKey, merchant: merchantId, orderId: oid, meta: { count: q.docs.length, reason } });
+          fbLog(db, { level: "info", scope: "invite", msg: "tokens voided", event, idemKey, merchant: merchantId, orderId: oid, meta: { count: q.docs.length, reason } });
         }
       }
     }
@@ -703,16 +717,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`[SALLA STEP] E) Final processing for: ${event}`);
     const orderIdFin = orderId ?? "none";
     const statusFin = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
-    await db.collection("processed_events").doc(keyOf(event, orderIdFin, statusFin)).set({
-      at: Date.now(), event, processed: true, status: statusFin
-    }, { merge: true });
+    Promise.race([
+      db.collection("processed_events").doc(keyOf(event, orderIdFin, statusFin)).set({
+        at: Date.now(), event, processed: true, status: statusFin
+      }, { merge: true }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("processed_events_timeout")), 2000))
+    ]).catch(() => {});
 
     const knownPrefixes = ["order.","shipment.","product.","customer.","category.","brand.","store.","cart.","invoice.","specialoffer.","app."];
     const isKnown = knownPrefixes.some((p)=>event.startsWith(p)) || event === "review.added";
-    await db.collection(isKnown ? "webhooks_salla_known" : "webhooks_salla_unhandled")
-      .add({ at: Date.now(), event, data: dataRaw }).catch(()=>{});
+    Promise.race([
+      db.collection(isKnown ? "webhooks_salla_known" : "webhooks_salla_unhandled")
+        .add({ at: Date.now(), event, data: dataRaw }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("webhooks_salla_timeout")), 2000))
+    ]).catch(() => {});
 
-    await fbLog(db, { level: "info", scope: "handler", msg: "processing finished ok", event, idemKey, merchant: merchantId, orderId });
+    fbLog(db, { level: "info", scope: "handler", msg: "processing finished ok", event, idemKey, merchant: merchantId, orderId });
     await idemRef.set({ statusFlag: "done", processingFinishedAt: Date.now() }, { merge: true });
     try { res.status(200).json({ ok: true }); } catch {}
 
@@ -725,7 +745,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error(`[SALLA WEBHOOK ERROR] Error: ${err}`);
     if (stack) console.error(`[SALLA WEBHOOK ERROR] Stack: ${stack}`);
     
-    await fbLog(db, { 
+    fbLog(db, { 
       level: "error", 
       scope: "handler", 
       msg: "processing failed", 
@@ -741,16 +761,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         dataKeys: Object.keys(dataRaw as Record<string, unknown>)
       } 
     });
-    await db.collection("webhook_errors").add({
-      at: Date.now(), scope: "handler", event, orderId: orderId || "unknown", merchantId, 
-      error: err, stack: stack?.substring(0, 1000), 
-      raw: raw.toString("utf8").slice(0, 2000),
-      debugData: {
-        hasCustomerData: !!((dataRaw as Record<string, unknown>).customer || ((dataRaw as Record<string, unknown>).order as Record<string, unknown>)?.customer),
-        hasProductData: !!((dataRaw as Record<string, unknown>).items || ((dataRaw as Record<string, unknown>).order as Record<string, unknown>)?.items),
-        dataKeys: Object.keys(dataRaw as Record<string, unknown>)
-      }
-    }).catch(()=>{});
+    Promise.race([
+      db.collection("webhook_errors").add({
+        at: Date.now(), scope: "handler", event, orderId: orderId || "unknown", merchantId, 
+        error: err, stack: stack?.substring(0, 1000), 
+        raw: raw.toString("utf8").slice(0, 2000),
+        debugData: {
+          hasCustomerData: !!((dataRaw as Record<string, unknown>).customer || ((dataRaw as Record<string, unknown>).order as Record<string, unknown>)?.customer),
+          hasProductData: !!((dataRaw as Record<string, unknown>).items || ((dataRaw as Record<string, unknown>).order as Record<string, unknown>)?.items),
+          dataKeys: Object.keys(dataRaw as Record<string, unknown>)
+        }
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("webhook_errors_timeout")), 3000))
+    ]).catch(() => {});
     await idemRef.set({ statusFlag: "failed", lastError: err, processingFinishedAt: Date.now(), errorStack: stack?.substring(0, 500) }, { merge: true });
     try { res.status(500).json({ ok: false, error: err }); } catch {}
   }
@@ -783,19 +806,17 @@ async function fbLog(
     meta: entry.meta ?? null,
   };
 
-  if (WEBHOOK_LOG_DEST === "firestore") {
-    try { 
-      await Promise.race([
-        db.collection("webhook_firebase").add(payload),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Log timeout')), 2500))
-      ]);
-    } catch { 
-      // Silently skip Firebase logging on timeout - not critical for functionality
-      console.warn("[WEBHOOK_LOG][TIMEOUT]", entry.level, entry.scope); 
-    }
-  }
-
+  // Always log to console first (non-blocking)
   const lineObj = { event: payload.event, merchant: payload.merchant, orderId: payload.orderId, idemKey: payload.idemKey };
   const line = `[${entry.level.toUpperCase()}][${entry.scope}] ${entry.msg} :: ${JSON.stringify(lineObj)}`;
   if (entry.level === "error" || entry.level === "warn") console.error(line); else console.log(line);
+
+  // Only attempt Firestore logging if explicitly enabled AND not critical path
+  if ((WEBHOOK_LOG_DEST === "firestore" || ENABLE_FIRESTORE_LOGS) && entry.level !== "debug") {
+    // Fire-and-forget with shorter timeout
+    db.collection("webhook_firebase").add(payload)
+      .catch(err => {
+        console.error("[WEBHOOK_LOG][WRITE_FAIL]", err);
+      });
+  }
 }
