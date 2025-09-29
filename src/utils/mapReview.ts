@@ -1,61 +1,51 @@
 // src/utils/mapReview.ts
 export type ReviewOut = {
   id: string;
-  storeUid?: string;
-  storeName: string;
+  name: string;
+  comment: string;   // alias لـ text
   text: string;
   stars: number;
+  storeName: string;
+  storeDomain?: string | null;
   published: boolean;
   status?: string;
-  trustedBuyer?: boolean;
-  images?: string[];
   createdAt?: string;
   publishedAt?: string;
   lastModified?: string;
-  moderatorNote?: string;
-  productId?: string;
-  productIds?: string[];
-  orderId?: string;
   platform?: string;
-  score?: number;
-  model?: string;
+  trustedBuyer?: boolean;
+  images?: string[];
 };
 //eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function toIso(t: any): string | undefined {
-  if (!t && t !== 0) return undefined;
-  if (typeof t === 'number') return new Date(t).toISOString();
-  // Firestore Timestamp
-  const iso = t?.toDate?.()?.toISOString?.();
-  if (iso) return iso;
-  return typeof t === 'string' ? t : undefined;
-}
+const isTS = (v: any): v is FirebaseFirestore.Timestamp => v && typeof v.toDate === "function";
 //eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapReview(id: string, d: any, storeName = 'غير محدد'): ReviewOut {
+const toMs = (v: any) => (isTS(v) ? v.toDate().getTime() : typeof v === "number" ? v : undefined);
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+const toIso = (v: any) => {
+  const ms = toMs(v);
+  return typeof ms === "number" ? new Date(ms).toISOString() : undefined;
+};
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapReview(id: string, d: any, storeName: string, storeDomain?: string | null): ReviewOut {
+  const author = d?.author || {};
+  const displayName = author.displayName || author.name || "عميل المتجر";
+  const text = typeof d?.text === "string" ? d.text : "";
+
   return {
     id,
-    storeUid: d?.storeUid,
+    name: displayName,
+    comment: text,
+    text,
+    stars: Number(d?.stars) || 0,
     storeName,
-    text:
-      d?.text ??
-      d?.comment ??
-      d?.content ??
-      d?.message ??
-      d?.body ??
-      '',
-    stars: d?.stars ?? d?.rating ?? 0,
-    published: Boolean(d?.published ?? (d?.status === 'published')),
+    storeDomain: storeDomain ?? null,
+    published: !!d?.published,
     status: d?.status,
-    trustedBuyer: d?.trustedBuyer ?? false,
-    images: Array.isArray(d?.images) ? d.images : undefined,
     createdAt: toIso(d?.createdAt),
     publishedAt: toIso(d?.publishedAt),
     lastModified: toIso(d?.lastModified),
-    moderatorNote: d?.moderatorNote,
-    productId: d?.productId,
-    productIds: Array.isArray(d?.productIds) ? d.productIds : undefined,
-    orderId: d?.orderId,
-    platform: d?.platform,
-    score: d?.score,
-    model: d?.model,
+    platform: d?.platform || "web",
+    trustedBuyer: !!d?.trustedBuyer,
+    images: Array.isArray(d?.images) ? d.images.slice(0, 10) : [],
   };
 }

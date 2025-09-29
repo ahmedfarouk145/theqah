@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import axios from '@/lib/axiosInstance';
@@ -40,6 +40,8 @@ import {
   Lock,
   Loader2,
   AlertTriangle,
+  ShieldCheck,
+  Globe,
 } from 'lucide-react';
 
 interface Review {
@@ -48,8 +50,13 @@ interface Review {
   comment: string;
   stars: number;
   storeName: string;
+  storeDomain?: string | null;
   published: boolean;
-  createdAt?: string | Date;
+  status?: string;
+  trustedBuyer?: boolean;
+  platform?: string;
+  images?: string[];
+  createdAt?: string | number | Date;
   lastModified?: string;
 }
 
@@ -108,12 +115,15 @@ export default function AdminReviews() {
       setError('');
 
       const params = new URLSearchParams();
-      if (storeFilter) params.append('storeName', storeFilter);
+
       if (starsFilter && starsFilter !== 'all') params.append('stars', starsFilter);
       if (publishedFilter !== 'all') params.append('published', publishedFilter);
       if (sortBy) params.append('sortBy', sortBy);
       if (sortOrder) params.append('sortOrder', sortOrder);
-      if (searchTerm) params.append('search', searchTerm);
+
+      // ✅ دمج فلتر المتجر داخل البحث (حتى لو الـ API لا يدعم storeName)
+      const searchMerged = [searchTerm, storeFilter].filter(Boolean).join(' ');
+      if (searchMerged) params.append('search', searchMerged);
 
       const res = await axios.get<ReviewsResponse>(`/api/admin/reviews?${params.toString()}`);
       const data = res.data;
@@ -175,7 +185,7 @@ export default function AdminReviews() {
     if (!confirm('هل أنت متأكد من حذف هذا التقييم؟')) return;
     try {
       setActionLoading(id);
-      await axios.delete(`/api/admin/reviews/${id}`);
+      await axios.delete(`/api/admin/reviews/${id}`, { data: { confirm: true, reason: 'admin delete' } });
       const deleted = reviews.find((r) => r.id === id);
       setReviews((prev) => prev.filter((r) => r.id !== id));
       setStats((prev) => ({
@@ -204,26 +214,35 @@ export default function AdminReviews() {
     </div>
   );
 
-  const formatDate = (dateString?: string | Date) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('ar-EG', {
+  const formatDate = (value?: string | number | Date) => {
+    if (!value) return '-';
+    const d = typeof value === 'number' ? new Date(value) : new Date(value);
+    return new Intl.DateTimeFormat('ar-EG', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    });
+    }).format(d);
   };
 
-  const filteredReviews = reviews.filter((review) => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      review.name.toLowerCase().includes(searchLower) ||
-      review.comment.toLowerCase().includes(searchLower) ||
-      review.storeName.toLowerCase().includes(searchLower)
+  const filteredReviews = useMemo(() => {
+    if (!searchTerm && !storeFilter) return reviews;
+    const searchLower = [searchTerm, storeFilter].filter(Boolean).join(' ').toLowerCase();
+    return reviews.filter((review) =>
+      [
+        review.name,
+        review.comment,
+        review.storeName,
+        review.storeDomain || '',
+        review.platform || '',
+        review.status || '',
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(searchLower),
     );
-  });
+  }, [reviews, searchTerm, storeFilter]);
 
   useEffect(() => {
     if (!authLoading && user) fetchReviews();
@@ -252,6 +271,27 @@ export default function AdminReviews() {
     </Badge>
   );
 
+  const StoreChip = ({ name, domain }: { name: string; domain?: string | null }) => (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-sm">متجر: {name || 'غير محدد'}</span>
+      {domain ? (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 text-xs">
+          <Globe className="h-3 w-3" />
+          {(() => {
+            try { return new URL(domain).hostname; } catch { return domain; }
+          })()}
+        </span>
+      ) : null}
+    </div>
+  );
+
+  const TrustedBadge = ({ on }: { on?: boolean }) =>
+    on ? (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-xs">
+        <ShieldCheck className="h-3.5 w-3.5" /> مشتري موثّق
+      </span>
+    ) : null;
+
   if (authLoading) {
     return (
       <Card className="min-h-[240px] flex items-center justify-center animate-fade-in">
@@ -279,7 +319,7 @@ export default function AdminReviews() {
   }
 
   return (
-    <main className="space-y-6">
+    <main className="space-y-6" dir="rtl">
       <section className="rounded-xl border bg-gradient-to-b from-background to-muted/30 p-5 md:p-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
@@ -374,11 +414,7 @@ export default function AdminReviews() {
       </Card>
 
       {loading && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="grid gap-4"
-        >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-4">
           <div className="flex items-center justify-center py-8">
             <div className="flex items-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -386,12 +422,7 @@ export default function AdminReviews() {
             </div>
           </div>
           {[1, 2, 3].map((i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-            >
+            <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
               <Card className="border border-border/60">
                 <CardContent className="pt-6">
                   <div className="animate-pulse space-y-4">
@@ -417,16 +448,10 @@ export default function AdminReviews() {
       )}
 
       {error && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-        >
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
           <Alert variant="destructive" className="animate-fade-in border-2" aria-live="assertive" role="alert">
             <AlertTriangle className="h-5 w-5" />
-            <AlertTitle className="flex items-center gap-2">
-              حدث خطأ أثناء تحميل التقييمات
-            </AlertTitle>
+            <AlertTitle className="flex items-center gap-2">حدث خطأ أثناء تحميل التقييمات</AlertTitle>
             <AlertDescription className="mt-2">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <span>{error}</span>
@@ -445,31 +470,26 @@ export default function AdminReviews() {
       {!loading && !error && (
         <div className="space-y-4">
           {filteredReviews.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
               <Card className="p-12 text-center animate-fade-in border border-border/60 bg-gradient-to-br from-muted/20 to-muted/5">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                  transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
                   className="text-6xl mb-4"
                 >
                   📝
                 </motion.div>
                 <CardTitle className="text-xl mb-2 text-muted-foreground">لا توجد تقييمات</CardTitle>
                 <CardDescription className="text-lg mb-4">
-                  {searchTerm || publishedFilter !== 'all' 
-                    ? "لا توجد تقييمات تطابق معايير البحث" 
-                    : "لم يتم استلام أي تقييمات بعد"}
+                  {searchTerm || publishedFilter !== 'all' ? 'لا توجد تقييمات تطابق معايير البحث' : 'لم يتم استلام أي تقييمات بعد'}
                 </CardDescription>
                 {(searchTerm || publishedFilter !== 'all') && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       setSearchTerm('');
+                      setStoreFilter('');
                       setPublishedFilter('all');
                     }}
                     className="hover:scale-105 transition-transform"
@@ -492,18 +512,38 @@ export default function AdminReviews() {
                     <div className="flex-1 space-y-3">
                       <div className="flex flex-wrap items-center gap-3">
                         <div className="text-2xl">{getStarDisplay(review.stars)}</div>
-                        <div>
+                        <div className="min-w-[160px]">
                           <h3 className="font-semibold">{review.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            متجر: <span className="font-medium">{review.storeName}</span>
-                          </p>
+                          <StoreChip name={review.storeName} domain={review.storeDomain ?? undefined} />
                         </div>
                         <StatusBadge published={review.published} />
+                        <TrustedBadge on={review.trustedBuyer} />
+                        {review.platform ? (
+                          <span className="px-2 py-0.5 rounded bg-sky-50 text-sky-700 text-xs">{review.platform}</span>
+                        ) : null}
                       </div>
 
                       {review.comment && (
                         <div className="rounded-lg border bg-muted/30 p-3 transition-colors duration-200 group-hover:bg-muted/50">
                           <p className="leading-relaxed">{review.comment}</p>
+                        </div>
+                      )}
+
+                      {/* معرض صور مبسّط */}
+                      {Array.isArray(review.images) && review.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {review.images.slice(0, 6).map((src, i) => (
+                            <a
+                              key={i}
+                              href={src}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block overflow-hidden rounded-lg border hover:opacity-90"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={src} alt={`review-image-${i}`} className="h-20 w-20 object-cover" />
+                            </a>
+                          ))}
                         </div>
                       )}
 
@@ -526,12 +566,17 @@ export default function AdminReviews() {
                         disabled={actionLoading === review.id}
                         className="gap-2 transition-transform duration-200 hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
-                        {actionLoading === review.id
-                          ? <div className="h-4 w-4 animate-spin border-b-2 border-r-2 rounded-full" />
-                          : review.published
-                          ? <EyeOff className="h-4 w-4" />
-                          : <Megaphone className="h-4 w-4" />}
-                        {review.published ? 'إخفاء' : 'نشر'}
+                        {actionLoading === review.id ? (
+                          <div className="h-4 w-4 animate-spin border-b-2 border-r-2 rounded-full" />
+                        ) : review.published ? (
+                          <>
+                            <EyeOff className="h-4 w-4" /> إخفاء
+                          </>
+                        ) : (
+                          <>
+                            <Megaphone className="h-4 w-4" /> نشر
+                          </>
+                        )}
                       </Button>
                       <Button
                         variant="outline"
@@ -539,10 +584,13 @@ export default function AdminReviews() {
                         disabled={actionLoading === review.id}
                         className="gap-2 transition-transform duration-200 hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
-                        {actionLoading === review.id
-                          ? <div className="h-4 w-4 animate-spin border-b-2 border-r-2 rounded-full" />
-                          : <Trash2 className="h-4 w-4" />}
-                        حذف
+                        {actionLoading === review.id ? (
+                          <div className="h-4 w-4 animate-spin border-b-2 border-r-2 rounded-full" />
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4" /> حذف
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>

@@ -1,4 +1,3 @@
-// src/pages/api/admin/reviews/[id].ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { dbAdmin } from '@/lib/firebaseAdmin';
 import { verifyAdmin } from '@/utils/verifyAdmin';
@@ -24,16 +23,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!snap.exists) return res.status(404).json({ message: 'التقييم غير موجود', error: 'Not Found' });
     const d = snap.data() || {};
 
-    // lookup storeName
+    // lookup storeName (استعمل denormalized أولاً)
     let storeName = 'غير محدد';
-    if (d?.storeUid) {
-      let sDoc = await db.collection('stores').doc(d.storeUid).get();
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (d && typeof d === 'object' && (d as any).storeName) {
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      storeName = (d as any).storeName;
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } else if ((d as any)?.storeUid) {
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const uid = (d as any).storeUid as string;
+      let sDoc = await db.collection('stores').doc(uid).get();
       if (!sDoc.exists) {
-        const qs = await db.collection('stores').where('uid', '==', d.storeUid).limit(1).get();
+        const qs = await db.collection('stores').where('uid', '==', uid).limit(1).get();
         sDoc = qs.docs[0];
       }
       const s = sDoc?.data() || {};
-      storeName = s?.salla?.storeName || s?.zid?.storeName || s?.storeName || 'غير محدد';
+      const dom =
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (s as any)?.domain?.base ||
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (s as any)?.salla?.domain ||
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (s as any)?.zid?.domain ||
+        '';
+      storeName =
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (s as any)?.merchant?.name ||
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (s as any)?.salla?.storeName ||
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (s as any)?.zid?.storeName ||
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (s as any)?.storeName ||
+        (dom ? (() => { try { return new URL(dom).hostname; } catch { return 'غير محدد'; } })() : 'غير محدد');
     }
 
     if (req.method === 'GET') {
@@ -66,7 +89,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         updateData.published = published;
         updateData.status = published
           ? 'published'
-          : (d.status === 'published' ? 'hidden' : d.status || 'pending');
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          : ((d as any).status === 'published' ? 'hidden' : (d as any).status || 'pending');
         if (published) updateData.publishedAt = now;
       }
       if (status !== undefined) {
