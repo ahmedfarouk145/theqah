@@ -294,7 +294,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.warn(`[RESOLVE DEBUG] DEVELOPMENT MODE: Using first available store as fallback`);
         doc = allSallaStores.docs[0];
         const fallbackData = doc.data();
-        console.warn(`[RESOLVE DEBUG] Using fallback store: ${fallbackData.uid}`);
+        console.warn(`[RESOLVE DEBUG] Using fallback store: ${fallbackData?.uid || doc.id}`);
       } else {
         console.warn("[resolve] Store not found:", { baseTried: base, host, href, identifier, ts: new Date().toISOString() });
         return res.status(404).json({
