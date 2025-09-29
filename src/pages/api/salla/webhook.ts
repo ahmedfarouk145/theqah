@@ -35,6 +35,7 @@ const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
 const WEBHOOK_TOKEN  = (process.env.SALLA_WEBHOOK_TOKEN  || "").trim();
 const APP_BASE_URL   = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/,"");
 const WEBHOOK_LOG_DEST = (process.env.WEBHOOK_LOG_DEST || "console").trim().toLowerCase(); // console | firestore
+const LOG_REVIEW_URLS = (process.env.LOG_REVIEW_URLS || "").trim().toLowerCase(); // "1"/"true" to log review url
 
 /* ===================== Utils ===================== */
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
@@ -311,6 +312,10 @@ async function ensureInviteForOrder(
 
   // ——— إرسال فوري عبر الـ sender القديم بتاعك
   const storeName = getStoreOrMerchantName(rawData) ?? "متجرك";
+  if (LOG_REVIEW_URLS === "1" || LOG_REVIEW_URLS === "true") {
+    console.log(`[REVIEW_LINK] orderId=${orderId} tokenId=${tokenId} url=${publicUrl}`);
+    await db.collection("webhook_firebase").add({ at: Date.now(), level: "info", scope: "review", msg: "review link", orderId, tokenId, url: publicUrl }).catch(()=>{});
+  }
   await sendBothNow({
     inviteId: tokenId,
     phone: cv.mobile,
