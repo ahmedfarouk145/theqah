@@ -33,7 +33,12 @@ interface SallaWebhookBody {
 /* ===================== Env ===================== */
 const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
 const WEBHOOK_TOKEN  = (process.env.SALLA_WEBHOOK_TOKEN  || "").trim();
-const APP_BASE_URL   = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/+$/,"");
+const APP_BASE_URL   = (
+  process.env.APP_BASE_URL || 
+  process.env.NEXT_PUBLIC_APP_URL || 
+  process.env.NEXT_PUBLIC_BASE_URL || 
+  (process.env.NODE_ENV === "development" ? "http://localhost:3000" : "")
+).replace(/\/+$/,"");
 const WEBHOOK_LOG_DEST = (process.env.WEBHOOK_LOG_DEST || "console").trim().toLowerCase(); // console | firestore
 const ENABLE_FIRESTORE_LOGS = process.env.ENABLE_FIRESTORE_LOGS === "true"; // Better env control
 const LOG_REVIEW_URLS = (process.env.LOG_REVIEW_URLS || "").trim().toLowerCase(); // "1"/"true" to log review url
@@ -384,19 +389,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // (1) Security check + basic log row
   const verification = verifySallaRequest(req, raw);
+  
+  // DEVELOPMENT BYPASS: Skip auth in localhost for testing
+  const isDevelopment = process.env.NODE_ENV === "development" || req.headers.host?.includes("localhost");
+  const authBypass = isDevelopment && (!WEBHOOK_SECRET && !WEBHOOK_TOKEN);
+  
   await fbLog(db, {
-    level: verification.ok ? "info" : "warn",
+    level: (verification.ok || authBypass) ? "info" : "warn",
     scope: "auth",
-    msg: verification.ok ? "verification ok" : "verification failed",
+    msg: (verification.ok || authBypass) ? "verification ok" : "verification failed",
     event: null, idemKey: null, merchant: null, orderId: null,
     meta: {
       strategyHeader: getHeader(req, "x-salla-security-strategy") || "auto",
       hasSecret: !!WEBHOOK_SECRET, hasToken: !!WEBHOOK_TOKEN,
       sigLen: (getHeader(req, "x-salla-signature") || "").length,
-      from: req.headers["x-forwarded-for"] || req.socket.remoteAddress
+      from: req.headers["x-forwarded-for"] || req.socket.remoteAddress,
+      isDevelopment,
+      authBypass
     }
   });
-  if (!verification.ok) return res.status(401).json({ error: "unauthorized" });
+  
+  if (!verification.ok && !authBypass) return res.status(401).json({ error: "unauthorized" });
 
   // (2) Proceed synchronously (no early ACK). Vercel Node runtime may stop work after responding.
 
@@ -682,6 +695,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch (err) {
         console.error(`[ORDER_SNAPSHOT_ERROR] Failed to upsert order ${orderId}:`, err);
         fbLog(db, { level: "error", scope: "orders", msg: "order snapshot failed", event, idemKey, merchant: merchantId, orderId, meta: { error: (err as Error).message } });
+        throw err; // Re-throw to trigger main catch block
       }
     }
 
@@ -744,6 +758,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error(`[SALLA WEBHOOK ERROR] Event: ${event}, OrderId: ${orderId}, Merchant: ${merchantId}`);
     console.error(`[SALLA WEBHOOK ERROR] Error: ${err}`);
     if (stack) console.error(`[SALLA WEBHOOK ERROR] Stack: ${stack}`);
+    
+    // Development debugging
+    if (isDevelopment) {
+      console.error(`[SALLA DEBUG] Full error context:`, {
+        event, orderId, merchantId,
+        hasSecret: !!WEBHOOK_SECRET,
+        hasToken: !!WEBHOOK_TOKEN, 
+        hasAppBaseUrl: !!APP_BASE_URL,
+        nodeEnv: process.env.NODE_ENV,
+        host: req.headers.host
+      });
+    }
     
     fbLog(db, { 
       level: "error", 
