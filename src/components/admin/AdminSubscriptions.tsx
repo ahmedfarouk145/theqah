@@ -21,7 +21,7 @@ type ApiStoreItem = {
   lastUpdate?: number;
 };
 
-// الاستجابة قد تكون { items: ApiStoreItem[] } أو { stores: ApiStoreItem[] } حسب الكود الحالي
+// الاستجابة قد تكون { items: ApiStoreItem[] } أو { stores: ApiStoreItem[] }
 type ApiResponse =
   | { ok: true; items: ApiStoreItem[] }
   | { ok: true; stores: ApiStoreItem[] }
@@ -55,7 +55,6 @@ export default function AdminSubscriptions() {
     (async () => {
       try {
         // Authorization بيتضاف تلقائيًّا من axiosInstance عبر Firebase ID token
-        // (Request interceptor) :contentReference[oaicite:0]{index=0}
         const { data } = await axios.get<ApiResponse>('/api/admin/subscriptions');
         if (!mounted) return;
 
@@ -87,7 +86,7 @@ export default function AdminSubscriptions() {
     );
   }, [rows, q]);
 
-  // “مشترك” = active | over_quota | trial   — حالات الحالة معرّفة في الـ API :contentReference[oaicite:1]{index=1}
+  // “مشترك” = active | over_quota | trial
   const subscribed = filtered.filter((r) =>
     ['active', 'over_quota', 'trial'].includes(r.status),
   );
@@ -215,7 +214,7 @@ export default function AdminSubscriptions() {
       </div>
 
       <p className="text-xs text-gray-500">
-        * حدود الدعوات لكل باقة معرفة في الخادم (TRIAL=5, P30=40, P60=90, P120=200, ELITE=∞). :contentReference[oaicite:2]{index=2}
+        * حدود الدعوات لكل باقة معرفة في الخادم (TRIAL=5, P30=40, P60=90, P120=200, ELITE=∞).
       </p>
     </div>
   );
