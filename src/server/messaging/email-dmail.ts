@@ -6,12 +6,15 @@ export type EmailSendResult =
   | { ok: false; error: string };
 
 function getConfig() {
-  const host = process.env.DMAIL_SMTP_HOST || "mailserver.dmail.sa";
-  const port = Number(process.env.DMAIL_SMTP_PORT || 465);
-  const user = process.env.DMAIL_SMTP_USER || "";
-  const pass = process.env.DMAIL_SMTP_PASS || "";
-  const from = process.env.DMAIL_FROM || user || "ثقة <no-reply@theqah.com.sa>";
-  if (!user || !pass) throw new Error("Missing DMAIL_SMTP_USER/PASS");
+  const host = process.env.DMAIL_SMTP_HOST || process.env.EMAIL_HOST || "mailserver.dmail.sa";
+  const port = Number(process.env.DMAIL_SMTP_PORT || process.env.EMAIL_PORT || 465);
+  const user = process.env.DMAIL_SMTP_USER || process.env.EMAIL_USER || "";
+  const pass = process.env.DMAIL_SMTP_PASS || process.env.EMAIL_PASS || "";
+  const from = process.env.DMAIL_FROM || process.env.EMAIL_FROM || user || "ثقة <no-reply@theqah.com.sa>";
+  if (!user || !pass) {
+    console.warn("[EMAIL] Missing SMTP credentials - EMAIL_USER/EMAIL_PASS or DMAIL_SMTP_USER/DMAIL_SMTP_PASS");
+    throw new Error("Missing EMAIL_USER/EMAIL_PASS or DMAIL_SMTP_USER/DMAIL_SMTP_PASS");
+  }
   return { host, port, user, pass, from };
 }
 

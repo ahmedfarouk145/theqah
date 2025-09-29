@@ -278,9 +278,27 @@ async function ensureInviteForOrder(
   if ((!customer?.email && !customer?.mobile) && rawData["order"] && typeof rawData["order"] === "object") {
     customer = (rawData["order"] as Dict)["customer"] as SallaCustomer || customer;
   }
-  console.log(`[INVITE FLOW] 2. Customer found: email=${customer?.email || "none"}, mobile=${customer?.mobile || "none"}`);
   
-  const cv = validEmailOrPhone(customer);
+  // Enhanced email extraction - try multiple sources
+  let customerEmail = customer?.email || "";
+  if (!customerEmail) {
+    const orderData = rawData["order"] as Dict | undefined;
+    customerEmail = 
+      (orderData?.customer as Dict)?.email as string || 
+      (orderData?.billing_address as Dict)?.email as string ||
+      (orderData?.shipping_address as Dict)?.email as string ||
+      "";
+  }
+  
+  // If still no email, use mobile as fallback for SMS-only
+  const finalCustomer = customer ? {
+    ...customer,
+    email: customerEmail.trim() || customer.email || ""
+  } : undefined;
+  
+  console.log(`[INVITE FLOW] 2. Customer found: email=${customerEmail || "none"}, mobile=${finalCustomer?.mobile || "none"}`);
+  
+  const cv = validEmailOrPhone(finalCustomer);
   console.log(`[INVITE FLOW] 3. Customer validation: ${cv.ok ? "PASSED" : "FAILED"}`);
   if (!cv.ok) {
     console.log(`[INVITE FLOW] ❌ FAILED: No valid email or mobile`);
@@ -342,7 +360,7 @@ async function ensureInviteForOrder(
   await db.collection("review_invites").doc(tokenId).set({
     tokenId, orderId, platform: "salla", storeUid,
     productId: mainProductId, productIds,
-    customer: { name: customer?.name ?? null, email: cv.email ?? null, mobile: cv.mobile ?? null },
+    customer: { name: finalCustomer?.name ?? null, email: customerEmail || null, mobile: finalCustomer?.mobile ?? null },
     sentAt: Date.now(), deliveredAt: null, clicks: 0, publicUrl,
   });
 
@@ -356,9 +374,9 @@ async function ensureInviteForOrder(
   try {
     await sendBothNow({
       inviteId: tokenId,
-      phone: cv.mobile,
-      email: cv.email,
-      customerName: customer?.name,
+      phone: finalCustomer?.mobile,
+      email: customerEmail,
+      customerName: finalCustomer?.name,
       storeName,
       url: publicUrl,
       perChannelTimeoutMs: 15000,
