@@ -1,6 +1,6 @@
 // Production webhook testing for Vercel deployment
 
-const { createHmac } = require('crypto');
+import { createHmac } from 'crypto';
 
 // Your production Vercel URL
 const PRODUCTION_URL = 'https://theqah.com.sa'; // Update this with your actual domain

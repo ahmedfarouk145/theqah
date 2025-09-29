@@ -18,6 +18,7 @@
 */
 
 /* eslint-disable no-console */
+//eslint-disable-next-line 
 const crypto = require('crypto');
 
 // Mock Firebase Admin (since we're testing the messaging part)
@@ -122,9 +123,9 @@ async function testReviewCreationAndSending() {
     console.log('📤 Testing message sending...');
     
     try {
-      // Try to import your real sendBothNow function
-      const { sendBothNow } = require('../src/server/messaging/send-invite');
-      
+      // استخدم الاستيراد الديناميكي الحديث
+      const { sendBothNow } = await import('../src/server/messaging/send-invite.js');
+
       const sendResult = await sendBothNow({
         inviteId: tokenId,
         phone: CUSTOMER_PHONE || undefined,
