@@ -3,9 +3,21 @@ import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getAuth, type Auth } from "firebase-admin/auth";
 
-let _app: App | null = null;
-let _db: Firestore | null = null;
-let _auth: Auth | null = null;
+declare global {
+  // نحفظ كل حاجة هنا علشان HMR مايعيدش التهيئة
+  // eslint-disable-next-line no-var
+  var __FBA__: {
+    app?: App;
+    db?: Firestore;
+    auth?: Auth;
+    settingsApplied?: boolean;
+  } | undefined;
+}
+
+function state() {
+  if (!globalThis.__FBA__) globalThis.__FBA__ = {};
+  return globalThis.__FBA__!;
+}
 
 function buildCredential() {
   const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
@@ -20,43 +32,44 @@ function buildCredential() {
   privateKey = privateKey.replace(/\\n/g, "\n");
 
   if (!projectId || !clientEmail || !privateKey) {
-    // اختياري: يمكنك رمي خطأ هنا لو أردت إلزام المتغيرات
-    console.warn("[firebaseAdmin] Missing some service account env vars (projectId/clientEmail/privateKey).");
+    console.warn("[firebaseAdmin] Missing some service account env vars (projectId/clientEmail/privateKey). Falling back to ADC if available.");
+    // هنرجع cert حتى لو فاضي—لو عندك ADC على السيرفر هتشتغل
   }
 
   return cert({ projectId, clientEmail, privateKey });
 }
 
 export function initAdmin(): App {
-  if (_app) return _app;
+  const s = state();
+  if (s.app) return s.app;
 
-  if (!getApps().length) {
-    _app = initializeApp({
-      credential: buildCredential(),
-    });
-  } else {
-    _app = getApps()[0]!;
-  }
+  s.app = getApps().length
+    ? getApps()[0]!
+    : initializeApp({ credential: buildCredential() });
 
-  return _app!;
+  return s.app!;
 }
 
 export function dbAdmin(): Firestore {
-  if (_db) return _db;
+  const s = state();
+  if (s.db) return s.db;
 
-  initAdmin();
-  _db = getFirestore();
+  const app = initAdmin();
+  const db = getFirestore(app);
 
-  // ✅ أهم سطر: تجاهل undefined عالميًا لتفادي أخطاء Firestore
-  // NOTE: يتم استدعاء settings مرة واحدة فقط.
-  _db.settings({ ignoreUndefinedProperties: true });
+  // settings مرة واحدة فقط، وقبل أي استخدام
+  if (!s.settingsApplied) {
+    db.settings({ ignoreUndefinedProperties: true });
+    s.settingsApplied = true;
+  }
 
-  return _db!;
+  s.db = db;
+  return s.db!;
 }
 
 export function authAdmin(): Auth {
-  if (_auth) return _auth;
-  initAdmin();
-  _auth = getAuth();
-  return _auth!;
+  const s = state();
+  if (s.auth) return s.auth;
+  s.auth = getAuth(initAdmin());
+  return s.auth!;
 }
