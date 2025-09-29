@@ -63,6 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!href) return res.status(400).json({ error: "MISSING_INPUT", hint: "send storeUid or href" });
 
     const { base, host, isTrial } = parseHrefBase(href);
+    const hrefUrl = normalizeUrl(href);
     const db = dbAdmin();
     let doc: FirebaseFirestore.DocumentSnapshot | null = null;
 
@@ -117,6 +118,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (fromUid) {
               const storeDoc = await db.collection("stores").doc(fromUid).get();
               if (storeDoc.exists) doc = storeDoc;
+            }
+          }
+
+          // extra: try host/dev-xxxxx variant stored in domains as hostname path
+          if (!doc && hrefUrl) {
+            const firstSeg = hrefUrl.pathname.split("/").filter(Boolean)[0] || "";
+            if (firstSeg.startsWith("dev-")) {
+              const hostDev = `${host}/${firstSeg}`;
+              const encHostDev = encodeUrlForFirestore(hostDev);
+              let hostDoc = await db.collection("domains").doc(encHostDev).get();
+              if (!hostDoc.exists) {
+                try { hostDoc = await db.collection("domains").doc(hostDev).get(); } catch {}
+              }
+              if (hostDoc.exists) {
+                const hd = hostDoc.data() as { storeUid?: string; uid?: string } | undefined;
+                const fromUid = hd?.storeUid || hd?.uid;
+                if (fromUid) {
+                  const storeDoc = await db.collection("stores").doc(fromUid).get();
+                  if (storeDoc.exists) doc = storeDoc;
+                }
+              }
             }
           }
 
@@ -199,6 +221,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .where("salla.installed", "==", true)
             .limit(1).get();
           if (!snapUid.empty) { doc = snapUid.docs[0]; }
+        }
+      }
+    }
+
+    // FINAL FALLBACK: extract identifier from href query (?identifier=...) and resolve by storeId
+    if (!doc && hrefUrl) {
+      const idFromHref = hrefUrl.searchParams.get("identifier") || hrefUrl.searchParams.get("merchant") || hrefUrl.searchParams.get("store_id");
+      if (idFromHref) {
+        const snapNum = await db.collection("stores")
+          .where("salla.storeId", "==", Number(idFromHref))
+          .where("salla.connected", "==", true)
+          .where("salla.installed", "==", true)
+          .limit(1).get();
+        if (!snapNum.empty) {
+          doc = snapNum.docs[0];
+        } else {
+          const snapStr = await db.collection("stores")
+            .where("salla.storeId", "==", idFromHref)
+            .where("salla.connected", "==", true)
+            .where("salla.installed", "==", true)
+            .limit(1).get();
+          if (!snapStr.empty) {
+            doc = snapStr.docs[0];
+          } else {
+            const snapUid = await db.collection("stores")
+              .where("uid", "==", `salla:${idFromHref}`)
+              .where("salla.connected", "==", true)
+              .where("salla.installed", "==", true)
+              .limit(1).get();
+            if (!snapUid.empty) { doc = snapUid.docs[0]; }
+          }
         }
       }
     }
