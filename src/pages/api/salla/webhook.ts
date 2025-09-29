@@ -660,9 +660,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       meta: { 
         error: err, 
         stack: stack?.substring(0, 500),
-        hasCustomerData: !!((dataRaw as Record<string, unknown>).customer || (dataRaw as Record<string, unknown>).order?.customer),
-        hasProductData: !!((dataRaw as Record<string, unknown>).items || (dataRaw as Record<string, unknown>).order?.items),
-        dataKeys: Object.keys(dataRaw)
+        hasCustomerData: !!((dataRaw as Record<string, unknown>).customer || ((dataRaw as Record<string, unknown>).order as Record<string, unknown>)?.customer),
+        hasProductData: !!((dataRaw as Record<string, unknown>).items || ((dataRaw as Record<string, unknown>).order as Record<string, unknown>)?.items),
+        dataKeys: Object.keys(dataRaw as Record<string, unknown>)
       } 
     });
     await db.collection("webhook_errors").add({
@@ -670,8 +670,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       error: err, stack: stack?.substring(0, 1000), 
       raw: raw.toString("utf8").slice(0, 2000),
       debugData: {
-        hasCustomerData: !!((dataRaw as Record<string, unknown>).customer || (dataRaw as Record<string, unknown>).order?.customer),
-        hasProductData: !!((dataRaw as Record<string, unknown>).items || (dataRaw as Record<string, unknown>).order?.items),
+        hasCustomerData: !!((dataRaw as Record<string, unknown>).customer || ((dataRaw as Record<string, unknown>).order as Record<string, unknown>)?.customer),
+        hasProductData: !!((dataRaw as Record<string, unknown>).items || ((dataRaw as Record<string, unknown>).order as Record<string, unknown>)?.items),
         dataKeys: Object.keys(dataRaw as Record<string, unknown>)
       }
     }).catch(()=>{});
