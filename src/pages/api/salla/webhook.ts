@@ -671,8 +671,15 @@ async function fbLog(
     meta: entry.meta ?? null,
   };
 
-  try { await db.collection("webhook_firebase").add(payload); }
-  catch (e) { console.error("[WEBHOOK_LOG][WRITE_FAIL]", e); }
+  try { 
+    await Promise.race([
+      db.collection("webhook_firebase").add(payload),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Log timeout')), 5000))
+    ]);
+  } catch (e) { 
+    // Silently skip Firebase logging on timeout - not critical for functionality
+    console.warn("[WEBHOOK_LOG][TIMEOUT]", entry.level, entry.scope); 
+  }
 
   const line = `[${entry.level.toUpperCase()}][${entry.scope}] ${entry.msg} :: ${JSON.stringify({
     event: payload.event, merchant: payload.merchant, orderId: payload.orderId, idemKey: payload.idemKey
