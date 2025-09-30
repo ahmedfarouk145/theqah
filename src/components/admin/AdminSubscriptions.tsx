@@ -97,7 +97,7 @@ export default function AdminSubscriptions() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();

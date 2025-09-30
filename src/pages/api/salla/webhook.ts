@@ -201,11 +201,12 @@ function extractMainProductName(items?: SallaItem[]): string | undefined {
   
   const firstItem = items[0];
   // جرب استخراج الاسم من عدة مصادر محتملة
+  const unknownItem = firstItem as unknown;
   const name = 
-    (firstItem as any)?.name || 
-    (firstItem as any)?.product?.name || 
-    (firstItem as any)?.product_name || 
-    (firstItem as any)?.title ||
+    (unknownItem as { name?: string })?.name || 
+    (unknownItem as { product?: { name?: string } })?.product?.name || 
+    (unknownItem as { product_name?: string })?.product_name || 
+    (unknownItem as { title?: string })?.title ||
     undefined;
     
   return typeof name === 'string' ? name.trim() : undefined;

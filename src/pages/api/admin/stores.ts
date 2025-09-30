@@ -11,7 +11,7 @@ const parseSqlishToIso = (v: unknown): string | undefined => {
   if (typeof v !== 'string') return;
   const m = v.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
   if (!m) return;
-  const [_, Y, M, D, h, m2, s] = m;
+  const [, Y, M, D, h, m2, s] = m;
   const dt = new Date(Date.UTC(+Y, +M - 1, +D, +h, +m2, +s));
   return dt.toISOString();
 };

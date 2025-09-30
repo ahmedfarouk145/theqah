@@ -40,7 +40,8 @@ export default function SetupPasswordPage() {
 
         const data = await response.json();
         setSetupData(data);
-      } catch (error) {
+      } catch (err) {
+        console.error('Token verification error:', err);
         setSetupData({
           token,
           email: '',
@@ -99,7 +100,8 @@ export default function SetupPasswordPage() {
         }, 3000);
       }
 
-    } catch (error) {
+    } catch (err) {
+      console.error('Password setup error:', err);
       setResult({
         success: false,
         message: 'حدث خطأ في الاتصال. حاول مرة أخرى'

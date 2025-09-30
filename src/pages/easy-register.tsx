@@ -54,7 +54,8 @@ export default function EasyRegisterPage() {
       const data = await response.json();
       setResult(data);
 
-    } catch (error) {
+    } catch (err) {
+      console.error('Registration error:', err);
       setResult({
         success: false,
         message: 'حدث خطأ في الاتصال. حاول مرة أخرى'
