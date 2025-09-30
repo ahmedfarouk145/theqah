@@ -1,12 +1,13 @@
 // src/pages/review/[token].tsx
 import Head from "next/head";
-import Image from "next/image";
 import Link from "next/link";
+import Image from "next/image"; // (لسه مستخدمينه داخل أماكن ثانية لو حبيت)
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
 import { CheckCircle, AlertCircle, Star, Loader2 } from "lucide-react";
 import FirebaseStorageWidget from "@/components/FirebaseStorageWidget";
+import AnimatedLogo from "@/components/AnimatedLogo";
 
 type UploadedFile = { url: string; name: string; size?: number; path: string };
 
@@ -32,7 +33,6 @@ export default function ReviewByTokenPage() {
   const router = useRouter();
   const isReady = router.isReady;
 
-  // read token safely (could be string | string[] | undefined)
   const token = useMemo(() => {
     const t = router.query.token;
     return typeof t === "string" ? t : Array.isArray(t) ? t[0] : undefined;
@@ -48,7 +48,6 @@ export default function ReviewByTokenPage() {
   const [loadingToken, setLoadingToken] = useState(true);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
 
-  // load token meta
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -63,7 +62,6 @@ export default function ReviewByTokenPage() {
       try {
         const r = await fetch(`/api/review-token?token=${encodeURIComponent(token)}`);
         if (!r.ok) {
-          // 404 = مش مشكلة؛ هنشتغل بالتوكن فقط
           if (!cancelled) setTokenInfo({ tokenId: token });
           return;
         }
@@ -90,30 +88,14 @@ export default function ReviewByTokenPage() {
     };
   }, [isReady, token]);
 
-  // fallback: استخدم token كـ orderId لو API ماقدّمش orderId
   const orderId = useMemo(() => tokenInfo?.orderId || token || "", [tokenInfo?.orderId, token]);
 
   async function submit() {
-    if (!token) {
-      setError("الرابط غير صالح.");
-      return;
-    }
-    if (!orderId) {
-      setError("رقم الطلب غير موجود في الرابط.");
-      return;
-    }
-    if (stars < 1 || stars > 5) {
-      setError("اختر تقييمًا من 1 إلى 5 نجوم");
-      return;
-    }
-    if (tokenInfo?.expired) {
-      setError("عفوًا، انتهت صلاحية رابط التقييم.");
-      return;
-    }
-    if (tokenInfo?.voided) {
-      setError("عفوًا، تم إلغاء رابط التقييم.");
-      return;
-    }
+    if (!token) { setError("الرابط غير صالح."); return; }
+    if (!orderId) { setError("رقم الطلب غير موجود في الرابط."); return; }
+    if (stars < 1 || stars > 5) { setError("اختر تقييمًا من 1 إلى 5 نجوم"); return; }
+    if (tokenInfo?.expired) { setError("عفوًا، انتهت صلاحية رابط التقييم."); return; }
+    if (tokenInfo?.voided) { setError("عفوًا، تم إلغاء رابط التقييم."); return; }
 
     setSubmitting(true);
     setError(null);
@@ -138,14 +120,13 @@ export default function ReviewByTokenPage() {
         const msg =
           data?.message ||
           (data?.error === "missing_orderId" ? "رقم الطلب مفقود."
-          : data?.error === "duplicate_review" ? "تم استلام تقييم لهذا الطلب بالفعل."
-          : data?.error === "token_order_mismatch" ? "الرمز لا يطابق رقم الطلب."
-          : data?.error === "token_expired" ? "انتهت صلاحية الرمز."
-          : data?.error === "token_voided" ? "تم إلغاء الرمز."
-          : data?.error || "تعذّر إرسال التقييم.");
+            : data?.error === "duplicate_review" ? "تم استلام تقييم لهذا الطلب بالفعل."
+            : data?.error === "token_order_mismatch" ? "الرمز لا يطابق رقم الطلب."
+            : data?.error === "token_expired" ? "انتهت صلاحية الرمز."
+            : data?.error === "token_voided" ? "تم إلغاء الرمز."
+            : data?.error || "تعذّر إرسال التقييم.");
         throw new Error(msg);
       }
-
       setDone({ id: data?.id });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "خطأ غير متوقع";
@@ -155,7 +136,6 @@ export default function ReviewByTokenPage() {
     }
   }
 
-  // waiting for router/query
   if (!isReady) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-emerald-50 to-lime-50">
@@ -171,7 +151,6 @@ export default function ReviewByTokenPage() {
     );
   }
 
-  // invalid link (no token)
   if (!token) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-red-50 to-pink-50">
@@ -181,9 +160,9 @@ export default function ReviewByTokenPage() {
           className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg"
           dir="rtl"
         >
-          {/* ✅ اللوجو */}
+          {/* ✅ اللوجو الكبير + أنيميشن 3D */}
           <div className="flex justify-center mb-4">
-            <Image src="/logo.png" alt="Logo" width={140} height={40} className="h-10 w-auto" priority />
+            <AnimatedLogo width={220} glow pulse shine />
           </div>
 
           <div className="flex items-center gap-3 mb-4">
@@ -204,7 +183,6 @@ export default function ReviewByTokenPage() {
     );
   }
 
-  // initial token meta loading
   if (loadingToken) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-emerald-50 to-lime-50">
@@ -220,7 +198,6 @@ export default function ReviewByTokenPage() {
     );
   }
 
-  // success page
   if (done) {
     return (
       <>
@@ -233,9 +210,9 @@ export default function ReviewByTokenPage() {
             className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg text-center"
             dir="rtl"
           >
-            {/* ✅ اللوجو */}
+            {/* ✅ اللوجو الكبير + أنيميشن 3D */}
             <div className="flex justify-center mb-4">
-              <Image src="/logo.png" alt="Logo" width={160} height={48} className="h-12 w-auto" priority />
+              <AnimatedLogo width={240} glow pulse shine />
             </div>
 
             <motion.div
@@ -279,10 +256,10 @@ export default function ReviewByTokenPage() {
           className="max-w-2xl w-full bg-white border rounded-2xl p-8 shadow-lg"
           dir="rtl"
         >
-          {/* ✅ اللوجو في الهيدر */}
+          {/* ✅ اللوجو في الهيدر (مكبّر + 3D) */}
           <div className="text-center mb-6">
             <div className="flex justify-center mb-3">
-              <Image src="/logo.png" alt="Logo" width={180} height={56} className="h-12 w-auto" priority />
+              <AnimatedLogo width={260} glow pulse shine />
             </div>
             <h1 className="text-3xl font-bold text-emerald-800 mb-2">قيّم تجربتك</h1>
             <p className="text-gray-600">
