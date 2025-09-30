@@ -10,7 +10,8 @@
     "test:webhook": "node tools/salla-webhook-tester.js",
     "test:webhook-v2": "node tools/webhook-tester-v2.js",
     "test:review": "node tools/test-review-sending.js",
-    "test:updated-order": "cross-env RUN=updated_order node tools/salla-webhook-tester.js"
+    "test:updated-order": "cross-env RUN=updated_order node tools/salla-webhook-tester.js",
+    "test:easy-mode": "node tools/test-easy-mode.js"
   },
   "dependencies": {
     "@fontsource/cairo": "^5.2.6",
@@ -23,6 +24,7 @@
     "@radix-ui/react-switch": "^1.2.5",
     "@sendgrid/mail": "^8.1.4",
     "@types/multer": "^2.0.0",
+    "bcryptjs": "^2.4.3",
     "axios": "^1.11.0",
     "bad-words": "^4.0.0",
     "class-variance-authority": "^0.7.1",
@@ -62,6 +64,7 @@
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
     "@types/bad-words": "^3.0.3",
+    "@types/bcryptjs": "^2.4.6",
     "@types/formidable": "^3.4.5",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",

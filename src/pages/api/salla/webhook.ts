@@ -194,6 +194,22 @@ function extractProductIds(items?: SallaItem[]): string[] {
   }
   return [...ids];
 }
+
+// استخراج اسم المنتج الأساسي (أول منتج في الطلب)
+function extractMainProductName(items?: SallaItem[]): string | undefined {
+  if (!Array.isArray(items) || !items.length) return undefined;
+  
+  const firstItem = items[0];
+  // جرب استخراج الاسم من عدة مصادر محتملة
+  const name = 
+    (firstItem as any)?.name || 
+    (firstItem as any)?.product?.name || 
+    (firstItem as any)?.product_name || 
+    (firstItem as any)?.title ||
+    undefined;
+    
+  return typeof name === 'string' ? name.trim() : undefined;
+}
 function validEmailOrPhone(c?: SallaCustomer) {
   const email = c?.email?.trim(); 
   const mobile = safeMobile(c?.mobile);
@@ -368,7 +384,9 @@ async function ensureInviteForOrder(
 
   const productIds = extractProductIds(order.items);
   const mainProductId = productIds[0] || orderId;
+  const mainProductName = extractMainProductName(order.items);
   console.log(`[INVITE FLOW] 10. Product IDs extracted: ${productIds.length} items, main: ${mainProductId}`);
+  console.log(`[INVITE FLOW] 10.1. Main product name: ${mainProductName || "N/A"}`);
 
   if (!APP_BASE_URL) {
     console.log(`[INVITE FLOW] ❌ FAILED: APP_BASE_URL not configured`);
@@ -410,6 +428,8 @@ async function ensureInviteForOrder(
       email: customerEmail,
       customerName: finalCustomer?.name,
       storeName,
+      productName: mainProductName, // ✅ اسم المنتج
+      orderNumber: String(order.number || orderId), // ✅ رقم الطلب
       url: publicUrl,
       perChannelTimeoutMs: 15000,
     });
