@@ -194,6 +194,23 @@ function extractProductIds(items?: SallaItem[]): string[] {
   }
   return [...ids];
 }
+
+// استخراج اسم المنتج الأساسي (أول منتج في الطلب)
+function extractMainProductName(items?: SallaItem[]): string | undefined {
+  if (!Array.isArray(items) || !items.length) return undefined;
+  
+  const firstItem = items[0];
+  // جرب استخراج الاسم من عدة مصادر محتملة
+  const unknownItem = firstItem as unknown;
+  const name = 
+    (unknownItem as { name?: string })?.name || 
+    (unknownItem as { product?: { name?: string } })?.product?.name || 
+    (unknownItem as { product_name?: string })?.product_name || 
+    (unknownItem as { title?: string })?.title ||
+    undefined;
+    
+  return typeof name === 'string' ? name.trim() : undefined;
+}
 function validEmailOrPhone(c?: SallaCustomer) {
   const email = c?.email?.trim(); 
   const mobile = safeMobile(c?.mobile);
@@ -354,7 +371,7 @@ async function ensureInviteForOrder(
   }
 
   console.log(`[INVITE FLOW] 8. Final storeUid: ${storeUid || "MISSING"}`);
-  
+
   // فحص الخطة (لو عندك usage limits)
   const planCheck = storeUid ? await canSendInvite(storeUid) : { ok: true as const };
   console.log(`[INVITE FLOW] 9. Plan check: ${planCheck.ok ? "PASSED" : "FAILED"} - ${JSON.stringify(planCheck)}`);
@@ -368,7 +385,9 @@ async function ensureInviteForOrder(
 
   const productIds = extractProductIds(order.items);
   const mainProductId = productIds[0] || orderId;
+  const mainProductName = extractMainProductName(order.items);
   console.log(`[INVITE FLOW] 10. Product IDs extracted: ${productIds.length} items, main: ${mainProductId}`);
+  console.log(`[INVITE FLOW] 10.1. Main product name: ${mainProductName || "N/A"}`);
 
   if (!APP_BASE_URL) {
     console.log(`[INVITE FLOW] ❌ FAILED: APP_BASE_URL not configured`);
@@ -404,15 +423,17 @@ async function ensureInviteForOrder(
   }
   console.log(`[INVITE FLOW] 14. Sending invitations...`);
   try {
-    await sendBothNow({
-      inviteId: tokenId,
+  await sendBothNow({
+    inviteId: tokenId,
       phone: finalCustomer?.mobile,
       email: customerEmail,
       customerName: finalCustomer?.name,
-      storeName,
-      url: publicUrl,
-      perChannelTimeoutMs: 15000,
-    });
+    storeName,
+      productName: mainProductName, // ✅ اسم المنتج
+      orderNumber: String(order.number || orderId), // ✅ رقم الطلب
+    url: publicUrl,
+    perChannelTimeoutMs: 15000,
+  });
     console.log(`[INVITE FLOW] 15. ✅ Invitations sent successfully`);
   } catch (sendError) {
     console.log(`[INVITE FLOW] 15. ⚠️ Send failed but token created: ${sendError}`);
@@ -828,7 +849,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       
       try {
-        await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
+      await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
         fbLog(db, { level: "info", scope: "orders", msg: "order snapshot upserted", event, idemKey, merchant: merchantId, orderId, meta: { storeUidFromEvent } });
       } catch (err) {
         console.error(`[ORDER_SNAPSHOT_ERROR] Failed to upsert order ${orderId}:`, err);
@@ -912,7 +933,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const statusFin = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
     Promise.race([
       db.collection("processed_events").doc(keyOf(event, orderIdFin, statusFin)).set({
-        at: Date.now(), event, processed: true, status: statusFin
+      at: Date.now(), event, processed: true, status: statusFin
       }, { merge: true }),
       new Promise((_, reject) => setTimeout(() => reject(new Error("processed_events_timeout")), 2000))
     ]).catch(() => {});

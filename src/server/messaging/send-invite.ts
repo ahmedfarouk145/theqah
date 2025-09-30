@@ -2,6 +2,7 @@
 import { sendSms, type SendSmsResult } from "./send-sms";
 import { sendEmailSendGrid as sendEmailDmail, type EmailSendResult } from "./email-sendgrid";
 import { dbAdmin } from "@/lib/firebaseAdmin";
+import { buildUnifiedSMS, buildUnifiedEmailHTML, buildUnifiedEmailText, type ReviewInviteData } from "./unified-templates";
 
 // بناء نص SMS افتراضي
 export function buildInviteSmsDefault(storeName: string, url: string): string {
@@ -60,6 +61,8 @@ export interface SendBothOptions {
   email?: string;
   customerName?: string;
   storeName?: string;
+  productName?: string; // ✅ اسم المنتج
+  orderNumber?: string; // ✅ رقم الطلب
   url: string;
 
   // تخصيصات اختيارية
@@ -76,29 +79,32 @@ export async function sendBothNow(opts: SendBothOptions) {
   const name = (opts.customerName || "العميل").trim();
   const store = (opts.storeName || "المتجر").trim();
   const timeout = opts.perChannelTimeoutMs ?? 15_000;
+  
+  // ✅ إنشاء بيانات موحدة للـ templates
+  const templateData: ReviewInviteData = {
+    customerName: name,
+    storeName: store,
+    productName: opts.productName,
+    orderNumber: opts.orderNumber,
+    reviewUrl: opts.url
+  };
 
+  // ✅ استخدام Template موحد للـ SMS
   const smsText =
     (opts.smsTextOverride && opts.smsTextOverride.trim()) ||
-    buildInviteSmsDefault(store, opts.url);
+    buildUnifiedSMS(templateData);
 
+  // ✅ موضوع الإيميل مع اسم المتجر والمنتج
   const emailSubject =
     (opts.emailSubjectOverride && opts.emailSubjectOverride.trim()) ||
-    "وش رأيك؟ نبي نسمع منك";
-
+    `قيّم تجربتك من ${store}${opts.productName ? ` - ${opts.productName}` : ''}`;
+    
+  // ✅ استخدام Template موحد للـ Email
   const emailHtml =
     (opts.emailHtmlOverride && opts.emailHtmlOverride.trim()) ||
-    `
-      <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.8">
-        <p>مرحباً ${name}،</p>
-        <p>طلبك من <strong>${store}</strong> تم. شاركنا رأيك لو تكرّمت.</p>
-        <p>
-          <a href="${opts.url}" style="background:#16a34a;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block">
-            اضغط للتقييم الآن
-          </a>
-        </p>
-        <p style="color:#64748b">شكراً لك — فريق ثقة</p>
-      </div>
-    `.trim();
+    buildUnifiedEmailHTML(templateData);
+    
+  const emailText = buildUnifiedEmailText(templateData);
 
   const jobs: Promise<void>[] = [];
 
@@ -126,7 +132,7 @@ export async function sendBothNow(opts: SendBothOptions) {
 
   if (opts.email) {
     const job = withTimeout(
-      sendEmailDmail(opts.email, emailSubject, emailHtml),
+      sendEmailDmail(opts.email, emailSubject, emailHtml, emailText),
       timeout,
       "email"
     )

@@ -48,6 +48,63 @@ function env(name: string, fallback?: string) {
   return (v && v.trim()) || fallback || "";
 }
 
+// Import Firebase Admin for logging
+import { dbAdmin } from "@/lib/firebaseAdmin";
+
+// Enhanced SMS logging function
+async function logSmsAttempt(
+  to: string | string[],
+  text: string,
+  success: boolean,
+  jobId?: string | null,
+  error?: string,
+  stats?: { total?: number; accepted?: number; rejected?: number; cost?: number }
+) {
+  try {
+    const db = dbAdmin();
+    const logData = {
+      to: Array.isArray(to) ? to : [to],
+      toCount: Array.isArray(to) ? to.length : 1,
+      text: text.substring(0, 200), // First 200 chars for privacy
+      textLength: text.length,
+      success,
+      jobId: jobId || null,
+      error: error || null,
+      stats: stats || null,
+      timestamp: Date.now(),
+      service: 'oursms',
+      createdAt: new Date().toISOString()
+    };
+    
+    // Log to sms_logs collection
+    await db.collection("sms_logs").add(logData);
+    
+    // Update stats
+    const statsRef = db.collection("sms_stats").doc("summary");
+    await db.runTransaction(async (transaction) => {
+      const statsDoc = await transaction.get(statsRef);
+      const currentStats = (statsDoc.exists ? statsDoc.data() : {}) || {};
+      
+      const messageCount = Array.isArray(to) ? to.length : 1;
+      
+      transaction.set(statsRef, {
+        totalAttempts: (currentStats?.totalAttempts || 0) + 1,
+        totalMessages: (currentStats?.totalMessages || 0) + messageCount,
+        successful: success ? (currentStats?.successful || 0) + 1 : (currentStats?.successful || 0),
+        failed: success ? (currentStats?.failed || 0) : (currentStats?.failed || 0) + 1,
+        messagesDelivered: success ? (currentStats?.messagesDelivered || 0) + (stats?.accepted || messageCount) : (currentStats?.messagesDelivered || 0),
+        messagesRejected: (currentStats?.messagesRejected || 0) + (stats?.rejected || 0),
+        totalCost: (currentStats?.totalCost || 0) + (stats?.cost || 0),
+        lastAttempt: Date.now(),
+        updatedAt: Date.now()
+      }, { merge: true });
+    });
+    
+  } catch (logError) {
+    console.error("[OURSMS] Failed to log SMS attempt:", logError);
+  }
+}
+
 // ---------- القالب الموحّد ----------
 export function buildInviteSMS(storeName: string | null | undefined, link: string) {
   const s = (storeName || "").trim() || "متجرك";
@@ -87,8 +144,11 @@ async function fetchWithTimeout(input: RequestInfo, init: RequestInit & { timeou
 
 // ---------- الإرسال عبر OurSMS ----------
 export async function sendSMSViaOursms(params: SendSMSParams) {
-  const API_KEY = env("OURSMS_API_KEY");
-  if (!API_KEY) throw new Error("OURSMS_API_KEY is missing");
+  const { to, text } = params; // Extract for logging
+  
+  try {
+    const API_KEY = env("OURSMS_API_KEY");
+    if (!API_KEY) throw new Error("OURSMS_API_KEY is missing");
 
   const BASE = env("OURSMS_BASE_URL", "https://api.oursms.com");
   const SENDER = env("OURSMS_SENDER");
@@ -137,23 +197,50 @@ export async function sendSMSViaOursms(params: SendSMSParams) {
 
   const json = (await res.json().catch(() => ({}))) as Partial<OursmsSendResult>;
 
+  const result = {
+    jobId: String(json.jobId || ""),
+    customId: customId ?? (json.customId ?? null) as string | null,
+    total: Number(json.total ?? 0),
+    rejected: Number(json.rejected ?? 0),
+    accepted: Number(json.accepted ?? 0),
+    duplicates: Number(json.duplicates ?? 0),
+    cost: Number(json.cost ?? 0),
+    acceptedMsgs: json.acceptedMsgs ?? null,
+    rejectedMsgs: json.rejectedMsgs ?? null,
+    statusCode: (json.statusCode ?? null) as number | null,
+    statusDesc: (json.statusDesc ?? null) as string | null,
+    message: (json.message ?? null) as string | null,
+  } as OursmsSendResult;
+
+  console.log(`[OURSMS] ✅ SMS sent successfully - Job ID: ${result.jobId}, Accepted: ${result.accepted}/${result.total}, Cost: ${result.cost}`);
+
+  // Log success
+  await logSmsAttempt(to, text, true, result.jobId, null, {
+    total: result.total,
+    accepted: result.accepted,
+    rejected: result.rejected,
+    cost: result.cost
+  });
+
   return {
     ok: true as const,
-    result: {
-      jobId: String(json.jobId || ""),
-      customId: customId ?? (json.customId ?? null) as string | null,
-      total: Number(json.total ?? 0),
-      rejected: Number(json.rejected ?? 0),
-      accepted: Number(json.accepted ?? 0),
-      duplicates: Number(json.duplicates ?? 0),
-      cost: Number(json.cost ?? 0),
-      acceptedMsgs: json.acceptedMsgs ?? null,
-      rejectedMsgs: json.rejectedMsgs ?? null,
-      statusCode: (json.statusCode ?? null) as number | null,
-      statusDesc: (json.statusDesc ?? null) as string | null,
-      message: (json.message ?? null) as string | null,
-    } as OursmsSendResult,
+    result,
   };
+  
+  } catch (error: unknown) {
+    const errorMessage = (error as Error)?.message || String(error);
+    
+    console.error(`[OURSMS] ❌ Failed to send SMS:`, {
+      error: errorMessage,
+      to: Array.isArray(to) ? to : [to],
+      textLength: text.length
+    });
+    
+    // Log failure
+    await logSmsAttempt(to, text, false, null, errorMessage);
+    
+    throw error; // Re-throw for caller handling
+  }
 }
 
 // ---------- (اختياري) رصيد الحساب ----------

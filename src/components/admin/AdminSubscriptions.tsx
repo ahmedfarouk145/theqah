@@ -1,7 +1,7 @@
 // src/components/admin/AdminSubscriptions.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import axios from '@/lib/axiosInstance';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -73,7 +73,7 @@ export default function AdminSubscriptions() {
     return Array.isArray(list) ? list : [];
   }
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
     try {
@@ -93,11 +93,11 @@ export default function AdminSubscriptions() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();

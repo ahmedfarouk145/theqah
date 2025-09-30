@@ -5,7 +5,6 @@ import { getAuth, type Auth } from "firebase-admin/auth";
 
 declare global {
   // نحفظ كل حاجة هنا علشان HMR مايعيدش التهيئة
-  // eslint-disable-next-line no-var
   var __FBA__: {
     app?: App;
     db?: Firestore;
