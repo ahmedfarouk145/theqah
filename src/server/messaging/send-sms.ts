@@ -215,7 +215,7 @@ export async function sendSMSViaOursms(params: SendSMSParams) {
   console.log(`[OURSMS] ✅ SMS sent successfully - Job ID: ${result.jobId}, Accepted: ${result.accepted}/${result.total}, Cost: ${result.cost}`);
 
   // Log success
-  await logSmsAttempt(to, text, true, result.jobId, null, {
+  await logSmsAttempt(to, text, true, result.jobId, undefined, {
     total: result.total,
     accepted: result.accepted,
     rejected: result.rejected,

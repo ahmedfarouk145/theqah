@@ -135,6 +135,7 @@ export default async function handler(
     ]);
 
     // إرسال بريد إلكتروني لإعداد كلمة المرور
+    const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_BASE_URL || "";
     try {
       await sendPasswordSetupEmail({
         email: merchantEmail,
