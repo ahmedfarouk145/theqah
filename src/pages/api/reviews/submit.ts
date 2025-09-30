@@ -1,4 +1,3 @@
-// src/pages/api/reviews/submit.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { moderateReview } from "@/server/moderation";
@@ -37,7 +36,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
 
   try {
-    const body: ReviewBody = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
+    const body: ReviewBody =
+      typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
     const { orderId, stars, text, images, tokenId, platform, authorName, authorShowName } = body;
 
     if (!isNonEmptyString(orderId)) return res.status(400).json({ error: "missing_orderId" });
@@ -101,8 +101,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error("token_order_mismatch");
       }
 
-      // منع تكرار تقييم لنفس orderId
-      const dup = await db.collection("reviews").where("orderId", "==", String(orderId)).limit(1).get();
+      // منع تكرار تقييم لنفس orderId (داخل الترانزاكشن)
+      const dup = await tx.get(
+        db.collection("reviews").where("orderId", "==", String(orderId)).limit(1)
+      );
       if (!dup.empty) throw new Error("duplicate_review");
 
       const reviewRef = db.collection("reviews").doc();
@@ -173,13 +175,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
     }
 
+    // ===== Denormalize: storeName / storeDomain =====
+    try {
+      const uid = txResult?.tok?.storeUid;
+      if (uid) {
+        const sDoc = await db.collection("stores").doc(uid).get();
+        //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const s = (sDoc.exists ? sDoc.data() : {}) as any;
+
+        const dom =
+          s?.domain?.base ||
+          s?.salla?.domain ||
+          s?.zid?.domain ||
+          null;
+
+        let name =
+          s?.merchant?.name ||
+          s?.salla?.storeName ||
+          s?.zid?.storeName ||
+          s?.storeName ||
+          null;
+
+        if (!name && dom) {
+          try { name = new URL(dom).hostname; } catch {}
+        }
+
+        await db.collection("reviews").doc(txResult.reviewId).set(
+          { storeName: name ?? "غير محدد", storeDomain: dom ?? null },
+          { merge: true }
+        );
+      }
+    } catch (e) {
+      console.warn("denorm storeName failed:", e);
+    }
+
     return res.status(201).json({
       ok: true,
       id: txResult.reviewId,
       published: okToPublish,
-      moderation: modPayload ? { model: modPayload.model, ok: !!modPayload.ok, score: modPayload.score, flags: modPayload.flags ?? [] } : null,
+      moderation: modPayload
+        ? { model: modPayload.model, ok: !!modPayload.ok, score: modPayload.score, flags: modPayload.flags ?? [] }
+        : null,
     });
-//eslint-disable-next-line @typescript-eslint/no-explicit-any
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (e: any) {
     const msg = String(e?.message || e || "error");
 

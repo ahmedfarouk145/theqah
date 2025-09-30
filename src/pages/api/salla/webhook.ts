@@ -370,7 +370,7 @@ async function ensureInviteForOrder(
   }
 
   console.log(`[INVITE FLOW] 8. Final storeUid: ${storeUid || "MISSING"}`);
-  
+
   // فحص الخطة (لو عندك usage limits)
   const planCheck = storeUid ? await canSendInvite(storeUid) : { ok: true as const };
   console.log(`[INVITE FLOW] 9. Plan check: ${planCheck.ok ? "PASSED" : "FAILED"} - ${JSON.stringify(planCheck)}`);
@@ -422,17 +422,17 @@ async function ensureInviteForOrder(
   }
   console.log(`[INVITE FLOW] 14. Sending invitations...`);
   try {
-    await sendBothNow({
-      inviteId: tokenId,
+  await sendBothNow({
+    inviteId: tokenId,
       phone: finalCustomer?.mobile,
       email: customerEmail,
       customerName: finalCustomer?.name,
-      storeName,
+    storeName,
       productName: mainProductName, // ✅ اسم المنتج
       orderNumber: String(order.number || orderId), // ✅ رقم الطلب
-      url: publicUrl,
-      perChannelTimeoutMs: 15000,
-    });
+    url: publicUrl,
+    perChannelTimeoutMs: 15000,
+  });
     console.log(`[INVITE FLOW] 15. ✅ Invitations sent successfully`);
   } catch (sendError) {
     console.log(`[INVITE FLOW] 15. ⚠️ Send failed but token created: ${sendError}`);
@@ -848,7 +848,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       
       try {
-        await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
+      await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
         fbLog(db, { level: "info", scope: "orders", msg: "order snapshot upserted", event, idemKey, merchant: merchantId, orderId, meta: { storeUidFromEvent } });
       } catch (err) {
         console.error(`[ORDER_SNAPSHOT_ERROR] Failed to upsert order ${orderId}:`, err);
@@ -932,7 +932,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const statusFin = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
     Promise.race([
       db.collection("processed_events").doc(keyOf(event, orderIdFin, statusFin)).set({
-        at: Date.now(), event, processed: true, status: statusFin
+      at: Date.now(), event, processed: true, status: statusFin
       }, { merge: true }),
       new Promise((_, reject) => setTimeout(() => reject(new Error("processed_events_timeout")), 2000))
     ]).catch(() => {});
