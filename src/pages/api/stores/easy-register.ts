@@ -136,7 +136,12 @@ export default async function handler(
 
     // إرسال بريد إلكتروني لإعداد كلمة المرور
     try {
-      await sendPasswordSetupEmail(merchantEmail, storeName, setupLink);
+      await sendPasswordSetupEmail({
+        email: merchantEmail,
+        storeUid: storeUid,
+        storeName: storeName,
+        redirectUrlBase: APP_BASE_URL
+      });
       console.log(`[EASY_REGISTER] ✅ Setup email sent to: ${merchantEmail}`);
     } catch (emailError) {
       console.error(`[EASY_REGISTER] ⚠️ Failed to send setup email:`, emailError);
