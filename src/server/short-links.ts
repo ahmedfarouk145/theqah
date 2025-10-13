@@ -8,6 +8,7 @@ export type ShortLinkDoc = {
   createdAt: number;
   lastHitAt?: number | null;
   hits?: number;
+  ownerStoreId?: string | null; // Store owner ID for access control
 };
 
 const COLL = "short_links";
@@ -31,7 +32,10 @@ function isValidTarget(u: string) {
   }
 }
 
-export async function createShortLink(targetUrl: string): Promise<string> {
+export async function createShortLink(
+  targetUrl: string,
+  ownerStoreId?: string | null
+): Promise<string> {
   const db = getDb();
   if (!isValidTarget(targetUrl)) throw new Error("invalid_target_url");
 
@@ -47,6 +51,7 @@ export async function createShortLink(targetUrl: string): Promise<string> {
     createdAt: Date.now(),
     hits: 0,
     lastHitAt: null,
+    ownerStoreId: ownerStoreId || null,
   };
 
   await db.collection(COLL).doc(code).set(doc);

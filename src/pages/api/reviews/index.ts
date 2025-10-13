@@ -1,14 +1,7 @@
+// src/pages/api/reviews/index.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { dbAdmin } from '@/lib/firebaseAdmin';
 import { requireUser } from '@/server/auth/requireUser';
-
-type Review = {
-  stars: number;
-  comment: string;
-  lang: string;
-  createdAt: string;
-  trustedBuyer: boolean;
-};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
@@ -27,33 +20,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .limit(200);
 
     // Add status filter if provided
-    if (statusFilter && ['pending', 'approved', 'rejected'].includes(statusFilter)) {
+    if (statusFilter && ['pending', 'approved', 'rejected', 'published'].includes(statusFilter)) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       query = query.where('status', '==', statusFilter) as any;
     }
 
     const snap = await query.get();
 
-    const reviews: Review[] = snap.docs.map((d) => {
-      const r = d.data() as Record<string, unknown>;
-      const createdAtRaw = r.createdAt;
-      const createdAt =
-        typeof createdAtRaw === 'number'
-          ? new Date(createdAtRaw).toISOString()
-          : (createdAtRaw as string) || new Date().toISOString();
-
+    const reviews = snap.docs.map((d) => {
+      const r = d.data();
       return {
-        stars: Number(r.stars) || 0,
-        comment: (r.comment as string) || '',
-        lang: (r.lang as string) || 'ar',
-        createdAt,
-        trustedBuyer: r.trustedBuyer === true,
+        id: d.id,
+        ...r,
       };
     });
 
     return res.status(200).json({ reviews });
   } catch (e) {
-    console.error('reviews/list error', e);
+    console.error('reviews/index error', e);
     return res.status(401).json({ message: 'Unauthorized' });
   }
 }

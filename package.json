@@ -11,7 +11,12 @@
     "test:webhook-v2": "node tools/webhook-tester-v2.js",
     "test:review": "node tools/test-review-sending.js",
     "test:updated-order": "cross-env RUN=updated_order node tools/salla-webhook-tester.js",
-    "test:easy-mode": "node tools/test-easy-mode.js"
+    "test:easy-mode": "node tools/test-easy-mode.js",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "load:k6": "k6 run tools/loadtest/k6/redirect-test.js",
+    "load:k6:reviews": "k6 run tools/loadtest/k6/review-create-test.js",
+    "load:k6:outbox": "k6 run tools/loadtest/k6/outbox-jobs-test.js"
   },
   "dependencies": {
     "@fontsource/cairo": "^5.2.6",
@@ -61,6 +66,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.56.0",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
     "@types/bad-words": "^3.0.3",
@@ -79,6 +85,7 @@
     "dotenv": "^17.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.4.4",
+    "k6": "^0.0.0",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.20.3",
