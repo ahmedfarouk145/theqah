@@ -7,6 +7,8 @@ import OrdersTab from '@/components/dashboard/OrdersTab';
 import ReviewsTab from '@/components/dashboard/Reviews';
 import SettingsTab from '@/components/dashboard/StoreSettings';
 import SupportTab from '@/components/dashboard/Support';
+import PendingReviewsTab from '@/features/reviews/PendingReviewsTab';
+import { useFlag } from '@/features/flags/useFlag';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import axios from '@/lib/axiosInstance';
@@ -15,7 +17,7 @@ import { Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 
 const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', 'الإعدادات', 'المساعدة'] as const;
-type Tab = (typeof tabs)[number];
+type Tab = (typeof tabs)[number] | 'التقييمات المعلقة';
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
@@ -24,6 +26,8 @@ function getCookie(name: string): string | null {
 }
 
 export default function DashboardPage() {
+  const dashboardV2Enabled = useFlag('DASHBOARD_V2');
+
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('dash_active_tab') as Tab) || 'الإحصائيات';
@@ -184,12 +188,25 @@ export default function DashboardPage() {
             {tab}
           </button>
         ))}
+        {dashboardV2Enabled && (
+          <button
+            onClick={() => setActiveTab('التقييمات المعلقة')}
+            className={`px-4 py-2 rounded-md font-medium border transition ${
+              activeTab === 'التقييمات المعلقة'
+                ? 'bg-blue-700 text-white border-blue-700'
+                : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'
+            }`}
+          >
+            التقييمات المعلقة
+          </button>
+        )}
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow">
         {activeTab === 'الإحصائيات' && <DashboardAnalytics />}
         {activeTab === 'الطلبات' && <OrdersTab />}
         {activeTab === 'التقييمات' && <ReviewsTab storeName={storeName} />}
+        {activeTab === 'التقييمات المعلقة' && dashboardV2Enabled && <PendingReviewsTab />}
         {/* ✅ مرّر storeUid و storeName هنا */}
         {activeTab === 'الإعدادات' && <SettingsTab storeUid={storeUid} storeName={storeName} />}
         {activeTab === 'المساعدة' && <SupportTab />}

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { moderateReview } from "@/server/moderation";
+import { onReviewCreated } from "@/server/triggers/review-created";
 
 type ReviewBody = {
   orderId?: string;
@@ -207,6 +208,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     } catch (e) {
       console.warn("denorm storeName failed:", e);
+    }
+
+    // ===== Trigger: notify merchant if review is pending =====
+    try {
+      const reviewSnap = await db.collection("reviews").doc(txResult.reviewId).get();
+      if (reviewSnap.exists) {
+        await onReviewCreated(txResult.reviewId, reviewSnap.data() || {});
+      }
+    } catch (e) {
+      console.error("onReviewCreated trigger failed:", e);
+      // Don't fail the request
     }
 
     return res.status(201).json({

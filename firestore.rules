@@ -33,8 +33,10 @@ service cloud.firestore {
 
     // التقييمات
     match /reviews/{id} {
-      // القراءة لصاحب المتجر أو الأدمن
-      allow read: if (isSignedIn() && resource.data.storeUid == request.auth.uid) || isAdmin();
+      // القراءة العامة: فقط للتقييمات المعتمدة (approved)
+      allow read: if resource.data.status == "approved" || 
+                     (isSignedIn() && resource.data.storeUid == request.auth.uid) || 
+                     isAdmin();
       // الإنشاء/التعديل/الحذف من السيرفر (Admin SDK) أو الأدمن فقط
       allow create, update, delete: if isAdmin();
     }
@@ -68,6 +70,14 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     match /admin_alerts/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Outbox jobs - server/admin only
+    match /outbox_jobs/{id} {
+      allow read, write: if isAdmin();
+    }
+    match /outbox_dlq/{id} {
       allow read, write: if isAdmin();
     }
 
