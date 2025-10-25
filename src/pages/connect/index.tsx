@@ -29,7 +29,7 @@ export default function ConnectIndex() {
 
   return (
     <>
-      <Head><title>ربط متجرك | ثقة</title></Head>
+      <Head><title>ربط متجرك | مشتري موثق</title></Head>
       <div dir="rtl" className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-green-50/30">
         <div className="max-w-4xl mx-auto p-6 py-12">
           <motion.div
@@ -39,7 +39,7 @@ export default function ConnectIndex() {
           >
             <h1 className="text-4xl font-bold text-gray-900 mb-4">اختَر منصتك للبدء</h1>
             <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
-              اربط متجرك مع ثقة لإرسال روابط التقييمات تلقائيًا بعد كل عملية شراء ناجحة
+              اربط متجرك مع مشتري موثق لإرسال روابط التقييمات تلقائيًا بعد كل عملية شراء ناجحة
             </p>
           </motion.div>
 
