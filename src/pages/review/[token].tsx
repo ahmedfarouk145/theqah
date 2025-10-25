@@ -1,7 +1,7 @@
 // src/pages/review/[token].tsx
 import Head from "next/head";
 import Link from "next/link";
-import Image from "next/image"; // (لسه مستخدمينه داخل أماكن ثانية لو حبيت)
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
@@ -153,28 +153,27 @@ export default function ReviewByTokenPage() {
 
   if (!token) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-red-50 to-pink-50">
+      <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-red-50 to-pink-50">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg"
+          className="max-w-md w-full bg-white border rounded-2xl p-6 shadow-lg"
           dir="rtl"
         >
-          {/* ✅ اللوجو الكبير + أنيميشن 3D */}
-          <div className="flex justify-center mb-4">
-            <AnimatedLogo width={220} glow pulse shine />
+          <div className="flex justify-center mb-3">
+            <AnimatedLogo width={160} glow pulse shine />
           </div>
 
-          <div className="flex items-center gap-3 mb-4">
-            <AlertCircle className="h-6 w-6 text-red-500" />
-            <h1 className="text-xl font-bold text-red-700">الرابط غير صالح</h1>
+          <div className="flex items-center gap-3 mb-3">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            <h1 className="text-lg font-bold text-red-700">الرابط غير صالح</h1>
           </div>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 text-sm mb-4">
             يرجى التأكد من فتح الرابط الكامل المرسل إليك عبر SMS أو البريد الإلكتروني.
           </p>
           <Link
             href="/"
-            className="inline-block px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition"
+            className="inline-block px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition text-sm"
           >
             العودة للصفحة الرئيسية
           </Link>
@@ -202,36 +201,35 @@ export default function ReviewByTokenPage() {
     return (
       <>
         <Head><title>شكرًا لتقييمك | ثقة</title></Head>
-        <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-green-50 to-emerald-50">
+        <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 to-emerald-50">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg text-center"
+            className="max-w-md w-full bg-white border rounded-2xl p-6 shadow-lg text-center"
             dir="rtl"
           >
-            {/* ✅ اللوجو الكبير + أنيميشن 3D */}
-            <div className="flex justify-center mb-4">
-              <AnimatedLogo width={240} glow pulse shine />
+            <div className="flex justify-center mb-3">
+              <AnimatedLogo width={180} glow pulse shine />
             </div>
 
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, duration: 0.5, type: "spring", stiffness: 200 }}
-              className="mb-6"
+              className="mb-4"
             >
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
             </motion.div>
-            <h1 className="text-2xl font-bold text-green-700 mb-3">شكرًا لتقييمك! ✨</h1>
-            <p className="text-gray-600 mb-6">
+            <h1 className="text-xl font-bold text-green-700 mb-2">شكرًا لتقييمك! ✨</h1>
+            <p className="text-gray-600 text-sm mb-4">
               تم استلام تقييمك بنجاح وسيتم مراجعته قريباً{done.id ? ` (#${done.id})` : ""}.
               <br />
               تقييمك يساهم في تحسين تجربة العملاء الآخرين.
             </p>
             <Link
               href="/"
-              className="inline-block px-6 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-medium"
+              className="inline-block px-6 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-medium text-sm"
             >
               العودة للصفحة الرئيسية
             </Link>
@@ -248,137 +246,131 @@ export default function ReviewByTokenPage() {
         <meta name="robots" content="noindex" />
       </Head>
 
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-lime-50 p-6">
+      <main className="min-h-screen bg-gradient-to-br from-emerald-50 to-lime-50 p-4 flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-2xl w-full bg-white border rounded-2xl p-8 shadow-lg"
+          className="max-w-md w-full bg-white border rounded-2xl shadow-lg overflow-hidden"
           dir="rtl"
         >
-          {/* ✅ اللوجو في الهيدر (مكبّر + 3D) */}
-          <div className="text-center mb-6">
-            <div className="flex justify-center mb-3">
-              <AnimatedLogo width={260} glow pulse shine />
+          {/* Header مع اللوجو */}
+          <div className="text-center p-4 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white">
+            <div className="flex justify-center mb-2">
+              <AnimatedLogo width={120} glow pulse shine />
             </div>
-            <h1 className="text-3xl font-bold text-emerald-800 mb-2">قيّم تجربتك</h1>
-            <p className="text-gray-600">
+            <h1 className="text-lg font-bold mb-1">قيّم تجربتك</h1>
+            <p className="text-emerald-100 text-sm">
               {tokenInfo?.storeName ? (
-                <>
-                  نحن نقدر رأيك في تجربتك مع{" "}
-                  <span className="font-semibold text-emerald-700">{tokenInfo.storeName}</span>
-                  {tokenInfo.customerName ? <> — {tokenInfo.customerName}</> : null}
-                </>
+                <>مع <span className="font-semibold">{tokenInfo.storeName}</span></>
               ) : (
-                "الرجاء مشاركة رأيك لتحسين الخدمة"
+                "شاركنا رأيك"
               )}
             </p>
           </div>
 
-          {/* النجوم */}
-          <div className="mb-6">
-            <label className="block text-lg font-medium text-gray-700 mb-3">كيف تقيم تجربتك؟</label>
-            <div className="flex justify-center gap-2" role="radiogroup" aria-label="تقييم النجوم">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <motion.button
-                  key={n}
-                  type="button"
-                  onClick={() => setStars(n)}
-                  whileHover={{ scale: 1.2 }}
-                  whileTap={{ scale: 0.9 }}
-                  className={`text-4xl transition-colors ${
-                    n <= stars ? "text-yellow-400" : "text-gray-300 hover:text-yellow-200"
-                  }`}
-                  aria-checked={n === stars}
-                  role="radio"
-                  aria-label={`تقييم ${n} ${n === 1 ? "نجمة" : "نجوم"}`}
-                >
-                  <Star className="h-10 w-10" fill={n <= stars ? "currentColor" : "none"} />
-                </motion.button>
-              ))}
+          <div className="p-4 space-y-4">
+            {/* النجوم */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">كيف تقيم تجربتك؟</label>
+              <div className="flex justify-center gap-1" role="radiogroup" aria-label="تقييم النجوم">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <motion.button
+                    key={n}
+                    type="button"
+                    onClick={() => setStars(n)}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className={`text-2xl transition-colors ${
+                      n <= stars ? "text-yellow-400" : "text-gray-300 hover:text-yellow-200"
+                    }`}
+                    aria-checked={n === stars}
+                    role="radio"
+                    aria-label={`تقييم ${n} ${n === 1 ? "نجمة" : "نجوم"}`}
+                  >
+                    <Star className="h-8 w-8" fill={n <= stars ? "currentColor" : "none"} />
+                  </motion.button>
+                ))}
+              </div>
+              <p className="text-center text-xs text-gray-500 mt-1">
+                {stars === 0 && "اختر عدد النجوم"}
+                {stars === 1 && "ضعيف"}
+                {stars === 2 && "مقبول"}
+                {stars === 3 && "جيد"}
+                {stars === 4 && "ممتاز"}
+                {stars === 5 && "استثنائي"}
+              </p>
             </div>
-            <p className="text-center text-sm text-gray-500 mt-2">
-              {stars === 0 && "اختر عدد النجوم"}
-              {stars === 1 && "ضعيف - نحتاج للتحسين"}
-              {stars === 2 && "مقبول - يمكن تحسينه"}
-              {stars === 3 && "جيد - تجربة متوسطة"}
-              {stars === 4 && "ممتاز - تجربة رائعة"}
-              {stars === 5 && "استثنائي - تجربة مثالية"}
-            </p>
-          </div>
 
-          {/* النص */}
-          <div className="mb-6">
-            <label className="block text-lg font-medium text-gray-700 mb-3">شاركنا تفاصيل تجربتك (اختياري)</label>
-            <textarea
-              className="w-full border-2 border-gray-200 rounded-lg p-4 min-h-[120px] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-colors resize-none"
-              placeholder="مثال: المنتج وصل في الوقت المحدد، الجودة ممتازة، خدمة العملاء مفيدة..."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              maxLength={3000}
-            />
-            <div className="flex justify-between items-center mt-2">
-              <p className="text-sm text-gray-500">تعليقك يساعد المتجر في التحسين</p>
-              <p className="text-xs text-gray-400">{text.length}/3000</p>
+            {/* النص */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">تعليقك (اختياري)</label>
+              <textarea
+                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 transition-colors resize-none"
+                placeholder="شاركنا تفاصيل تجربتك..."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                maxLength={500}
+                rows={3}
+              />
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-xs text-gray-400">اختياري</p>
+                <p className="text-xs text-gray-400">{text.length}/500</p>
+              </div>
             </div>
-          </div>
 
-          {/* الصور */}
-          <div className="mb-8">
-            <label className="block text-lg font-medium text-gray-700 mb-3">صور التجربة (اختياري)</label>
-            <p className="text-sm text-gray-500 mb-3">أضف صور المنتج أو التجربة لتجعل تقييمك أكثر فائدة</p>
-            <FirebaseStorageWidget value={attachments} onChange={setAttachments} />
-          </div>
-
-          {/* تنبيهات صلاحية التوكن */}
-          {tokenInfo?.expired && (
-            <div className="flex items-center gap-3 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              <p>انتهت صلاحية رابط التقييم. قد لا يتم قبول الإرسال.</p>
+            {/* الصور */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">صور (اختياري)</label>
+              <div className="text-xs text-gray-500 mb-2">أضف صور المنتج لتجعل تقييمك أكثر فائدة</div>
+              <FirebaseStorageWidget value={attachments} onChange={setAttachments} />
             </div>
-          )}
-          {tokenInfo?.voided && (
-            <div className="flex items-center gap-3 text-red-700 bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              <p>تم إلغاء رابط التقييم من المتجر.</p>
-            </div>
-          )}
 
-          {/* أخطاء الإرسال */}
-          {error && (
-            <div className="flex items-center gap-3 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
-
-          {/* زر الإرسال */}
-          <motion.button
-            type="button"
-            onClick={submit}
-            disabled={submitting || stars === 0}
-            whileHover={{ scale: submitting ? 1 : 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full py-4 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                جارٍ الإرسال…
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-5 w-5" />
-                {stars === 0 ? "اختر التقييم أولاً" : "إرسال التقييم"}
-              </>
+            {/* تنبيهات */}
+            {(tokenInfo?.expired || tokenInfo?.voided) && (
+              <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <p>
+                  {tokenInfo?.expired && "انتهت صلاحية الرابط."}
+                  {tokenInfo?.voided && "تم إلغاء الرابط من المتجر."}
+                </p>
+              </div>
             )}
-          </motion.button>
 
-          {/* فوتر صغير */}
-          <div className="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-400 space-y-1">
-            <div>رمز التوكن: {token ?? "—"}</div>
-            <div>رقم الطلب: {orderId || "—"}</div>
-            <p className="text-center mt-3">محمي بواسطة مشتري موثق - منصة التقييمات الموثوقة</p>
+            {/* خطأ الإرسال */}
+            {error && (
+              <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 text-xs">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <p>{error}</p>
+              </div>
+            )}
+
+            {/* زر الإرسال */}
+            <motion.button
+              type="button"
+              onClick={submit}
+              disabled={submitting || stars === 0}
+              whileHover={{ scale: submitting ? 1 : 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-3 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  جارٍ الإرسال…
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  {stars === 0 ? "اختر التقييم أولاً" : "إرسال التقييم"}
+                </>
+              )}
+            </motion.button>
+
+            {/* فوتر مبسط */}
+            <div className="pt-3 border-t border-gray-100 text-center">
+              <p className="text-xs text-gray-400">محمي بواسطة ثقة - منصة التقييمات الموثوقة</p>
+            </div>
           </div>
         </motion.div>
       </main>
