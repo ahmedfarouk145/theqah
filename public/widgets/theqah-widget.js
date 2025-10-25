@@ -115,17 +115,27 @@
       if (v && /\S/.test(v)) return String(v).trim();
     }
 
-    // URL Heuristics لسلة
+    // URL Heuristics لسلة - تحسين Pattern matching
     const url = location.pathname;
     const matchers = [
-      /\/p(\d{8,})(?:\/|$)/,  // /p1927638714
-      /-(\d{8,})$/,           // ...-1927638714
-      /\/products\/(\d{8,})/  // /products/1927638714
+      /\/p(\d{7,})(?:\/|$)/,    // /p1927638714
+      /-(\d{7,})$/,             // ...-1927638714  
+      /\/products\/(\d{7,})/,   // /products/1927638714
+      /\/product\/(\d{7,})/,    // /product/1927638714
+      /\/(\d{7,})$/,            // /1927638714
     ];
     for (const rgx of matchers) {
       const m = url.match(rgx);
       if (m) return m[1];
     }
+    
+    // فحص query parameters
+    const urlParams = new URLSearchParams(location.search);
+    const productParam = urlParams.get('product') || urlParams.get('id') || urlParams.get('pid');
+    if (productParam && /^\d{7,}$/.test(productParam)) {
+      return productParam;
+    }
+    
     return null;
   }
 
@@ -253,9 +263,16 @@
         .meta { 
           font-size: 14px; 
           opacity: 0.75; 
-          margin: 0 0 24px 0;
+          margin: 0 0 12px 0;
           font-weight: 500;
           color: ${theme === "dark" ? "#94a3b8" : "#64748b"};
+        }
+        
+        .count { 
+          font-size: 16px; 
+          font-weight: 600;
+          margin: 0 0 24px 0;
+          color: ${theme === "dark" ? "#10b981" : "#059669"};
         }
 
         /* ——— النجوم (تكبير + 3D) ——— */
@@ -454,54 +471,7 @@
             : "0 12px 24px -6px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.2)"}; 
         }
         
-        /* ——— Pagination Styles ——— */
-        .theqah-reviews .pagination { 
-          display: flex !important; 
-          justify-content: center !important; 
-          align-items: center !important; 
-          gap: 12px !important; 
-          margin: 24px 0 !important; 
-          flex-wrap: wrap !important;
-        }
-        
-        .theqah-reviews .pagination button { 
-          padding: 12px 18px !important; 
-          border-radius: 12px !important; 
-          border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.4)" : "rgba(203, 213, 225, 0.8)"} !important; 
-          background: ${theme === "dark" ? "rgba(15, 23, 42, 0.6)" : "rgba(255, 255, 255, 0.8)"} !important; 
-          color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"} !important; 
-          cursor: pointer !important;
-          font-weight: 500 !important;
-          font-size: 14px !important;
-          transition: all 0.2s ease !important;
-          backdrop-filter: blur(8px) !important;
-          min-width: 44px !important;
-          font-family: inherit !important;
-        }
-        
-        .theqah-reviews .pagination button:hover:not(:disabled) {
-          transform: translateY(-1px) !important;
-          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.4)" : "rgba(59, 130, 246, 0.3)"} !important; 
-          background: ${theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(248, 250, 252, 0.9)"} !important; 
-          box-shadow: ${theme === "dark" 
-            ? "0 4px 12px -2px rgba(0, 0, 0, 0.3)" 
-            : "0 4px 12px -2px rgba(0, 0, 0, 0.05)"} !important; 
-        }
-        
-        .theqah-reviews .pagination button:disabled, 
-        .theqah-reviews .pagination button.disabled {
-          opacity: 0.5 !important;
-          cursor: not-allowed !important;
-          pointer-events: none !important;
-        }
-        
-        .theqah-reviews .pagination .current {
-          background: ${theme === "dark" 
-            ? "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)" 
-            : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"} !important; 
-          color: white !important;
-          border-color: ${theme === "dark" ? "#1d4ed8" : "#2563eb"} !important; 
-        }
+
         
         .loading { 
           text-align: center; 
@@ -549,8 +519,8 @@
     });
 
     const titleText = productId
-      ? (lang === "ar" ? "آراء المشترين" : "Customer Reviews")
-      : (lang === "ar" ? "تقييمات المتجر" : "Store Reviews");
+      ? (lang === "ar" ? "تقييمات هذا المنتج" : "Product Reviews")
+      : (lang === "ar" ? "جميع تقييمات المتجر" : "All Store Reviews");
 
     const section = h("div", { class: "section" }, [
       h("div", { class: "header" }, [
@@ -558,6 +528,7 @@
         h("p", { class: "title" }, titleText),
       ]),
       productId ? h("p", { class: "meta" }, `${lang === "ar" ? "رقم المنتج" : "Product"}: ${productId}`) : null,
+      h("p", { class: "count" }, ""),
       h("div", { class: "list loading" }, lang === "ar" ? "…جاري التحميل" : "Loading…"),
       h("div", { class: "filter" }, [
         h("span", {}, lang === "ar" ? "الترتيب:" : "Sort:"),
@@ -574,9 +545,7 @@
     const filterEl = section.querySelector(".filter");
     const list = section.querySelector(".list");
     let currentSort = "desc";
-    let currentPage = 1;
     let lastData = null;
-    let currentPagination = {};
 
     filterEl.addEventListener("click", (e) => {
       const btn = e.target.closest("button");
@@ -584,11 +553,10 @@
       currentSort = btn.getAttribute("data-sort") || "desc";
       filterEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      currentPage = 1; // إعادة تعيين للصفحة الأولى عند تغيير الترتيب
       fetchData();
     });
 
-    const base = `${API_BASE}?storeUid=${encodeURIComponent(store)}&limit=${encodeURIComponent(String(limit))}&sinceDays=365`;
+    const base = `${API_BASE}?storeUid=${encodeURIComponent(store)}&limit=1000&sinceDays=365`;
     const endpoint = productId ? `${base}&productId=${encodeURIComponent(productId)}` : base;
 
     const fetchData = async () => {
@@ -598,13 +566,11 @@
         list.classList.add("loading");
         list.appendChild(h("div", { class: "loading" }, lang === "ar" ? "...جاري التحميل" : "Loading..."));
         
-        const url = `${endpoint}&sort=${currentSort}&page=${currentPage}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
+        const url = `${endpoint}&sort=${currentSort}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
         const res = await fetch(url, { cache: 'no-store' }); // طلب بسيط => بدون preflight
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
-        currentPagination = lastData.pagination || {};
         renderList(lastData);
-        renderPagination(currentPagination);
         hostEl.setAttribute("data-state", "done"); // نجاح
       } catch (e) {
         console.error('Failed to fetch reviews:', e);
@@ -619,8 +585,18 @@
       list.innerHTML = "";
       list.classList.remove("loading");
       const items = Array.isArray(data?.items) ? data.items : [];
+      
+      // تحديث عداد التقييمات
+      const countEl = section.querySelector(".count");
+      if (countEl) {
+        const countText = items.length === 0 ? 
+          (lang === "ar" ? "لا توجد تقييمات بعد" : "No reviews yet") :
+          (lang === "ar" ? `${items.length} تقييم` : `${items.length} review${items.length !== 1 ? 's' : ''}`);
+        countEl.textContent = countText;
+      }
+      
       if (!items.length) {
-        list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "لا توجد تقييمات بعد — كن أول من يقيّم!" : "No reviews yet — be the first!"));
+        list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "كن أول من يقيّم!" : "be the first!"));
         return;
       }
       // البيانات مرتبة مسبقاً من السيرفر، لا نحتاج ترتيب محلي
@@ -653,68 +629,7 @@
       }
     };
 
-    const renderPagination = (pagination) => {
-      // البحث عن pagination container أو إنشاؤه
-      let paginationEl = section.querySelector(".pagination");
-      if (!paginationEl) {
-        paginationEl = h("div", { class: "pagination" });
-        section.appendChild(paginationEl);
-      }
 
-      paginationEl.innerHTML = "";
-
-      if (!pagination.hasMore && currentPage === 1) {
-        // لا توجد صفحات إضافية
-        return;
-      }
-
-      // زر السابق
-      const prevBtn = h("button", { 
-        "data-action": "prev",
-        class: currentPage === 1 ? "disabled" : "",
-        disabled: currentPage === 1 
-      }, lang === "ar" ? "السابق" : "Previous");
-      
-      // إضافة event listener مباشرة للزر
-      if (currentPage > 1) {
-        prevBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          console.log('Previous page clicked, current:', currentPage);
-          currentPage--;
-          fetchData();
-        });
-        console.log('Previous button listener added');
-      }
-
-      // معلومات الصفحة
-      const pageInfo = h("span", { class: "current" }, 
-        lang === "ar" ? `صفحة ${currentPage}` : `Page ${currentPage}`
-      );
-
-      // زر التالي
-      const nextBtn = h("button", { 
-        "data-action": "next",
-        class: !pagination.hasMore ? "disabled" : "",
-        disabled: !pagination.hasMore 
-      }, lang === "ar" ? "التالي" : "Next");
-      
-      // إضافة event listener مباشرة للزر
-      if (pagination.hasMore) {
-        nextBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          console.log('Next page clicked, current:', currentPage);
-          currentPage++;
-          fetchData();
-        });
-        console.log('Next button listener added');
-      }
-
-      paginationEl.appendChild(prevBtn);
-      paginationEl.appendChild(pageInfo);
-      paginationEl.appendChild(nextBtn);
-    };
 
     await fetchData();
   }
@@ -794,7 +709,7 @@
     const pid = (pidFromHost && pidFromHost !== "auto") ? pidFromHost : detectProductId();
 
     console.log('🚀 Mounting widget with config:', {
-      store, pid, limit, lang: String(lang).toLowerCase(), theme: String(theme).toLowerCase()
+      store, pid, lang: String(lang).toLowerCase(), theme: String(theme).toLowerCase()
     });
     
     await mountOne(host, store, pid, limit, String(lang).toLowerCase(), String(theme).toLowerCase());
