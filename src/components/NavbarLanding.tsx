@@ -34,7 +34,7 @@ export default function NavbarLanding() {
           />
         </div>
         <span className="text-2xl font-extrabold text-green-800 tracking-tight group-hover:text-green-900 transition-colors">
-          ثقة
+          مشتري موثّق
         </span>
       </Link>
 
