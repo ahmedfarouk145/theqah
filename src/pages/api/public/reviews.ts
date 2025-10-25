@@ -16,10 +16,9 @@ const getStr = (q: QueryLike, keys: string[], fallback = ""): string => {
 const parseQuery = (q: QueryLike) => {
   const storeUid = getStr(q, ["storeUid", "storeId", "store", "s"]);
   const productId = getStr(q, ["productId", "product", "p", "sku"], "");
-  const limit = Math.min(1000, Math.max(1, Number(getStr(q, ["limit"], "100")) || 100)); // زيادة الحد الأقصى لـ 1000
+  const limit = Math.min(100, Math.max(1, Number(getStr(q, ["limit"], "20")) || 20));
   const sort = (getStr(q, ["sort", "order"], "desc").toLowerCase() === "asc" ? "asc" : "desc") as "asc" | "desc";
   const sinceDays = Math.max(0, Number(getStr(q, ["sinceDays", "days", "since"], "")) || 0);
-  
   return { storeUid, productId, limit, sort, sinceDays };
 };
 
@@ -57,8 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let q: FirebaseFirestore.Query = db
       .collection("reviews")
       .where("storeUid", "==", storeUid)
-      .where("status", "==", "published")
-      .where("published", "==", true); // ✅ نتأكد إن published = true
+      .where("status", "==", "published");
 
     if (productId) q = q.where("productId", "==", productId);
 
@@ -67,63 +65,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (cutoff > 0) q = q.where("publishedAt", ">=", cutoff);
 
     q = q.orderBy("publishedAt", sort as FirebaseFirestore.OrderByDirection).limit(limit);
+
     const snap = await q.get();
 
-    // ✅ نفلتر التقييمات أكتر لنتأكد من شروط العرض
-    const items: PublicReview[] = snap.docs
-      .map((d) => {
-        const data = d.data() as Record<string, unknown>;
-        
-        // ✅ نتحقق من author.show
+    const items: PublicReview[] = snap.docs.map((d) => {
+      const data = d.data() as Record<string, unknown>;
+      const stars = Math.max(0, Math.min(5, Number(data["stars"] ?? 0)));
+      const text =
+        (typeof data["text"] === "string" && data["text"]) ||
+        (typeof data["comment"] === "string" && data["comment"]) ||
+        "";
+
+      const publishedAt =
+        (typeof data["publishedAt"] === "number" && data["publishedAt"]) ||
+        (typeof data["createdAt"] === "number" && data["createdAt"]) ||
+        (data["createdAt"] ? Date.parse(String(data["createdAt"])) : 0);
+
+      const trustedBuyer = Boolean(
+        (typeof data["trustedBuyer"] === "boolean" && data["trustedBuyer"]) ||
+        (typeof data["buyerVerified"] === "boolean" && data["buyerVerified"])
+      );
+
+      // 👇 نرجّع فقط displayName من author
+      const displayName =
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (data["author"] && typeof (data["author"] as any).displayName === "string"
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const author = data["author"] as any;
-        const authorShow = author?.show;
-        
-        // ✅ إذا author.show = false، مانعرضوش
-        if (authorShow === false) {
-          return null;
-        }
+          ? (data["author"] as any).displayName
+          : "عميل المتجر");
 
-        const stars = Math.max(0, Math.min(5, Number(data["stars"] ?? 0)));
-        const text =
-          (typeof data["text"] === "string" && data["text"]) ||
-          (typeof data["comment"] === "string" && data["comment"]) ||
-          "";
-
-        const publishedAt =
-          (typeof data["publishedAt"] === "number" && data["publishedAt"]) ||
-          (typeof data["createdAt"] === "number" && data["createdAt"]) ||
-          (data["createdAt"] ? Date.parse(String(data["createdAt"])) : 0);
-
-        const trustedBuyer = Boolean(
-          (typeof data["trustedBuyer"] === "boolean" && data["trustedBuyer"]) ||
-          (typeof data["buyerVerified"] === "boolean" && data["buyerVerified"])
-        );
-
-        // 👇 نرجّع فقط displayName من author
-        const displayName =
-          (author && typeof author.displayName === "string"
-            ? author.displayName
-            : "عميل المتجر");
-
-        return {
-          id: d.id,
-          productId: typeof data["productId"] === "string" ? data["productId"] : null,
-          stars,
-          text,
-          publishedAt,
-          trustedBuyer,
-          author: { displayName },
-        };
-      })
-      .filter((item): item is PublicReview => item !== null); // ✅ نشيل اللي null
+      return {
+        id: d.id,
+        productId: typeof data["productId"] === "string" ? data["productId"] : null,
+        stars,
+        text,
+        publishedAt,
+        trustedBuyer,
+        author: { displayName },
+      };
+    });
 
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300");
-    return res.status(200).json({ 
-      items,
-      total: items.length
-    });
+    return res.status(200).json({ items });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("public/reviews error:", message);
