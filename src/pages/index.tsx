@@ -29,10 +29,10 @@ export default function LandingPage() {
           >
             <Image src="/logo.png" alt="مشتري موثّق" width={100} height={100} className="mx-auto" />
             <h1 className="text-4xl md:text-5xl font-extrabold text-green-900 leading-tight">
-              مشتري موثّق — تقييمات حقيقية بعد الشراء
+              مشتري موثّق  تقييمات حقيقية بعد الشراء
             </h1>
             <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
-              اجمع تقييمات العملاء تلقائيًا بعد الشراء وانشرها على صفحة عامة موثوقة.
+           اجمع تقييمات عملائك تلقائيًا بعد الشراء، واعرضها مباشرة أسفل المنتج كتقييمات موثوقة
             </p>
             <Link href="/signup">
               <motion.button

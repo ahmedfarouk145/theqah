@@ -369,7 +369,7 @@ export default function ReviewByTokenPage() {
 
             {/* فوتر مبسط */}
             <div className="pt-3 border-t border-gray-100 text-center">
-              <p className="text-xs text-gray-400">محمي بواسطة ثقة - منصة التقييمات الموثوقة</p>
+              <p className="text-xs text-gray-400">محمي بواسطة مشتري موثق - منصة التقييمات الموثوقة</p>
             </div>
           </div>
         </motion.div>
