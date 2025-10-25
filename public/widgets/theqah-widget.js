@@ -115,27 +115,17 @@
       if (v && /\S/.test(v)) return String(v).trim();
     }
 
-    // URL Heuristics لسلة - تحسين Pattern matching
+    // URL Heuristics لسلة
     const url = location.pathname;
     const matchers = [
-      /\/p(\d{7,})(?:\/|$)/,    // /p1927638714
-      /-(\d{7,})$/,             // ...-1927638714  
-      /\/products\/(\d{7,})/,   // /products/1927638714
-      /\/product\/(\d{7,})/,    // /product/1927638714
-      /\/(\d{7,})$/,            // /1927638714
+      /\/p(\d{8,})(?:\/|$)/,  // /p1927638714
+      /-(\d{8,})$/,           // ...-1927638714
+      /\/products\/(\d{8,})/  // /products/1927638714
     ];
     for (const rgx of matchers) {
       const m = url.match(rgx);
       if (m) return m[1];
     }
-    
-    // فحص query parameters
-    const urlParams = new URLSearchParams(location.search);
-    const productParam = urlParams.get('product') || urlParams.get('id') || urlParams.get('pid');
-    if (productParam && /^\d{7,}$/.test(productParam)) {
-      return productParam;
-    }
-    
     return null;
   }
 
@@ -179,25 +169,21 @@
     if (hostEl.getAttribute("data-state") === "done") return;
     if (hostEl.getAttribute("data-state") === "mounting") return;
     hostEl.setAttribute("data-state", "mounting");
-    
-    // إضافة class للـ host element
-    hostEl.classList.add("theqah-reviews");
 
-    // استخدام hostEl مباشرة بدلاً من Shadow DOM لتجنب مشاكل event listeners
-    const root = hostEl;
+    const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
     const style = h("style", {
       html: `
-        .theqah-reviews * { box-sizing: border-box; }
-        .theqah-reviews { font-family: system-ui; display: block; }
+        :host { all: initial; }
+        * { box-sizing: border-box; }
         
-        .theqah-reviews .wrap { 
+        .wrap { 
           font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,Noto Sans,Liberation Sans,Arial,sans-serif; 
           direction: ${lang === "ar" ? "rtl" : "ltr"}; 
           line-height: 1.5;
           color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"};
         }
         
-        .theqah-reviews .section { 
+        .section { 
           background: ${theme === "dark" 
             ? "linear-gradient(135deg, #0f1629 0%, #1e293b 100%)" 
             : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)"};
@@ -263,16 +249,9 @@
         .meta { 
           font-size: 14px; 
           opacity: 0.75; 
-          margin: 0 0 12px 0;
+          margin: 0 0 24px 0;
           font-weight: 500;
           color: ${theme === "dark" ? "#94a3b8" : "#64748b"};
-        }
-        
-        .count { 
-          font-size: 16px; 
-          font-weight: 600;
-          margin: 0 0 24px 0;
-          color: ${theme === "dark" ? "#10b981" : "#059669"};
         }
 
         /* ——— النجوم (تكبير + 3D) ——— */
@@ -471,8 +450,6 @@
             : "0 12px 24px -6px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.2)"}; 
         }
         
-
-        
         .loading { 
           text-align: center; 
           padding: 48px 20px; 
@@ -519,16 +496,16 @@
     });
 
     const titleText = productId
-      ? (lang === "ar" ? "تقييمات هذا المنتج" : "Product Reviews")
-      : (lang === "ar" ? "جميع تقييمات المتجر" : "All Store Reviews");
+      ? (lang === "ar" ? "آراء المشترين" : "Customer Reviews")
+      : (lang === "ar" ? "تقييمات المتجر" : "Store Reviews");
 
+    const container = h("div", { class: "wrap" });
     const section = h("div", { class: "section" }, [
       h("div", { class: "header" }, [
         h("img", { class: "logo", src: LOGO_URL, alt: "Theqah" }),
         h("p", { class: "title" }, titleText),
       ]),
       productId ? h("p", { class: "meta" }, `${lang === "ar" ? "رقم المنتج" : "Product"}: ${productId}`) : null,
-      h("p", { class: "count" }, ""),
       h("div", { class: "list loading" }, lang === "ar" ? "…جاري التحميل" : "Loading…"),
       h("div", { class: "filter" }, [
         h("span", {}, lang === "ar" ? "الترتيب:" : "Sort:"),
@@ -537,7 +514,6 @@
       ]),
     ]);
 
-    const container = h("div", { class: "wrap" });
     container.appendChild(section);
     root.appendChild(style);
     root.appendChild(container);
@@ -553,19 +529,14 @@
       currentSort = btn.getAttribute("data-sort") || "desc";
       filterEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      fetchData();
+      renderList(lastData);
     });
 
-    const base = `${API_BASE}?storeUid=${encodeURIComponent(store)}&limit=1000&sinceDays=365`;
+    const base = `${API_BASE}?storeUid=${encodeURIComponent(store)}&limit=${encodeURIComponent(String(limit))}&sinceDays=365`;
     const endpoint = productId ? `${base}&productId=${encodeURIComponent(productId)}` : base;
 
     const fetchData = async () => {
       try {
-        // إظهار loading أثناء التحميل
-        list.innerHTML = "";
-        list.classList.add("loading");
-        list.appendChild(h("div", { class: "loading" }, lang === "ar" ? "...جاري التحميل" : "Loading..."));
-        
         const url = `${endpoint}&sort=${currentSort}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
         const res = await fetch(url, { cache: 'no-store' }); // طلب بسيط => بدون preflight
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -575,7 +546,6 @@
       } catch (e) {
         console.error('Failed to fetch reviews:', e);
         list.innerHTML = "";
-        list.classList.remove("loading");
         list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "تعذّر التحميل" : "Failed to load"));
         hostEl.removeAttribute("data-state"); // تسمح بإعادة المحاولة لاحقًا
       }
@@ -585,21 +555,15 @@
       list.innerHTML = "";
       list.classList.remove("loading");
       const items = Array.isArray(data?.items) ? data.items : [];
-      
-      // تحديث عداد التقييمات
-      const countEl = section.querySelector(".count");
-      if (countEl) {
-        const countText = items.length === 0 ? 
-          (lang === "ar" ? "لا توجد تقييمات بعد" : "No reviews yet") :
-          (lang === "ar" ? `${items.length} تقييم` : `${items.length} review${items.length !== 1 ? 's' : ''}`);
-        countEl.textContent = countText;
-      }
-      
       if (!items.length) {
-        list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "كن أول من يقيّم!" : "be the first!"));
+        list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "لا توجد تقييمات بعد — كن أول من يقيّم!" : "No reviews yet — be the first!"));
         return;
       }
-      // البيانات مرتبة مسبقاً من السيرفر، لا نحتاج ترتيب محلي
+      items.sort((a, b) =>
+        currentSort === "asc"
+          ? Number(a.publishedAt || 0) - Number(b.publishedAt || 0)
+          : Number(b.publishedAt || 0) - Number(a.publishedAt || 0)
+      );
       for (const r of items) {
         const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
         const trusted = !!r.trustedBuyer;
@@ -628,8 +592,6 @@
         list.appendChild(h("div", { class: "item" }, [row, text]));
       }
     };
-
-
 
     await fetchData();
   }
@@ -675,12 +637,9 @@
 
     // تنظيف placeholder
     if (store && (store.includes('{') || /STORE_ID/i.test(store))) {
-      console.warn('❌ Store ID is still a placeholder:', store);
-      console.warn('📝 Please replace {STORE_ID} with your actual Salla store ID');
+      console.warn('Clearing placeholder store:', store);
       store = '';
     }
-    
-    console.log('🔍 Store ID detected:', store || 'NONE');
 
     // محاولة auto-resolve
     if (!store) {
@@ -708,10 +667,6 @@
     const pidFromHost = host?.getAttribute("data-product") || host?.dataset?.product || null;
     const pid = (pidFromHost && pidFromHost !== "auto") ? pidFromHost : detectProductId();
 
-    console.log('🚀 Mounting widget with config:', {
-      store, pid, lang: String(lang).toLowerCase(), theme: String(theme).toLowerCase()
-    });
-    
     await mountOne(host, store, pid, limit, String(lang).toLowerCase(), String(theme).toLowerCase());
     mountedOnce = true;
   };
