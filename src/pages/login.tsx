@@ -29,6 +29,7 @@ export default function LoginPage() {
       'auth/invalid-credential': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
       'auth/wrong-password': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
       'auth/user-not-found': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+      'permission-denied': 'تم تسجيل الدخول بنجاح، جاري التحويل...',
     } as Record<string, string>)[code] || 'تعذّر تسجيل الدخول حالياً.';
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -52,14 +53,20 @@ export default function LoginPage() {
 
       // 2) لو مفيش claim، افحص Firestore: roles/{uid}
       if (!isAdmin) {
-        const snap = await getDoc(doc(db, 'roles', cred.user.uid));
-        if (snap.exists()) {
-          //eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const data = snap.data() as any;
-          isAdmin =
-            data?.role === 'admin' ||
-            data?.admin === true ||
-            (data?.roles && data.roles.admin === true);
+        try {
+          const snap = await getDoc(doc(db, 'roles', cred.user.uid));
+          if (snap.exists()) {
+            //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const data = snap.data() as any;
+            isAdmin =
+              data?.role === 'admin' ||
+              data?.admin === true ||
+              (data?.roles && data.roles.admin === true);
+          }
+        } catch (roleError) {
+          // في حالة فشل قراءة الأدوار، نكمل كمستخدم عادي
+          console.warn('Could not read user role from Firestore:', roleError);
+          isAdmin = false;
         }
       }
 

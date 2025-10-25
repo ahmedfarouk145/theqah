@@ -450,6 +450,52 @@
             : "0 12px 24px -6px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.2)"}; 
         }
         
+        /* ——— Pagination Styles ——— */
+        .pagination { 
+          display: flex; 
+          justify-content: center; 
+          align-items: center; 
+          gap: 12px; 
+          margin: 24px 0; 
+          flex-wrap: wrap;
+        }
+        
+        .pagination button { 
+          padding: 12px 18px; 
+          border-radius: 12px; 
+          border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.4)" : "rgba(203, 213, 225, 0.8)"}; 
+          background: ${theme === "dark" ? "rgba(15, 23, 42, 0.6)" : "rgba(255, 255, 255, 0.8)"}; 
+          color: inherit; 
+          cursor: pointer;
+          font-weight: 500;
+          font-size: 14px;
+          transition: all 0.2s ease;
+          backdrop-filter: blur(8px);
+          min-width: 44px;
+        }
+        
+        .pagination button:hover:not(:disabled) {
+          transform: translateY(-1px);
+          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.4)" : "rgba(59, 130, 246, 0.3)"}; 
+          background: ${theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(248, 250, 252, 0.9)"}; 
+          box-shadow: ${theme === "dark" 
+            ? "0 4px 12px -2px rgba(0, 0, 0, 0.3)" 
+            : "0 4px 12px -2px rgba(0, 0, 0, 0.05)"}; 
+        }
+        
+        .pagination button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        
+        .pagination .current {
+          background: ${theme === "dark" 
+            ? "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)" 
+            : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"}; 
+          color: white;
+          border-color: ${theme === "dark" ? "#1d4ed8" : "#2563eb"}; 
+        }
+        
         .loading { 
           text-align: center; 
           padding: 48px 20px; 
@@ -521,6 +567,7 @@
     const filterEl = section.querySelector(".filter");
     const list = section.querySelector(".list");
     let currentSort = "desc";
+    let currentPage = 1;
     let lastData = null;
 
     filterEl.addEventListener("click", (e) => {
@@ -529,7 +576,8 @@
       currentSort = btn.getAttribute("data-sort") || "desc";
       filterEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      renderList(lastData);
+      currentPage = 1; // إعادة تعيين للصفحة الأولى عند تغيير الترتيب
+      fetchData();
     });
 
     const base = `${API_BASE}?storeUid=${encodeURIComponent(store)}&limit=${encodeURIComponent(String(limit))}&sinceDays=365`;
@@ -537,11 +585,12 @@
 
     const fetchData = async () => {
       try {
-        const url = `${endpoint}&sort=${currentSort}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
+        const url = `${endpoint}&sort=${currentSort}&page=${currentPage}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
         const res = await fetch(url, { cache: 'no-store' }); // طلب بسيط => بدون preflight
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
         renderList(lastData);
+        renderPagination(lastData.pagination || {});
         hostEl.setAttribute("data-state", "done"); // نجاح
       } catch (e) {
         console.error('Failed to fetch reviews:', e);
@@ -559,11 +608,7 @@
         list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "لا توجد تقييمات بعد — كن أول من يقيّم!" : "No reviews yet — be the first!"));
         return;
       }
-      items.sort((a, b) =>
-        currentSort === "asc"
-          ? Number(a.publishedAt || 0) - Number(b.publishedAt || 0)
-          : Number(b.publishedAt || 0) - Number(a.publishedAt || 0)
-      );
+      // البيانات مرتبة مسبقاً من السيرفر، لا نحتاج ترتيب محلي
       for (const r of items) {
         const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
         const trusted = !!r.trustedBuyer;
@@ -591,6 +636,55 @@
         const text = h("p", { class: "text" }, String(r.text || "").trim());
         list.appendChild(h("div", { class: "item" }, [row, text]));
       }
+    };
+
+    const renderPagination = (pagination) => {
+      // البحث عن pagination container أو إنشاؤه
+      let paginationEl = section.querySelector(".pagination");
+      if (!paginationEl) {
+        paginationEl = h("div", { class: "pagination" });
+        section.appendChild(paginationEl);
+      }
+
+      paginationEl.innerHTML = "";
+
+      if (!pagination.hasMore && currentPage === 1) {
+        // لا توجد صفحات إضافية
+        return;
+      }
+
+      // زر السابق
+      const prevBtn = h("button", { 
+        class: currentPage === 1 ? "disabled" : "",
+        disabled: currentPage === 1 
+      }, lang === "ar" ? "السابق" : "Previous");
+      
+      prevBtn.addEventListener("click", () => {
+        if (currentPage > 1) {
+          currentPage--;
+          fetchData();
+        }
+      });
+
+      // رقم الصفحة الحالية
+      const currentPageEl = h("span", { class: "current" }, `${currentPage}`);
+
+      // زر التالي
+      const nextBtn = h("button", { 
+        class: !pagination.hasMore ? "disabled" : "",
+        disabled: !pagination.hasMore 
+      }, lang === "ar" ? "التالي" : "Next");
+      
+      nextBtn.addEventListener("click", () => {
+        if (pagination.hasMore) {
+          currentPage++;
+          fetchData();
+        }
+      });
+
+      paginationEl.appendChild(prevBtn);
+      paginationEl.appendChild(currentPageEl);
+      paginationEl.appendChild(nextBtn);
     };
 
     await fetchData();

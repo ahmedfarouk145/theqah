@@ -19,6 +19,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // أدوار المستخدمين - يمكن للمستخدم قراءة دوره فقط
+    match /roles/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
     // متجر
     match /stores/{uid} {
       allow read, write: if isOwner(uid) || isAdmin();
