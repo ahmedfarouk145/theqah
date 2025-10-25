@@ -169,21 +169,25 @@
     if (hostEl.getAttribute("data-state") === "done") return;
     if (hostEl.getAttribute("data-state") === "mounting") return;
     hostEl.setAttribute("data-state", "mounting");
+    
+    // إضافة class للـ host element
+    hostEl.classList.add("theqah-reviews");
 
-    const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
+    // استخدام hostEl مباشرة بدلاً من Shadow DOM لتجنب مشاكل event listeners
+    const root = hostEl;
     const style = h("style", {
       html: `
-        :host { all: initial; }
-        * { box-sizing: border-box; }
+        .theqah-reviews * { box-sizing: border-box; }
+        .theqah-reviews { font-family: system-ui; display: block; }
         
-        .wrap { 
+        .theqah-reviews .wrap { 
           font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,Noto Sans,Liberation Sans,Arial,sans-serif; 
           direction: ${lang === "ar" ? "rtl" : "ltr"}; 
           line-height: 1.5;
           color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"};
         }
         
-        .section { 
+        .theqah-reviews .section { 
           background: ${theme === "dark" 
             ? "linear-gradient(135deg, #0f1629 0%, #1e293b 100%)" 
             : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)"};
@@ -451,50 +455,52 @@
         }
         
         /* ——— Pagination Styles ——— */
-        .pagination { 
-          display: flex; 
-          justify-content: center; 
-          align-items: center; 
-          gap: 12px; 
-          margin: 24px 0; 
-          flex-wrap: wrap;
+        .theqah-reviews .pagination { 
+          display: flex !important; 
+          justify-content: center !important; 
+          align-items: center !important; 
+          gap: 12px !important; 
+          margin: 24px 0 !important; 
+          flex-wrap: wrap !important;
         }
         
-        .pagination button { 
-          padding: 12px 18px; 
-          border-radius: 12px; 
-          border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.4)" : "rgba(203, 213, 225, 0.8)"}; 
-          background: ${theme === "dark" ? "rgba(15, 23, 42, 0.6)" : "rgba(255, 255, 255, 0.8)"}; 
-          color: inherit; 
-          cursor: pointer;
-          font-weight: 500;
-          font-size: 14px;
-          transition: all 0.2s ease;
-          backdrop-filter: blur(8px);
-          min-width: 44px;
+        .theqah-reviews .pagination button { 
+          padding: 12px 18px !important; 
+          border-radius: 12px !important; 
+          border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.4)" : "rgba(203, 213, 225, 0.8)"} !important; 
+          background: ${theme === "dark" ? "rgba(15, 23, 42, 0.6)" : "rgba(255, 255, 255, 0.8)"} !important; 
+          color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"} !important; 
+          cursor: pointer !important;
+          font-weight: 500 !important;
+          font-size: 14px !important;
+          transition: all 0.2s ease !important;
+          backdrop-filter: blur(8px) !important;
+          min-width: 44px !important;
+          font-family: inherit !important;
         }
         
-        .pagination button:hover:not(:disabled) {
-          transform: translateY(-1px);
-          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.4)" : "rgba(59, 130, 246, 0.3)"}; 
-          background: ${theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(248, 250, 252, 0.9)"}; 
+        .theqah-reviews .pagination button:hover:not(:disabled) {
+          transform: translateY(-1px) !important;
+          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.4)" : "rgba(59, 130, 246, 0.3)"} !important; 
+          background: ${theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(248, 250, 252, 0.9)"} !important; 
           box-shadow: ${theme === "dark" 
             ? "0 4px 12px -2px rgba(0, 0, 0, 0.3)" 
-            : "0 4px 12px -2px rgba(0, 0, 0, 0.05)"}; 
+            : "0 4px 12px -2px rgba(0, 0, 0, 0.05)"} !important; 
         }
         
-        .pagination button:disabled, .pagination button.disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-          pointer-events: none;
+        .theqah-reviews .pagination button:disabled, 
+        .theqah-reviews .pagination button.disabled {
+          opacity: 0.5 !important;
+          cursor: not-allowed !important;
+          pointer-events: none !important;
         }
         
-        .pagination .current {
+        .theqah-reviews .pagination .current {
           background: ${theme === "dark" 
             ? "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)" 
-            : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"}; 
-          color: white;
-          border-color: ${theme === "dark" ? "#1d4ed8" : "#2563eb"}; 
+            : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"} !important; 
+          color: white !important;
+          border-color: ${theme === "dark" ? "#1d4ed8" : "#2563eb"} !important; 
         }
         
         .loading { 
@@ -546,7 +552,6 @@
       ? (lang === "ar" ? "آراء المشترين" : "Customer Reviews")
       : (lang === "ar" ? "تقييمات المتجر" : "Store Reviews");
 
-    const container = h("div", { class: "wrap" });
     const section = h("div", { class: "section" }, [
       h("div", { class: "header" }, [
         h("img", { class: "logo", src: LOGO_URL, alt: "Theqah" }),
@@ -561,6 +566,7 @@
       ]),
     ]);
 
+    const container = h("div", { class: "wrap" });
     container.appendChild(section);
     root.appendChild(style);
     root.appendChild(container);
@@ -674,9 +680,11 @@
         prevBtn.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
+          console.log('Previous page clicked, current:', currentPage);
           currentPage--;
           fetchData();
         });
+        console.log('Previous button listener added');
       }
 
       // معلومات الصفحة
@@ -696,9 +704,11 @@
         nextBtn.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
+          console.log('Next page clicked, current:', currentPage);
           currentPage++;
           fetchData();
         });
+        console.log('Next button listener added');
       }
 
       paginationEl.appendChild(prevBtn);
@@ -750,9 +760,12 @@
 
     // تنظيف placeholder
     if (store && (store.includes('{') || /STORE_ID/i.test(store))) {
-      console.warn('Clearing placeholder store:', store);
+      console.warn('❌ Store ID is still a placeholder:', store);
+      console.warn('📝 Please replace {STORE_ID} with your actual Salla store ID');
       store = '';
     }
+    
+    console.log('🔍 Store ID detected:', store || 'NONE');
 
     // محاولة auto-resolve
     if (!store) {
@@ -780,6 +793,10 @@
     const pidFromHost = host?.getAttribute("data-product") || host?.dataset?.product || null;
     const pid = (pidFromHost && pidFromHost !== "auto") ? pidFromHost : detectProductId();
 
+    console.log('🚀 Mounting widget with config:', {
+      store, pid, limit, lang: String(lang).toLowerCase(), theme: String(theme).toLowerCase()
+    });
+    
     await mountOne(host, store, pid, limit, String(lang).toLowerCase(), String(theme).toLowerCase());
     mountedOnce = true;
   };
