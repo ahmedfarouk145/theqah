@@ -483,9 +483,10 @@
             : "0 4px 12px -2px rgba(0, 0, 0, 0.05)"}; 
         }
         
-        .pagination button:disabled {
+        .pagination button:disabled, .pagination button.disabled {
           opacity: 0.5;
           cursor: not-allowed;
+          pointer-events: none;
         }
         
         .pagination .current {
@@ -569,6 +570,7 @@
     let currentSort = "desc";
     let currentPage = 1;
     let lastData = null;
+    let currentPagination = {};
 
     filterEl.addEventListener("click", (e) => {
       const btn = e.target.closest("button");
@@ -585,16 +587,23 @@
 
     const fetchData = async () => {
       try {
+        // إظهار loading أثناء التحميل
+        list.innerHTML = "";
+        list.classList.add("loading");
+        list.appendChild(h("div", { class: "loading" }, lang === "ar" ? "...جاري التحميل" : "Loading..."));
+        
         const url = `${endpoint}&sort=${currentSort}&page=${currentPage}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
         const res = await fetch(url, { cache: 'no-store' }); // طلب بسيط => بدون preflight
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
+        currentPagination = lastData.pagination || {};
         renderList(lastData);
-        renderPagination(lastData.pagination || {});
+        renderPagination(currentPagination);
         hostEl.setAttribute("data-state", "done"); // نجاح
       } catch (e) {
         console.error('Failed to fetch reviews:', e);
         list.innerHTML = "";
+        list.classList.remove("loading");
         list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "تعذّر التحميل" : "Failed to load"));
         hostEl.removeAttribute("data-state"); // تسمح بإعادة المحاولة لاحقًا
       }
@@ -655,35 +664,45 @@
 
       // زر السابق
       const prevBtn = h("button", { 
+        "data-action": "prev",
         class: currentPage === 1 ? "disabled" : "",
         disabled: currentPage === 1 
       }, lang === "ar" ? "السابق" : "Previous");
       
-      prevBtn.addEventListener("click", () => {
-        if (currentPage > 1) {
+      // إضافة event listener مباشرة للزر
+      if (currentPage > 1) {
+        prevBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           currentPage--;
           fetchData();
-        }
-      });
+        });
+      }
 
-      // رقم الصفحة الحالية
-      const currentPageEl = h("span", { class: "current" }, `${currentPage}`);
+      // معلومات الصفحة
+      const pageInfo = h("span", { class: "current" }, 
+        lang === "ar" ? `صفحة ${currentPage}` : `Page ${currentPage}`
+      );
 
       // زر التالي
       const nextBtn = h("button", { 
+        "data-action": "next",
         class: !pagination.hasMore ? "disabled" : "",
         disabled: !pagination.hasMore 
       }, lang === "ar" ? "التالي" : "Next");
       
-      nextBtn.addEventListener("click", () => {
-        if (pagination.hasMore) {
+      // إضافة event listener مباشرة للزر
+      if (pagination.hasMore) {
+        nextBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           currentPage++;
           fetchData();
-        }
-      });
+        });
+      }
 
       paginationEl.appendChild(prevBtn);
-      paginationEl.appendChild(currentPageEl);
+      paginationEl.appendChild(pageInfo);
       paginationEl.appendChild(nextBtn);
     };
 
