@@ -240,6 +240,9 @@ const MetricCard = ({
 export default function DashboardAnalytics() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aiSummary, setAiSummary] = useState<string>('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Calculate dynamic metrics from real data
   const calculateMetrics = (analyticsData: AnalyticsData) => {
@@ -339,6 +342,37 @@ export default function DashboardAnalytics() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!data) return;
+    let cancelled = false;
+
+    async function getAI() {
+      setAiLoading(true); setAiError(null);
+      try {
+        // user might be logged out
+        const idToken = await auth.currentUser?.getIdToken().catch(() => undefined);
+        const headers = idToken ? { Authorization: `Bearer ${idToken}` } : {};
+        const r = await fetch('/api/ai/insights', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data })
+        });
+        const j = await r.json();
+        if (!cancelled) {
+          if (j.ok && j.text) setAiSummary(j.text);
+          else setAiError(j.message || 'لم تتوفر التوصيات حالياً');
+        }
+      } catch (e) {
+        if (!cancelled) setAiError('تعذر تحميل توصيات الذكاء الاصطناعي');
+      } finally {
+        if (!cancelled) setAiLoading(false);
+      }
+    }
+    getAI();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { cancelled = true; };
+  }, [data]);
+
   if (loading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -402,6 +436,23 @@ export default function DashboardAnalytics() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 p-8 space-y-12">
+      {/* AI Insights Card */}
+      <div className="max-w-2xl mx-auto mb-10 w-full">
+        <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200/40 rounded-2xl p-6 shadow-xl flex flex-col gap-2 items-center animate-fadeIn">
+          <div className="flex items-center gap-3 mb-2">
+            <Sparkles className="text-blue-500 w-6 h-6 animate-pulse" />
+            <h2 className="text-lg font-bold text-blue-800">توصيات الذكاء الاصطناعي</h2>
+          </div>
+          {aiLoading && <div className="text-blue-500 animate-pulse">جاري التحليل...</div>}
+          {!aiLoading && aiError && <div className="text-red-500">{aiError}</div>}
+          {!aiLoading && !aiError && aiSummary && (
+            <div className="whitespace-pre-line text-gray-800 text-md mt-2 text-center leading-relaxed">
+              {aiSummary}
+            </div>
+          )}
+          {!aiLoading && !aiError && !aiSummary && <div className="text-gray-500">لا توجد توصيات حالياً.</div>}
+        </div>
+      </div>
       {/* Animated Header */}
       <div className="text-center space-y-6 mb-16">
         <div
