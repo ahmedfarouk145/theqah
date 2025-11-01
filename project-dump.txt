@@ -1,11 +1,11 @@
 ====[ PROJECT DUMP - METADATA ]=====================================================================
 Root   : D:\theqah
 Output : D:\theqah\project-dump.txt
-When   : 2025-10-13T14:28:10.512Z
+When   : 2025-10-31T14:38:24.165Z
 Rules  : skip binaries=true, skip .env*=true, maxBytes=1.0 MB
 
 ====[ FILE LIST ]===================================================================================
-.firebase/logs/vsce-debug.log	(10.6 MB)
+.firebase/logs/vsce-debug.log	(11.8 MB)
 .firebaserc	(122 B)
 .gitignore	(480 B)
 ARCHITECTURE.md	(29.3 KB)
@@ -13,12 +13,11 @@ components.json	(449 B)
 EASY-MODE-TESTING.md	(4.4 KB)
 eslint.config.mjs	(393 B)
 FEATURE_IMPLEMENTATION.md	(11.4 KB)
-firebase-debug.log	(25.0 KB)
 firebase-storage-setup.md	(2.0 KB)
 firebase.json	(250 B)
 firestore-debug.log	(0 B)
 firestore.indexes.json	(6.0 KB)
-firestore.rules	(3.5 KB)
+firestore.rules	(3.7 KB)
 IMPLEMENTATION_COMPLETE.md	(13.9 KB)
 middleware.ts	(2.7 KB)
 next-env.d.ts	(264 B)
@@ -155,6 +154,7 @@ src/pages/api/orders/send-review.ts	(9.5 KB)
 src/pages/api/public/pixel.ts	(1.1 KB)
 src/pages/api/public/reviews.ts	(4.4 KB)
 src/pages/api/public/reviews/resolve.ts	(13.6 KB)
+src/pages/api/public/stats.ts	(939 B)
 src/pages/api/public/widget.ts	(6.3 KB)
 src/pages/api/report-review.ts	(1.1 KB)
 src/pages/api/review-token.ts	(1.4 KB)
@@ -207,14 +207,14 @@ src/pages/embedded/index.tsx	(293 B)
 src/pages/embedded/reviews.tsx	(4.8 KB)
 src/pages/faq.tsx	(15.9 KB)
 src/pages/forgot-password.tsx	(7.4 KB)
-src/pages/index.tsx	(5.8 KB)
-src/pages/login.tsx	(6.0 KB)
+src/pages/index.tsx	(9.3 KB)
+src/pages/login.tsx	(6.3 KB)
 src/pages/onboarding/set-password.tsx	(3.4 KB)
 src/pages/privacy-policy.tsx	(3.7 KB)
 src/pages/r/[id].tsx	(2.4 KB)
 src/pages/report.tsx	(4.3 KB)
 src/pages/reset-password.tsx	(6.3 KB)
-src/pages/review/[token].tsx	(15.7 KB)
+src/pages/review/[token].tsx	(14.8 KB)
 src/pages/salla/oauth-info.tsx	(11.9 KB)
 src/pages/setup-password.tsx	(9.4 KB)
 src/pages/signup.tsx	(5.5 KB)
@@ -293,7 +293,7 @@ tsconfig.json	(602 B)
 
 ====[ FILE CONTENTS ]===============================================================================
 ====[ SKIP (too large): .firebase/logs/vsce-debug.log ]=============================================
-Size: 10.6 MB > limit 1.0 MB
+Size: 11.8 MB > limit 1.0 MB
 
 ====[ START FILE: .firebaserc (122 B) ]=============================================================
 {
@@ -1433,205 +1433,6 @@ Implemented as part of the Theqah project.
 All features follow the existing codebase patterns and security practices.
 ====[ END FILE: FEATURE_IMPLEMENTATION.md ]=========================================================
 
-====[ START FILE: firebase-debug.log (25.0 KB) ]====================================================
-[debug] [2025-09-25T15:39:34.395Z] ----------------------------------------------------------------------
-[debug] [2025-09-25T15:39:34.400Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\DELL\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js emulators:start
-[debug] [2025-09-25T15:39:34.401Z] CLI Version:   14.17.0
-[debug] [2025-09-25T15:39:34.401Z] Platform:      win32
-[debug] [2025-09-25T15:39:34.401Z] Node Version:  v22.16.0
-[debug] [2025-09-25T15:39:34.401Z] Time:          Thu Sep 25 2025 18:39:34 GMT+0300 (Eastern European Summer Time)
-[debug] [2025-09-25T15:39:34.402Z] ----------------------------------------------------------------------
-[debug] 
-[debug] [2025-09-25T15:39:34.688Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
-[debug] [2025-09-25T15:39:34.688Z] > authorizing via signed-in user (s-zeyad.mawjoud@zewailcity.edu.eg)
-[debug] [2025-09-25T15:39:44.024Z] java version "24.0.2" 2025-07-15
-Java(TM) SE Runtime Environment (build 24.0.2+12-54)
-
-[debug] [2025-09-25T15:39:44.025Z] Java HotSpot(TM) 64-Bit Server VM (build 24.0.2+12-54, mixed mode, sharing)
-
-[debug] [2025-09-25T15:39:44.084Z] Parsed Java major version: 24
-[info] i  emulators: Starting emulators: firestore {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: firestore"}}
-[debug] [2025-09-25T15:39:44.097Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2025-09-25T15:39:44.097Z] [firestore] Firestore Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2025-09-25T15:39:44.097Z] [firestore.websocket] websocket server for firestore only supports listening on one address (127.0.0.1). Not listening on ::1
-[debug] [2025-09-25T15:39:44.097Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"firestore":[{"address":"127.0.0.1","family":"IPv4","port":8080}],"firestore.websocket":[{"address":"127.0.0.1","family":"IPv4","port":9150}]},"metadata":{"message":"assigned listening specs for emulators"}}
-[debug] [2025-09-25T15:39:44.104Z] Emulator locator file path: C:\Users\DELL\AppData\Local\Temp\hub-theqah-d3ee0.json
-[debug] [2025-09-25T15:39:44.104Z] [hub] writing locator at C:\Users\DELL\AppData\Local\Temp\hub-theqah-d3ee0.json
-[debug] [2025-09-25T15:39:44.130Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: auto_download"}}
-[debug] [2025-09-25T15:39:44.130Z] Ignoring unsupported arg: single_project_mode_error {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: single_project_mode_error"}}
-[debug] [2025-09-25T15:39:44.130Z] Starting Firestore Emulator with command {"binary":"java","args":["-Dgoogle.cloud_firestore.debug_log_level=FINE","-Duser.language=en","-jar","C:\\Users\\DELL\\.cache\\firebase\\emulators\\cloud-firestore-emulator-v1.19.8.jar","--host","127.0.0.1","--port",8080,"--websocket_port",9150,"--project_id","theqah-d3ee0","--rules","E:\\mos\\theqah\\firestore.rules","--single_project_mode",true],"optionalArgs":["port","webchannel_port","host","rules","websocket_port","functions_emulator","seed_from_export","project_id","single_project_mode"],"joinArgs":false,"shell":false,"port":8080} {"metadata":{"emulator":{"name":"firestore"},"message":"Starting Firestore Emulator with command {\"binary\":\"java\",\"args\":[\"-Dgoogle.cloud_firestore.debug_log_level=FINE\",\"-Duser.language=en\",\"-jar\",\"C:\\\\Users\\\\DELL\\\\.cache\\\\firebase\\\\emulators\\\\cloud-firestore-emulator-v1.19.8.jar\",\"--host\",\"127.0.0.1\",\"--port\",8080,\"--websocket_port\",9150,\"--project_id\",\"theqah-d3ee0\",\"--rules\",\"E:\\\\mos\\\\theqah\\\\firestore.rules\",\"--single_project_mode\",true],\"optionalArgs\":[\"port\",\"webchannel_port\",\"host\",\"rules\",\"websocket_port\",\"functions_emulator\",\"seed_from_export\",\"project_id\",\"single_project_mode\"],\"joinArgs\":false,\"shell\":false,\"port\":8080}"}}
-[info] i  firestore: Firestore Emulator logging to firestore-debug.log {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator logging to \u001b[1mfirestore-debug.log\u001b[22m"}}
-[info] +  firestore: Firestore Emulator UI websocket is running on 9150. {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator UI websocket is running on 9150."}}
-[info] i  ui: downloading ui-v1.15.0.zip... {"metadata":{"emulator":{"name":"ui"},"message":"downloading ui-v1.15.0.zip..."}}
-[debug] [2025-09-25T15:39:47.668Z] >>> [apiv2][query] GET https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.15.0.zip 
-[debug] [2025-09-25T15:39:47.984Z] <<< [apiv2][status] GET https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.15.0.zip 200
-[debug] [2025-09-25T15:39:47.984Z] <<< [apiv2][body] GET https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.15.0.zip [stream]
-[debug] [2025-09-25T15:39:50.100Z] Data is 3538469
-[debug] [2025-09-25T15:39:50.100Z] [unzip] Entry: client/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
-[debug] [2025-09-25T15:39:50.101Z] [unzip] Processing entry: client\
-[debug] [2025-09-25T15:39:50.101Z] [unzip] mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\
-[debug] [2025-09-25T15:39:50.104Z] [unzip] Entry: client/favicon-16x16.png (compressed_size=293 bytes, uncompressed_size=293 bytes)
-[debug] [2025-09-25T15:39:50.104Z] [unzip] Processing entry: client\favicon-16x16.png
-[debug] [2025-09-25T15:39:50.104Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.104Z] [unzip] Writing file: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\favicon-16x16.png
-[debug] [2025-09-25T15:39:50.107Z] [unzip] Entry: client/safari-pinned-tab.svg (compressed_size=1433 bytes, uncompressed_size=2611 bytes)
-[debug] [2025-09-25T15:39:50.107Z] [unzip] Processing entry: client\safari-pinned-tab.svg
-[debug] [2025-09-25T15:39:50.107Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.108Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\safari-pinned-tab.svg
-[debug] [2025-09-25T15:39:50.119Z] [unzip] Entry: client/favicon.ico (compressed_size=2933 bytes, uncompressed_size=13294 bytes)
-[debug] [2025-09-25T15:39:50.119Z] [unzip] Processing entry: client\favicon.ico
-[debug] [2025-09-25T15:39:50.119Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.120Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\favicon.ico
-[debug] [2025-09-25T15:39:50.123Z] [unzip] Entry: client/index.html (compressed_size=1364 bytes, uncompressed_size=3071 bytes)
-[debug] [2025-09-25T15:39:50.124Z] [unzip] Processing entry: client\index.html
-[debug] [2025-09-25T15:39:50.124Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.125Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\index.html
-[debug] [2025-09-25T15:39:50.130Z] [unzip] Entry: client/android-chrome-192x192.png (compressed_size=2684 bytes, uncompressed_size=2684 bytes)
-[debug] [2025-09-25T15:39:50.130Z] [unzip] Processing entry: client\android-chrome-192x192.png
-[debug] [2025-09-25T15:39:50.130Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.130Z] [unzip] Writing file: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\android-chrome-192x192.png
-[debug] [2025-09-25T15:39:50.133Z] [unzip] Entry: client/apple-touch-icon.png (compressed_size=2123 bytes, uncompressed_size=2152 bytes)
-[debug] [2025-09-25T15:39:50.133Z] [unzip] Processing entry: client\apple-touch-icon.png
-[debug] [2025-09-25T15:39:50.133Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.134Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\apple-touch-icon.png
-[debug] [2025-09-25T15:39:50.136Z] [unzip] Entry: client/android-chrome-512x512.png (compressed_size=5369 bytes, uncompressed_size=5411 bytes)
-[debug] [2025-09-25T15:39:50.137Z] [unzip] Processing entry: client\android-chrome-512x512.png
-[debug] [2025-09-25T15:39:50.137Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.146Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\android-chrome-512x512.png
-[debug] [2025-09-25T15:39:50.149Z] [unzip] Entry: client/manifest.json (compressed_size=245 bytes, uncompressed_size=551 bytes)
-[debug] [2025-09-25T15:39:50.149Z] [unzip] Processing entry: client\manifest.json
-[debug] [2025-09-25T15:39:50.149Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.150Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\manifest.json
-[debug] [2025-09-25T15:39:50.152Z] [unzip] Entry: client/robots.txt (compressed_size=26 bytes, uncompressed_size=26 bytes)
-[debug] [2025-09-25T15:39:50.152Z] [unzip] Processing entry: client\robots.txt
-[debug] [2025-09-25T15:39:50.152Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.152Z] [unzip] Writing file: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\robots.txt
-[debug] [2025-09-25T15:39:50.154Z] [unzip] Entry: client/mstile-150x150.png (compressed_size=2034 bytes, uncompressed_size=2034 bytes)
-[debug] [2025-09-25T15:39:50.154Z] [unzip] Processing entry: client\mstile-150x150.png
-[debug] [2025-09-25T15:39:50.154Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.155Z] [unzip] Writing file: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\mstile-150x150.png
-[debug] [2025-09-25T15:39:50.156Z] [unzip] Entry: client/assets/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
-[debug] [2025-09-25T15:39:50.156Z] [unzip] Processing entry: client\assets\
-[debug] [2025-09-25T15:39:50.156Z] [unzip] mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\
-[debug] [2025-09-25T15:39:50.158Z] [unzip] Entry: client/assets/index-BX-A56oj.js (compressed_size=582089 bytes, uncompressed_size=2092775 bytes)
-[debug] [2025-09-25T15:39:50.159Z] [unzip] Processing entry: client\assets\index-BX-A56oj.js
-[debug] [2025-09-25T15:39:50.159Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets
-[debug] [2025-09-25T15:39:50.160Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\index-BX-A56oj.js
-[debug] [2025-09-25T15:39:50.190Z] [unzip] Entry: client/assets/index-CjB9C900.css (compressed_size=35979 bytes, uncompressed_size=298654 bytes)
-[debug] [2025-09-25T15:39:50.190Z] [unzip] Processing entry: client\assets\index-CjB9C900.css
-[debug] [2025-09-25T15:39:50.190Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets
-[debug] [2025-09-25T15:39:50.191Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\index-CjB9C900.css
-[debug] [2025-09-25T15:39:50.198Z] [unzip] Entry: client/assets/index-BX-A56oj.js.map (compressed_size=2362482 bytes, uncompressed_size=10036679 bytes)
-[debug] [2025-09-25T15:39:50.199Z] [unzip] Processing entry: client\assets\index-BX-A56oj.js.map
-[debug] [2025-09-25T15:39:50.199Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets
-[debug] [2025-09-25T15:39:50.199Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\index-BX-A56oj.js.map
-[debug] [2025-09-25T15:39:50.267Z] [unzip] Entry: client/assets/extensions/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
-[debug] [2025-09-25T15:39:50.267Z] [unzip] Processing entry: client\assets\extensions\
-[debug] [2025-09-25T15:39:50.267Z] [unzip] mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\extensions\
-[debug] [2025-09-25T15:39:50.268Z] [unzip] Entry: client/assets/extensions/default-extension.png (compressed_size=1646 bytes, uncompressed_size=1657 bytes)
-[debug] [2025-09-25T15:39:50.268Z] [unzip] Processing entry: client\assets\extensions\default-extension.png
-[debug] [2025-09-25T15:39:50.268Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\extensions
-[debug] [2025-09-25T15:39:50.268Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\extensions\default-extension.png
-[debug] [2025-09-25T15:39:50.269Z] [unzip] Entry: client/assets/img/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
-[debug] [2025-09-25T15:39:50.270Z] [unzip] Processing entry: client\assets\img\
-[debug] [2025-09-25T15:39:50.270Z] [unzip] mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\img\
-[debug] [2025-09-25T15:39:50.271Z] [unzip] Entry: client/assets/img/database.png (compressed_size=29449 bytes, uncompressed_size=29988 bytes)
-[debug] [2025-09-25T15:39:50.271Z] [unzip] Processing entry: client\assets\img\database.png
-[debug] [2025-09-25T15:39:50.271Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\img
-[debug] [2025-09-25T15:39:50.272Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\img\database.png
-[debug] [2025-09-25T15:39:50.273Z] [unzip] Entry: client/assets/provider-icons/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
-[debug] [2025-09-25T15:39:50.273Z] [unzip] Processing entry: client\assets\provider-icons\
-[debug] [2025-09-25T15:39:50.273Z] [unzip] mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\
-[debug] [2025-09-25T15:39:50.274Z] [unzip] Entry: client/assets/provider-icons/auth_service_saml.svg (compressed_size=575 bytes, uncompressed_size=1226 bytes)
-[debug] [2025-09-25T15:39:50.274Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_saml.svg
-[debug] [2025-09-25T15:39:50.274Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.274Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_saml.svg
-[debug] [2025-09-25T15:39:50.276Z] [unzip] Entry: client/assets/provider-icons/auth_service_phone.svg (compressed_size=261 bytes, uncompressed_size=414 bytes)
-[debug] [2025-09-25T15:39:50.276Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_phone.svg
-[debug] [2025-09-25T15:39:50.276Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.276Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_phone.svg
-[debug] [2025-09-25T15:39:50.278Z] [unzip] Entry: client/assets/provider-icons/auth_service_facebook.svg (compressed_size=289 bytes, uncompressed_size=457 bytes)
-[debug] [2025-09-25T15:39:50.278Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_facebook.svg
-[debug] [2025-09-25T15:39:50.278Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.278Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_facebook.svg
-[debug] [2025-09-25T15:39:50.280Z] [unzip] Entry: client/assets/provider-icons/auth_service_game_center.svg (compressed_size=991 bytes, uncompressed_size=3921 bytes)
-[debug] [2025-09-25T15:39:50.280Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_game_center.svg
-[debug] [2025-09-25T15:39:50.280Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.280Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_game_center.svg
-[debug] [2025-09-25T15:39:50.282Z] [unzip] Entry: client/assets/provider-icons/auth_service_apple.svg (compressed_size=230 bytes, uncompressed_size=334 bytes)
-[debug] [2025-09-25T15:39:50.282Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_apple.svg
-[debug] [2025-09-25T15:39:50.282Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.282Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_apple.svg
-[debug] [2025-09-25T15:39:50.285Z] [unzip] Entry: client/assets/provider-icons/auth_service_github.svg (compressed_size=466 bytes, uncompressed_size=838 bytes)
-[debug] [2025-09-25T15:39:50.285Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_github.svg
-[debug] [2025-09-25T15:39:50.285Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.285Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_github.svg
-[debug] [2025-09-25T15:39:50.287Z] [unzip] Entry: client/assets/provider-icons/auth_service_mslive.svg (compressed_size=203 bytes, uncompressed_size=378 bytes)
-[debug] [2025-09-25T15:39:50.287Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_mslive.svg
-[debug] [2025-09-25T15:39:50.287Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.287Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_mslive.svg
-[debug] [2025-09-25T15:39:50.289Z] [unzip] Entry: client/assets/provider-icons/auth_service_yahoo.svg (compressed_size=577 bytes, uncompressed_size=1182 bytes)
-[debug] [2025-09-25T15:39:50.289Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_yahoo.svg
-[debug] [2025-09-25T15:39:50.289Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.289Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_yahoo.svg
-[debug] [2025-09-25T15:39:50.291Z] [unzip] Entry: client/assets/provider-icons/auth_service_twitter.svg (compressed_size=444 bytes, uncompressed_size=751 bytes)
-[debug] [2025-09-25T15:39:50.291Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_twitter.svg
-[debug] [2025-09-25T15:39:50.291Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.291Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_twitter.svg
-[debug] [2025-09-25T15:39:50.293Z] [unzip] Entry: client/assets/provider-icons/auth_service_play_games.svg (compressed_size=565 bytes, uncompressed_size=1173 bytes)
-[debug] [2025-09-25T15:39:50.293Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_play_games.svg
-[debug] [2025-09-25T15:39:50.293Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.293Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_play_games.svg
-[debug] [2025-09-25T15:39:50.295Z] [unzip] Entry: client/assets/provider-icons/auth_service_email.svg (compressed_size=228 bytes, uncompressed_size=326 bytes)
-[debug] [2025-09-25T15:39:50.295Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_email.svg
-[debug] [2025-09-25T15:39:50.295Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.295Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_email.svg
-[debug] [2025-09-25T15:39:50.296Z] [unzip] Entry: client/assets/provider-icons/auth_service_google.svg (compressed_size=409 bytes, uncompressed_size=720 bytes)
-[debug] [2025-09-25T15:39:50.297Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_google.svg
-[debug] [2025-09-25T15:39:50.297Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.297Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_google.svg
-[debug] [2025-09-25T15:39:50.298Z] [unzip] Entry: client/assets/provider-icons/auth_service_oidc.svg (compressed_size=414 bytes, uncompressed_size=858 bytes)
-[debug] [2025-09-25T15:39:50.299Z] [unzip] Processing entry: client\assets\provider-icons\auth_service_oidc.svg
-[debug] [2025-09-25T15:39:50.299Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons
-[debug] [2025-09-25T15:39:50.299Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\assets\provider-icons\auth_service_oidc.svg
-[debug] [2025-09-25T15:39:50.301Z] [unzip] Entry: client/browserconfig.xml (compressed_size=491 bytes, uncompressed_size=822 bytes)
-[debug] [2025-09-25T15:39:50.301Z] [unzip] Processing entry: client\browserconfig.xml
-[debug] [2025-09-25T15:39:50.301Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.301Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\browserconfig.xml
-[debug] [2025-09-25T15:39:50.303Z] [unzip] Entry: client/favicon-32x32.png (compressed_size=475 bytes, uncompressed_size=475 bytes)
-[debug] [2025-09-25T15:39:50.303Z] [unzip] Processing entry: client\favicon-32x32.png
-[debug] [2025-09-25T15:39:50.303Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client
-[debug] [2025-09-25T15:39:50.303Z] [unzip] Writing file: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\client\favicon-32x32.png
-[debug] [2025-09-25T15:39:50.304Z] [unzip] Entry: server/ (compressed_size=0 bytes, uncompressed_size=0 bytes)
-[debug] [2025-09-25T15:39:50.304Z] [unzip] Processing entry: server\
-[debug] [2025-09-25T15:39:50.304Z] [unzip] mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\server\
-[debug] [2025-09-25T15:39:50.305Z] [unzip] Entry: server/server.mjs.map (compressed_size=217845 bytes, uncompressed_size=944978 bytes)
-[debug] [2025-09-25T15:39:50.305Z] [unzip] Processing entry: server\server.mjs.map
-[debug] [2025-09-25T15:39:50.305Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\server
-[debug] [2025-09-25T15:39:50.305Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\server\server.mjs.map
-[debug] [2025-09-25T15:39:50.313Z] [unzip] Entry: server/server.mjs (compressed_size=276407 bytes, uncompressed_size=933701 bytes)
-[debug] [2025-09-25T15:39:50.313Z] [unzip] Processing entry: server\server.mjs
-[debug] [2025-09-25T15:39:50.313Z] [unzip] else mkdir: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\server
-[debug] [2025-09-25T15:39:50.313Z] [unzip] deflating: C:\Users\DELL\.cache\firebase\emulators\ui-v1.15.0\server\server.mjs
-[debug] [2025-09-25T15:39:50.329Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
-[info] 
-┌─────────────────────────────────────────────────────────────┐
-│ ✔  All emulators ready! It is now safe to connect your app. │
-│ i  View Emulator UI at http://127.0.0.1:4000/               │
-└─────────────────────────────────────────────────────────────┘
-
-┌───────────┬────────────────┬─────────────────────────────────┐
-│ Emulator  │ Host:Port      │ View in Emulator UI             │
-├───────────┼────────────────┼─────────────────────────────────┤
-│ Firestore │ 127.0.0.1:8080 │ http://127.0.0.1:4000/firestore │
-└───────────┴────────────────┴─────────────────────────────────┘
-  Emulator Hub host: 127.0.0.1 port: 4400
-  Other reserved ports: 4500, 9150
-
-Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
- 
-====[ END FILE: firebase-debug.log ]================================================================
-
 ====[ START FILE: firebase-storage-setup.md (2.0 KB) ]==============================================
 # Firebase Storage Setup Guide
 
@@ -1931,7 +1732,7 @@ Firebase Storage:
 }
 ====[ END FILE: firestore.indexes.json ]============================================================
 
-====[ START FILE: firestore.rules (3.5 KB) ]========================================================
+====[ START FILE: firestore.rules (3.7 KB) ]========================================================
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -1951,6 +1752,12 @@ service cloud.firestore {
     match /public/{document=**} {
       allow read: if true;
       allow write: if false;
+    }
+
+    // أدوار المستخدمين - يمكن للمستخدم قراءة دوره فقط
+    match /roles/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
     }
 
     // متجر
@@ -22387,7 +22194,7 @@ export default function NavbarLanding() {
           />
         </div>
         <span className="text-2xl font-extrabold text-green-800 tracking-tight group-hover:text-green-900 transition-colors">
-          ثقة
+          مشتري موثّق
         </span>
       </Link>
 
@@ -28861,6 +28668,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ====[ END FILE: src/pages/api/public/reviews/resolve.ts ]===========================================
 
+====[ START FILE: src/pages/api/public/stats.ts (939 B) ]===========================================
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { dbAdmin } from '../../../lib/firebaseAdmin';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const db = dbAdmin();
+    
+    // جلب عدد المتاجر
+    const storesSnapshot = await db.collection('stores').count().get();
+    const storesCount = storesSnapshot.data().count;
+    
+    // جلب عدد التقييمات
+    const reviewsSnapshot = await db.collection('reviews').count().get();
+    const reviewsCount = reviewsSnapshot.data().count;
+    
+    res.status(200).json({
+      stores: storesCount,
+      reviews: reviewsCount
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+}
+====[ END FILE: src/pages/api/public/stats.ts ]=====================================================
+
 ====[ START FILE: src/pages/api/public/widget.ts (6.3 KB) ]=========================================
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
@@ -33856,7 +33694,7 @@ export default function ConnectIndex() {
 
   return (
     <>
-      <Head><title>ربط متجرك | ثقة</title></Head>
+      <Head><title>ربط متجرك | مشتري موثق</title></Head>
       <div dir="rtl" className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-green-50/30">
         <div className="max-w-4xl mx-auto p-6 py-12">
           <motion.div
@@ -33866,7 +33704,7 @@ export default function ConnectIndex() {
           >
             <h1 className="text-4xl font-bold text-gray-900 mb-4">اختَر منصتك للبدء</h1>
             <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
-              اربط متجرك مع ثقة لإرسال روابط التقييمات تلقائيًا بعد كل عملية شراء ناجحة
+              اربط متجرك مع مشتري موثق لإرسال روابط التقييمات تلقائيًا بعد كل عملية شراء ناجحة
             </p>
           </motion.div>
 
@@ -35382,16 +35220,44 @@ export default function ForgotPasswordPage() {
 }
 ====[ END FILE: src/pages/forgot-password.tsx ]=====================================================
 
-====[ START FILE: src/pages/index.tsx (5.8 KB) ]====================================================
+====[ START FILE: src/pages/index.tsx (9.3 KB) ]====================================================
 // src/pages/index.tsx
 'use client';
 
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import NavbarLanding from '@/components/NavbarLanding';
 
 export default function LandingPage() {
+  const [storesCount, setStoresCount] = useState(300);
+  const [reviewsCount, setReviewsCount] = useState(500);
+
+  // جلب البيانات من Firebase
+  const fetchCounts = async () => {
+    try {
+      const response = await fetch('/api/public/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStoresCount((data.stores || 0) + 300); // يبدأ من 300 ويضيف الداتا الحقيقية
+        setReviewsCount((data.reviews || 0) + 500); // يبدأ من 500 ويضيف الداتا الحقيقية
+      }
+    } catch (error) {
+      console.log('Failed to fetch stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    // جلب البيانات عند تحميل الصفحة
+    fetchCounts();
+    
+    // تحديث البيانات كل 15 دقيقة (900000 ms = 15 دقيقة)
+    const interval = setInterval(fetchCounts, 900000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <>
       <NavbarLanding />
@@ -35414,10 +35280,14 @@ export default function LandingPage() {
           >
             <Image src="/logo.png" alt="مشتري موثّق" width={100} height={100} className="mx-auto" />
             <h1 className="text-4xl md:text-5xl font-extrabold text-green-900 leading-tight">
-              مشتري موثّق — تقييمات حقيقية بعد الشراء
+              مشتري موثّق  تقييمات حقيقية بعد الشراء
             </h1>
             <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
-              اجمع تقييمات العملاء تلقائيًا بعد الشراء وانشرها على صفحة عامة موثوقة.
+           اجمع تقييمات عملائك تلقائيًا بعد الشراء، واعرضها مباشرة أسفل المنتج كتقييمات موثوقة
+           <br />
+           <span className="text-green-600 font-semibold text-lg">
+             أكثر من {storesCount.toLocaleString()} متجر يثق بنا و {reviewsCount.toLocaleString()} تقييم موثّق
+           </span>
             </p>
             <Link href="/signup">
               <motion.button
@@ -35439,7 +35309,7 @@ export default function LandingPage() {
               {[
                 { icon: '💬', title: 'إرسال تلقائي للرسائل', desc: 'SMS / واتساب / بريد إلكتروني بعد كل عملية شراء' },
                 { icon: '🧠', title: 'ذكاء اصطناعي فلتر', desc: 'منع التقييمات المسيئة تلقائيًا وبذكاء' },
-                { icon: '🌟', title: 'صفحة عامة للتقييمات', desc: 'عرض التقييمات بعلامة “مشتري موثّق”' },
+                { icon: '🌟', title: ' عرض التقييمات الموثوقة ', desc: 'اعرض جميع التقييمات بعلامة “مشتري موثّق” لتُظهر المراجعات الحقيقية من المشترين الفعليين' },
               ].map((feat, i) => (
                 <motion.div
                   key={i}
@@ -35486,6 +35356,57 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Stats Section */}
+        <section className="py-16 px-6 bg-gradient-to-b from-green-50 to-green-100">
+          <div className="max-w-4xl mx-auto text-center">
+            <motion.h2 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+              className="text-3xl font-bold mb-8 text-green-800"
+            >
+              الثقة في الأرقام
+            </motion.h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true }}
+                className="text-center"
+              >
+                <div className="text-5xl font-bold text-green-600 mb-2">
+                  {storesCount.toLocaleString()}+
+                </div>
+                <div className="text-xl text-green-800 font-medium">
+                  متجر يثق بنا
+                </div>
+                <p className="text-green-600 mt-2">
+                  متاجر من جميع أنحاء المملكة
+                </p>
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                viewport={{ once: true }}
+                className="text-center"
+              >
+                <div className="text-5xl font-bold text-green-600 mb-2">
+                  {reviewsCount.toLocaleString()}+
+                </div>
+                <div className="text-xl text-green-800 font-medium">
+                  تقييم موثّق
+                </div>
+                <p className="text-green-600 mt-2">
+                  تقييمات حقيقية من مشترين فعليين
+                </p>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
         {/* Footer */}
         <footer className="bg-green-100 py-6 text-center text-sm text-green-900 border-t border-green-200">
           <div className="flex justify-center gap-6 mb-2 flex-wrap">
@@ -35501,7 +35422,7 @@ export default function LandingPage() {
 }
 ====[ END FILE: src/pages/index.tsx ]===============================================================
 
-====[ START FILE: src/pages/login.tsx (6.0 KB) ]====================================================
+====[ START FILE: src/pages/login.tsx (6.3 KB) ]====================================================
 // src/pages/login.tsx
 'use client';
 
@@ -35533,6 +35454,7 @@ export default function LoginPage() {
       'auth/invalid-credential': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
       'auth/wrong-password': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
       'auth/user-not-found': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+      'permission-denied': 'تم تسجيل الدخول بنجاح، جاري التحويل...',
     } as Record<string, string>)[code] || 'تعذّر تسجيل الدخول حالياً.';
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -35556,14 +35478,20 @@ export default function LoginPage() {
 
       // 2) لو مفيش claim، افحص Firestore: roles/{uid}
       if (!isAdmin) {
-        const snap = await getDoc(doc(db, 'roles', cred.user.uid));
-        if (snap.exists()) {
-          //eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const data = snap.data() as any;
-          isAdmin =
-            data?.role === 'admin' ||
-            data?.admin === true ||
-            (data?.roles && data.roles.admin === true);
+        try {
+          const snap = await getDoc(doc(db, 'roles', cred.user.uid));
+          if (snap.exists()) {
+            //eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const data = snap.data() as any;
+            isAdmin =
+              data?.role === 'admin' ||
+              data?.admin === true ||
+              (data?.roles && data.roles.admin === true);
+          }
+        } catch (roleError) {
+          // في حالة فشل قراءة الأدوار، نكمل كمستخدم عادي
+          console.warn('Could not read user role from Firestore:', roleError);
+          isAdmin = false;
         }
       }
 
@@ -36190,11 +36118,11 @@ export default function ResetPasswordPage() {
 }
 ====[ END FILE: src/pages/reset-password.tsx ]======================================================
 
-====[ START FILE: src/pages/review/[token].tsx (15.7 KB) ]==========================================
+====[ START FILE: src/pages/review/[token].tsx (14.8 KB) ]==========================================
 // src/pages/review/[token].tsx
 import Head from "next/head";
 import Link from "next/link";
-import Image from "next/image"; // (لسه مستخدمينه داخل أماكن ثانية لو حبيت)
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
@@ -36346,28 +36274,27 @@ export default function ReviewByTokenPage() {
 
   if (!token) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-red-50 to-pink-50">
+      <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-red-50 to-pink-50">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg"
+          className="max-w-md w-full bg-white border rounded-2xl p-6 shadow-lg"
           dir="rtl"
         >
-          {/* ✅ اللوجو الكبير + أنيميشن 3D */}
-          <div className="flex justify-center mb-4">
-            <AnimatedLogo width={220} glow pulse shine />
+          <div className="flex justify-center mb-3">
+            <AnimatedLogo width={160} glow pulse shine />
           </div>
 
-          <div className="flex items-center gap-3 mb-4">
-            <AlertCircle className="h-6 w-6 text-red-500" />
-            <h1 className="text-xl font-bold text-red-700">الرابط غير صالح</h1>
+          <div className="flex items-center gap-3 mb-3">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            <h1 className="text-lg font-bold text-red-700">الرابط غير صالح</h1>
           </div>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 text-sm mb-4">
             يرجى التأكد من فتح الرابط الكامل المرسل إليك عبر SMS أو البريد الإلكتروني.
           </p>
           <Link
             href="/"
-            className="inline-block px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition"
+            className="inline-block px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition text-sm"
           >
             العودة للصفحة الرئيسية
           </Link>
@@ -36395,36 +36322,35 @@ export default function ReviewByTokenPage() {
     return (
       <>
         <Head><title>شكرًا لتقييمك | ثقة</title></Head>
-        <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-green-50 to-emerald-50">
+        <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 to-emerald-50">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg text-center"
+            className="max-w-md w-full bg-white border rounded-2xl p-6 shadow-lg text-center"
             dir="rtl"
           >
-            {/* ✅ اللوجو الكبير + أنيميشن 3D */}
-            <div className="flex justify-center mb-4">
-              <AnimatedLogo width={240} glow pulse shine />
+            <div className="flex justify-center mb-3">
+              <AnimatedLogo width={180} glow pulse shine />
             </div>
 
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, duration: 0.5, type: "spring", stiffness: 200 }}
-              className="mb-6"
+              className="mb-4"
             >
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
             </motion.div>
-            <h1 className="text-2xl font-bold text-green-700 mb-3">شكرًا لتقييمك! ✨</h1>
-            <p className="text-gray-600 mb-6">
+            <h1 className="text-xl font-bold text-green-700 mb-2">شكرًا لتقييمك! ✨</h1>
+            <p className="text-gray-600 text-sm mb-4">
               تم استلام تقييمك بنجاح وسيتم مراجعته قريباً{done.id ? ` (#${done.id})` : ""}.
               <br />
               تقييمك يساهم في تحسين تجربة العملاء الآخرين.
             </p>
             <Link
               href="/"
-              className="inline-block px-6 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-medium"
+              className="inline-block px-6 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-medium text-sm"
             >
               العودة للصفحة الرئيسية
             </Link>
@@ -36441,137 +36367,131 @@ export default function ReviewByTokenPage() {
         <meta name="robots" content="noindex" />
       </Head>
 
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-lime-50 p-6">
+      <main className="min-h-screen bg-gradient-to-br from-emerald-50 to-lime-50 p-4 flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-2xl w-full bg-white border rounded-2xl p-8 shadow-lg"
+          className="max-w-md w-full bg-white border rounded-2xl shadow-lg overflow-hidden"
           dir="rtl"
         >
-          {/* ✅ اللوجو في الهيدر (مكبّر + 3D) */}
-          <div className="text-center mb-6">
-            <div className="flex justify-center mb-3">
-              <AnimatedLogo width={260} glow pulse shine />
+          {/* Header مع اللوجو */}
+          <div className="text-center p-4 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white">
+            <div className="flex justify-center mb-2">
+              <AnimatedLogo width={120} glow pulse shine />
             </div>
-            <h1 className="text-3xl font-bold text-emerald-800 mb-2">قيّم تجربتك</h1>
-            <p className="text-gray-600">
+            <h1 className="text-lg font-bold mb-1">قيّم تجربتك</h1>
+            <p className="text-emerald-100 text-sm">
               {tokenInfo?.storeName ? (
-                <>
-                  نحن نقدر رأيك في تجربتك مع{" "}
-                  <span className="font-semibold text-emerald-700">{tokenInfo.storeName}</span>
-                  {tokenInfo.customerName ? <> — {tokenInfo.customerName}</> : null}
-                </>
+                <>مع <span className="font-semibold">{tokenInfo.storeName}</span></>
               ) : (
-                "الرجاء مشاركة رأيك لتحسين الخدمة"
+                "شاركنا رأيك"
               )}
             </p>
           </div>
 
-          {/* النجوم */}
-          <div className="mb-6">
-            <label className="block text-lg font-medium text-gray-700 mb-3">كيف تقيم تجربتك؟</label>
-            <div className="flex justify-center gap-2" role="radiogroup" aria-label="تقييم النجوم">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <motion.button
-                  key={n}
-                  type="button"
-                  onClick={() => setStars(n)}
-                  whileHover={{ scale: 1.2 }}
-                  whileTap={{ scale: 0.9 }}
-                  className={`text-4xl transition-colors ${
-                    n <= stars ? "text-yellow-400" : "text-gray-300 hover:text-yellow-200"
-                  }`}
-                  aria-checked={n === stars}
-                  role="radio"
-                  aria-label={`تقييم ${n} ${n === 1 ? "نجمة" : "نجوم"}`}
-                >
-                  <Star className="h-10 w-10" fill={n <= stars ? "currentColor" : "none"} />
-                </motion.button>
-              ))}
+          <div className="p-4 space-y-4">
+            {/* النجوم */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">كيف تقيم تجربتك؟</label>
+              <div className="flex justify-center gap-1" role="radiogroup" aria-label="تقييم النجوم">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <motion.button
+                    key={n}
+                    type="button"
+                    onClick={() => setStars(n)}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className={`text-2xl transition-colors ${
+                      n <= stars ? "text-yellow-400" : "text-gray-300 hover:text-yellow-200"
+                    }`}
+                    aria-checked={n === stars}
+                    role="radio"
+                    aria-label={`تقييم ${n} ${n === 1 ? "نجمة" : "نجوم"}`}
+                  >
+                    <Star className="h-8 w-8" fill={n <= stars ? "currentColor" : "none"} />
+                  </motion.button>
+                ))}
+              </div>
+              <p className="text-center text-xs text-gray-500 mt-1">
+                {stars === 0 && "اختر عدد النجوم"}
+                {stars === 1 && "ضعيف"}
+                {stars === 2 && "مقبول"}
+                {stars === 3 && "جيد"}
+                {stars === 4 && "ممتاز"}
+                {stars === 5 && "استثنائي"}
+              </p>
             </div>
-            <p className="text-center text-sm text-gray-500 mt-2">
-              {stars === 0 && "اختر عدد النجوم"}
-              {stars === 1 && "ضعيف - نحتاج للتحسين"}
-              {stars === 2 && "مقبول - يمكن تحسينه"}
-              {stars === 3 && "جيد - تجربة متوسطة"}
-              {stars === 4 && "ممتاز - تجربة رائعة"}
-              {stars === 5 && "استثنائي - تجربة مثالية"}
-            </p>
-          </div>
 
-          {/* النص */}
-          <div className="mb-6">
-            <label className="block text-lg font-medium text-gray-700 mb-3">شاركنا تفاصيل تجربتك (اختياري)</label>
-            <textarea
-              className="w-full border-2 border-gray-200 rounded-lg p-4 min-h-[120px] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-colors resize-none"
-              placeholder="مثال: المنتج وصل في الوقت المحدد، الجودة ممتازة، خدمة العملاء مفيدة..."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              maxLength={3000}
-            />
-            <div className="flex justify-between items-center mt-2">
-              <p className="text-sm text-gray-500">تعليقك يساعد المتجر في التحسين</p>
-              <p className="text-xs text-gray-400">{text.length}/3000</p>
+            {/* النص */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">تعليقك (اختياري)</label>
+              <textarea
+                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 transition-colors resize-none"
+                placeholder="شاركنا تفاصيل تجربتك..."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                maxLength={500}
+                rows={3}
+              />
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-xs text-gray-400">اختياري</p>
+                <p className="text-xs text-gray-400">{text.length}/500</p>
+              </div>
             </div>
-          </div>
 
-          {/* الصور */}
-          <div className="mb-8">
-            <label className="block text-lg font-medium text-gray-700 mb-3">صور التجربة (اختياري)</label>
-            <p className="text-sm text-gray-500 mb-3">أضف صور المنتج أو التجربة لتجعل تقييمك أكثر فائدة</p>
-            <FirebaseStorageWidget value={attachments} onChange={setAttachments} />
-          </div>
-
-          {/* تنبيهات صلاحية التوكن */}
-          {tokenInfo?.expired && (
-            <div className="flex items-center gap-3 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              <p>انتهت صلاحية رابط التقييم. قد لا يتم قبول الإرسال.</p>
+            {/* الصور */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">صور (اختياري)</label>
+              <div className="text-xs text-gray-500 mb-2">أضف صور المنتج لتجعل تقييمك أكثر فائدة</div>
+              <FirebaseStorageWidget value={attachments} onChange={setAttachments} />
             </div>
-          )}
-          {tokenInfo?.voided && (
-            <div className="flex items-center gap-3 text-red-700 bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              <p>تم إلغاء رابط التقييم من المتجر.</p>
-            </div>
-          )}
 
-          {/* أخطاء الإرسال */}
-          {error && (
-            <div className="flex items-center gap-3 text-red-600 bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
-
-          {/* زر الإرسال */}
-          <motion.button
-            type="button"
-            onClick={submit}
-            disabled={submitting || stars === 0}
-            whileHover={{ scale: submitting ? 1 : 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full py-4 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                جارٍ الإرسال…
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-5 w-5" />
-                {stars === 0 ? "اختر التقييم أولاً" : "إرسال التقييم"}
-              </>
+            {/* تنبيهات */}
+            {(tokenInfo?.expired || tokenInfo?.voided) && (
+              <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <p>
+                  {tokenInfo?.expired && "انتهت صلاحية الرابط."}
+                  {tokenInfo?.voided && "تم إلغاء الرابط من المتجر."}
+                </p>
+              </div>
             )}
-          </motion.button>
 
-          {/* فوتر صغير */}
-          <div className="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-400 space-y-1">
-            <div>رمز التوكن: {token ?? "—"}</div>
-            <div>رقم الطلب: {orderId || "—"}</div>
-            <p className="text-center mt-3">محمي بواسطة مشتري موثق - منصة التقييمات الموثوقة</p>
+            {/* خطأ الإرسال */}
+            {error && (
+              <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded-lg p-3 text-xs">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <p>{error}</p>
+              </div>
+            )}
+
+            {/* زر الإرسال */}
+            <motion.button
+              type="button"
+              onClick={submit}
+              disabled={submitting || stars === 0}
+              whileHover={{ scale: submitting ? 1 : 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-3 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  جارٍ الإرسال…
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  {stars === 0 ? "اختر التقييم أولاً" : "إرسال التقييم"}
+                </>
+              )}
+            </motion.button>
+
+            {/* فوتر مبسط */}
+            <div className="pt-3 border-t border-gray-100 text-center">
+              <p className="text-xs text-gray-400">محمي بواسطة مشتري موثق - منصة التقييمات الموثوقة</p>
+            </div>
           </div>
         </motion.div>
       </main>
@@ -43284,4 +43204,4 @@ main().catch(error => {
 Total files seen : 285
 Included         : 271
 Skipped          : 14
-Finished at      : 2025-10-13T14:28:10.723Z
+Finished at      : 2025-10-31T14:38:24.462Z
