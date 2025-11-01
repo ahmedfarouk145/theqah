@@ -1,22 +1,284 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <title>اختبار ويدجت ثقة</title>
-  <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    #theqah-reviews { border: 1px solid #ccc; padding: 1rem; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار Widget النجوم - ثقة</title>
+    <style>
+        body {
+            font-family: 'Cairo', Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        
+        .product-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .product-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3436;
+            margin-bottom: 16px;
+        }
+        
+        .product-price {
+            font-size: 20px;
+            color: #e74c3c;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            color: #2d3436;
+            margin: 40px 0 20px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .test-info {
+            background: #e3f2fd;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .code-block {
+            background: #263238;
+            color: #fff;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
+    <h1 style="text-align: center; color: #2d3436; margin-bottom: 10px;">اختبار Widgets ثقة</h1>
+    <p style="text-align: center; color: #636e72; margin-bottom: 30px;">اختبار شامل لجميع أدوات العرض المتاحة</p>
+    
+    <div class="test-info">
+        <strong>ملاحظة:</strong> هذه صفحة اختبار شاملة للWidgets. يجب تشغيل الخادم المحلي لرؤية النتائج.
+    </div>
 
-  <!-- هنا الودجت -->
-  <div id="theqah-reviews"
-       data-store="demo-store-uid"
-       data-product="demo-product-id">
-  </div>
+    <!-- Widget النجوم -->
+    <h2 class="section-title">⭐ Widget النجوم (جديد!)</h2>
+    
+    <div class="grid-2">
+        <div class="product-card">
+            <div class="product-title">كريم الكولاجين الطبي</div>
+            <div class="product-price">199 ريال</div>
+            
+            <!-- Widget النجوم -->
+            <script src="/widgets/theqah-stars.js" 
+                    data-theqah-stars
+                    data-store="salla:982747175"
+                    data-product="1927638714"
+                    data-theme="light"
+                    data-lang="ar">
+            </script>
+        </div>
 
-  <!-- استدعاء سكربت الودجت -->
-  <script src="./widgets/theqah-widget.js"></script>
+        <div class="product-card" style="background: #2d3436; color: white;">
+            <div class="product-title">منتج آخر للاختبار</div>
+            <div class="product-price">299 ريال</div>
+            
+            <!-- Widget النجوم - ثيم مظلم -->
+            <script src="/widgets/theqah-stars.js" 
+                    data-theqah-stars
+                    data-store="salla:982747175"
+                    data-product="777"
+                    data-theme="dark"
+                    data-lang="ar">
+            </script>
+        </div>
+    </div>
+
+    <!-- Widget كامل -->
+    <h2 class="section-title">📋 Widget التقييمات الكامل</h2>
+
+    <div class="grid-2">
+        <div class="product-card">
+            <div class="product-title">منتج تجريبي - كريم الوجه</div>
+            <div class="product-price">199 ريال</div>
+            
+            <!-- Theqah Widget -->
+            <script src="/widgets/theqah-widget.js" 
+                    data-theqah-widget
+                    data-store="salla:982747175"
+                    data-product="1927638714"
+                    data-theme="light"
+                    data-lang="ar"
+                    data-max-reviews="3">
+            </script>
+        </div>
+
+        <div class="product-card" style="background: #2d3436; color: white;">
+            <div class="product-title">منتج تجريبي - عطر رجالي</div>
+            <div class="product-price">299 ريال</div>
+            
+            <!-- Theqah Widget - Dark Theme -->
+            <script src="/widgets/theqah-widget.js" 
+                    data-theqah-widget
+                    data-store="salla:982747175"
+                    data-product="888"
+                    data-theme="dark"
+                    data-lang="ar"
+                    data-max-reviews="3">
+            </script>
+        </div>
+    </div>
+
+    <h2 class="section-title">🔄 الكشف التلقائي للمنتج</h2>
+    <div class="product-card">
+        <div class="product-title">منتج بكشف تلقائي (من URL)</div>
+        <div class="product-price">149 ريال</div>
+        
+        <!-- Widget مع كشف تلقائي -->
+        <script src="/widgets/theqah-stars.js" 
+                data-theqah-stars
+                data-store="salla:982747175"
+                data-product="auto"
+                data-theme="light"
+                data-lang="ar">
+        </script>
+    </div>
+
+    <h2 class="section-title">🌐 الدعم متعدد اللغات</h2>
+    <div class="grid-2">
+        <div class="product-card" dir="ltr">
+            <div class="product-title">English Product Test</div>
+            <div class="product-price">$50</div>
+            
+            <!-- Widget باللغة الإنجليزية -->
+            <script src="/widgets/theqah-stars.js" 
+                    data-theqah-stars
+                    data-store="salla:982747175"
+                    data-product="1927638714"
+                    data-theme="light"
+                    data-lang="en">
+            </script>
+        </div>
+
+        <div class="product-card" dir="ltr">
+            <div class="product-title">Full English Widget</div>
+            <div class="product-price">$75</div>
+            
+            <!-- English Widget -->
+            <script src="/widgets/theqah-widget.js" 
+                    data-theqah-widget
+                    data-store="salla:982747175"
+                    data-product="1927638714"
+                    data-theme="light"
+                    data-lang="en"
+                    data-max-reviews="2">
+            </script>
+        </div>
+    </div>
+
+    <h2 class="section-title">📱 كود التطبيق</h2>
+    
+    <h3 style="color: #e74c3c; margin: 20px 0 10px;">Widget النجوم (خفيف وسريع)</h3>
+    <div class="code-block">
+&lt;!-- إضافة تحت عنوان المنتج مباشرة --&gt;
+&lt;script src="https://theqah.com.sa/widgets/theqah-stars.js" 
+        data-theqah-stars
+        data-store="salla:رقم_متجرك"
+        data-product="auto"
+        data-theme="light"
+        data-lang="ar"&gt;
+&lt;/script&gt;
+    </div>
+
+    <h3 style="color: #e74c3c; margin: 20px 0 10px;">Widget التقييمات الكامل</h3>
+    <div class="code-block">
+&lt;!-- عرض التقييمات الكاملة مع النصوص --&gt;
+&lt;script src="https://theqah.com.sa/widgets/theqah-widget.js" 
+        data-theqah-widget
+        data-store="salla:رقم_متجرك"
+        data-product="auto"
+        data-theme="light"
+        data-lang="ar"
+        data-max-reviews="5"&gt;
+&lt;/script&gt;
+    </div>
+
+    <h2 class="section-title">⚙️ خيارات التخصيص</h2>
+    <div style="background: white; padding: 20px; border-radius: 8px;">
+        <h3 style="color: #2d3436;">المعاملات المشتركة:</h3>
+        <ul style="line-height: 2;">
+            <li><strong>data-store:</strong> رقم المتجر (مطلوب) - مثال: "salla:123456"</li>
+            <li><strong>data-product:</strong> رقم المنتج أو "auto" للكشف التلقائي</li>
+            <li><strong>data-theme:</strong> "light" أو "dark"</li>
+            <li><strong>data-lang:</strong> "ar" للعربية أو "en" للإنجليزية</li>
+        </ul>
+        
+        <h3 style="color: #2d3436;">معاملات Widget الكامل:</h3>
+        <ul style="line-height: 2;">
+            <li><strong>data-max-reviews:</strong> عدد التقييمات المعروضة (افتراضي: 5)</li>
+        </ul>
+    </div>
+
+    <h2 class="section-title">🚀 مقارنة الWidgets</h2>
+    <div style="background: white; padding: 20px; border-radius: 8px;">
+        <div class="grid-2">
+            <div>
+                <h3 style="color: #e74c3c;">⭐ Widget النجوم</h3>
+                <ul style="line-height: 2;">
+                    <li>✅ سريع جداً (أقل من 3KB)</li>
+                    <li>✅ النجوم فقط + العدد</li>
+                    <li>✅ مثالي لصفحات المنتجات</li>
+                    <li>✅ شارة "مشتري موثق"</li>
+                    <li>✅ كشف تلقائي للمنتج</li>
+                </ul>
+            </div>
+            <div>
+                <h3 style="color: #3498db;">📋 Widget الكامل</h3>
+                <ul style="line-height: 2;">
+                    <li>✅ عرض النصوص الكاملة</li>
+                    <li>✅ أسماء المشترين</li>
+                    <li>✅ التواريخ والتفاصيل</li>
+                    <li>✅ مثالي للصفحات المخصصة</li>
+                    <li>✅ تحكم في عدد التقييمات</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin: 40px 0; padding: 20px; background: #e8f5e8; border-radius: 8px;">
+        <h3 style="color: #27ae60;">🎉 نظام Widgets متكامل!</h3>
+        <p>اختر Widget النجوم للسرعة أو Widget الكامل للتفاصيل</p>
+        <p>كلاهما يدعم الكشف التلقائي والثيمات المتعددة</p>
+    </div>
+
+    <!-- محاكاة URL منتج لاختبار الكشف التلقائي -->
+    <script>
+        // محاكاة أننا في صفحة منتج
+        if (location.pathname === '/test-widget.html') {
+            history.replaceState(null, '', '/p1927638714');
+        }
+    </script>
 </body>
 </html>

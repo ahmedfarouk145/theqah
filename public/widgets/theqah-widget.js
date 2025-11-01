@@ -1,4 +1,4 @@
-
+//public/widgets/theqah-widget.js
 (() => {
   const SCRIPT_VERSION = "1.3.12";
 
