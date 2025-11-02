@@ -48,6 +48,38 @@ function cleanupExpired(now: number) {
 }
 
 export function middleware(req: NextRequest) {
+  // تجاوز الـ static files والـ widgets
+  if (req.nextUrl.pathname.startsWith("/widgets/") || 
+      req.nextUrl.pathname.startsWith("/_next/") ||
+      req.nextUrl.pathname.startsWith("/api/public/")) {
+    return NextResponse.next();
+  }
+
+  // CORS للـ admin APIs
+  if (req.nextUrl.pathname.startsWith("/api/admin/")) {
+    const ALLOW = [
+      "http://localhost:3000",
+      "https://theqah.com.sa", 
+      "https://www.theqah.com.sa",
+    ];
+    
+    const origin = req.headers.get('origin') || '';
+    const res = NextResponse.next();
+
+    if (ALLOW.includes(origin)) {
+      res.headers.set('Access-Control-Allow-Origin', origin);
+      res.headers.set('Vary', 'Origin');
+      res.headers.set('Access-Control-Allow-Credentials', 'true');
+      res.headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    }
+
+    if (req.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 204, headers: res.headers });
+    }
+    return res;
+  }
+  
   // طبّق فقط على الراوتس المحددة في config.matcher
   // وتجاوز preflight
   if (req.method === "OPTIONS") return NextResponse.next();
@@ -80,5 +112,11 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/zid/webhook", "/api/reviews/submit"],
+  matcher: [
+    "/api/zid/webhook", 
+    "/api/reviews/submit",
+    "/api/admin/:path*",
+    // استبعاد الـ widgets والـ static files
+    "/((?!widgets|_next|favicon|robots|sitemap).*)"
+  ],
 };
