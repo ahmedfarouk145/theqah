@@ -2,7 +2,7 @@ import React from "react";
 import { PLANS } from "@/config/plans";
 
 export default function PricingTable() {
-  const plans = [PLANS.TRIAL, PLANS.P30, PLANS.P60, PLANS.P120, PLANS.ELITE];
+  const plans = [PLANS.STARTER, PLANS.SALES_BOOST, PLANS.EXPANSION];
 
   return (
     <section className="w-full py-10">
@@ -30,8 +30,16 @@ export default function PricingTable() {
                   {p.priceSar === null ? (
                     <div className="text-3xl font-extrabold">بالاتفاق</div>
                   ) : (
-                    <div className="text-3xl font-extrabold">
-                      {p.priceSar} <span className="text-base font-normal">ريال / شهر</span>
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <div className="text-3xl font-extrabold">
+                        {p.priceSar} <span className="text-base font-normal">ريال</span>
+                      </div>
+                      {p.priceBeforeDiscount && (
+                        <span className="text-sm text-gray-500 line-through">
+                          {p.priceBeforeDiscount} ريال
+                        </span>
+                      )}
+                      <span className="text-base font-normal text-gray-600">/ شهر</span>
                     </div>
                   )}
                 </div>
@@ -62,7 +70,7 @@ export default function PricingTable() {
                     // مثال: router.push(`/subscribe?plan=${p.id}`)
                   }}
                 >
-                  {p.id === "TRIAL" ? "ابدأ مجانًا" : p.id === "ELITE" ? "تواصل معنا" : "اشترك الآن"}
+                  اشترك الآن
                 </button>
               </div>
             </div>
