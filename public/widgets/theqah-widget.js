@@ -352,6 +352,20 @@
           gap: 12px;
           flex-wrap: wrap;
         }
+
+        .right {
+          display: flex;
+          flex-direction: column;
+          align-items: ${lang === "ar" ? "flex-start" : "flex-end"};
+          gap: 4px;
+        }
+
+        .author {
+          font-size: 14px;
+          font-weight: 600;
+          color: ${theme === "dark" ? "#e2e8f0" : "#374151"};
+          margin: 0;
+        }
         
         .item { 
           background: ${theme === "dark" 
@@ -483,6 +497,8 @@
           .filter { gap: 8px; }
           .filter button { padding: 8px 14px; font-size: 12px; }
           .row { flex-direction: column; align-items: flex-start; gap: 8px; }
+          .right { align-items: flex-start; }
+          .author { font-size: 13px; }
         }
         
         /* Animation for new items */
@@ -567,6 +583,7 @@
       for (const r of items) {
         const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
         const trusted = !!r.trustedBuyer;
+        const authorName = r.author?.displayName || (lang === "ar" ? "عميل المتجر" : "Store Customer");
 
         const rowLeftChildren = [
           Stars(Number(r.stars || 0)),
@@ -585,7 +602,10 @@
 
         const row = h("div", { class: "row" }, [
           h("div", { class: "left" }, rowLeftChildren),
-          h("small", { class: "meta" }, when),
+          h("div", { class: "right" }, [
+            h("div", { class: "author" }, authorName),
+            h("small", { class: "meta" }, when),
+          ]),
         ]);
 
         const text = h("p", { class: "text" }, String(r.text || "").trim());
