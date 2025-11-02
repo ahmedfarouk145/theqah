@@ -1,6 +1,10 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "1.3.12";
+  const SCRIPT_VERSION = "1.3.13"; // محسن للـ performance
+  
+  // حماية من التشغيل المتعدد
+  if (window.__THEQAH_LOADING__) return;
+  window.__THEQAH_LOADING__ = true;
 
   // ——— تحديد السكربت والمصدر ———
   const CURRENT_SCRIPT = document.currentScript;
@@ -59,13 +63,27 @@
     // single-flight
     if (G.resolvePromise) return G.resolvePromise;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 ثواني للـ resolve
+
     const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
-    G.resolvePromise = fetch(url, { cache: 'no-store' }) // طلب بسيط بدون هيدر مخصّص لتفادي OPTIONS
-      .then(r => r.ok ? r.json() : null)
+    G.resolvePromise = fetch(url, { 
+        cache: 'no-store',
+        signal: controller.signal
+      })
+      .then(r => {
+        clearTimeout(timeoutId);
+        return r.ok ? r.json() : null;
+      })
       .then(j => {
         const uid = j?.storeUid || null;
         if (uid) { G.storeUid = uid; setCached(host, uid); }
         return uid;
+      })
+      .catch(e => {
+        clearTimeout(timeoutId);
+        console.warn('Store resolve failed:', e.message);
+        return null; // فشل صامت - لا تعلق الصفحة
       })
       .finally(() => { G.resolvePromise = null; });
 
@@ -552,18 +570,39 @@
     const endpoint = productId ? `${base}&productId=${encodeURIComponent(productId)}` : base;
 
     const fetchData = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 ثواني timeout
+      
       try {
         const url = `${endpoint}&sort=${currentSort}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
-        const res = await fetch(url, { cache: 'no-store' }); // طلب بسيط => بدون preflight
+        const res = await fetch(url, { 
+          cache: 'no-store',
+          signal: controller.signal,
+          timeout: 8000
+        });
+        
+        clearTimeout(timeoutId);
+        
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
         renderList(lastData);
-        hostEl.setAttribute("data-state", "done"); // نجاح
+        hostEl.setAttribute("data-state", "done");
       } catch (e) {
-        console.error('Failed to fetch reviews:', e);
-        list.innerHTML = "";
-        list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "تعذّر التحميل" : "Failed to load"));
-        hostEl.removeAttribute("data-state"); // تسمح بإعادة المحاولة لاحقًا
+        clearTimeout(timeoutId);
+        console.warn('Reviews fetch failed:', e.message);
+        
+        // عرض رسالة مبسطة بدون تعليق الصفحة
+        try {
+          list.innerHTML = "";
+          const emptyMsg = document.createElement("div");
+          emptyMsg.className = "empty";
+          emptyMsg.textContent = lang === "ar" ? "غير متاح حالياً" : "Unavailable";
+          list.appendChild(emptyMsg);
+        } catch (domError) {
+          console.error('DOM manipulation failed:', domError);
+        }
+        
+        hostEl.removeAttribute("data-state");
       }
     };
 
@@ -595,7 +634,7 @@
                   alt: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer"),
                   loading: "lazy"
                 }),
-                h("span", { class: "label" }, "مشتري موثق")
+                h("span", { class: "label" }, lang === "ar" ? "مشتري موثق" : "Verified Buyer")
               ])
             : null,
         ];
@@ -661,10 +700,18 @@
       store = '';
     }
 
-    // محاولة auto-resolve
+    // محاولة auto-resolve مع timeout
     if (!store) {
-      try { store = await resolveStore(); }
-      catch (err) { console.error('Error during store auto-resolution:', err); }
+      try { 
+        const resolveTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Resolve timeout')), 5000)
+        );
+        store = await Promise.race([resolveStore(), resolveTimeout]);
+      }
+      catch (err) { 
+        console.warn('Store auto-resolution failed:', err.message);
+        store = null; // فشل صامت
+      }
     }
 
     // لو لسه مفيش — اعرض رسالة تشخيصية
@@ -691,15 +738,57 @@
     mountedOnce = true;
   };
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => safeMount());
-  else safeMount();
+  // تشغيل آمن مع حماية من الأخطاء
+  const safeLaunch = () => {
+    try {
+      safeMount().catch(e => console.warn('Widget mount failed:', e.message));
+    } catch (e) {
+      console.warn('Widget initialization failed:', e.message);
+    } finally {
+      window.__THEQAH_LOADING__ = false;
+    }
+  };
 
-  // دعم SPA (مرة واحدة)
-  if (!window.__THEQAH_OBS__) {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", safeLaunch);
+  } else {
+    // تأخير صغير لضمان استقرار DOM
+    setTimeout(safeLaunch, 100);
+  }
+
+  // دعم SPA محسن (أقل استهلاك)
+  if (!window.__THEQAH_OBS__ && typeof MutationObserver !== 'undefined') {
     window.__THEQAH_OBS__ = true;
-    const deb = debounce(() => safeMount(), 700);
-    const obs = new MutationObserver(() => deb());
-    obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
+    const deb = debounce(() => safeMount(), 1000);
+    const obs = new MutationObserver((mutations) => {
+      // فلترة - فقط التغييرات المهمة
+      const hasRelevantChanges = mutations.some(m => 
+        Array.from(m.addedNodes).some(n => 
+          n.nodeType === 1 && (
+            n.classList?.contains('theqah-reviews') || 
+            n.querySelector?.('.theqah-reviews')
+          )
+        )
+      );
+      if (hasRelevantChanges) deb();
+    });
+    
+    try {
+      obs.observe(document.body, { 
+        childList: true, 
+        subtree: true,
+        attributes: false,        // تجاهل تغييرات الـ attributes
+        characterData: false      // تجاهل تغييرات النص
+      });
+      
+      // إيقاف المراقب بعد 30 ثانية
+      setTimeout(() => {
+        obs.disconnect();
+        window.__THEQAH_OBS__ = false;
+      }, 30000);
+    } catch (e) {
+      console.warn('MutationObserver failed:', e);
+    }
   }
 })();
 
