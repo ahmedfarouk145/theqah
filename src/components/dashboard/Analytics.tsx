@@ -351,10 +351,13 @@ export default function DashboardAnalytics() {
       try {
         // user might be logged out
         const idToken = await auth.currentUser?.getIdToken().catch(() => undefined);
-        const headers = idToken ? { Authorization: `Bearer ${idToken}` } : {};
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+        };
         const r = await fetch('/api/ai/insights', {
           method: 'POST',
-          headers: { ...headers, 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ data })
         });
         const j = await r.json();
@@ -362,7 +365,7 @@ export default function DashboardAnalytics() {
           if (j.ok && j.text) setAiSummary(j.text);
           else setAiError(j.message || 'لم تتوفر التوصيات حالياً');
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) setAiError('تعذر تحميل توصيات الذكاء الاصطناعي');
       } finally {
         if (!cancelled) setAiLoading(false);

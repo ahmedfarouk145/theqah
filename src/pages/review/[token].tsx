@@ -1,7 +1,6 @@
 // src/pages/review/[token].tsx
 import Head from "next/head";
 import Link from "next/link";
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
