@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
+import type { Firestore } from "firebase-admin/firestore";
 
 // ====== Types ======
 type UnknownRecord = Record<string, unknown>;
-type PlanId = "TRIAL" | "P30" | "P60" | "P120" | "ELITE" | string;
+type PlanId = "STARTER" | "SALES_BOOST" | "EXPANSION" | string;
 
 interface StoreDoc {
   uid?: string;
@@ -29,23 +30,25 @@ interface ApiStoreItem {
   domainBase?: string;
   planId?: PlanId;
   invitesUsed?: number;
-  invitesLimit?: number | null; // null == غير محدود
-  status: "active" | "over_quota" | "trial" | "lapsed" | "no_plan";
+    invitesLimit?: number;
+  status: "active" | "over_quota" | "lapsed" | "no_plan";
   sallaInstalled?: boolean;
   sallaConnected?: boolean;
   lastUpdate?: number;
 }
 
-// ====== Plans (نفس حدودك التجارية) ======
-const PLAN_LIMITS: Record<PlanId, number | null> = {
-  TRIAL: 5,  // باقة التجربة
-  P30: 40,   // البداية
-  P60: 90,   // النمو
-  P120: 200, // التوسع
-  ELITE: null, // النخبة (غير محدود)
+// ====== Plans (الباقات الجديدة) ======
+const PLAN_LIMITS: Record<PlanId, number> = {
+  STARTER: 120,     // باقة الانطلاقة (19 ريال)
+  SALES_BOOST: 250, // باقة زيادة المبيعات (29 ريال)
+  EXPANSION: 600,   // باقة التوسع (49 ريال)
+  // الباقات القديمة (للتوافق)
+  P30: 120,         // مرادف لـ STARTER
+  P60: 250,         // مرادف لـ SALES_BOOST
+  P120: 600,        // مرادف لـ EXPANSION
 };
 
-function getInvitesLimit(planId?: PlanId): number | null {
+function getInvitesLimit(planId?: PlanId): number {
   if (!planId) return 0;
   return PLAN_LIMITS[planId] ?? 0;
 }
@@ -60,7 +63,6 @@ function monthKey(ts: number = Date.now()): string {
 /**
  * احتساب حالة المتجر:
  * - no_plan: لا يوجد planId
- * - trial: خطة TRIAL ومعها حد 5
  * - over_quota: الاستخدام الحالي >= الحد الشهري
  * - active: هناك خطة وحد لم يتجاوز
  * - lapsed: خطة موجودة لكن مؤشرات توحي بعدم التجديد (syncedAt قديم > 35 يوم مثلًا)
@@ -70,16 +72,13 @@ function deriveStatus(store: StoreDoc, invitesUsed: number): ApiStoreItem["statu
   if (!planId) return "no_plan";
 
   const limit = getInvitesLimit(planId);
-  if (planId === "TRIAL") {
-    return (limit !== null && invitesUsed >= limit) ? "over_quota" : "trial";
-  }
 
-  // اعتبار الاشتراك "منتهي/متوقف" لو sync قديم جدًا
+  // اعتبار الاشتراك "منتهي/متوقف" لو sync قديم جدًا (>35 يوم)
   const syncedAt = store.subscription?.syncedAt ?? store.subscription?.updatedAt;
   const stale = typeof syncedAt === "number" ? (Date.now() - syncedAt > 35 * 24 * 60 * 60 * 1000) : true;
   if (stale) return "lapsed";
 
-  if (limit !== null && invitesUsed >= limit) return "over_quota";
+  if (invitesUsed >= limit) return "over_quota";
   return "active";
 }
 
@@ -88,7 +87,7 @@ function deriveStatus(store: StoreDoc, invitesUsed: number): ApiStoreItem["statu
  * 1) من store.usage إن وُجد.
  * 2) وإلا: نحسب تقريبًا من review_invites خلال الشهر (Query لكل متجر).
  */
-async function getInvitesUsedForThisMonth(db: FirebaseFirestore.Firestore, storeUid: string, fallbackToScan = true): Promise<number> {
+async function getInvitesUsedForThisMonth(db: Firestore, storeUid: string, fallbackToScan = true): Promise<number> {
   // 1) من حقل usage
   const doc = await db.collection("stores").doc(storeUid).get();
   const data = (doc.data() || {}) as StoreDoc;
@@ -151,7 +150,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const grouped = {
     active: out.filter(x => x.status === "active"),
     over_quota: out.filter(x => x.status === "over_quota"),
-    trial: out.filter(x => x.status === "trial"),
     lapsed: out.filter(x => x.status === "lapsed"),
     no_plan: out.filter(x => x.status === "no_plan"),
     all: out,

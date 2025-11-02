@@ -773,24 +773,67 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // B) Subscription/Trial → set plan
+    // B) Subscription → set plan
     console.log(`[SALLA STEP] B) Checking subscription events for: ${event}`);
     if (event.startsWith("app.subscription.") || event.startsWith("app.trial.")) {
+      // ملاحظة: app.trial.* events قد تأتي من Salla لكن النظام يعالجها كأحداث subscription عادية
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
       const payload = dataRaw as Dict;
-      const planName = String(payload["plan_name"] ?? payload["name"] ?? "").toLowerCase();
-      const map: Record<string, string> = { start: "P30", growth: "P60", scale: "P120", elite: "ELITE", trial: "TRIAL" };
-      const planId = (map[planName] || "").toUpperCase() || (event.includes(".trial.") ? "TRIAL" : "P30");
+      
+      // استخراج اسم الباقة من payload (يدعم عدة حقول)
+      const planName = 
+        String(payload["plan_name"] ?? payload["name"] ?? payload["plan"] ?? "").trim() || 
+        (typeof payload["plan"] === "object" ? String((payload["plan"] as Dict)["name"] ?? "").trim() : "");
+      const planType = String(payload["plan_type"] ?? payload["type"] ?? "").trim() || null;
+      
+      // استخدام دالة التعيين الجديدة
+      const { mapSallaPlanToInternal } = await import("@/config/plans");
+      const planId = mapSallaPlanToInternal(planName, planType);
 
-      if (storeUid) {
+      if (storeUid && planId) {
+        // تحديث subscription في stores collection
         await db.collection("stores").doc(storeUid).set({
           uid: storeUid,
-          subscription: { planId, raw: payload, updatedAt: Date.now() },
+          subscription: { 
+            planId, 
+            raw: payload, 
+            syncedAt: Date.now(),
+            updatedAt: Date.now() 
+          },
           updatedAt: Date.now(),
         }, { merge: true });
-        fbLog(db, { level: "info", scope: "subscription", msg: "plan set", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, planName, planId } });
+        
+        // تحديث plan في نفس document (للتوافق مع النظام القديم)
+        await db.collection("stores").doc(storeUid).set({
+          plan: {
+            code: planId,
+            active: true,
+            updatedAt: Date.now()
+          }
+        }, { merge: true });
+        
+        fbLog(db, { 
+          level: "info", 
+          scope: "subscription", 
+          msg: "plan set from webhook", 
+          event, 
+          idemKey, 
+          merchant: merchantId, 
+          orderId, 
+          meta: { storeUid, planName, planType, planId } 
+        });
       } else {
-        fbLog(db, { level: "warn", scope: "subscription", msg: "missing storeUid for subscription event", event, idemKey, merchant: merchantId, orderId, meta: { planName } });
+        const reason = !storeUid ? "missing storeUid" : "invalid plan mapping";
+        fbLog(db, { 
+          level: "warn", 
+          scope: "subscription", 
+          msg: `subscription event failed: ${reason}`, 
+          event, 
+          idemKey, 
+          merchant: merchantId, 
+          orderId, 
+          meta: { planName, planType, planId } 
+        });
       }
     }
 

@@ -8,15 +8,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-type PlanId = 'TRIAL' | 'P30' | 'P60' | 'P120' | 'ELITE' | string;
+type PlanId = 'STARTER' | 'SALES_BOOST' | 'EXPANSION' | string;
 
 type ApiStoreItem = {
   storeUid: string;
   domainBase?: string;
   planId?: PlanId | null;
   invitesUsed?: number;
-  invitesLimit?: number | null; // null = غير محدود
-  status: 'active' | 'over_quota' | 'trial' | 'lapsed' | 'no_plan';
+  invitesLimit?: number;
+  status: 'active' | 'over_quota' | 'lapsed' | 'no_plan';
   sallaInstalled?: boolean;
   sallaConnected?: boolean;
   lastUpdate?: number;
@@ -33,26 +33,26 @@ function StatusBadge({ s }: { s: ApiStoreItem['status'] }) {
   const map: Record<ApiStoreItem['status'], string> = {
     active: 'bg-green-100 text-green-800',
     over_quota: 'bg-amber-100 text-amber-800',
-    trial: 'bg-blue-100 text-blue-800',
     lapsed: 'bg-red-100 text-red-800',
     no_plan: 'bg-gray-100 text-gray-800',
   };
   const label: Record<ApiStoreItem['status'], string> = {
     active: 'نشط',
     over_quota: 'تجاوز الحد',
-    trial: 'تجربة',
     lapsed: 'غير مجدِّد',
     no_plan: 'بدون باقة',
   };
   return <Badge className={`${map[s]} rounded-full px-3 py-1`}>{label[s]}</Badge>;
 }
 
-const PLAN_LIMITS: Record<string, number | null> = {
-  TRIAL: 5,
-  P30: 40,
-  P60: 90,
-  P120: 200,
-  ELITE: null, // ∞
+const PLAN_LIMITS: Record<string, number> = {
+  STARTER: 120,
+  SALES_BOOST: 250,
+  EXPANSION: 600,
+  // الباقات القديمة (للتوافق)
+  P30: 120,
+  P60: 250,
+  P120: 600,
 };
 
 export default function AdminSubscriptions() {
@@ -123,7 +123,7 @@ export default function AdminSubscriptions() {
   }, [rows, q, statusFilter, planFilter]);
 
   const subscribed = filtered.filter((r) =>
-    ['active', 'over_quota', 'trial'].includes(r.status),
+    ['active', 'over_quota'].includes(r.status),
   );
   const notRenewed = filtered.filter((r) => ['lapsed', 'no_plan'].includes(r.status));
 
@@ -178,7 +178,6 @@ export default function AdminSubscriptions() {
             <option value="all">كل الحالات</option>
             <option value="active">نشط</option>
             <option value="over_quota">تجاوز الحد</option>
-            <option value="trial">تجربة</option>
             <option value="lapsed">غير مجدِّد</option>
             <option value="no_plan">بدون باقة</option>
           </select>
@@ -191,11 +190,9 @@ export default function AdminSubscriptions() {
             aria-label="فلترة بالباقة"
           >
             <option value="ALL">كل الباقات</option>
-            <option value="TRIAL">TRIAL</option>
-            <option value="P30">P30</option>
-            <option value="P60">P60</option>
-            <option value="P120">P120</option>
-            <option value="ELITE">ELITE</option>
+            <option value="STARTER">الانطلاقة (STARTER)</option>
+            <option value="SALES_BOOST">زيادة المبيعات (SALES_BOOST)</option>
+            <option value="EXPANSION">التوسع (EXPANSION)</option>
           </select>
 
           <Button onClick={refreshAll} disabled={reloading}>
@@ -256,9 +253,7 @@ export default function AdminSubscriptions() {
                         <td className="p-2">{r.domainBase || '-'}</td>
                         <td className="p-2">{r.planId || '—'}</td>
                         <td className="p-2">
-                          {r.invitesLimit === null
-                            ? `${r.invitesUsed ?? 0} / ∞`
-                            : `${r.invitesUsed ?? 0} / ${r.invitesLimit ?? PLAN_LIMITS[r.planId ?? ''] ?? 0}`}
+                          {`${r.invitesUsed ?? 0} / ${r.invitesLimit ?? PLAN_LIMITS[r.planId ?? ''] ?? 0}`}
                         </td>
                         <td className="p-2">
                           <StatusBadge s={r.status} />
@@ -321,9 +316,7 @@ export default function AdminSubscriptions() {
                         <td className="p-2">{r.domainBase || '-'}</td>
                         <td className="p-2">{r.planId || '—'}</td>
                         <td className="p-2">
-                          {r.invitesLimit === null
-                            ? `${r.invitesUsed ?? 0} / ∞`
-                            : `${r.invitesUsed ?? 0} / ${r.invitesLimit ?? PLAN_LIMITS[r.planId ?? ''] ?? 0}`}
+                          {`${r.invitesUsed ?? 0} / ${r.invitesLimit ?? PLAN_LIMITS[r.planId ?? ''] ?? 0}`}
                         </td>
                         <td className="p-2">
                           <StatusBadge s={r.status} />
@@ -349,7 +342,7 @@ export default function AdminSubscriptions() {
       </div>
 
       <p className="text-xs text-gray-500">
-        * حدود الدعوات لكل باقة معرفة في الخادم (TRIAL=5, P30=40, P60=90, P120=200، ELITE بدون حد).
+        * حدود الدعوات لكل باقة: STARTER=120, SALES_BOOST=250, EXPANSION=600.
       </p>
     </div>
   );

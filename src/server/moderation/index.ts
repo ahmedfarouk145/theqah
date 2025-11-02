@@ -2,6 +2,7 @@
 import { Filter } from "bad-words";
 import { moderateByApi, ApiModerationDecision } from "./openai-moderation";
 import { moderateByPrompt, PromptDecision } from "./prompt";
+import { checkReviewModeration } from "./checkReview";
 
 /* ======================
    Profanity Filter (واحد فقط)
@@ -111,7 +112,28 @@ export async function moderateReview(input: ModerationInput): Promise<Moderation
     flags.push("bad_words");
   }
 
-  // 2) Hybrid AI
+  // 2) فحص الصور أولاً (إذا كانت موجودة) - Vision API
+  if (input.images && input.images.length > 0) {
+    try {
+      const visionResult = await checkReviewModeration(text, input.images);
+      if (!visionResult.allowed) {
+        return {
+          ok: false,
+          reason: visionResult.reasons?.[0] || "image_policy",
+          flags: Array.from(new Set([...(visionResult.reasons || []), ...flags])),
+          categories: {},
+          model: "vision",
+          needsManualCheck: false,
+        };
+      }
+    } catch (e) {
+      console.error("[moderation] Vision API failed:", e);
+      // Continue with text moderation even if vision fails
+      flags.push("vision_error");
+    }
+  }
+
+  // 3) Hybrid AI (Text Moderation)
   const h = await moderateHybrid(text, { costSaving: input.costSaving });
 
   if (h.flagged) {
@@ -127,7 +149,7 @@ export async function moderateReview(input: ModerationInput): Promise<Moderation
     };
   }
 
-  // 3) مقبول
+  // 4) مقبول
   return {
     ok: true,
     flags,

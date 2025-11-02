@@ -19,7 +19,7 @@ export async function canSendInvite(storeUid: string) {
     return { ok: false, reason: "plan_inactive" } as const;
   }
 
-  const cfg = getPlanConfig(String(s.plan.code || "TRIAL").toUpperCase() as PlanCode);
+  const cfg = getPlanConfig(String(s.plan.code || "STARTER").toUpperCase() as PlanCode);
   const used = Number(s?.usage?.invitesUsed ?? 0);
 
   if (used >= cfg.monthlyInvites) {
@@ -31,15 +31,34 @@ export async function canSendInvite(storeUid: string) {
 
 export async function incrementUsageAfterSuccess(storeUid: string) {
   const ref = db.collection("stores").doc(storeUid);
+  
+  // Generate month key (YYYY-MM format)
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const monthKey = `${year}-${month}`;
 
   await db.runTransaction(async (tx: Transaction) => {
     const s = await tx.get(ref);
     const cur = (s.data() as DocumentData) ?? {};
-    const used = Number(cur?.usage?.invitesUsed ?? 0) + 1;
+    const usage = (cur?.usage || {}) as { monthKey?: string; invitesUsed?: number };
+    
+    // إذا كان نفس الشهر، زد العدد
+    // إذا كان شهر مختلف، ابدأ من 1
+    const isSameMonth = usage.monthKey === monthKey;
+    const used = isSameMonth 
+      ? Number(usage.invitesUsed ?? 0) + 1 
+      : 1;
 
     tx.set(
       ref,
-      { usage: { invitesUsed: used } },
+      { 
+        usage: { 
+          monthKey,
+          invitesUsed: used,
+          updatedAt: Date.now()
+        } 
+      },
       { merge: true }
     );
   });

@@ -1,12 +1,11 @@
-export type PlanCode = "TRIAL"|"P30"|"P60"|"P120";
+export type PlanCode = "STARTER"|"SALES_BOOST"|"EXPANSION";
 export type PlanCfg = { code: PlanCode; monthlyInvites: number };
 
 export function getPlanConfig(code: PlanCode): PlanCfg {
   switch (code) {
-    case "TRIAL": return { code:"TRIAL", monthlyInvites: 5 };
-    case "P30":  return { code:"P30",   monthlyInvites: 40 };
-    case "P60":  return { code:"P60",   monthlyInvites: 90 };
-    case "P120": return { code:"P120",  monthlyInvites: 200 };
-    default:     return { code:"TRIAL", monthlyInvites: 5 };
+    case "STARTER": return { code:"STARTER", monthlyInvites: 120 };
+    case "SALES_BOOST": return { code:"SALES_BOOST", monthlyInvites: 250 };
+    case "EXPANSION": return { code:"EXPANSION", monthlyInvites: 600 };
+    default: return { code:"STARTER", monthlyInvites: 120 };
   }
 }
