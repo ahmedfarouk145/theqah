@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "1.3.13"; // محسن للـ performance
+  const SCRIPT_VERSION = "1.3.16"; // Added support for review images
   
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -346,6 +346,28 @@
           letter-spacing: -0.01em;
         }
         
+        .images {
+          display: flex;
+          gap: 8px;
+          margin-top: 12px;
+          flex-wrap: wrap;
+        }
+        
+        .review-image {
+          width: 80px;
+          height: 80px;
+          border-radius: 8px;
+          object-fit: cover;
+          border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.6)"};
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        
+        .review-image:hover {
+          transform: scale(1.05);
+          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.4)" : "rgba(59, 130, 246, 0.3)"};
+        }
+        
         .empty { 
           padding: 32px; 
           border: 2px dashed ${theme === "dark" ? "#475569" : "#cbd5e1"}; 
@@ -648,7 +670,24 @@
         ]);
 
         const text = h("p", { class: "text" }, String(r.text || "").trim());
-        list.appendChild(h("div", { class: "item" }, [row, text]));
+        
+        // Add images if available
+        let imagesEl = null;
+        if (r.images && Array.isArray(r.images) && r.images.length > 0) {
+          const imageElements = r.images.slice(0, 3).map(imgSrc => 
+            h("img", { 
+              class: "review-image", 
+              src: imgSrc, 
+              alt: lang === "ar" ? "صورة التقييم" : "Review image",
+              loading: "lazy",
+              onerror: "this.style.display='none'"
+            })
+          );
+          imagesEl = h("div", { class: "images" }, imageElements);
+        }
+        
+        const itemChildren = imagesEl ? [row, text, imagesEl] : [row, text];
+        list.appendChild(h("div", { class: "item" }, itemChildren));
       }
     };
 

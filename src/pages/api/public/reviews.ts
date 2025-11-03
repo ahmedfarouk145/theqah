@@ -31,6 +31,7 @@ type PublicReview = {
   publishedAt: number;     // ms
   trustedBuyer: boolean;
   author: { displayName: string }; // 👈 فقط displayName
+  images?: string[];
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -102,6 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         publishedAt,
         trustedBuyer,
         author: { displayName },
+        images: Array.isArray(data["images"]) ? data["images"] : undefined,
       };
     });
 
