@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "1.3.23"; // Simple static images display
+  const SCRIPT_VERSION = "1.3.24"; // Larger images - 150px
   
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -354,9 +354,9 @@
         }
         
         .review-image {
-          width: 110px;
-          height: 110px;
-          border-radius: 10px;
+          width: 150px;
+          height: 150px;
+          border-radius: 12px;
           object-fit: cover;
           border: 2px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.6)"};
           box-shadow: ${theme === "dark" 
