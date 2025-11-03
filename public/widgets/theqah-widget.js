@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "1.3.22"; // Fixed image modal size
+  const SCRIPT_VERSION = "1.3.23"; // Simple static images display
   
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -34,56 +34,6 @@
     const wrap = h("div", { class: "stars", role: "img", "aria-label": `${n} stars` });
     for (let i = 1; i <= 5; i++) wrap.appendChild(h("span", { class: "star" + (i <= n ? " filled" : "") }, "★"));
     return wrap;
-  };
-
-  // Image Modal Functions - Simple
-  let currentModal = null;
-  
-  const openImageModal = (imgSrc) => {
-    if (currentModal) return;
-    
-    const modal = h("div", { class: "image-modal" });
-    const modalContent = h("div", { class: "image-modal-content" });
-    const img = h("img", { src: imgSrc, alt: "Review image" });
-    const closeBtn = h("button", { class: "image-modal-close", "aria-label": "Close" }, "×");
-    
-    modalContent.appendChild(img);
-    modal.appendChild(modalContent);
-    modal.appendChild(closeBtn);
-    
-    const closeModal = () => {
-      modal.classList.remove("show");
-      setTimeout(() => {
-        if (modal.parentNode) modal.parentNode.removeChild(modal);
-        currentModal = null;
-        document.body.style.overflow = '';
-      }, 300);
-    };
-    
-    closeBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeModal();
-    });
-    
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) closeModal();
-    });
-    
-    const escHandler = (e) => {
-      if (e.key === "Escape") {
-        closeModal();
-        document.removeEventListener("keydown", escHandler);
-      }
-    };
-    document.addEventListener("keydown", escHandler);
-    
-    document.body.style.overflow = 'hidden';
-    document.body.appendChild(modal);
-    currentModal = modal;
-    
-    requestAnimationFrame(() => {
-      modal.classList.add("show");
-    });
   };
 
   // ——— Cache/Single-flight لنتيجة resolveStore ———
@@ -404,108 +354,14 @@
         }
         
         .review-image {
-          width: 90px;
-          height: 90px;
+          width: 110px;
+          height: 110px;
           border-radius: 10px;
           object-fit: cover;
           border: 2px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.6)"};
-          cursor: pointer;
-          transition: all 0.2s ease;
           box-shadow: ${theme === "dark" 
             ? "0 4px 12px rgba(0, 0, 0, 0.3)" 
             : "0 4px 12px rgba(0, 0, 0, 0.1)"};
-        }
-        
-        .review-image:hover {
-          transform: scale(1.05);
-          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.5)" : "rgba(59, 130, 246, 0.4)"};
-          box-shadow: ${theme === "dark" 
-            ? "0 8px 20px rgba(0, 0, 0, 0.4)" 
-            : "0 8px 20px rgba(0, 0, 0, 0.15)"};
-        }
-        
-        /* Lightbox Modal - Simple */
-        .image-modal {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.92);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 10000;
-          opacity: 0;
-          visibility: hidden;
-          transition: all 0.3s ease;
-          padding: 20px;
-        }
-        
-        .image-modal.show {
-          opacity: 1;
-          visibility: visible;
-        }
-        
-        .image-modal-content {
-          position: relative;
-          max-width: 90%;
-          max-height: 90%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        
-        .image-modal img {
-          max-width: 80%;
-          max-height: 80vh;
-          width: auto;
-          height: auto;
-          border-radius: 12px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-          object-fit: contain;
-        }
-        
-        .image-modal-close {
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          background: rgba(255, 255, 255, 0.2);
-          backdrop-filter: blur(10px);
-          border: none;
-          color: white;
-          font-size: 32px;
-          font-weight: 300;
-          width: 44px;
-          height: 44px;
-          border-radius: 50%;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s ease;
-          line-height: 1;
-          z-index: 10001;
-        }
-        
-        .image-modal-close:hover {
-          background: rgba(255, 255, 255, 0.3);
-          transform: scale(1.1);
-        }
-        
-        @media (max-width: 600px) {
-          .review-image {
-            width: 80px;
-            height: 80px;
-          }
-          
-          .image-modal-close {
-            top: 10px;
-            right: 10px;
-            width: 40px;
-            height: 40px;
-            font-size: 28px;
-          }
         }
         
         .empty { 
@@ -820,13 +676,8 @@
               src: imgSrc, 
               alt: lang === "ar" ? "صورة التقييم" : "Review image",
               loading: "lazy",
-              onerror: "this.style.display='none'",
-              "data-src": imgSrc
+              onerror: "this.style.display='none'"
             });
-            
-            // Add click handler for lightbox
-            img.addEventListener("click", () => openImageModal(imgSrc));
-            
             return img;
           });
           imagesEl = h("div", { class: "images" }, imageElements);
