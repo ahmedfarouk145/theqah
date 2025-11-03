@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "1.3.21"; // Optimized image display with simple zoom
+  const SCRIPT_VERSION = "1.3.22"; // Fixed image modal size
   
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -36,7 +36,7 @@
     return wrap;
   };
 
-  // Image Modal Functions - Simple with zoom
+  // Image Modal Functions - Simple
   let currentModal = null;
   
   const openImageModal = (imgSrc) => {
@@ -46,12 +46,6 @@
     const modalContent = h("div", { class: "image-modal-content" });
     const img = h("img", { src: imgSrc, alt: "Review image" });
     const closeBtn = h("button", { class: "image-modal-close", "aria-label": "Close" }, "×");
-    
-    // Toggle zoom on image click
-    img.addEventListener("click", (e) => {
-      e.stopPropagation();
-      img.classList.toggle("zoomed");
-    });
     
     modalContent.appendChild(img);
     modal.appendChild(modalContent);
@@ -463,20 +457,13 @@
         }
         
         .image-modal img {
-          max-width: 100%;
-          max-height: 85vh;
+          max-width: 80%;
+          max-height: 80vh;
           width: auto;
           height: auto;
           border-radius: 12px;
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
           object-fit: contain;
-          cursor: zoom-in;
-          transition: transform 0.3s ease;
-        }
-        
-        .image-modal img.zoomed {
-          cursor: zoom-out;
-          transform: scale(1.5);
         }
         
         .image-modal-close {
