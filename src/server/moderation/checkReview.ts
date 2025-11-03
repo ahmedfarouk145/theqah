@@ -21,6 +21,7 @@ export type ModerationVerdict =
 const BAD_WORDS = ["شتيمة1", "شتيمة2", "قذف", "عنصرية", "اباحي", "تهديد"]; // حدّث القائمة
 const MAX_LEN = 3000;
 const UCARE = /^https:\/\/ucarecdn\.com\//i;
+const FIREBASE_STORAGE = /^https:\/\/firebasestorage\.googleapis\.com\//i;
 
 // ===== Quick Heuristics =====
 function quickHeuristics(
@@ -71,7 +72,7 @@ async function checkTextWithModerationApi(
 async function checkImagesWithVision(
   imageUrls: string[]
 ): Promise<{ flagged: boolean; reasons: string[] }> {
-  const urls = (imageUrls || []).filter((u) => UCARE.test(u)).slice(0, 4);
+  const urls = (imageUrls || []).filter((u) => UCARE.test(u) || FIREBASE_STORAGE.test(u)).slice(0, 4);
   if (!urls.length) return { flagged: false, reasons: [] };
 
   try {

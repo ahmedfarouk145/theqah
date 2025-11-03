@@ -47,7 +47,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (images !== undefined && !isImagesArray(images)) return res.status(400).json({ error: "images_must_be_array" });
 
     const imgs = isImagesArray(images) ? images : [];
-    const safeImages = imgs.filter((u) => /^https:\/\/ucarecdn\.com\//.test(u)).slice(0, 10);
+    const safeImages = imgs.filter((u) => 
+      /^https:\/\/ucarecdn\.com\//.test(u) || 
+      /^https:\/\/firebasestorage\.googleapis\.com\//.test(u)
+    ).slice(0, 10);
 
     // author.{show,name,displayName}
     const cleanName = sanitizeName(authorName);

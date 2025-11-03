@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "1.3.17"; // Added debugging for images
+  const SCRIPT_VERSION = "1.3.18"; // Fixed Firebase Storage images support
   
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -607,10 +607,6 @@
         
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
-        
-        // Debug: log API response
-        console.log('[theqah-widget] API Response:', lastData);
-        
         renderList(lastData);
         hostEl.setAttribute("data-state", "done");
       } catch (e) {
@@ -649,13 +645,6 @@
         const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
         const trusted = !!r.trustedBuyer;
         const authorName = r.author?.displayName || (lang === "ar" ? "عميل المتجر" : "Store Customer");
-        
-        // Debug: log if review has images
-        if (r.images && r.images.length > 0) {
-          console.log(`[theqah-widget] Review ${r.id} has ${r.images.length} images:`, r.images);
-        } else {
-          console.log(`[theqah-widget] Review ${r.id} has no images`);
-        }
 
         const rowLeftChildren = [
           Stars(Number(r.stars || 0)),
