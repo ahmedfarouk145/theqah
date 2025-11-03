@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "1.3.20"; // Premium image display with enhanced animations
+  const SCRIPT_VERSION = "1.3.21"; // Optimized image display with simple zoom
   
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -36,29 +36,34 @@
     return wrap;
   };
 
-  // Image Modal Functions - Enhanced
+  // Image Modal Functions - Simple with zoom
   let currentModal = null;
   
   const openImageModal = (imgSrc) => {
-    if (currentModal) return; // Prevent multiple modals
+    if (currentModal) return;
     
     const modal = h("div", { class: "image-modal" });
     const modalContent = h("div", { class: "image-modal-content" });
     const img = h("img", { src: imgSrc, alt: "Review image" });
     const closeBtn = h("button", { class: "image-modal-close", "aria-label": "Close" }, "×");
     
-    modalContent.appendChild(img);
-    modalContent.appendChild(closeBtn);
-    modal.appendChild(modalContent);
+    // Toggle zoom on image click
+    img.addEventListener("click", (e) => {
+      e.stopPropagation();
+      img.classList.toggle("zoomed");
+    });
     
-    // Close handlers
+    modalContent.appendChild(img);
+    modal.appendChild(modalContent);
+    modal.appendChild(closeBtn);
+    
     const closeModal = () => {
       modal.classList.remove("show");
       setTimeout(() => {
         if (modal.parentNode) modal.parentNode.removeChild(modal);
         currentModal = null;
-        document.body.style.overflow = ''; // Restore scroll
-      }, 400);
+        document.body.style.overflow = '';
+      }, 300);
     };
     
     closeBtn.addEventListener("click", (e) => {
@@ -70,7 +75,6 @@
       if (e.target === modal) closeModal();
     });
     
-    // Keyboard handler
     const escHandler = (e) => {
       if (e.key === "Escape") {
         closeModal();
@@ -79,17 +83,12 @@
     };
     document.addEventListener("keydown", escHandler);
     
-    // Prevent body scroll when modal is open
     document.body.style.overflow = 'hidden';
-    
     document.body.appendChild(modal);
     currentModal = modal;
     
-    // Trigger animation after paint
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        modal.classList.add("show");
-      });
+      modal.classList.add("show");
     });
   };
 
@@ -405,78 +404,47 @@
         
         .images {
           display: flex;
-          gap: 12px;
-          margin-top: 16px;
+          gap: 10px;
+          margin-top: 12px;
           flex-wrap: wrap;
         }
         
         .review-image {
-          width: 120px;
-          height: 120px;
-          border-radius: 16px;
+          width: 90px;
+          height: 90px;
+          border-radius: 10px;
           object-fit: cover;
-          border: 3px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.4)" : "rgba(226, 232, 240, 0.8)"};
+          border: 2px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.6)"};
           cursor: pointer;
-          transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transition: all 0.2s ease;
           box-shadow: ${theme === "dark" 
-            ? "0 8px 20px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3)" 
-            : "0 8px 20px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)"};
-          position: relative;
-          overflow: hidden;
-        }
-        
-        .review-image::before {
-          content: '🔍';
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%) scale(0);
-          font-size: 32px;
-          background: rgba(0, 0, 0, 0.7);
-          width: 60px;
-          height: 60px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.3s ease;
-          opacity: 0;
-          z-index: 1;
+            ? "0 4px 12px rgba(0, 0, 0, 0.3)" 
+            : "0 4px 12px rgba(0, 0, 0, 0.1)"};
         }
         
         .review-image:hover {
-          transform: translateY(-8px) scale(1.08);
-          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.7)" : "rgba(59, 130, 246, 0.6)"};
+          transform: scale(1.05);
+          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.5)" : "rgba(59, 130, 246, 0.4)"};
           box-shadow: ${theme === "dark" 
-            ? "0 20px 40px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(59, 130, 246, 0.4)" 
-            : "0 20px 40px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(59, 130, 246, 0.3)"};
+            ? "0 8px 20px rgba(0, 0, 0, 0.4)" 
+            : "0 8px 20px rgba(0, 0, 0, 0.15)"};
         }
         
-        .review-image:hover::before {
-          transform: translate(-50%, -50%) scale(1);
-          opacity: 1;
-        }
-        
-        .review-image:active {
-          transform: translateY(-4px) scale(1.05);
-        }
-        
-        /* Lightbox Modal - Enhanced */
+        /* Lightbox Modal - Simple */
         .image-modal {
           position: fixed;
           top: 0;
           left: 0;
           width: 100%;
           height: 100%;
-          background: rgba(0, 0, 0, 0.95);
-          backdrop-filter: blur(10px);
+          background: rgba(0, 0, 0, 0.92);
           display: flex;
           align-items: center;
           justify-content: center;
           z-index: 10000;
           opacity: 0;
           visibility: hidden;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.3s ease;
           padding: 20px;
         }
         
@@ -487,73 +455,61 @@
         
         .image-modal-content {
           position: relative;
-          max-width: 95%;
-          max-height: 95%;
-          animation: modalZoomIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+          max-width: 90%;
+          max-height: 90%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         
         .image-modal img {
           max-width: 100%;
-          max-height: calc(100vh - 100px);
-          border-radius: 20px;
-          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7),
-                      0 0 0 1px rgba(255, 255, 255, 0.1);
-          transform: scale(0.9);
-          transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          max-height: 85vh;
+          width: auto;
+          height: auto;
+          border-radius: 12px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+          object-fit: contain;
+          cursor: zoom-in;
+          transition: transform 0.3s ease;
         }
         
-        .image-modal.show img {
-          transform: scale(1);
+        .image-modal img.zoomed {
+          cursor: zoom-out;
+          transform: scale(1.5);
         }
         
         .image-modal-close {
-          position: absolute;
-          top: -50px;
-          right: 0;
-          background: rgba(255, 255, 255, 0.15);
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: rgba(255, 255, 255, 0.2);
           backdrop-filter: blur(10px);
-          border: 2px solid rgba(255, 255, 255, 0.2);
+          border: none;
           color: white;
-          font-size: 28px;
+          font-size: 32px;
           font-weight: 300;
-          width: 48px;
-          height: 48px;
+          width: 44px;
+          height: 44px;
           border-radius: 50%;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
           line-height: 1;
-          padding: 0;
+          z-index: 10001;
         }
         
         .image-modal-close:hover {
-          background: rgba(255, 255, 255, 0.25);
-          border-color: rgba(255, 255, 255, 0.4);
-          transform: rotate(90deg) scale(1.1);
+          background: rgba(255, 255, 255, 0.3);
+          transform: scale(1.1);
         }
         
-        .image-modal-close:active {
-          transform: rotate(90deg) scale(0.95);
-        }
-        
-        @keyframes modalZoomIn {
-          0% {
-            opacity: 0;
-            transform: scale(0.5) rotate(-5deg);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1) rotate(0deg);
-          }
-        }
-        
-        /* Mobile responsive */
         @media (max-width: 600px) {
           .review-image {
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
           }
           
           .image-modal-close {
@@ -561,7 +517,7 @@
             right: 10px;
             width: 40px;
             height: 40px;
-            font-size: 24px;
+            font-size: 28px;
           }
         }
         
