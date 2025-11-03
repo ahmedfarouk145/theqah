@@ -36,6 +36,42 @@ if (process.env.CSP_EXTRA_ANCESTORS) {
 const cspFrameAncestors = `frame-ancestors ${ALLOWED_ANCESTORS.join(" ")};`;
 
 const nextConfig = {
+  // ======= إعدادات الصور =======
+  images: {
+    // الدومينات المسموحة للصور الخارجية
+    domains: [
+      'firebasestorage.googleapis.com',
+      'storage.googleapis.com',
+      'ucarecdn.com',  // Uploadcare CDN
+      'lh3.googleusercontent.com', // صور Google
+    ],
+    // أنماط أكثر تفصيلاً للصور
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+        pathname: '/v0/b/theqah-d3ee0.firebasestorage.app/o/**',
+      },
+      {
+        protocol: 'https', 
+        hostname: 'ucarecdn.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        pathname: '/**',
+      }
+    ],
+    // أحجام الصور المحسنة
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // تنسيقات الصور المدعومة
+    formats: ['image/webp', 'image/avif'],
+    // مدة التخزين المؤقت
+    minimumCacheTTL: 60,
+  },
+
   async headers() {
     // 🔒 Headers أمنية شاملة للحماية (متطلبات سلة)
     const securityHeaders = [

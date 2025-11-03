@@ -499,7 +499,11 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
                                     width={14}
                                     height={14}
                                     className="rounded-full"
-                                    onError={() => setShowLogo(false)}
+                                    onError={(e) => {
+                                      console.error('Logo load failed:', e);
+                                      setShowLogo(false);
+                                    }}
+                                    unoptimized={true}  // تجاوز next/image optimization
                                   />
                                 )}
                                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
