@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "1.3.18"; // Fixed Firebase Storage images support
+  const SCRIPT_VERSION = "1.3.19"; // Enhanced image display with lightbox modal
   
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -34,6 +34,47 @@
     const wrap = h("div", { class: "stars", role: "img", "aria-label": `${n} stars` });
     for (let i = 1; i <= 5; i++) wrap.appendChild(h("span", { class: "star" + (i <= n ? " filled" : "") }, "★"));
     return wrap;
+  };
+
+  // Image Modal Functions
+  let currentModal = null;
+  
+  const openImageModal = (imgSrc) => {
+    if (currentModal) return; // Prevent multiple modals
+    
+    const modal = h("div", { class: "image-modal" });
+    const img = h("img", { src: imgSrc, alt: "Review image" });
+    const closeBtn = h("button", { class: "image-modal-close" }, "×");
+    
+    modal.appendChild(img);
+    modal.appendChild(closeBtn);
+    
+    // Close handlers
+    const closeModal = () => {
+      modal.classList.remove("show");
+      setTimeout(() => {
+        if (modal.parentNode) modal.parentNode.removeChild(modal);
+        currentModal = null;
+      }, 300);
+    };
+    
+    closeBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+    
+    document.addEventListener("keydown", function escHandler(e) {
+      if (e.key === "Escape") {
+        closeModal();
+        document.removeEventListener("keydown", escHandler);
+      }
+    });
+    
+    document.body.appendChild(modal);
+    currentModal = modal;
+    
+    // Trigger animation
+    setTimeout(() => modal.classList.add("show"), 10);
   };
 
   // ——— Cache/Single-flight لنتيجة resolveStore ———
@@ -354,18 +395,81 @@
         }
         
         .review-image {
-          width: 80px;
-          height: 80px;
-          border-radius: 8px;
+          width: 100px;
+          height: 100px;
+          border-radius: 12px;
           object-fit: cover;
-          border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.6)"};
+          border: 2px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.6)"};
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.3s ease;
+          box-shadow: ${theme === "dark" 
+            ? "0 4px 12px rgba(0, 0, 0, 0.3)" 
+            : "0 4px 12px rgba(0, 0, 0, 0.1)"};
         }
         
         .review-image:hover {
-          transform: scale(1.05);
-          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.4)" : "rgba(59, 130, 246, 0.3)"};
+          transform: scale(1.1);
+          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.5)" : "rgba(59, 130, 246, 0.4)"};
+          box-shadow: ${theme === "dark" 
+            ? "0 8px 25px rgba(0, 0, 0, 0.4)" 
+            : "0 8px 25px rgba(0, 0, 0, 0.15)"};
+        }
+        
+        /* Lightbox Modal */
+        .image-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.9);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10000;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.3s ease;
+        }
+        
+        .image-modal.show {
+          opacity: 1;
+          visibility: visible;
+        }
+        
+        .image-modal img {
+          max-width: 90%;
+          max-height: 90%;
+          border-radius: 12px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+          transform: scale(0.8);
+          transition: transform 0.3s ease;
+        }
+        
+        .image-modal.show img {
+          transform: scale(1);
+        }
+        
+        .image-modal-close {
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          color: white;
+          font-size: 24px;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.2s ease;
+        }
+        
+        .image-modal-close:hover {
+          background: rgba(255, 255, 255, 0.3);
         }
         
         .empty { 
@@ -674,15 +778,21 @@
         // Add images if available
         let imagesEl = null;
         if (r.images && Array.isArray(r.images) && r.images.length > 0) {
-          const imageElements = r.images.slice(0, 3).map(imgSrc => 
-            h("img", { 
+          const imageElements = r.images.slice(0, 3).map((imgSrc) => {
+            const img = h("img", { 
               class: "review-image", 
               src: imgSrc, 
               alt: lang === "ar" ? "صورة التقييم" : "Review image",
               loading: "lazy",
-              onerror: "this.style.display='none'"
-            })
-          );
+              onerror: "this.style.display='none'",
+              "data-src": imgSrc
+            });
+            
+            // Add click handler for lightbox
+            img.addEventListener("click", () => openImageModal(imgSrc));
+            
+            return img;
+          });
           imagesEl = h("div", { class: "images" }, imageElements);
         }
         
