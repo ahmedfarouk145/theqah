@@ -1,7 +1,11 @@
 (() => {
   'use strict';
 
-  const VERSION = '1.0.4';
+  const VERSION = '1.0.5'; // محسن للـ performance
+  
+  // حماية من التشغيل المتعدد
+  if (window.__THEQAH_STARS_LOADING__) return;
+  window.__THEQAH_STARS_LOADING__ = true;
 
   // أصل السكربت
   const CURRENT = document.currentScript;
@@ -34,9 +38,18 @@
     // لو في request شغال دلوقتي
     if (G._starsResolvePromise) return G._starsResolvePromise;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 ثواني للنجوم
+
     const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(VERSION)}`;
-    G._starsResolvePromise = fetch(url, { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : null)
+    G._starsResolvePromise = fetch(url, { 
+        cache: 'no-store',
+        signal: controller.signal
+      })
+      .then(r => {
+        clearTimeout(timeoutId);
+        return r.ok ? r.json() : null;
+      })
       .then(j => {
         const uid = j?.storeUid || null;
         if (uid) {
@@ -44,6 +57,11 @@
           try { localStorage.setItem(cacheKey, JSON.stringify({ uid, t: Date.now() })); } catch {}
         }
         return uid;
+      })
+      .catch(e => {
+        clearTimeout(timeoutId);
+        console.warn('Stars resolve failed:', e.message);
+        return null;
       })
       .finally(() => { G._starsResolvePromise = null; });
 
@@ -121,28 +139,44 @@
       return mem[cacheKey].data;
     }
 
-    let url = `${API_BASE}?storeUid=${encodeURIComponent(storeId)}&limit=1000`;
-    if (productId) url += `&productId=${encodeURIComponent(productId)}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 ثواني
 
-    const res = await fetch(url, { cache: 'no-store', headers: { 'Accept': 'application/json' } });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const reviews = data.items || [];
-    if (!reviews.length) return null;
+    try {
+      let url = `${API_BASE}?storeUid=${encodeURIComponent(storeId)}&limit=1000`;
+      if (productId) url += `&productId=${encodeURIComponent(productId)}`;
 
-    const total = reviews.length;
-    const stars = reviews.reduce((s, r) => s + (r.stars || 0), 0);
-    const avg = stars / total;
+      const res = await fetch(url, { 
+        cache: 'no-store', 
+        headers: { 'Accept': 'application/json' },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      if (!res.ok) return null;
+      const data = await res.json();
+      
+      const reviews = data.items || [];
+      if (!reviews.length) return null;
 
-    const stats = {
-      count: total,
-      average: Math.round(avg * 2) / 2,
-      fullStars: Math.floor(avg),
-      hasHalfStar: (avg % 1) >= 0.5,
-    };
+      const total = reviews.length;
+      const stars = reviews.reduce((s, r) => s + (r.stars || 0), 0);
+      const avg = stars / total;
 
-    mem[cacheKey] = { t: now, data: stats };
-    return stats;
+      const stats = {
+        count: total,
+        average: Math.round(avg * 2) / 2,
+        fullStars: Math.floor(avg),
+        hasHalfStar: (avg % 1) >= 0.5,
+      };
+
+      mem[cacheKey] = { t: now, data: stats };
+      return stats;
+    } catch (e) {
+      clearTimeout(timeoutId);
+      console.warn('Stars stats fetch failed:', e.message);
+      return null;
+    }
   }
 
   // ---------- 5) CSS ----------
@@ -225,18 +259,48 @@
     console.log('[theqah-stars] mounted on', anchor);
   }
 
-  // أول تشغيل
+  // تشغيل آمن مع حماية
+  const safeMount = () => {
+    try {
+      mount().catch(e => console.warn('Stars mount failed:', e.message));
+    } catch (e) {
+      console.warn('Stars init failed:', e.message);
+    } finally {
+      window.__THEQAH_STARS_LOADING__ = false;
+    }
+  };
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', mount);
+    document.addEventListener('DOMContentLoaded', safeMount);
   } else {
-    mount();
+    setTimeout(safeMount, 50); // تأخير صغير
   }
 
-  // لو سلة حمّلت المحتوى بعدين (SPA) نراقب
-  const obs = new MutationObserver(() => {
-    if (!document.querySelector('.theqah-stars-widget')) {
-      mount();
+  // SPA monitoring محسن
+  if (typeof MutationObserver !== 'undefined') {
+    const obs = new MutationObserver((mutations) => {
+      const hasStarsChanges = mutations.some(m =>
+        Array.from(m.addedNodes).some(n =>
+          n.nodeType === 1 && n.matches?.('[data-theqah-stars]')
+        )
+      );
+      if (hasStarsChanges && !document.querySelector('.theqah-stars-widget')) {
+        safeMount();
+      }
+    });
+    
+    try {
+      obs.observe(document.body, { 
+        childList: true, 
+        subtree: true,
+        attributes: false,
+        characterData: false
+      });
+      
+      // إيقاف بعد 20 ثانية
+      setTimeout(() => obs.disconnect(), 20000);
+    } catch (e) {
+      console.warn('Stars observer failed:', e);
     }
-  });
-  obs.observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();

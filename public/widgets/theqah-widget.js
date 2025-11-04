@@ -1,6 +1,10 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "1.3.12";
+  const SCRIPT_VERSION = "1.3.24"; // Larger images - 150px
+  
+  // حماية من التشغيل المتعدد
+  if (window.__THEQAH_LOADING__) return;
+  window.__THEQAH_LOADING__ = true;
 
   // ——— تحديد السكربت والمصدر ———
   const CURRENT_SCRIPT = document.currentScript;
@@ -59,13 +63,27 @@
     // single-flight
     if (G.resolvePromise) return G.resolvePromise;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 ثواني للـ resolve
+
     const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
-    G.resolvePromise = fetch(url, { cache: 'no-store' }) // طلب بسيط بدون هيدر مخصّص لتفادي OPTIONS
-      .then(r => r.ok ? r.json() : null)
+    G.resolvePromise = fetch(url, { 
+        cache: 'no-store',
+        signal: controller.signal
+      })
+      .then(r => {
+        clearTimeout(timeoutId);
+        return r.ok ? r.json() : null;
+      })
       .then(j => {
         const uid = j?.storeUid || null;
         if (uid) { G.storeUid = uid; setCached(host, uid); }
         return uid;
+      })
+      .catch(e => {
+        clearTimeout(timeoutId);
+        console.warn('Store resolve failed:', e.message);
+        return null; // فشل صامت - لا تعلق الصفحة
       })
       .finally(() => { G.resolvePromise = null; });
 
@@ -328,6 +346,24 @@
           letter-spacing: -0.01em;
         }
         
+        .images {
+          display: flex;
+          gap: 10px;
+          margin-top: 12px;
+          flex-wrap: wrap;
+        }
+        
+        .review-image {
+          width: 150px;
+          height: 150px;
+          border-radius: 12px;
+          object-fit: cover;
+          border: 2px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.6)"};
+          box-shadow: ${theme === "dark" 
+            ? "0 4px 12px rgba(0, 0, 0, 0.3)" 
+            : "0 4px 12px rgba(0, 0, 0, 0.1)"};
+        }
+        
         .empty { 
           padding: 32px; 
           border: 2px dashed ${theme === "dark" ? "#475569" : "#cbd5e1"}; 
@@ -351,6 +387,20 @@
           align-items: center; 
           gap: 12px;
           flex-wrap: wrap;
+        }
+
+        .right {
+          display: flex;
+          flex-direction: column;
+          align-items: ${lang === "ar" ? "flex-start" : "flex-end"};
+          gap: 4px;
+        }
+
+        .author {
+          font-size: 14px;
+          font-weight: 600;
+          color: ${theme === "dark" ? "#e2e8f0" : "#374151"};
+          margin: 0;
         }
         
         .item { 
@@ -483,6 +533,8 @@
           .filter { gap: 8px; }
           .filter button { padding: 8px 14px; font-size: 12px; }
           .row { flex-direction: column; align-items: flex-start; gap: 8px; }
+          .right { align-items: flex-start; }
+          .author { font-size: 13px; }
         }
         
         /* Animation for new items */
@@ -536,18 +588,39 @@
     const endpoint = productId ? `${base}&productId=${encodeURIComponent(productId)}` : base;
 
     const fetchData = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 ثواني timeout
+      
       try {
         const url = `${endpoint}&sort=${currentSort}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
-        const res = await fetch(url, { cache: 'no-store' }); // طلب بسيط => بدون preflight
+        const res = await fetch(url, { 
+          cache: 'no-store',
+          signal: controller.signal,
+          timeout: 8000
+        });
+        
+        clearTimeout(timeoutId);
+        
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         lastData = await res.json();
         renderList(lastData);
-        hostEl.setAttribute("data-state", "done"); // نجاح
+        hostEl.setAttribute("data-state", "done");
       } catch (e) {
-        console.error('Failed to fetch reviews:', e);
-        list.innerHTML = "";
-        list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "تعذّر التحميل" : "Failed to load"));
-        hostEl.removeAttribute("data-state"); // تسمح بإعادة المحاولة لاحقًا
+        clearTimeout(timeoutId);
+        console.warn('Reviews fetch failed:', e.message);
+        
+        // عرض رسالة مبسطة بدون تعليق الصفحة
+        try {
+          list.innerHTML = "";
+          const emptyMsg = document.createElement("div");
+          emptyMsg.className = "empty";
+          emptyMsg.textContent = lang === "ar" ? "غير متاح حالياً" : "Unavailable";
+          list.appendChild(emptyMsg);
+        } catch (domError) {
+          console.error('DOM manipulation failed:', domError);
+        }
+        
+        hostEl.removeAttribute("data-state");
       }
     };
 
@@ -567,6 +640,7 @@
       for (const r of items) {
         const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
         const trusted = !!r.trustedBuyer;
+        const authorName = r.author?.displayName || (lang === "ar" ? "عميل المتجر" : "Store Customer");
 
         const rowLeftChildren = [
           Stars(Number(r.stars || 0)),
@@ -578,18 +652,39 @@
                   alt: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer"),
                   loading: "lazy"
                 }),
-                h("span", { class: "label" }, "مشتري موثق")
+                h("span", { class: "label" }, lang === "ar" ? "مشتري موثق" : "Verified Buyer")
               ])
             : null,
         ];
 
         const row = h("div", { class: "row" }, [
           h("div", { class: "left" }, rowLeftChildren),
-          h("small", { class: "meta" }, when),
+          h("div", { class: "right" }, [
+            h("div", { class: "author" }, authorName),
+            h("small", { class: "meta" }, when),
+          ]),
         ]);
 
         const text = h("p", { class: "text" }, String(r.text || "").trim());
-        list.appendChild(h("div", { class: "item" }, [row, text]));
+        
+        // Add images if available
+        let imagesEl = null;
+        if (r.images && Array.isArray(r.images) && r.images.length > 0) {
+          const imageElements = r.images.slice(0, 3).map((imgSrc) => {
+            const img = h("img", { 
+              class: "review-image", 
+              src: imgSrc, 
+              alt: lang === "ar" ? "صورة التقييم" : "Review image",
+              loading: "lazy",
+              onerror: "this.style.display='none'"
+            });
+            return img;
+          });
+          imagesEl = h("div", { class: "images" }, imageElements);
+        }
+        
+        const itemChildren = imagesEl ? [row, text, imagesEl] : [row, text];
+        list.appendChild(h("div", { class: "item" }, itemChildren));
       }
     };
 
@@ -641,10 +736,18 @@
       store = '';
     }
 
-    // محاولة auto-resolve
+    // محاولة auto-resolve مع timeout
     if (!store) {
-      try { store = await resolveStore(); }
-      catch (err) { console.error('Error during store auto-resolution:', err); }
+      try { 
+        const resolveTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Resolve timeout')), 5000)
+        );
+        store = await Promise.race([resolveStore(), resolveTimeout]);
+      }
+      catch (err) { 
+        console.warn('Store auto-resolution failed:', err.message);
+        store = null; // فشل صامت
+      }
     }
 
     // لو لسه مفيش — اعرض رسالة تشخيصية
@@ -671,15 +774,56 @@
     mountedOnce = true;
   };
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => safeMount());
-  else safeMount();
+  // تشغيل آمن مع حماية من الأخطاء
+  const safeLaunch = () => {
+    try {
+      safeMount().catch(e => console.warn('Widget mount failed:', e.message));
+    } catch (e) {
+      console.warn('Widget initialization failed:', e.message);
+    } finally {
+      window.__THEQAH_LOADING__ = false;
+    }
+  };
 
-  // دعم SPA (مرة واحدة)
-  if (!window.__THEQAH_OBS__) {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", safeLaunch);
+  } else {
+    // تأخير صغير لضمان استقرار DOM
+    setTimeout(safeLaunch, 100);
+  }
+
+  // دعم SPA محسن (أقل استهلاك)
+  if (!window.__THEQAH_OBS__ && typeof MutationObserver !== 'undefined') {
     window.__THEQAH_OBS__ = true;
-    const deb = debounce(() => safeMount(), 700);
-    const obs = new MutationObserver(() => deb());
-    obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
+    const deb = debounce(() => safeMount(), 1000);
+    const obs = new MutationObserver((mutations) => {
+      // فلترة - فقط التغييرات المهمة
+      const hasRelevantChanges = mutations.some(m => 
+        Array.from(m.addedNodes).some(n => 
+          n.nodeType === 1 && (
+            n.classList?.contains('theqah-reviews') || 
+            n.querySelector?.('.theqah-reviews')
+          )
+        )
+      );
+      if (hasRelevantChanges) deb();
+    });
+    
+    try {
+      obs.observe(document.body, { 
+        childList: true, 
+        subtree: true,
+        attributes: false,        // تجاهل تغييرات الـ attributes
+        characterData: false      // تجاهل تغييرات النص
+      });
+      
+      // إيقاف المراقب بعد 30 ثانية
+      setTimeout(() => {
+        obs.disconnect();
+        window.__THEQAH_OBS__ = false;
+      }, 30000);
+    } catch (e) {
+      console.warn('MutationObserver failed:', e);
+    }
   }
 })();
-

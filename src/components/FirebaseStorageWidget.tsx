@@ -209,6 +209,10 @@ export default function FirebaseStorageWidget({
                 width={200}
                 height={150}
                 className="w-full h-32 object-cover"
+                unoptimized={true}  // تجاوز next/image optimization للـ Firebase Storage
+                onError={(e) => {
+                  console.error('Firebase Storage image load failed:', e);
+                }}
               />
               
               {/* File Info */}

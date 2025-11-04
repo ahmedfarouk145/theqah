@@ -26,6 +26,8 @@ type SubmitBody = {
   images?: string[];
   tokenId?: string;
   platform?: "salla" | "zid" | "manual" | "web";
+  authorName?: string;
+  authorShowName?: boolean;
 };
 
 export default function ReviewByTokenPage() {
@@ -38,6 +40,8 @@ export default function ReviewByTokenPage() {
   }, [router.query.token]);
 
   const [stars, setStars] = useState<number>(0);
+  const [customerName, setCustomerName] = useState<string>("");
+  const [showName, setShowName] = useState<boolean>(true);
   const [text, setText] = useState<string>("");
   const [attachments, setAttachments] = useState<UploadedFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -46,6 +50,13 @@ export default function ReviewByTokenPage() {
 
   const [loadingToken, setLoadingToken] = useState(true);
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
+
+  // تحديث اسم العميل من معلومات الرابط
+  useEffect(() => {
+    if (tokenInfo?.customerName && !customerName) {
+      setCustomerName(tokenInfo.customerName);
+    }
+  }, [tokenInfo?.customerName, customerName]);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +117,8 @@ export default function ReviewByTokenPage() {
         images: attachments.map((f) => f.url),
         tokenId: token,
         platform: "web",
+        authorName: customerName.trim() || undefined,
+        authorShowName: showName && customerName.trim().length > 0,
       };
 
       const res = await fetch("/api/reviews/submit", {
@@ -299,6 +312,42 @@ export default function ReviewByTokenPage() {
                 {stars === 4 && "ممتاز"}
                 {stars === 5 && "استثنائي"}
               </p>
+            </div>
+
+            {/* اسم العميل */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">اسمك</label>
+              <input
+                type="text"
+                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 transition-colors"
+                placeholder="أدخل اسمك (اختياري)"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                maxLength={50}
+              />
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="checkbox"
+                  id="showName"
+                  checked={showName}
+                  onChange={(e) => setShowName(e.target.checked)}
+                  className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                />
+                <label htmlFor="showName" className="text-xs text-gray-600">
+                  أوافق على إظهار اسمي مع التقييم
+                </label>
+              </div>
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-xs text-gray-400">
+                  {customerName.trim() && showName 
+                    ? `سيظهر كـ: ${customerName.trim()}` 
+                    : customerName.trim() && !showName 
+                    ? "سيظهر كـ: عميل موثق" 
+                    : "اختياري"
+                  }
+                </p>
+                <p className="text-xs text-gray-400">{customerName.length}/50</p>
+              </div>
             </div>
 
             {/* النص */}
