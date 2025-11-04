@@ -8,6 +8,9 @@ import type {
   ChatCompletionContentPart,
 } from "openai/resources/chat/completions";
 
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY environment variable is required for moderation');
+}
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ===== Types =====

@@ -8,6 +8,9 @@ export type ApiModerationDecision = {
   timedOut?: boolean;
 };
 
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY environment variable is required for moderation');
+}
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 function withTimeout<T>(p: Promise<T>, ms = 4000): Promise<T> {
