@@ -153,7 +153,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       await db.collection("reviews").doc(txResult.reviewId).set(
         mod?.ok
-          ? { moderation: { model: mod.model, score: mod.score, flags: mod.flags ?? [] } }
+          ? { moderation: { model: mod.model || "hybrid(api+prompt)", score: mod.score ?? 1, flags: mod.flags ?? [] } }
           : { moderation: { model: mod?.model || "openai", score: mod?.score ?? 0, flags: mod?.flags ?? ["blocked"] } },
         { merge: true }
       );

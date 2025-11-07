@@ -154,8 +154,8 @@ export async function moderateReview(input: ModerationInput): Promise<Moderation
     ok: true,
     flags,
     categories: h.categories,
-    model: h.model,
-    score: h.confidence,
+    model: h.model || "hybrid(api+prompt)",
+    score: h.confidence ?? 1,
     needsManualCheck: h.needsManualCheck,
     sources: h.sources,
   };
