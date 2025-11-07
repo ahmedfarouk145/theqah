@@ -18,7 +18,7 @@ export function buildUnifiedSMS(data: ReviewInviteData): string {
   // إذا في اسم منتج، أضيفه للرسالة
   const productPart = product ? ` (${product})` : "";
   
-  return `مرحباً ${name}، قيّم تجربتك من ${store}${productPart}: ${data.reviewUrl} وساهم في إسعاد يتيم!`;
+  return `مرحباً ${name}، قيّم تجربتك من ${store}${productPart}: ${data.reviewUrl} وساهم في إسعاد محتاج!`;
 }
 
 // ✅ Email HTML Template - UI حلو ومتقدم
@@ -94,7 +94,7 @@ export function buildUnifiedEmailHTML(data: ReviewInviteData): string {
               
               <div style="background:linear-gradient(45deg, #fef3c7, #fde68a);border-right:4px solid #f59e0b;padding:16px;border-radius:8px;margin:20px 0;">
                 <p style="margin:0;font-size:14px;color:#92400e;">
-                  🎯 <strong>هدفنا الخيري:</strong> مع كل تقييم، نساهم في إسعاد يتيم ودعم الأعمال الخيرية!
+                  🎯 <strong>هدفنا الخيري:</strong> مع كل تقييم، نساهم في إسعاد محتاج ودعم الأعمال الخيرية!
                 </p>
               </div>
             </td>

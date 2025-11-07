@@ -6,6 +6,7 @@ import { fetchStoreInfo, fetchUserInfo, getOwnerAccessToken } from "@/lib/sallaC
 import { canSendInvite, onInviteSent } from "@/server/subscription/usage";
 import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
 import { sendBothNow } from "@/server/messaging/send-invite";
+import { createShortLink } from "@/server/short-links";
 
 export const runtime = "nodejs";
 export const config = { api: { bodyParser: false } };
@@ -434,9 +435,19 @@ async function ensureInviteForOrder(
 
   const tokenId = crypto.randomBytes(10).toString("hex");
   const reviewUrl = `${APP_BASE_URL}/review/${tokenId}`;
-  const publicUrl = reviewUrl;
+  
+  // ✅ إنشاء short link لتقصير الرابط
+  let publicUrl = reviewUrl;
+  try {
+    publicUrl = await createShortLink(reviewUrl, storeUid);
+    console.log(`[INVITE FLOW] 12.1. Short link created: ${publicUrl}`);
+  } catch (shortLinkErr) {
+    console.log(`[INVITE FLOW] 12.1. Short link failed, using full URL: ${shortLinkErr}`);
+    publicUrl = reviewUrl;
+  }
+  
   console.log(`[INVITE FLOW] 12. Generated tokenId: ${tokenId}`);
-  console.log(`[INVITE FLOW] 13. Review URL: ${reviewUrl}`);
+  console.log(`[INVITE FLOW] 13. Review URL (short): ${publicUrl}`);
 
   await db.collection("review_tokens").doc(tokenId).set({
     id: tokenId, platform: "salla", orderId, storeUid,
