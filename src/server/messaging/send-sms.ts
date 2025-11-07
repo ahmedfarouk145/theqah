@@ -118,14 +118,29 @@ export function buildInviteSMS(storeName: string | null | undefined, link: strin
 // ---------- تطبيع رقم الهاتف ----------
 function normalizePhone(raw: string, def?: "SA" | "EG"): string {
   const digits = String(raw).replace(/[^\d+]/g, "");
+  
+  // ✅ لو الرقم يبدأ بـ +، إرجعه كما هو
   if (digits.startsWith("+")) return digits;
+  
+  // ✅ لو الرقم يبدأ بـ 00، حوّله لـ +
   if (digits.startsWith("00")) return `+${digits.slice(2)}`;
+  
+  // ✅ لو الرقم يبدأ بـ 966 (كود السعودية)، أضف + بس
+  if (digits.startsWith("966")) return `+${digits}`;
+  
+  // ✅ لو الرقم يبدأ بـ 20 (كود مصر)، أضف + بس
+  if (digits.startsWith("20")) return `+${digits}`;
+  
+  // ✅ لو الرقم يبدأ بـ 0 (رقم محلي)
   if (digits.startsWith("0")) {
     if (def === "SA") return `+966${digits.slice(1)}`;
     if (def === "EG") return `+20${digits.slice(1)}`;
   }
+  
+  // ✅ لو الرقم مافيهوش كود الدولة، أضف كود البلد الافتراضي
   if (def === "SA") return `+966${digits}`;
   if (def === "EG") return `+20${digits}`;
+  
   return digits;
 }
 
