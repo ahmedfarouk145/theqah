@@ -76,7 +76,7 @@ export default function FirebaseStorageWidget({
         setUploadProgress(prev => ({ ...prev, [fileName]: 0 }));
 
         // Convert HEIC/HEIF to JPEG if needed (mobile photos)
-        let fileToUpload = file;
+        const fileToUpload = file;
         if (/\.(heic|heif)$/i.test(file.name)) {
           // Note: Browser conversion will be attempted, may need server-side conversion
           console.log('HEIC/HEIF file detected, uploading as-is');
