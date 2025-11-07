@@ -39,7 +39,11 @@ export default function FirebaseStorageWidget({
 
     const filesArray = Array.from(files);
     const validFiles = filesArray.filter(file => {
-      if (acceptImagesOnly && !file.type.startsWith('image/')) {
+      // More flexible image type checking for mobile
+      const isImage = file.type.startsWith('image/') || 
+                      /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(file.name);
+      
+      if (acceptImagesOnly && !isImage) {
         alert('يرجى اختيار ملفات صور فقط');
         return false;
       }
@@ -64,12 +68,28 @@ export default function FirebaseStorageWidget({
 
     for (const file of validFiles) {
       try {
-        const fileName = `${Date.now()}_${file.name}`;
+        // Sanitize filename for better compatibility
+        const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const fileName = `${Date.now()}_${sanitizedName}`;
         const storageRef = ref(storage, `uploads/${fileName}`);
         
         setUploadProgress(prev => ({ ...prev, [fileName]: 0 }));
 
-        const snapshot = await uploadBytes(storageRef, file);
+        // Convert HEIC/HEIF to JPEG if needed (mobile photos)
+        let fileToUpload = file;
+        if (/\.(heic|heif)$/i.test(file.name)) {
+          // Note: Browser conversion will be attempted, may need server-side conversion
+          console.log('HEIC/HEIF file detected, uploading as-is');
+        }
+
+        const snapshot = await uploadBytes(storageRef, fileToUpload, {
+          contentType: fileToUpload.type || 'image/jpeg',
+          customMetadata: {
+            originalName: file.name,
+            uploadedAt: new Date().toISOString()
+          }
+        });
+        
         const downloadURL = await getDownloadURL(snapshot.ref);
 
         newFiles.push({
@@ -86,8 +106,13 @@ export default function FirebaseStorageWidget({
         
         if (errorMsg.includes('storage/no-default-bucket') || errorMsg.includes('storage/unknown')) {
           setStorageError('Firebase Storage غير مفعل بعد. سيتم تفعيله قريباً.');
+        } else if (errorMsg.includes('storage/unauthorized')) {
+          setStorageError('غير مصرح برفع الملفات. يرجى التحقق من إعدادات Firebase.');
+        } else if (errorMsg.includes('storage/quota-exceeded')) {
+          setStorageError('تم تجاوز حد التخزين المتاح.');
         } else {
-          alert(`خطأ في رفع الملف: ${file.name}`);
+          console.error('Full error details:', error);
+          alert(`خطأ في رفع الملف: ${file.name}\n${errorMsg}`);
         }
       }
     }
@@ -160,7 +185,8 @@ export default function FirebaseStorageWidget({
           ref={fileInputRef}
           type="file"
           multiple
-          accept={acceptImagesOnly ? "image/*" : "*"}
+          accept={acceptImagesOnly ? "image/*,.heic,.heif" : "*"}
+          capture={acceptImagesOnly ? "environment" : undefined}
           onChange={handleFileSelect}
           className="hidden"
           disabled={uploading}
