@@ -186,7 +186,6 @@ export default function FirebaseStorageWidget({
           type="file"
           multiple
           accept={acceptImagesOnly ? "image/*,.heic,.heif" : "*"}
-          capture={acceptImagesOnly ? "environment" : undefined}
           onChange={handleFileSelect}
           className="hidden"
           disabled={uploading}
