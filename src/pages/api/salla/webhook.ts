@@ -50,7 +50,27 @@ const lc = (x: unknown) => String(x ?? "").toLowerCase();
 // Safe mobile number handling - convert to string and handle null/undefined
 function safeMobile(mobile: string | number | null | undefined): string | null {
   if (!mobile) return null;
-  return typeof mobile === 'string' ? mobile.trim() : String(mobile).trim();
+  let cleaned = typeof mobile === 'string' ? mobile.trim() : String(mobile).trim();
+  
+  // ✅ إزالة الرموز غير المرغوبة
+  cleaned = cleaned.replace(/[\s\-\(\)]/g, '');
+  
+  // ✅ إزالة + في البداية
+  if (cleaned.startsWith('+')) {
+    cleaned = cleaned.substring(1);
+  }
+  
+  // ✅ إصلاح التكرار: 966966 → 966
+  if (cleaned.startsWith('966966')) {
+    cleaned = cleaned.substring(3);
+  }
+  
+  // ✅ إضافة 966 لو الرقم يبدأ بـ 5 (رقم سعودي محلي)
+  if (cleaned.startsWith('5') && cleaned.length === 9) {
+    cleaned = '966' + cleaned;
+  }
+  
+  return cleaned || null;
 }
 
 function getHeader(req: NextApiRequest, name: string): string {
