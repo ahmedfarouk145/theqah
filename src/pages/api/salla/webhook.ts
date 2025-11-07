@@ -358,9 +358,26 @@ async function ensureInviteForOrder(
   const exists = await db.collection("review_invites").where("orderId", "==", orderId).limit(1).get();
   console.log(`[INVITE FLOW] 5. Existing invites: ${exists.size} found`);
   if (!exists.empty) {
-    console.log(`[INVITE FLOW] ❌ FAILED: Invite already exists for order ${orderId}`);
+    console.log(`[INVITE FLOW] ❌ SKIP: Invite already exists for order ${orderId}`);
     return;
   }
+
+  // ✅ جديد: التحقق من حالة الطلب - إرسال الدعوة فقط عند "تم التنفيذ"
+  const orderStatus = lc(order.status ?? order.order_status ?? order.new_status ?? rawData["status"] as string ?? "");
+  const isCompleted = 
+    orderStatus === "completed" || 
+    orderStatus === "تم التنفيذ" ||
+    orderStatus === "delivered" ||
+    orderStatus === "تم التوصيل";
+  
+  console.log(`[INVITE FLOW] 5.1. Order status: "${orderStatus}", isCompleted: ${isCompleted}`);
+  
+  if (!isCompleted) {
+    console.log(`[INVITE FLOW] ❌ SKIP: Order not completed yet (status: ${orderStatus}). Will send when status = "تم التنفيذ"`);
+    return;
+  }
+  
+  console.log(`[INVITE FLOW] ✅ Order is completed, proceeding with invite...`);
 
   let storeUid: string|null = pickStoreUidFromSalla(rawData, bodyMerchant) || null;
   console.log(`[INVITE FLOW] 6. StoreUid from payload: ${storeUid || "none"}`);
@@ -901,11 +918,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // D) Auto-create review invites for ALL orders + void on cancel/refund  
+    // D) Auto-create review invites ONLY on order.status.updated when completed + void on cancel/refund  
     console.log(`[SALLA STEP] D) Checking invite events for: ${event}`);
-    if ((event.startsWith("order.") && !["order.cancelled", "order.refunded"].includes(event)) || event === "updated_order") {
-      // Create invite for ANY order event (created, updated, payment, etc.) + custom updated_order
-      console.log(`[INVITE DEBUG] Auto-creating invite for order event: ${event}`);
+    if (event === "order.status.updated") {
+      // ✅ إرسال الدعوة فقط عند تحديث حالة الطلب إلى "تم التنفيذ"
+      console.log(`[INVITE DEBUG] Order status updated event detected for order: ${orderId}`);
       
       // Enhanced invitation creation with fallback mechanisms
       try {
