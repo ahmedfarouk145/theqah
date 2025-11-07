@@ -13,7 +13,7 @@ export type ShortLinkDoc = {
 
 const COLL = "short_links";
 
-function genCode(len = 8) {
+function genCode(len = 4) {
   return Math.random().toString(36).slice(2, 2 + len);
 }
 function sanitizeBase(url: string) {
@@ -39,9 +39,9 @@ export async function createShortLink(
   const db = getDb();
   if (!isValidTarget(targetUrl)) throw new Error("invalid_target_url");
 
-  let code = genCode(8);
+  let code = genCode(4);
   const ref = db.collection(COLL).doc(code);
-  if ((await ref.get()).exists) code = genCode(8);
+  if ((await ref.get()).exists) code = genCode(4);
 
   const doc: ShortLinkDoc = {
     id: code,
