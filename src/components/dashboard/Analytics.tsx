@@ -510,7 +510,7 @@ export default function DashboardAnalytics() {
           title="إجمالي الطلبات"
           value={data.totalOrders.toLocaleString()}
           icon={ShoppingCart}
-          color="text-emerald-600"
+          color="text-white"
           bgColor="bg-emerald-50"
           gradient="bg-gradient-to-br from-emerald-400 to-emerald-600"
           delay={0}
@@ -521,7 +521,7 @@ export default function DashboardAnalytics() {
           title="إجمالي التقييمات"
           value={data.totalReviews.toLocaleString()}
           icon={Star}
-          color="text-amber-600"
+          color="text-white"
           bgColor="bg-amber-50"
           gradient="bg-gradient-to-br from-amber-400 to-amber-600"
           delay={100}
@@ -532,7 +532,7 @@ export default function DashboardAnalytics() {
           title="نسبة الإيجابية"
           value={`${data.positiveRate}%`}
           icon={Heart}
-          color="text-rose-600"
+          color="text-white"
           bgColor="bg-rose-50"
           gradient="bg-gradient-to-br from-rose-400 to-rose-600"
           delay={200}
@@ -543,7 +543,7 @@ export default function DashboardAnalytics() {
           title="معدل التحويل"
           value={`${metrics?.conversionRate || 0}%`}
           icon={Target}
-          color="text-purple-600"
+          color="text-white"
           bgColor="bg-purple-50"
           gradient="bg-gradient-to-br from-purple-400 to-purple-600"
           delay={300}
