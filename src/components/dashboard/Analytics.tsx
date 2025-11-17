@@ -116,13 +116,13 @@ const StatCard = ({
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-gray-600 group-hover:text-gray-700 transition-colors uppercase tracking-wider">
+        <h3 className="text-sm font-semibold text-gray-800 group-hover:text-gray-900 transition-colors uppercase tracking-wider">
           {title}
         </h3>
-        <p className={`text-4xl font-bold ${color} group-hover:scale-110 transition-all duration-500 origin-right transform-gpu`}>
+        <p className={`text-4xl font-bold text-gray-900 group-hover:scale-110 transition-all duration-500 origin-right transform-gpu`}>
           {value}
         </p>
-        {subtitle && <p className="text-sm text-gray-500 group-hover:text-gray-600 transition-colors font-medium">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-gray-700 group-hover:text-gray-800 transition-colors font-medium">{subtitle}</p>}
       </div>
     </div>
 
@@ -179,7 +179,7 @@ const ChartCard = ({
         )}
         <div className="flex-1">
           <h2 className="text-2xl font-bold text-gray-900 group-hover:text-gray-800 transition-colors">{title}</h2>
-          {subtitle && <p className="text-sm text-gray-600 mt-1">{subtitle}</p>}
+          {subtitle && <p className="text-sm text-gray-800 mt-1">{subtitle}</p>}
         </div>
       </div>
 
@@ -219,8 +219,8 @@ const MetricCard = ({
 
     <div className="relative z-10 flex items-center justify-between">
       <div className="flex-1">
-        <p className="text-sm font-medium text-gray-600 mb-1">{label}</p>
-        <p className={`text-2xl font-bold ${color} group-hover:scale-105 transition-transform duration-300 origin-left`}>{value}</p>
+        <p className="text-sm font-medium text-gray-800 mb-1">{label}</p>
+        <p className={`text-2xl font-bold text-gray-900 group-hover:scale-105 transition-transform duration-300 origin-left`}>{value}</p>
       </div>
       <div
         className={`w-12 h-12 bg-gradient-to-br ${
@@ -424,7 +424,7 @@ export default function DashboardAnalytics() {
 
           <div className="space-y-3">
             <p className="text-2xl font-bold text-gray-900 animate-pulse">جاري تحميل الإحصائيات</p>
-            <p className="text-sm text-gray-600">تحليل البيانات وإعداد التقارير...</p>
+            <p className="text-sm text-gray-800">تحليل البيانات وإعداد التقارير...</p>
 
             {/* Loading Progress Dots */}
             <div className="flex items-center justify-center gap-2 mt-4">
@@ -446,7 +446,7 @@ export default function DashboardAnalytics() {
             <Activity className="w-10 h-10 text-white animate-pulse" />
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-3">تعذر تحميل البيانات</h3>
-          <p className="text-gray-600 mb-6">حدث خطأ أثناء جلب الإحصائيات</p>
+          <p className="text-gray-800 mb-6">حدث خطأ أثناء جلب الإحصائيات</p>
           <button
             onClick={() => window.location.reload()}
             className="px-8 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
@@ -479,7 +479,7 @@ export default function DashboardAnalytics() {
               {aiSummary}
             </div>
           )}
-          {!aiLoading && !aiError && !aiSummary && <div className="text-gray-500">لا توجد توصيات حالياً.</div>}
+          {!aiLoading && !aiError && !aiSummary && <div className="text-gray-800">لا توجد توصيات حالياً.</div>}
         </div>
       </div>
       {/* Animated Header */}
@@ -499,7 +499,7 @@ export default function DashboardAnalytics() {
             لوحة التحكم التحليلية المتقدمة
           </h1>
         </div>
-        <p className="text-gray-600 max-w-3xl mx-auto text-lg leading-relaxed">
+        <p className="text-gray-800 max-w-3xl mx-auto text-lg leading-relaxed">
           تتبع أداء متجرك وتحليل بيانات العملاء والطلبات بتقنيات متقدمة وواجهة تفاعلية ثلاثية الأبعاد
         </p>
       </div>
@@ -641,7 +641,7 @@ export default function DashboardAnalytics() {
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center bg-white/90 backdrop-blur-sm rounded-full w-24 h-24 flex flex-col items-center justify-center shadow-2xl border border-gray-200/50">
                   <p className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 bg-clip-text text-transparent">{data.positiveRate}%</p>
-                  <p className="text-xs text-gray-600 font-medium">إيجابية</p>
+                  <p className="text-xs text-gray-800 font-medium">إيجابية</p>
                 </div>
               </div>
             </div>
@@ -710,12 +710,12 @@ export default function DashboardAnalytics() {
               </div>
               <div>
                 <h3 className="text-2xl font-bold text-gray-900">الأداء الشهري</h3>
-                <p className="text-gray-600">متوسط الطلبات والتقييمات</p>
+                <p className="text-gray-800">متوسط الطلبات والتقييمات</p>
               </div>
             </div>
             <div className="space-y-4">
-              <MetricCard label="متوسط الطلبات" value={metrics?.avgOrdersPerMonth || 0} icon={ShoppingCart} color="text-emerald-600" delay={800} />
-              <MetricCard label="متوسط التقييمات" value={metrics?.avgReviewsPerMonth || 0} icon={Star} color="text-amber-600" delay={900} />
+              <MetricCard label="متوسط الطلبات" value={metrics?.avgOrdersPerMonth || 0} icon={ShoppingCart} color="text-gray-900" delay={800} />
+              <MetricCard label="متوسط التقييمات" value={metrics?.avgReviewsPerMonth || 0} icon={Star} color="text-gray-900" delay={900} />
             </div>
           </div>
         </div>
@@ -737,7 +737,7 @@ export default function DashboardAnalytics() {
               </div>
               <div>
                 <h3 className="text-2xl font-bold text-gray-900">رضا العملاء</h3>
-                <p className="text-gray-600">مؤشرات الجودة والأداء</p>
+                <p className="text-gray-800">مؤشرات الجودة والأداء</p>
               </div>
             </div>
 
