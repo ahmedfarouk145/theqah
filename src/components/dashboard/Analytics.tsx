@@ -510,7 +510,7 @@ export default function DashboardAnalytics() {
           title="إجمالي الطلبات"
           value={data.totalOrders.toLocaleString()}
           icon={ShoppingCart}
-          color="text-white"
+          color="text-black"
           bgColor="bg-emerald-50"
           gradient="bg-gradient-to-br from-emerald-400 to-emerald-600"
           delay={0}
@@ -521,7 +521,7 @@ export default function DashboardAnalytics() {
           title="إجمالي التقييمات"
           value={data.totalReviews.toLocaleString()}
           icon={Star}
-          color="text-white"
+          color="text-black"
           bgColor="bg-amber-50"
           gradient="bg-gradient-to-br from-amber-400 to-amber-600"
           delay={100}
@@ -532,7 +532,7 @@ export default function DashboardAnalytics() {
           title="نسبة الإيجابية"
           value={`${data.positiveRate}%`}
           icon={Heart}
-          color="text-white"
+          color="text-black"
           bgColor="bg-rose-50"
           gradient="bg-gradient-to-br from-rose-400 to-rose-600"
           delay={200}
@@ -543,7 +543,7 @@ export default function DashboardAnalytics() {
           title="معدل التحويل"
           value={`${metrics?.conversionRate || 0}%`}
           icon={Target}
-          color="text-white"
+          color="text-black"
           bgColor="bg-purple-50"
           gradient="bg-gradient-to-br from-purple-400 to-purple-600"
           delay={300}
@@ -769,58 +769,86 @@ export default function DashboardAnalytics() {
         </div>
       </div>
 
-      {/* Additional Insights */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div
-          className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-          style={{ animationDelay: '900ms', animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards', opacity: 0, transform: 'translateY(30px)' }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
-          <div className="relative z-10">
-            <Award className="w-8 h-8 mb-3 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
-            <p className="text-sm opacity-90 mb-1">أفضل شهر</p>
-            <p className="text-xl font-bold">{metrics?.bestMonth || '—'}</p>
-          </div>
-        </div>
+     {/* Additional Insights */}
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  {/* Best Month */}
+  <div
+    className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
+    style={{
+      animationDelay: '900ms',
+      animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+      opacity: 0,
+      transform: 'translateY(30px)',
+    }}
+  >
+    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
+    <div className="relative z-10">
+      <Award className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
+      <p className="text-sm opacity-90 mb-1 text-gray-900">أفضل شهر</p>
+      <p className="text-xl font-bold text-gray-900">{metrics?.bestMonth || '—'}</p>
+    </div>
+  </div>
 
-        <div
-          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-          style={{ animationDelay: '1000ms', animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards', opacity: 0, transform: 'translateY(30px)' }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
-          <div className="relative z-10">
-            <TrendingUp className="w-8 h-8 mb-3 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
-            <p className="text-sm opacity-90 mb-1">نمو متوقع</p>
-            <p className="text-xl font-bold">
-              {metrics?.ordersGrowth ? `${metrics.ordersGrowth > 0 ? '+' : ''}${(metrics.ordersGrowth * 1.2).toFixed(1)}%` : '+0.0%'}
-            </p>
-          </div>
-        </div>
+  {/* Expected Growth */}
+  <div
+    className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
+    style={{
+      animationDelay: '1000ms',
+      animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+      opacity: 0,
+      transform: 'translateY(30px)',
+    }}
+  >
+    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
+    <div className="relative z-10">
+      <TrendingUp className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
+      <p className="text-sm opacity-90 mb-1 text-gray-900">نمو متوقع</p>
+      <p className="text-xl font-bold text-gray-900">
+        {metrics?.ordersGrowth
+          ? `${metrics.ordersGrowth > 0 ? '+' : ''}${(metrics.ordersGrowth * 1.2).toFixed(1)}%`
+          : '+0.0%'}
+      </p>
+    </div>
+  </div>
 
-        <div
-          className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-          style={{ animationDelay: '1100ms', animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards', opacity: 0, transform: 'translateY(30px)' }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
-          <div className="relative z-10">
-            <Heart className="w-8 h-8 mb-3 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
-            <p className="text-sm opacity-90 mb-1">ولاء العملاء</p>
-            <p className="text-xl font-bold">{metrics?.loyaltyRate.toFixed(1) || '0.0'}%</p>
-          </div>
-        </div>
+  {/* Loyalty */}
+  <div
+    className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
+    style={{
+      animationDelay: '1100ms',
+      animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+      opacity: 0,
+      transform: 'translateY(30px)',
+    }}
+  >
+    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
+    <div className="relative z-10">
+      <Heart className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
+      <p className="text-sm opacity-90 mb-1 text-gray-900">ولاء العملاء</p>
+      <p className="text-xl font-bold text-gray-900">
+        {metrics?.loyaltyRate != null ? metrics.loyaltyRate.toFixed(1) : '0.0'}%
+      </p>
+    </div>
+  </div>
 
-        <div
-          className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-6 text-white shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-          style={{ animationDelay: '1200ms', animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards', opacity: 0, transform: 'translateY(30px)' }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
-          <div className="relative z-10">
-            <Sparkles className="w-8 h-8 mb-3 group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
-            <p className="text-sm opacity-90 mb-1">تقييم عام</p>
-            <p className="text-xl font-bold">{metrics?.overallRating || 'غير متاح'}</p>
-          </div>
-        </div>
-      </div>
+  {/* Overall Rating */}
+  <div
+    className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
+    style={{
+      animationDelay: '1200ms',
+      animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+      opacity: 0,
+      transform: 'translateY(30px)',
+    }}
+  >
+    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
+    <div className="relative z-10">
+      <Sparkles className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
+      <p className="text-sm opacity-90 mb-1 text-gray-900">تقييم عام</p>
+      <p className="text-xl font-bold text-gray-900">{metrics?.overallRating || 'غير متاح'}</p>
+    </div>
+  </div>
+</div>
 
       <style jsx>{`
         @keyframes slideInUp {
