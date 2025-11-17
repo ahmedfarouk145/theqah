@@ -955,11 +955,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // ✅ إرسال الدعوة فقط عند تحديث حالة الطلب إلى "تم التنفيذ"
       console.log(`[INVITE DEBUG] Order status updated event detected for order: ${orderId}`);
       
+      // ✅ استخراج الـ order الكامل من الـ payload
+      const fullOrder = (dataRaw["order"] as SallaOrder | undefined) || asOrder;
+      
       // Enhanced invitation creation with fallback mechanisms
       try {
         // Try standard invite creation first
         await Promise.race([
-          ensureInviteForOrder(db, asOrder, dataRaw, body.merchant),
+          ensureInviteForOrder(db, fullOrder, dataRaw, body.merchant),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Invite creation timeout')), 20000))
         ]);
         fbLog(db, { level: "info", scope: "invite", msg: "invite auto-created for order", event, idemKey, merchant: merchantId, orderId });
