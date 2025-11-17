@@ -347,32 +347,58 @@ export default function DashboardAnalytics() {
     let cancelled = false;
 
     async function getAI() {
-      setAiLoading(true); setAiError(null);
+      setAiLoading(true); 
+      setAiError(null);
+      
       try {
-        // user might be logged out
+        // ✅ إضافة timeout للـ fetch
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 ثانية
+        
         const idToken = await auth.currentUser?.getIdToken().catch(() => undefined);
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
           ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         };
+        
         const r = await fetch('/api/ai/insights', {
           method: 'POST',
           headers,
-          body: JSON.stringify({ data })
+          body: JSON.stringify({ data }),
+          signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
+        
         const j = await r.json();
+        
+        console.log("[AI Response]", j); // ✅ لوج للتأكد
+        
         if (!cancelled) {
-          if (j.ok && j.text) setAiSummary(j.text);
-          else setAiError(j.message || 'لم تتوفر التوصيات حالياً');
+          if (j.ok && j.text) {
+            setAiSummary(j.text);
+          } else {
+            setAiError(j.message || 'لم تتوفر التوصيات حالياً');
+          }
         }
-      } catch {
-        if (!cancelled) setAiError('تعذر تحميل توصيات الذكاء الاصطناعي');
+      } catch (e) {
+        console.error("[AI Fetch Error]", e); // ✅ لوج الخطأ
+        
+        if (!cancelled) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (msg.includes('aborted') || msg.includes('timeout')) {
+            setAiError('انتهت مهلة الاتصال، حاول مرة أخرى');
+          } else {
+            setAiError('تعذر تحميل توصيات الذكاء الاصطناعي');
+          }
+        }
       } finally {
         if (!cancelled) setAiLoading(false);
       }
     }
+    
     getAI();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
     return () => { cancelled = true; };
   }, [data]);
 
