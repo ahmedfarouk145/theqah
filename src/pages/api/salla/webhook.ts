@@ -403,15 +403,7 @@ async function ensureInviteForOrder(
   }, { merge: true });
   console.log(`[INVITE FLOW] 5.3. Status tracking updated`);
 
-  // ✅ فحص: هل الحالة اتغيرت فعلاً؟
-  if (previousStatus === currentStatus) {
-    console.log(`[INVITE FLOW] ❌ SKIP: Status unchanged (${currentStatus}), no need to check again`);
-    return;
-  }
-  
-  console.log(`[INVITE FLOW] ✅ Status changed from "${previousStatus}" to "${currentStatus}"`);
-
-  // ✅ فحص: هل الحالة الجديدة = "تم التنفيذ"؟
+  // ✅ فحص: هل الحالة الجديدة = "تم التوصيل" أو "تم التنفيذ"؟
   const isCompleted = 
     currentStatus === "completed" || 
     currentStatus === "تم التنفيذ" ||
@@ -421,11 +413,23 @@ async function ensureInviteForOrder(
   console.log(`[INVITE FLOW] 5.4. Is order completed? ${isCompleted}`);
   
   if (!isCompleted) {
-    console.log(`[INVITE FLOW] ❌ SKIP: Order not completed yet (status: ${currentStatus}). Waiting for "تم التنفيذ"`);
+    console.log(`[INVITE FLOW] ❌ SKIP: Order not completed yet (status: ${currentStatus}). Waiting for completion`);
     return;
   }
   
-  console.log(`[INVITE FLOW] ✅ Order is completed NOW, proceeding with invite...`);
+  // ✅ فحص: هل الحالة اتغيرت فعلاً؟ (نتجاهل التكرار إلا لو الحالة كانت محفوظة قبل كده)
+  if (previousStatus && previousStatus === currentStatus) {
+    console.log(`[INVITE FLOW] ❌ SKIP: Status unchanged (${currentStatus}), invite already sent before`);
+    return;
+  }
+  
+  if (previousStatus) {
+    console.log(`[INVITE FLOW] ✅ Status changed from "${previousStatus}" to "${currentStatus}"`);
+  } else {
+    console.log(`[INVITE FLOW] ✅ First time seeing order with completed status "${currentStatus}"`);
+  }
+  
+  console.log(`[INVITE FLOW] ✅ Proceeding with invite...`);
 
   let storeUid: string|null = pickStoreUidFromSalla(rawData, bodyMerchant) || null;
   console.log(`[INVITE FLOW] 6. StoreUid from payload: ${storeUid || "none"}`);
