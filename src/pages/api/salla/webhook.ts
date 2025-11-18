@@ -386,8 +386,8 @@ async function ensureInviteForOrder(
   // ✅ استخراج الحالة الحالية من الـ payload
   const statusObj = order.status ?? rawData["status"];
   const currentStatus = lc(
-    typeof statusObj === "object" && statusObj !== null
-      ? ((statusObj as any).slug ?? (statusObj as any).name ?? "")
+    typeof statusObj === "object" && statusObj !== null && "slug" in statusObj
+      ? (statusObj.slug ?? ("name" in statusObj ? statusObj.name : "") ?? "")
       : (statusObj ?? order.order_status ?? order.new_status ?? "")
   );
   console.log(`[INVITE FLOW] 5.1. Current order status: "${currentStatus}"`);
