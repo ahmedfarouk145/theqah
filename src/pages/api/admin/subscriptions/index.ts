@@ -39,11 +39,11 @@ interface ApiStoreItem {
 
 // ====== Plans (الباقات الجديدة) ======
 const PLAN_LIMITS: Record<PlanId, number> = {
-  STARTER: 120,     // باقة الانطلاقة (19 ريال)
+  STARTER: 100,     // باقة الانطلاقة (19 ريال)
   SALES_BOOST: 250, // باقة زيادة المبيعات (29 ريال)
   EXPANSION: 600,   // باقة التوسع (49 ريال)
   // الباقات القديمة (للتوافق)
-  P30: 120,         // مرادف لـ STARTER
+  P30: 100,         // مرادف لـ STARTER
   P60: 250,         // مرادف لـ SALES_BOOST
   P120: 600,        // مرادف لـ EXPANSION
 };

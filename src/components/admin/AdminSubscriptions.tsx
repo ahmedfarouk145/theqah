@@ -46,11 +46,11 @@ function StatusBadge({ s }: { s: ApiStoreItem['status'] }) {
 }
 
 const PLAN_LIMITS: Record<string, number> = {
-  STARTER: 120,
+  STARTER: 100,
   SALES_BOOST: 250,
   EXPANSION: 600,
   // الباقات القديمة (للتوافق)
-  P30: 120,
+  P30: 100,
   P60: 250,
   P120: 600,
 };

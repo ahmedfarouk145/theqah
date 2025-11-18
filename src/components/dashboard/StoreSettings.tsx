@@ -18,6 +18,7 @@ import {
 import ZidIntegrationTab from '@/components/dashboard/settings/ZidIntegrationTab';
 import MessageSettings from '@/components/dashboard/settings/MessageSettings';
 import SallaIntegrationTab from '@/components/dashboard/settings/SallaIntegrationTab';
+import UsageCounter from '@/components/dashboard/UsageCounter';
 
 type TabMeta = {
   id: 'الربط' | 'الرسائل' | 'معلومات المتجر';
@@ -201,6 +202,11 @@ export default function StoreSettings({
       <ContentCard delay={400}>
         {activeTab === 'الربط' && (
           <div className="space-y-8">
+            {/* Usage Counter */}
+            <div className="mb-8">
+              <UsageCounter />
+            </div>
+
             {/* Header Section */}
             <div className="text-center space-y-4 pb-8 border-b border-gray-200/50">
               <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto shadow-2xl hover:rotate-12 hover:scale-110 transition-all duration-500 group">

@@ -309,7 +309,7 @@ export default function SallaIntegrationTab({ storeUid: storeUidProp }: Props) {
           </h4>
           <div className="prose prose-blue max-w-none text-sm text-blue-800">
             <ol className="space-y-2">
-              <li>انتقل إلى <strong>متجر سلة للتطبيقات</strong> وابحث عن تطبيق &ldquo;ثقة&rdquo;</li>
+              <li>انتقل إلى <strong>متجر سلة للتطبيقات</strong> وابحث عن تطبيق &ldquo;مشتري موثق&rdquo;</li>
               <li>اضغط على <strong>&ldquo;تثبيت التطبيق&rdquo;</strong></li>
               <li>ستتم عملية الربط تلقائياً باستخدام النمط السهل (Easy OAuth)</li>
               <li>ستصلك رسالة إيميل تحتوي على تفاصيل حسابك</li>
