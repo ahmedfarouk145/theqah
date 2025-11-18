@@ -384,7 +384,12 @@ async function ensureInviteForOrder(
   }
 
   // ✅ استخراج الحالة الحالية من الـ payload
-  const currentStatus = lc(order.status ?? order.order_status ?? order.new_status ?? rawData["status"] as string ?? "");
+  const statusObj = order.status ?? rawData["status"];
+  const currentStatus = lc(
+    typeof statusObj === "object" && statusObj !== null
+      ? (statusObj.slug ?? statusObj.name ?? "")
+      : (statusObj ?? order.order_status ?? order.new_status ?? "")
+  );
   console.log(`[INVITE FLOW] 5.1. Current order status: "${currentStatus}"`);
 
   // ✅ التحقق من الحالة المحفوظة سابقاً (Status Tracking)
