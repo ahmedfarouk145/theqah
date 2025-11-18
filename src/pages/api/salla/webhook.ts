@@ -383,22 +383,49 @@ async function ensureInviteForOrder(
     return;
   }
 
-  // ✅ جديد: التحقق من حالة الطلب - إرسال الدعوة فقط عند "تم التنفيذ"
-  const orderStatus = lc(order.status ?? order.order_status ?? order.new_status ?? rawData["status"] as string ?? "");
-  const isCompleted = 
-    orderStatus === "completed" || 
-    orderStatus === "تم التنفيذ" ||
-    orderStatus === "delivered" ||
-    orderStatus === "تم التوصيل";
+  // ✅ استخراج الحالة الحالية من الـ payload
+  const currentStatus = lc(order.status ?? order.order_status ?? order.new_status ?? rawData["status"] as string ?? "");
+  console.log(`[INVITE FLOW] 5.1. Current order status: "${currentStatus}"`);
+
+  // ✅ التحقق من الحالة المحفوظة سابقاً (Status Tracking)
+  const orderTrackingRef = db.collection("order_status_tracking").doc(orderId);
+  const trackingSnap = await orderTrackingRef.get();
+  const previousStatus = trackingSnap.exists ? lc(trackingSnap.data()?.status ?? "") : "";
   
-  console.log(`[INVITE FLOW] 5.1. Order status: "${orderStatus}", isCompleted: ${isCompleted}`);
-  
-  if (!isCompleted) {
-    console.log(`[INVITE FLOW] ❌ SKIP: Order not completed yet (status: ${orderStatus}). Will send when status = "تم التنفيذ"`);
+  console.log(`[INVITE FLOW] 5.2. Previous status: "${previousStatus || "none"}", Current: "${currentStatus}"`);
+
+  // ✅ تحديث الحالة المحفوظة
+  await orderTrackingRef.set({
+    orderId,
+    status: currentStatus,
+    updatedAt: Date.now(),
+    storeUid: pickStoreUidFromSalla(rawData, bodyMerchant) || null
+  }, { merge: true });
+  console.log(`[INVITE FLOW] 5.3. Status tracking updated`);
+
+  // ✅ فحص: هل الحالة اتغيرت فعلاً؟
+  if (previousStatus === currentStatus) {
+    console.log(`[INVITE FLOW] ❌ SKIP: Status unchanged (${currentStatus}), no need to check again`);
     return;
   }
   
-  console.log(`[INVITE FLOW] ✅ Order is completed, proceeding with invite...`);
+  console.log(`[INVITE FLOW] ✅ Status changed from "${previousStatus}" to "${currentStatus}"`);
+
+  // ✅ فحص: هل الحالة الجديدة = "تم التنفيذ"؟
+  const isCompleted = 
+    currentStatus === "completed" || 
+    currentStatus === "تم التنفيذ" ||
+    currentStatus === "delivered" ||
+    currentStatus === "تم التوصيل";
+  
+  console.log(`[INVITE FLOW] 5.4. Is order completed? ${isCompleted}`);
+  
+  if (!isCompleted) {
+    console.log(`[INVITE FLOW] ❌ SKIP: Order not completed yet (status: ${currentStatus}). Waiting for "تم التنفيذ"`);
+    return;
+  }
+  
+  console.log(`[INVITE FLOW] ✅ Order is completed NOW, proceeding with invite...`);
 
   let storeUid: string|null = pickStoreUidFromSalla(rawData, bodyMerchant) || null;
   console.log(`[INVITE FLOW] 6. StoreUid from payload: ${storeUid || "none"}`);
@@ -949,11 +976,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // D) Auto-create review invites ONLY on order.status.updated when completed + void on cancel/refund  
+    // D) Auto-create review invites on order.updated with status tracking  
     console.log(`[SALLA STEP] D) Checking invite events for: ${event}`);
-    if (event === "order.status.updated") {
-      // ✅ إرسال الدعوة فقط عند تحديث حالة الطلب إلى "تم التنفيذ"
-      console.log(`[INVITE DEBUG] Order status updated event detected for order: ${orderId}`);
+    if (event === "order.updated" || event === "order.status.updated") {
+      // ✅ إرسال الدعوة عند تحديث الطلب - مع تتبع الحالة لتجنب التكرار
+      console.log(`[INVITE DEBUG] Order update event detected for order: ${orderId}`);
       
       // ✅ استخراج الـ order الكامل من الـ payload
       const fullOrder = (dataRaw["order"] as SallaOrder | undefined) || asOrder;
