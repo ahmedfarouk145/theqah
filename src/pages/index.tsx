@@ -185,14 +185,47 @@ export default function LandingPage() {
         </section>
 
         {/* Footer */}
-        <footer className="bg-green-100 py-6 text-center text-sm text-green-900 border-t border-green-200">
-          <div className="flex justify-center gap-6 mb-2 flex-wrap">
-            <Link href="/privacy-policy" className="hover:underline">سياسة الخصوصية</Link>
-            <Link href="/terms" className="hover:underline">الشروط والأحكام</Link>
-            <Link href="/support" className="hover:underline">الدعم والمساعدة</Link>
-          </div>
-          <p>© 2025 مشتري موثّق - جميع الحقوق محفوظة</p>
-        </footer>
+<footer className="bg-green-100 py-6 text-sm text-green-900 border-t border-green-200">
+  <div className="max-w-6xl mx-auto px-4 flex flex-col gap-3">
+    {/* الروابط */}
+    <div className="flex justify-center gap-6 flex-wrap">
+      <Link href="/privacy-policy" className="hover:underline">
+        سياسة الخصوصية
+      </Link>
+      <Link href="/terms" className="hover:underline">
+        الشروط والأحكام
+      </Link>
+      <Link href="/support" className="hover:underline">
+        الدعم والمساعدة
+      </Link>
+    </div>
+
+    {/* النص */}
+    <p className="text-center md:text-right">
+      ©️ مُشتري موثّق. جميع الحقوق محفوظة.
+      <br />
+      النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية
+    </p>
+
+    {/* اللوجو: آخر حاجة تحت يمين وبحجم أصغر */}
+    <div className="w-full flex justify-end">
+      <a
+        href="https://eauthenticate.saudibusiness.gov.sa/certificate-details/0000203970"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center justify-center"
+      >
+        <Image
+          src="/eauth-logo.png"
+          alt="التحقق من شهادة مُشتري موثّق"
+          width={40}
+          height={40}
+          className="opacity-90 hover:opacity-100 transition"
+        />
+      </a>
+    </div>
+  </div>
+</footer>
       </main>
     </>
   );

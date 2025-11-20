@@ -154,15 +154,29 @@
       const sec = fromData.closest("section, .product, .product-page, .product__details, .product-single, .product-show");
       if (sec) return sec;
     }
+    
+    // في صفحة المنتج - ابحث عن الوصف أو تفاصيل المنتج
     const candidates = [
-      ".product__details",".product-show",".product-single",".product-details",
-      ".product-info",".product-main","#product-show","#product","main .container"
+      ".product-description",     // الوصف
+      ".product__description",
+      "#product-description",
+      ".product__details",        // التفاصيل
+      ".product-show",
+      ".product-single",
+      ".product-details",
+      ".product-info",
+      ".product-main",
+      "#product-show",
+      "#product",
+      "main .container"
     ];
+    
     for (const sel of candidates) {
       const el = document.querySelector(sel);
       if (el) return el;
     }
-    return document.body;
+    
+    return null; // لا تستخدم body كـ fallback
   }
 
   function ensureHostUnderProduct() {
@@ -170,14 +184,18 @@
     if (host) return host;
 
     const anchor = findProductAnchor();
+    
+    // لو مفيش anchor (يعني مش صفحة منتج) - ما تعملش حاجة
+    if (!anchor) return null;
+    
     host = document.createElement("div");
     host.className = "theqah-reviews";
     host.style.marginTop = "24px";
+    
     if (anchor && anchor.parentNode) {
       anchor.parentNode.insertBefore(host, anchor.nextSibling);
-    } else {
-      document.body.appendChild(host);
     }
+    
     return host;
   }
 
@@ -750,8 +768,15 @@
       }
     }
 
-    // لو لسه مفيش — اعرض رسالة تشخيصية
+    // لو لسه مفيش — اعرض رسالة تشخيصية (فقط لو فيه host element)
     const host = existingHost || ensureHostUnderProduct();
+    
+    // لو مفيش host (يعني مش صفحة منتج) - ما تعملش حاجة
+    if (!host) {
+      console.log('[Theqah] Not a product page - widget skipped');
+      return;
+    }
+    
     if (!store) {
       if (host && host.getAttribute("data-mounted") !== "1") {
         const msg = document.createElement("div");
