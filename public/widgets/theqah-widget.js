@@ -392,6 +392,38 @@
           background: ${theme === "dark" ? "rgba(15, 23, 42, 0.3)" : "rgba(248, 250, 252, 0.5)"};
         }
         
+        /* ——— Scrollable List Container ——— */
+        .list-container {
+          max-height: 800px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          padding: 4px;
+          margin: 16px 0;
+          
+          /* Custom Scrollbar */
+          scrollbar-width: thin;
+          scrollbar-color: ${theme === "dark" ? "rgba(71, 85, 105, 0.5)" : "rgba(203, 213, 225, 0.6)"} transparent;
+        }
+        
+        .list-container::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        .list-container::-webkit-scrollbar-track {
+          background: transparent;
+          border-radius: 4px;
+        }
+        
+        .list-container::-webkit-scrollbar-thumb {
+          background: ${theme === "dark" ? "rgba(71, 85, 105, 0.5)" : "rgba(203, 213, 225, 0.6)"};
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+        
+        .list-container::-webkit-scrollbar-thumb:hover {
+          background: ${theme === "dark" ? "rgba(100, 116, 139, 0.7)" : "rgba(148, 163, 184, 0.8)"};
+        }
+        
         .row { 
           display: flex; 
           align-items: center; 
@@ -570,13 +602,17 @@
       : (lang === "ar" ? "تقييمات المتجر" : "Store Reviews");
 
     const container = h("div", { class: "wrap" });
+    const listContainer = h("div", { class: "list-container" }, [
+      h("div", { class: "list loading" }, lang === "ar" ? "…جاري التحميل" : "Loading…")
+    ]);
+    
     const section = h("div", { class: "section" }, [
       h("div", { class: "header" }, [
         h("img", { class: "logo", src: LOGO_URL, alt: "Theqah" }),
         h("p", { class: "title" }, titleText),
       ]),
       productId ? h("p", { class: "meta" }, `${lang === "ar" ? "رقم المنتج" : "Product"}: ${productId}`) : null,
-      h("div", { class: "list loading" }, lang === "ar" ? "…جاري التحميل" : "Loading…"),
+      listContainer,
       h("div", { class: "filter" }, [
         h("span", {}, lang === "ar" ? "الترتيب:" : "Sort:"),
         h("button", { "data-sort": "desc", class: "active" }, lang === "ar" ? "الأحدث" : "Newest"),
@@ -589,7 +625,7 @@
     root.appendChild(container);
 
     const filterEl = section.querySelector(".filter");
-    const list = section.querySelector(".list");
+    const list = listContainer.querySelector(".list");
     let currentSort = "desc";
     let lastData = null;
 
