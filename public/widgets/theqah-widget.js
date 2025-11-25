@@ -251,11 +251,18 @@
         
         .header { 
           display: flex; 
-          align-items: center; 
-          gap: 16px; 
+          flex-direction: column;
+          align-items: flex-start; 
+          gap: 12px; 
           margin-bottom: 24px;
           padding-bottom: 20px;
           border-bottom: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.5)"};
+        }
+        
+        .header-top {
+          display: flex;
+          align-items: center;
+          gap: 16px;
         }
         
         /* ——— لوجو الهيدر: ثابت (لا تغيير إضافي) ——— */
@@ -270,8 +277,8 @@
         .logo:hover { transform: scale(1.03); }
         
         .title { 
-          font-weight: 700; 
-          font-size: 22px; 
+          font-weight: 800; 
+          font-size: 32px;
           margin: 0;
           background: ${theme === "dark" 
             ? "linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%)" 
@@ -280,6 +287,15 @@
           background-clip: text;
           -webkit-text-fill-color: transparent;
           letter-spacing: -0.025em;
+        }
+        
+        .subtitle {
+          font-size: 16px;
+          font-weight: 600;
+          color: ${theme === "dark" ? "#94a3b8" : "#64748b"};
+          margin: 0;
+          line-height: 1.6;
+          letter-spacing: -0.01em;
         }
         
         .meta { 
@@ -600,6 +616,10 @@
     const titleText = productId
       ? (lang === "ar" ? "آراء المشترين" : "Customer Reviews")
       : (lang === "ar" ? "تقييمات المتجر" : "Store Reviews");
+    
+    const subtitleText = productId
+      ? (lang === "ar" ? "منصة مشتري موثق تحققت من أن جميع المقيّمين مشترون فعليون" : "Verified Buyer platform confirmed all reviewers are actual buyers")
+      : (lang === "ar" ? "تقييمات موثوقة من عملاء حقيقيين" : "Trusted reviews from real customers");
 
     const container = h("div", { class: "wrap" });
     const listContainer = h("div", { class: "list-container" }, [
@@ -608,8 +628,11 @@
     
     const section = h("div", { class: "section" }, [
       h("div", { class: "header" }, [
-        h("img", { class: "logo", src: LOGO_URL, alt: "Theqah" }),
-        h("p", { class: "title" }, titleText),
+        h("div", { class: "header-top" }, [
+          h("img", { class: "logo", src: LOGO_URL, alt: "Theqah" }),
+          h("p", { class: "title" }, titleText),
+        ]),
+        h("p", { class: "subtitle" }, subtitleText),
       ]),
       productId ? h("p", { class: "meta" }, `${lang === "ar" ? "رقم المنتج" : "Product"}: ${productId}`) : null,
       listContainer,
