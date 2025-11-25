@@ -9,7 +9,7 @@ import NavbarLanding from '@/components/NavbarLanding';
 
 export default function LandingPage() {
   const [storesCount, setStoresCount] = useState(300);
-  const [reviewsCount, setReviewsCount] = useState(500);
+  const [reviewsCount, setReviewsCount] = useState(5000);
 
   // جلب البيانات من Firebase
   const fetchCounts = async () => {
@@ -18,7 +18,7 @@ export default function LandingPage() {
       if (response.ok) {
         const data = await response.json();
         setStoresCount((data.stores || 0) + 300); // يبدأ من 300 ويضيف الداتا الحقيقية
-        setReviewsCount((data.reviews || 0) + 500); // يبدأ من 500 ويضيف الداتا الحقيقية
+        setReviewsCount((data.reviews || 0) + 5000); // يبدأ من 500 ويضيف الداتا الحقيقية
       }
     } catch (error) {
       console.log('Failed to fetch stats:', error);
@@ -206,24 +206,40 @@ export default function LandingPage() {
       <br />
       النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية
     </p>
+{/* اللوجوهات: تحت يمين وبحجم أصغر */}
+<div className="w-full flex justify-end gap-4">
+  {/* لوجو جمعية قدوة */}
+  <a
+    href="https://www.qudwa.org.sa"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center justify-center"
+  >
+    <Image
+      src="/qudwa-logo.png"
+      alt="جمعية قدوة لرعاية الأيتام"
+      width={80}
+      height={80}
+      className="opacity-90 hover:opacity-100 transition"
+    />
+  </a>
 
-    {/* اللوجو: آخر حاجة تحت يمين وبحجم أصغر */}
-    <div className="w-full flex justify-end">
-      <a
-        href="https://eauthenticate.saudibusiness.gov.sa/certificate-details/0000203970"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center justify-center"
-      >
-        <Image
-          src="/eauth-logo.png"
-          alt="التحقق من شهادة مُشتري موثّق"
-          width={40}
-          height={40}
-          className="opacity-90 hover:opacity-100 transition"
-        />
-      </a>
-    </div>
+  {/* لوجو eauth الموجود فعلاً */}
+  <a
+    href="https://eauthenticate.saudibusiness.gov.sa/certificate-details/0000203970"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center justify-center"
+  >
+    <Image
+      src="/eauth-logo.png"
+      alt="التحقق من شهادة مُشتري موثّق"
+      width={40}
+      height={40}
+      className="opacity-90 hover:opacity-100 transition"
+    />
+  </a>
+</div>
   </div>
 </footer>
       </main>
