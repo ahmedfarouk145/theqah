@@ -469,6 +469,15 @@ async function ensureInviteForOrder(
   }
   console.log(`[INVITE FLOW] 11. APP_BASE_URL: ${APP_BASE_URL}`);
 
+  // ❌ DISABLED: Token creation & message sending disabled - Migrating to Salla Reviews API
+  // سلة طلبوا نقرأ التقييمات من API بتاعهم بدل ما نبعت دعوات
+  // Future: هنستخدم GET /admin/v2/reviews endpoint لقراءة تقييمات سلة
+  // هنفلتر التقييمات بناءً على تاريخ بداية الاشتراك و quota
+  
+  console.log(`[INVITE FLOW] 12. ⚠️ Token creation DISABLED - Using Salla Reviews API instead`);
+  console.log(`[INVITE FLOW] 12.1. Order tracked: ${orderId} for store: ${storeUid}`);
+  
+  /*
   const tokenId = crypto.randomBytes(10).toString("hex");
   const reviewUrl = `${APP_BASE_URL}/review/${tokenId}`;
   
@@ -507,17 +516,17 @@ async function ensureInviteForOrder(
   }
   console.log(`[INVITE FLOW] 14. Sending invitations...`);
   try {
-  await sendBothNow({
-    inviteId: tokenId,
+    await sendBothNow({
+      inviteId: tokenId,
       phone: finalCustomer?.mobile,
       email: customerEmail,
       customerName: finalCustomer?.name,
-    storeName,
+      storeName,
       productName: mainProductName, // ✅ اسم المنتج
       orderNumber: String(order.number || orderId), // ✅ رقم الطلب
-    url: publicUrl,
-    perChannelTimeoutMs: 15000,
-  });
+      url: publicUrl,
+      perChannelTimeoutMs: 15000,
+    });
     console.log(`[INVITE FLOW] 15. ✅ Invitations sent successfully`);
   } catch (sendError) {
     console.log(`[INVITE FLOW] 15. ⚠️ Send failed but token created: ${sendError}`);
@@ -533,6 +542,9 @@ async function ensureInviteForOrder(
   }
   
   console.log(`[INVITE FLOW] 🎉 COMPLETED: Review token ${tokenId} created for order ${orderId}`);
+  */
+  
+  console.log(`[INVITE FLOW] 🎉 COMPLETED: Order ${orderId} processed (no token/message - Salla API mode)`);
 }
 
 /* ===================== Handler ===================== */
