@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-salla-reviews",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}

@@ -12,7 +12,8 @@ export type SallaScope =
   | 'products.read'         // قراءة المنتجات (اختياري)
   | 'webhooks.read_write'   // إدارة الwebhooks (مطلوب للإشعارات)
   | 'notifications.read'    // قراءة الإشعارات (اختياري)
-  | 'analytics.read';       // قراءة التحليلات (اختياري)
+  | 'analytics.read'        // قراءة التحليلات (اختياري)
+  | 'reviews.read';         // قراءة المراجعات من Salla
 
 /**
  * الصلاحيات الأساسية المطلوبة لعمل التطبيق
@@ -22,7 +23,8 @@ export const CORE_SCOPES: SallaScope[] = [
   'settings.read', 
   'customers.read',
   'orders.read',
-  'webhooks.read_write'
+  'webhooks.read_write',
+  'reviews.read'          // ✨ جديد: لقراءة المراجعات من Salla
 ];
 
 /**
