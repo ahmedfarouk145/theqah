@@ -3,10 +3,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { fetchStoreInfo, fetchUserInfo, getOwnerAccessToken } from "@/lib/sallaClient";
-import { canSendInvite, onInviteSent } from "@/server/subscription/usage";
+import { canSendInvite } from "@/server/subscription/usage";
 import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
-import { sendBothNow } from "@/server/messaging/send-invite";
-import { createShortLink } from "@/server/short-links";
 
 export const runtime = "nodejs";
 export const config = { api: { bodyParser: false } };
@@ -42,7 +40,6 @@ const APP_BASE_URL   = (
 ).replace(/\/+$/,"");
 const WEBHOOK_LOG_DEST = (process.env.WEBHOOK_LOG_DEST || "console").trim().toLowerCase(); // console | firestore
 const ENABLE_FIRESTORE_LOGS = process.env.ENABLE_FIRESTORE_LOGS === "true"; // Better env control
-const LOG_REVIEW_URLS = (process.env.LOG_REVIEW_URLS || "").trim().toLowerCase(); // "1"/"true" to log review url
 
 /* ===================== Utils ===================== */
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
@@ -188,16 +185,6 @@ function encodeUrlForFirestore(url: string | null | undefined): string {
     .replace(/\?/g, "_QUEST_")
     .replace(/#/g, "_HASH_")
     .replace(/&/g, "_AMP_");
-}
-function pickName(obj: unknown): string | undefined {
-  if (obj && typeof obj === "object" && "name" in obj) {
-    const n = (obj as { name?: unknown }).name;
-    return typeof n === "string" ? n : undefined;
-  }
-  return undefined;
-}
-function getStoreOrMerchantName(ev: Dict): string | undefined {
-  return pickName(ev["store"]) ?? pickName(ev["merchant"]);
 }
 function pickStoreUidFromSalla(eventData: Dict, bodyMerchant?: string | number): string | undefined {
   if (bodyMerchant !== undefined && bodyMerchant !== null) return `salla:${String(bodyMerchant)}`;
