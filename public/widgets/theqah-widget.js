@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "1.3.24"; // Larger images - 150px
+  const SCRIPT_VERSION = "2.0.0"; // Simple verified badge version
   
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -14,7 +14,7 @@
   })();
 
   const API_BASE = `${SCRIPT_ORIGIN}/api/public/reviews`;
-  const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png?v=3`; // تفادي الكاش
+  const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png?v=3`;
 
   // ——— Helpers ———
   const h = (tag, attrs = {}, children = []) => {
@@ -28,12 +28,6 @@
       .filter(Boolean)
       .forEach((c) => (typeof c === "string" ? el.appendChild(document.createTextNode(c)) : el.appendChild(c)));
     return el;
-  };
-
-  const Stars = (n = 0) => {
-    const wrap = h("div", { class: "stars", role: "img", "aria-label": `${n} stars` });
-    for (let i = 1; i <= 5; i++) wrap.appendChild(h("span", { class: "star" + (i <= n ? " filled" : "") }, "★"));
-    return wrap;
   };
 
   // ——— Cache/Single-flight لنتيجة resolveStore ———
@@ -64,7 +58,7 @@
     if (G.resolvePromise) return G.resolvePromise;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 ثواني للـ resolve
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
     G.resolvePromise = fetch(url, { 
@@ -83,71 +77,14 @@
       .catch(e => {
         clearTimeout(timeoutId);
         console.warn('Store resolve failed:', e.message);
-        return null; // فشل صامت - لا تعلق الصفحة
+        return null;
       })
       .finally(() => { G.resolvePromise = null; });
 
     return G.resolvePromise;
   }
 
-  // ——— اكتشاف Product ID (سلة) ———
-  function detectProductId() {
-    const host = document.querySelector("#theqah-reviews, .theqah-reviews");
-    const hostPid = host?.getAttribute("data-product") || host?.dataset?.product;
-    if (hostPid && /\S/.test(hostPid) && hostPid !== "auto") return String(hostPid).trim();
-
-    // JSON-LD
-    try {
-      const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
-      for (const s of scripts) {
-        try {
-          const json = JSON.parse(s.textContent || "null");
-          const arr = Array.isArray(json) ? json : [json];
-          for (const node of arr) {
-            if (!node) continue;
-            if (node["@type"] === "Product" || (Array.isArray(node["@type"]) && node["@type"].includes("Product"))) {
-              const pid = node.productID || node.productId || node.sku || null;
-              if (pid) return String(pid);
-              if (node.url) {
-                const m = String(node.url).match(/(\d{5,})/);
-                if (m) return m[1];
-              }
-            }
-          }
-        } catch {}
-      }
-    } catch {}
-
-    // DOM hints
-    const domHints = [
-      "[data-product-id]","[data-productid]",
-      '[itemtype*="Product"] [itemprop="sku"]','[itemtype*="Product"] [itemprop="productID"]',
-      ".product-id","#product-id"
-    ];
-    for (const sel of domHints) {
-      const el = document.querySelector(sel);
-      const v = el?.getAttribute?.("data-product-id")
-        || el?.getAttribute?.("data-productid")
-        || el?.textContent
-        || el?.getAttribute?.("content");
-      if (v && /\S/.test(v)) return String(v).trim();
-    }
-
-    // URL Heuristics لسلة
-    const url = location.pathname;
-    const matchers = [
-      /\/p(\d{8,})(?:\/|$)/,  // /p1927638714
-      /-(\d{8,})$/,           // ...-1927638714
-      /\/products\/(\d{8,})/  // /products/1927638714
-    ];
-    for (const rgx of matchers) {
-      const m = url.match(rgx);
-      if (m) return m[1];
-    }
-    return null;
-  }
-
-  // ——— إدراج الحاوية أسفل سكشن المنتج ———
+  // ——— إدراج الحاوية ———
   function findProductAnchor() {
     const fromData = document.querySelector("[data-product-id], [data-productid]");
     if (fromData) {
@@ -155,12 +92,11 @@
       if (sec) return sec;
     }
     
-    // في صفحة المنتج - ابحث عن الوصف أو تفاصيل المنتج
     const candidates = [
-      ".product-description",     // الوصف
+      ".product-description",
       ".product__description",
       "#product-description",
-      ".product__details",        // التفاصيل
+      ".product__details",
       ".product-show",
       ".product-single",
       ".product-details",
@@ -176,7 +112,7 @@
       if (el) return el;
     }
     
-    return null; // لا تستخدم body كـ fallback
+    return null;
   }
 
   function ensureHostUnderProduct() {
@@ -184,8 +120,6 @@
     if (host) return host;
 
     const anchor = findProductAnchor();
-    
-    // لو مفيش anchor (يعني مش صفحة منتج) - ما تعملش حاجة
     if (!anchor) return null;
     
     host = document.createElement("div");
@@ -199,14 +133,23 @@
     return host;
   }
 
-  // ——— تركيب وrender ———
-  async function mountOne(hostEl, store, productId, limit, lang, theme) {
-    // حراسة ضد التكرار
+  // ——— Debounce ———
+  function debounce(func, wait) {
+    let timeoutId;
+    return function(...args) {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
+  // ——— تركيب البادج المبسط ———
+  async function mountOne(hostEl, store, lang, theme) {
     if (hostEl.getAttribute("data-state") === "done") return;
     if (hostEl.getAttribute("data-state") === "mounting") return;
     hostEl.setAttribute("data-state", "mounting");
 
     const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
+    
     const style = h("style", {
       html: `
         :host { all: initial; }
@@ -225,12 +168,12 @@
             : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)"};
           color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"};
           border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.8)"};
-          border-radius: 20px; 
-          padding: 32px; 
-          margin: 24px 0; 
+          border-radius: 16px; 
+          padding: 20px 24px; 
+          margin: 20px 0; 
           box-shadow: ${theme === "dark" 
-            ? "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05)" 
-            : "0 25px 50px -12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.05)"};
+            ? "0 10px 25px -5px rgba(0, 0, 0, 0.4)" 
+            : "0 10px 25px -5px rgba(0, 0, 0, 0.1)"};
           backdrop-filter: blur(12px);
           position: relative;
           overflow: hidden;
@@ -249,397 +192,52 @@
             transparent 100%);
         }
         
-        .header { 
-          display: flex; 
-          flex-direction: column;
-          align-items: flex-start; 
-          gap: 12px; 
-          margin-bottom: 24px;
-          padding-bottom: 20px;
-          border-bottom: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.5)"};
-        }
-        
-        .header-top {
+        .verified-badge {
           display: flex;
           align-items: center;
           gap: 16px;
+          padding: 0;
         }
         
-        /* ——— لوجو الهيدر: ثابت (لا تغيير إضافي) ——— */
-        .logo { 
-          width: 96px; 
-          height: 96px; 
-          border-radius: 10px;
-          padding: 10px;
-          background: ${theme === "dark" ? "rgba(59, 130, 246, 0.12)" : "rgba(59, 130, 246, 0.08)"};
+        .badge-logo { 
+          width: 48px; 
+          height: 48px; 
+          border-radius: 8px;
+          flex-shrink: 0;
           transition: all 0.25s ease;
         }
-        .logo:hover { transform: scale(1.03); }
         
-        .title { 
-          font-weight: 800; 
-          font-size: 32px;
-          margin: 0;
-          background: ${theme === "dark" 
-            ? "linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%)" 
-            : "linear-gradient(135deg, #1e293b 0%, #475569 100%)"};
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-          letter-spacing: -0.025em;
+        .badge-logo:hover { 
+          transform: scale(1.05); 
         }
         
-        .subtitle {
+        .badge-text {
           font-size: 16px;
           font-weight: 600;
-          color: ${theme === "dark" ? "#94a3b8" : "#64748b"};
+          color: ${theme === "dark" ? "#cbd5e1" : "#475569"};
           margin: 0;
-          line-height: 1.6;
+          line-height: 1.5;
           letter-spacing: -0.01em;
         }
         
-        .meta { 
-          font-size: 14px; 
-          opacity: 0.75; 
-          margin: 0 0 24px 0;
-          font-weight: 500;
-          color: ${theme === "dark" ? "#94a3b8" : "#64748b"};
+        @media (max-width: 640px) {
+          .section { padding: 16px 20px; }
+          .badge-text { font-size: 14px; }
+          .badge-logo { width: 40px; height: 40px; }
         }
-
-        /* ——— النجوم (تكبير + 3D) ——— */
-        .stars { 
-          color: #f59e0b; 
-          letter-spacing: 1px; 
-          font-size: 40px;            /* ← تكبير النجوم */
-          filter: drop-shadow(0 1px 2px rgba(245, 158, 11, 0.2));
-          display: inline-flex;
-          gap: 6px;
-        }
-        .star { 
-          opacity: 0.5; 
-          transition: transform 0.2s ease, text-shadow 0.2s ease, opacity .2s ease;
-          color: #fcd34d; 
-          text-shadow:
-            0 2px 4px rgba(0,0,0,0.5),              /* ظل خارجي */
-            0 -1px 2px rgba(255,255,255,0.6);       /* لمعة أعلى */
-          transform: perspective(220px) translateZ(0);
-        } 
-        .star.filled { 
-          opacity: 1;
-          color: #fbbf24;
-          text-shadow:
-            0 3px 6px rgba(0,0,0,0.6),
-            0 -1px 2px rgba(255,255,255,0.85),
-            0 0 8px rgba(251,191,36,0.7);           /* لمعة ذهبية إضافية */
-        }
-        .star.filled:hover {
-          transform: perspective(220px) translateZ(10px) scale(1.18);  /* يطلع لبرا */
-          text-shadow:
-            0 6px 12px rgba(0,0,0,0.7),
-            0 -2px 3px rgba(255,255,255,0.9),
-            0 0 14px rgba(251,191,36,0.95);
-        }
-        
-        /* ——— البادج الكبير بجوار التقييم ——— */
-        .badge { 
-          display: inline-flex; 
-          align-items: center; 
-          gap: 14px; 
-          background: ${theme === "dark" 
-            ? "linear-gradient(135deg, #059669 0%, #10b981 100%)" 
-            : "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)"};
-          color: ${theme === "dark" ? "#ecfdf5" : "#065f46"};
-          border: 2px solid ${theme === "dark" ? "rgba(16, 185, 129, 0.35)" : "#86efac"};
-          font-size: 22px;        /* ← خط كبير */
-          font-weight: 900;       /* Bold قوي */
-          padding: 14px 22px;     /* بادج كبير */
-          border-radius: 34px;
-          box-shadow: ${theme === "dark" 
-            ? "0 6px 12px -3px rgba(0,0,0,.35)" 
-            : "0 6px 12px -3px rgba(0,0,0,.08)"};
-          white-space: nowrap;
-        }
-        .badge-logo { 
-          width: 70px !important;   /* ← اللوجو 70px */
-          height: 70px !important; 
-          display: block; 
-          object-fit: contain;
-          border-radius: 10px;
-          background: rgba(255,255,255,0.25);
-          padding: 4px;
-          box-sizing: content-box;
-        }
-        .badge .label { letter-spacing: .2px; font-size: 22px; font-weight: 900; }
-        
-        .text { 
-          white-space: pre-wrap; 
-          line-height: 1.7; 
-          font-size: 15px; 
-          margin: 16px 0 0 0;
-          color: ${theme === "dark" ? "#e2e8f0" : "#374151"};
-          letter-spacing: -0.01em;
-        }
-        
-        .images {
-          display: flex;
-          gap: 10px;
-          margin-top: 12px;
-          flex-wrap: wrap;
-        }
-        
-        .review-image {
-          width: 150px;
-          height: 150px;
-          border-radius: 12px;
-          object-fit: cover;
-          border: 2px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.6)"};
-          box-shadow: ${theme === "dark" 
-            ? "0 4px 12px rgba(0, 0, 0, 0.3)" 
-            : "0 4px 12px rgba(0, 0, 0, 0.1)"};
-        }
-        
-        .empty { 
-          padding: 32px; 
-          border: 2px dashed ${theme === "dark" ? "#475569" : "#cbd5e1"}; 
-          border-radius: 16px; 
-          font-size: 15px; 
-          opacity: 0.8;
-          text-align: center;
-          background: ${theme === "dark" ? "rgba(15, 23, 42, 0.3)" : "rgba(248, 250, 252, 0.5)"};
-        }
-        
-        /* ——— Scrollable List Container ——— */
-        .list-container {
-          max-height: 800px;
-          overflow-y: auto;
-          overflow-x: hidden;
-          padding: 4px;
-          margin: 16px 0;
-          
-          /* Custom Scrollbar */
-          scrollbar-width: thin;
-          scrollbar-color: ${theme === "dark" ? "rgba(71, 85, 105, 0.5)" : "rgba(203, 213, 225, 0.6)"} transparent;
-        }
-        
-        .list-container::-webkit-scrollbar {
-          width: 8px;
-        }
-        
-        .list-container::-webkit-scrollbar-track {
-          background: transparent;
-          border-radius: 4px;
-        }
-        
-        .list-container::-webkit-scrollbar-thumb {
-          background: ${theme === "dark" ? "rgba(71, 85, 105, 0.5)" : "rgba(203, 213, 225, 0.6)"};
-          border-radius: 4px;
-          transition: background 0.2s;
-        }
-        
-        .list-container::-webkit-scrollbar-thumb:hover {
-          background: ${theme === "dark" ? "rgba(100, 116, 139, 0.7)" : "rgba(148, 163, 184, 0.8)"};
-        }
-        
-        .row { 
-          display: flex; 
-          align-items: center; 
-          gap: 12px; 
-          justify-content: space-between;
-          flex-wrap: wrap;
-        }
-        
-        .left { 
-          display: flex; 
-          align-items: center; 
-          gap: 12px;
-          flex-wrap: wrap;
-        }
-
-        .right {
-          display: flex;
-          flex-direction: column;
-          align-items: ${lang === "ar" ? "flex-start" : "flex-end"};
-          gap: 4px;
-        }
-
-        .author {
-          font-size: 14px;
-          font-weight: 600;
-          color: ${theme === "dark" ? "#e2e8f0" : "#374151"};
-          margin: 0;
-        }
-        
-        .item { 
-          background: ${theme === "dark" 
-            ? "linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.4) 100%)" 
-            : "linear-gradient(135deg, #ffffff 0%, rgba(248, 250, 252, 0.8) 100%)"};
-          color: inherit; 
-          border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.6)"};
-          border-radius: 18px; 
-          padding: 24px; 
-          margin: 16px 0;
-          box-shadow: ${theme === "dark" 
-            ? "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05)" 
-            : "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.1)"}; 
-          backdrop-filter: blur(8px);
-          transition: all 0.3s ease;
-          position: relative;
-          overflow: hidden;
-          animation: slideInUp 0.5s ease-out forwards;
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        
-        .item::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, 
-            transparent, 
-            ${theme === "dark" ? "rgba(255, 255, 255, 0.03)" : "rgba(59, 130, 246, 0.03)"} , 
-            transparent);
-          transition: left 0.6s;
-        }
-        
-        .item:hover::before { left: 100%; }
-        
-        .item:hover {
-          transform: translateY(-2px);
-          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.3)" : "rgba(59, 130, 246, 0.2)"}; 
-          box-shadow: ${theme === "dark" 
-            ? "0 20px 40px -10px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.1)" 
-            : "0 20px 40px -10px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(59, 130, 246, 0.1)"}; 
-        }
-        
-        .filter { 
-          display: flex; 
-          align-items: center; 
-          gap: 12px; 
-          margin: 24px 0 0; 
-          font-size: 14px; 
-          font-weight: 500;
-          flex-wrap: wrap;
-        }
-        
-        .filter span { color: ${theme === "dark" ? "#94a3b8" : "#64748b"}; }
-        
-        .filter button { 
-          padding: 10px 20px; 
-          border-radius: 12px; 
-          border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.4)" : "rgba(203, 213, 225, 0.8)"}; 
-          background: ${theme === "dark" ? "rgba(15, 23, 42, 0.6)" : "rgba(255, 255, 255, 0.8)"}; 
-          color: inherit; 
-          cursor: pointer;
-          font-weight: 500;
-          font-size: 13px;
-          transition: all 0.2s ease;
-          backdrop-filter: blur(8px);
-        }
-        
-        .filter button:hover {
-          transform: translateY(-1px);
-          border-color: ${theme === "dark" ? "rgba(59, 130, 246, 0.4)" : "rgba(59, 130, 246, 0.3)"}; 
-          background: ${theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(248, 250, 252, 0.9)"}; 
-          box-shadow: ${theme === "dark" 
-            ? "0 4px 12px -2px rgba(0, 0, 0, 0.3)" 
-            : "0 4px 12px -2px rgba(0, 0, 0, 0.05)"}; 
-        }
-        
-        .filter button.active { 
-          background: ${theme === "dark" 
-            ? "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)" 
-            : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)"}; 
-          color: white;
-          border-color: ${theme === "dark" ? "#1d4ed8" : "#2563eb"}; 
-          box-shadow: ${theme === "dark" 
-            ? "0 8px 20px -4px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.2)" 
-            : "0 8px 20px -4px rgba(59, 130, 246, 0.3), 0 0 0 1px rgba(59, 130, 246, 0.1)"}; 
-        }
-        
-        .filter button.active:hover {
-          transform: translateY(-2px);
-          box-shadow: ${theme === "dark" 
-            ? "0 12px 24px -6px rgba(59, 130, 246, 0.5), 0 0 0 1px rgba(59, 130, 246, 0.3)" 
-            : "0 12px 24px -6px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.2)"}; 
-        }
-        
-        .loading { 
-          text-align: center; 
-          padding: 48px 20px; 
-          opacity: 0.7;
-          font-size: 16px;
-          color: ${theme === "dark" ? "#94a3b8" : "#64748b"};
-        }
-        
-        .loading::after {
-          content: '';
-          display: inline-block;
-          width: 20px;
-          height: 20px;
-          margin-left: 12px;
-          border: 2px solid ${theme === "dark" ? "#475569" : "#cbd5e1"};
-          border-radius: 50%;
-          border-top-color: ${theme === "dark" ? "#3b82f6" : "#3b82f6"};
-          animation: spin 1s linear infinite;
-          vertical-align: middle;
-        }
-        
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        
-        /* Responsive Design */
-        @media (max-width: 768px) {
-          .section { padding: 20px; border-radius: 16px; margin: 16px 0; }
-          .title { font-size: 18px; }
-          .item { padding: 18px; border-radius: 14px; }
-          .filter { gap: 8px; }
-          .filter button { padding: 8px 14px; font-size: 12px; }
-          .row { flex-direction: column; align-items: flex-start; gap: 8px; }
-          .right { align-items: flex-start; }
-          .author { font-size: 13px; }
-        }
-        
-        /* Animation for new items */
-        @keyframes slideInUp { to { opacity: 1; transform: translateY(0); } }
-        .item:nth-child(1) { animation-delay: 0.1s; }
-        .item:nth-child(2) { animation-delay: 0.2s; }
-        .item:nth-child(3) { animation-delay: 0.3s; }
-        .item:nth-child(4) { animation-delay: 0.4s; }
-        .item:nth-child(5) { animation-delay: 0.5s; }
       `,
     });
 
-    const titleText = productId
-      ? (lang === "ar" ? "آراء المشترين" : "Customer Reviews")
-      : (lang === "ar" ? "تقييمات المتجر" : "Store Reviews");
-    
-    const subtitleText = productId
-      ? (lang === "ar" ? "منصة مشتري موثق تحققت من أن جميع المقيّمين مشترون فعليون" : "Verified Buyer platform confirmed all reviewers are actual buyers")
-      : (lang === "ar" ? "تقييمات موثوقة من عملاء حقيقيين" : "Trusted reviews from real customers");
+    const verifiedText = lang === "ar" 
+      ? "تقييمات هذا المتجر تخضع للتدقيق بواسطة مشتري موثق" 
+      : "This store's reviews are verified by Theqah Trusted Buyer";
 
     const container = h("div", { class: "wrap" });
-    const listContainer = h("div", { class: "list-container" }, [
-      h("div", { class: "list loading" }, lang === "ar" ? "…جاري التحميل" : "Loading…")
-    ]);
     
     const section = h("div", { class: "section" }, [
-      h("div", { class: "header" }, [
-        h("div", { class: "header-top" }, [
-          h("img", { class: "logo", src: LOGO_URL, alt: "Theqah" }),
-          h("p", { class: "title" }, titleText),
-        ]),
-        h("p", { class: "subtitle" }, subtitleText),
-      ]),
-      productId ? h("p", { class: "meta" }, `${lang === "ar" ? "رقم المنتج" : "Product"}: ${productId}`) : null,
-      listContainer,
-      h("div", { class: "filter" }, [
-        h("span", {}, lang === "ar" ? "الترتيب:" : "Sort:"),
-        h("button", { "data-sort": "desc", class: "active" }, lang === "ar" ? "الأحدث" : "Newest"),
-        h("button", { "data-sort": "asc" }, lang === "ar" ? "الأقدم" : "Oldest"),
+      h("div", { class: "verified-badge" }, [
+        h("img", { class: "badge-logo", src: LOGO_URL, alt: "Theqah" }),
+        h("p", { class: "badge-text" }, verifiedText),
       ]),
     ]);
 
@@ -647,143 +245,16 @@
     root.appendChild(style);
     root.appendChild(container);
 
-    const filterEl = section.querySelector(".filter");
-    const list = listContainer.querySelector(".list");
-    let currentSort = "desc";
-    let lastData = null;
-
-    filterEl.addEventListener("click", (e) => {
-      const btn = e.target.closest("button");
-      if (!btn) return;
-      currentSort = btn.getAttribute("data-sort") || "desc";
-      filterEl.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      renderList(lastData);
-    });
-
-    const base = `${API_BASE}?storeUid=${encodeURIComponent(store)}&limit=${encodeURIComponent(String(limit))}&sinceDays=365`;
-    const endpoint = productId ? `${base}&productId=${encodeURIComponent(productId)}` : base;
-
-    const fetchData = async () => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 ثواني timeout
-      
-      try {
-        const url = `${endpoint}&sort=${currentSort}&v=${encodeURIComponent(SCRIPT_VERSION)}&_=${Date.now()}`;
-        const res = await fetch(url, { 
-          cache: 'no-store',
-          signal: controller.signal,
-          timeout: 8000
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        lastData = await res.json();
-        renderList(lastData);
-        hostEl.setAttribute("data-state", "done");
-      } catch (e) {
-        clearTimeout(timeoutId);
-        console.warn('Reviews fetch failed:', e.message);
-        
-        // عرض رسالة مبسطة بدون تعليق الصفحة
-        try {
-          list.innerHTML = "";
-          const emptyMsg = document.createElement("div");
-          emptyMsg.className = "empty";
-          emptyMsg.textContent = lang === "ar" ? "غير متاح حالياً" : "Unavailable";
-          list.appendChild(emptyMsg);
-        } catch (domError) {
-          console.error('DOM manipulation failed:', domError);
-        }
-        
-        hostEl.removeAttribute("data-state");
-      }
-    };
-
-    const renderList = (data) => {
-      list.innerHTML = "";
-      list.classList.remove("loading");
-      const items = Array.isArray(data?.items) ? data.items : [];
-      if (!items.length) {
-        list.appendChild(h("div", { class: "empty" }, lang === "ar" ? "لا توجد تقييمات بعد — كن أول من يقيّم!" : "No reviews yet — be the first!"));
-        return;
-      }
-      items.sort((a, b) =>
-        currentSort === "asc"
-          ? Number(a.publishedAt || 0) - Number(b.publishedAt || 0)
-          : Number(b.publishedAt || 0) - Number(a.publishedAt || 0)
-      );
-      for (const r of items) {
-        const when = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString(lang === "ar" ? "ar" : "en") : "";
-        const trusted = !!r.trustedBuyer;
-        const authorName = r.author?.displayName || (lang === "ar" ? "عميل المتجر" : "Store Customer");
-
-        const rowLeftChildren = [
-          Stars(Number(r.stars || 0)),
-          trusted
-            ? h("span", { class: "badge", title: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer") }, [
-                h("img", {
-                  class: "badge-logo",
-                  src: LOGO_URL,
-                  alt: (lang === "ar" ? "مشتري موثّق" : "Verified Buyer"),
-                  loading: "lazy"
-                }),
-                h("span", { class: "label" }, lang === "ar" ? "مشتري موثق" : "Verified Buyer")
-              ])
-            : null,
-        ];
-
-        const row = h("div", { class: "row" }, [
-          h("div", { class: "left" }, rowLeftChildren),
-          h("div", { class: "right" }, [
-            h("div", { class: "author" }, authorName),
-            h("small", { class: "meta" }, when),
-          ]),
-        ]);
-
-        const text = h("p", { class: "text" }, String(r.text || "").trim());
-        
-        // Add images if available
-        let imagesEl = null;
-        if (r.images && Array.isArray(r.images) && r.images.length > 0) {
-          const imageElements = r.images.slice(0, 3).map((imgSrc) => {
-            const img = h("img", { 
-              class: "review-image", 
-              src: imgSrc, 
-              alt: lang === "ar" ? "صورة التقييم" : "Review image",
-              loading: "lazy",
-              onerror: "this.style.display='none'"
-            });
-            return img;
-          });
-          imagesEl = h("div", { class: "images" }, imageElements);
-        }
-        
-        const itemChildren = imagesEl ? [row, text, imagesEl] : [row, text];
-        list.appendChild(h("div", { class: "item" }, itemChildren));
-      }
-    };
-
-    await fetchData();
+    hostEl.setAttribute("data-state", "done");
   }
 
-  // ——— Main mounting مع حراسة و Debounce للـ SPA ———
-  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-
+  // ——— الدالة الرئيسية ———
   let mountedOnce = false;
-  let lastHref = location.href;
-
   const safeMount = async () => {
-    // ما تعيدش التركيب على نفس الـ URL
-    if (mountedOnce && lastHref === location.href) return;
-    lastHref = location.href;
-
     const existingHost = document.querySelector("#theqah-reviews, .theqah-reviews");
 
-    // قراءة الإعدادات
     let store =
-      existingHost?.getAttribute("data-store") ||
+      existingHost?.getAttribute?.("data-store") ||
       existingHost?.dataset?.store ||
       CURRENT_SCRIPT?.dataset?.store ||
       "";
@@ -792,7 +263,7 @@
       existingHost?.getAttribute?.("data-lang") ||
       existingHost?.dataset?.lang ||
       CURRENT_SCRIPT?.dataset?.lang ||
-      "ar";
+      (document.documentElement.lang === "ar" ? "ar" : "en");
 
     const theme =
       existingHost?.getAttribute?.("data-theme") ||
@@ -800,20 +271,13 @@
       CURRENT_SCRIPT?.dataset?.theme ||
       "light";
 
-    const limit = Number(
-      existingHost?.getAttribute?.("data-limit") ||
-      existingHost?.dataset?.limit ||
-      CURRENT_SCRIPT?.dataset?.limit ||
-      10
-    ) || 10;
-
     // تنظيف placeholder
     if (store && (store.includes('{') || /STORE_ID/i.test(store))) {
       console.warn('Clearing placeholder store:', store);
       store = '';
     }
 
-    // محاولة auto-resolve مع timeout
+    // محاولة auto-resolve
     if (!store) {
       try { 
         const resolveTimeout = new Promise((_, reject) => 
@@ -823,14 +287,12 @@
       }
       catch (err) { 
         console.warn('Store auto-resolution failed:', err.message);
-        store = null; // فشل صامت
+        store = null;
       }
     }
 
-    // لو لسه مفيش — اعرض رسالة تشخيصية (فقط لو فيه host element)
     const host = existingHost || ensureHostUnderProduct();
     
-    // لو مفيش host (يعني مش صفحة منتج) - ما تعملش حاجة
     if (!host) {
       console.log('[Theqah] Not a product page - widget skipped');
       return;
@@ -850,15 +312,11 @@
       return;
     }
 
-    // product id
-    const pidFromHost = host?.getAttribute("data-product") || host?.dataset?.product || null;
-    const pid = (pidFromHost && pidFromHost !== "auto") ? pidFromHost : detectProductId();
-
-    await mountOne(host, store, pid, limit, String(lang).toLowerCase(), String(theme).toLowerCase());
+    await mountOne(host, store, String(lang).toLowerCase(), String(theme).toLowerCase());
     mountedOnce = true;
   };
 
-  // تشغيل آمن مع حماية من الأخطاء
+  // تشغيل آمن
   const safeLaunch = () => {
     try {
       safeMount().catch(e => console.warn('Widget mount failed:', e.message));
@@ -872,16 +330,14 @@
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", safeLaunch);
   } else {
-    // تأخير صغير لضمان استقرار DOM
     setTimeout(safeLaunch, 100);
   }
 
-  // دعم SPA محسن (أقل استهلاك)
+  // دعم SPA
   if (!window.__THEQAH_OBS__ && typeof MutationObserver !== 'undefined') {
     window.__THEQAH_OBS__ = true;
     const deb = debounce(() => safeMount(), 1000);
     const obs = new MutationObserver((mutations) => {
-      // فلترة - فقط التغييرات المهمة
       const hasRelevantChanges = mutations.some(m => 
         Array.from(m.addedNodes).some(n => 
           n.nodeType === 1 && (
@@ -897,11 +353,10 @@
       obs.observe(document.body, { 
         childList: true, 
         subtree: true,
-        attributes: false,        // تجاهل تغييرات الـ attributes
-        characterData: false      // تجاهل تغييرات النص
+        attributes: false,
+        characterData: false
       });
       
-      // إيقاف المراقب بعد 30 ثانية
       setTimeout(() => {
         obs.disconnect();
         window.__THEQAH_OBS__ = false;
