@@ -30,10 +30,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const storeData = storeSnap.data();
+    if (!storeData) {
+      return res.status(404).json({ error: "Store data not found" });
+    }
+    
     const merchantId = storeData?.salla?.merchantId || storeUid.replace("salla:", "");
 
     // Get access token
-    const token = await getOwnerAccessToken(storeUid);
+    const token = await getOwnerAccessToken(db, storeUid);
     if (!token) {
       return res.status(401).json({ error: "Failed to get access token" });
     }
@@ -72,20 +76,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const reviews = data?.data || [];
     const pagination = data?.pagination || {};
 
-    // Process and save reviews
+    // Get subscription info for verification
+    const subscription = storeData.subscription || {};
+    const subscriptionStart = subscription.startedAt || 0;
+
+    // ✅ Batch query for existing reviews (optimize reads)
+    const reviewIds = reviews.map((r: { id: string | number }) => String(r.id));
+    const existingReviewsSnap = await db.collection("reviews")
+      .where("storeUid", "==", storeUid)
+      .where("sallaReviewId", "in", reviewIds.slice(0, 10)) // Firestore limit: 10 per query
+      .get();
+    
+    const existingSet = new Set(existingReviewsSnap.docs.map(d => d.data().sallaReviewId));
+
+    // Process and save reviews (unlimited sync, verify only post-subscription)
     const savedReviews = [];
     const batch = db.batch();
     let batchCount = 0;
 
     for (const sallaReview of reviews) {
-      // Check if review already exists
       const reviewId = `salla_${merchantId}_${sallaReview.id}`;
-      const existingReview = await db.collection("reviews").doc(reviewId).get();
-
-      if (existingReview.exists) {
+      
+      // Skip if already exists (in-memory check - no read cost)
+      if (existingSet.has(String(sallaReview.id))) {
         console.log(`[Sync] Review ${reviewId} already exists, skipping`);
         continue;
       }
+
+      // Check if review was created after subscription (for verification)
+      const reviewDate = sallaReview.created_at 
+        ? new Date(sallaReview.created_at).getTime() 
+        : 0;
+      const isVerified = subscriptionStart > 0 && reviewDate >= subscriptionStart;
 
       // Map Salla review to our schema
       const reviewDoc = {
@@ -110,11 +132,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         
         // Metadata
-        status: sallaReview.status || "approved", // approved, pending, rejected
-        trustedBuyer: false, // Salla reviews are NOT from our system
-        publishedAt: sallaReview.created_at 
-          ? new Date(sallaReview.created_at).getTime() 
-          : Date.now(),
+        status: sallaReview.status || "approved",
+        trustedBuyer: false, // Salla reviews are not from our invite system
+        verified: isVerified, // ✨ معتمد فقط إذا جاء بعد الاشتراك
+        publishedAt: reviewDate || Date.now(),
         createdAt: Date.now(),
         updatedAt: Date.now(),
         
@@ -142,19 +163,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await batch.commit();
     }
 
+    // Update sync statistics
+    if (savedReviews.length > 0) {
+      await db.collection("stores").doc(storeUid).update({
+        "salla.lastReviewsSyncAt": Date.now(),
+        "salla.lastReviewsSyncCount": savedReviews.length,
+        "salla.totalReviewsSynced": (storeData?.salla?.totalReviewsSynced || 0) + savedReviews.length,
+      }).catch(() => {}); // Silent fail
+    }
+
+    // Calculate quota usage
+    const quotaReads = existingReviewsSnap.size + 1; // batch query + store doc
+    const quotaWrites = savedReviews.length + (savedReviews.length > 0 ? 1 : 0); // reviews + stats update
+
     return res.status(200).json({
       ok: true,
       synced: savedReviews.length,
       total: reviews.length,
       pagination,
       reviews: savedReviews,
+      quotaUsage: {
+        reads: quotaReads,
+        writes: quotaWrites
+      }
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Sync Reviews Error]:", error);
     return res.status(500).json({ 
       error: "Internal server error",
-      message: error.message 
+      message: error instanceof Error ? error.message : "Unknown error"
     });
   }
 }

@@ -21,8 +21,8 @@ export default function StoreInfoTab() {
       try {
         const res = await axios.get('/api/store/info');
         setForm(res.data);
-      } catch (err) {
-        console.error('Error fetching store info', err);
+      } catch {
+        // Error fetching store info - silently handled
       }
     };
     fetchInfo();
@@ -39,54 +39,104 @@ export default function StoreInfoTab() {
       await axios.post('/api/store/update-info', form);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch (err) {
-      console.error('Error updating store info', err);
+    } catch {
+      // Error updating store info - silently handled
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-xl" aria-label="معلومات المتجر">
       <div>
-        <label className="block mb-1 font-medium">اسم المتجر</label>
-        <input name="name" value={form.name} onChange={handleChange} className="input" />
+        <label htmlFor="store-name" className="block mb-1 font-medium">اسم المتجر</label>
+        <input 
+          id="store-name"
+          name="name" 
+          value={form.name} 
+          onChange={handleChange} 
+          className="input" 
+          aria-label="اسم المتجر"
+        />
       </div>
 
       <div>
-        <label className="block mb-1 font-medium">البريد الإلكتروني</label>
-        <input name="email" value={form.email} onChange={handleChange} className="input" />
+        <label htmlFor="store-email" className="block mb-1 font-medium">البريد الإلكتروني</label>
+        <input 
+          id="store-email"
+          name="email" 
+          type="email"
+          value={form.email} 
+          onChange={handleChange} 
+          className="input" 
+          aria-label="البريد الإلكتروني"
+        />
       </div>
 
       <div>
-        <label className="block mb-1 font-medium">رقم الجوال</label>
-        <input name="phone" value={form.phone} onChange={handleChange} className="input" />
+        <label htmlFor="store-phone" className="block mb-1 font-medium">رقم الجوال</label>
+        <input 
+          id="store-phone"
+          name="phone" 
+          type="tel"
+          value={form.phone} 
+          onChange={handleChange} 
+          className="input" 
+          aria-label="رقم الجوال"
+        />
       </div>
 
       <div>
-        <label className="block mb-1 font-medium">وصف المتجر</label>
-        <textarea name="description" value={form.description} onChange={handleChange} className="input h-24" />
+        <label htmlFor="store-description" className="block mb-1 font-medium">وصف المتجر</label>
+        <textarea 
+          id="store-description"
+          name="description" 
+          value={form.description} 
+          onChange={handleChange} 
+          className="input h-24" 
+          aria-label="وصف المتجر"
+        />
       </div>
 
       <div>
-        <label className="block mb-1 font-medium">رابط المتجر</label>
-        <input name="domain" value={form.domain} onChange={handleChange} className="input" />
+        <label htmlFor="store-domain" className="block mb-1 font-medium">رابط المتجر</label>
+        <input 
+          id="store-domain"
+          name="domain" 
+          type="url"
+          value={form.domain} 
+          onChange={handleChange} 
+          className="input" 
+          aria-label="رابط المتجر"
+          placeholder="https://example.com"
+        />
       </div>
 
       <div>
-        <label className="block mb-1 font-medium">رابط الشعار</label>
-        <input name="logoUrl" value={form.logoUrl} onChange={handleChange} className="input" />
+        <label htmlFor="store-logo" className="block mb-1 font-medium">رابط الشعار</label>
+        <input 
+          id="store-logo"
+          name="logoUrl" 
+          type="url"
+          value={form.logoUrl} 
+          onChange={handleChange} 
+          className="input" 
+          aria-label="رابط الشعار"
+          placeholder="https://example.com/logo.png"
+        />
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="bg-green-700 text-white px-6 py-2 rounded hover:bg-green-800"
+        className="bg-green-700 text-white px-6 py-2 rounded hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label="حفظ معلومات المتجر"
+        aria-busy={loading}
       >
         {loading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
       </button>
 
-      {saved && <p className="text-green-600 mt-2">✅ تم الحفظ بنجاح</p>}
+      {saved && <p className="text-green-600 mt-2" role="status" aria-live="polite">✅ تم الحفظ بنجاح</p>}
     </form>
   );
 }

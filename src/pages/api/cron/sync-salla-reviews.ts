@@ -10,7 +10,7 @@ export const config = {
 
 /**
  * Cron job to sync reviews from all Salla stores
- * Vercel Cron: 0 */6 * * * (every 6 hours)
+ * Vercel Cron: 0 star/6 star star star (every 6 hours)
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verify cron secret
@@ -39,15 +39,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const storeData = storeDoc.data();
 
       try {
-        // Check subscription
+        // Get subscription info for verification
         const subscription = storeData.subscription || {};
-        if (!subscription.startedAt) {
-          console.log(`[Cron] Store ${storeUid} has no active subscription, skipping`);
-          continue;
-        }
+        const subscriptionStart = subscription.startedAt || 0;
 
         // Get access token
-        const token = await getOwnerAccessToken(storeUid);
+        const token = await getOwnerAccessToken(db, storeUid);
         if (!token) {
           console.error(`[Cron] Failed to get token for ${storeUid}`);
           totalErrors++;
@@ -74,43 +71,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const data = await response.json();
         const reviews = data?.data || [];
 
-        // Filter reviews by subscription start date
-        const subscriptionStart = subscription.startedAt;
-        const filteredReviews = reviews.filter((r: any) => {
-          const reviewDate = r.created_at ? new Date(r.created_at).getTime() : 0;
-          return reviewDate >= subscriptionStart;
-        });
-
-        // Check quota
+        // Save all reviews (unlimited plan - verify only post-subscription)
         const merchantId = storeData?.salla?.merchantId || storeUid.replace("salla:", "");
-        const existingCount = await db.collection("reviews")
-          .where("storeUid", "==", storeUid)
-          .where("source", "==", "salla_native")
-          .count()
-          .get();
-
-        const currentCount = existingCount.data().count;
-        const limit = subscription.limit || 120;
-        const available = Math.max(0, limit - currentCount);
-
-        if (available === 0) {
-          console.log(`[Cron] Store ${storeUid} reached quota limit`);
-          results.push({ storeUid, synced: 0, reason: "quota_exhausted" });
-          continue;
-        }
-
-        // Save reviews (up to quota)
-        const reviewsToSave = filteredReviews.slice(0, available);
         const batch = db.batch();
         let saved = 0;
+        let verified = 0;
 
-        for (const sallaReview of reviewsToSave) {
+        // ✅ Batch query for existing reviews (optimize reads)
+        const reviewIds = reviews.map((r: { id: string | number }) => `salla_${merchantId}_${r.id}`);
+        const existingReviewsSnap = await db.collection("reviews")
+          .where("__name__", "in", reviewIds.slice(0, 10)) // Firestore limit: 10 per query
+          .get();
+        
+        const existingSet = new Set(existingReviewsSnap.docs.map(d => d.id));
+
+        for (const sallaReview of reviews) {
           const reviewId = `salla_${merchantId}_${sallaReview.id}`;
-          const existingReview = await db.collection("reviews").doc(reviewId).get();
-
-          if (existingReview.exists) {
+          
+          // Skip if already exists (in-memory check - no read cost)
+          if (existingSet.has(reviewId)) {
             continue;
           }
+
+          // Check if review was created after subscription (for verification)
+          const reviewDate = sallaReview.created_at 
+            ? new Date(sallaReview.created_at).getTime() 
+            : 0;
+          const isVerified = subscriptionStart > 0 && reviewDate >= subscriptionStart;
+          if (isVerified) verified++;
 
           const reviewDoc = {
             reviewId,
@@ -128,9 +116,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             },
             status: sallaReview.status || "approved",
             trustedBuyer: false,
-            publishedAt: sallaReview.created_at 
-              ? new Date(sallaReview.created_at).getTime() 
-              : Date.now(),
+            verified: isVerified, // ✨ معتمد فقط إذا جاء بعد الاشتراك
+            publishedAt: reviewDate || Date.now(),
             createdAt: Date.now(),
             updatedAt: Date.now(),
             sallaData: {
@@ -148,15 +135,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await batch.commit();
         }
 
-        totalSynced += saved;
-        results.push({ storeUid, synced: saved, available, filtered: filteredReviews.length });
+        // Update sync statistics
+        await db.collection("stores").doc(storeUid).update({
+          "salla.lastReviewsSyncAt": Date.now(),
+          "salla.lastReviewsSyncCount": saved,
+          "salla.totalReviewsSynced": (storeData?.salla?.totalReviewsSynced || 0) + saved,
+        }).catch(() => {}); // Silent fail
 
-      } catch (error: any) {
-        console.error(`[Cron] Error syncing ${storeUid}:`, error.message);
+        totalSynced += saved;
+        results.push({ 
+          storeUid, 
+          synced: saved, 
+          verified: verified,
+          total: reviews.length 
+        });
+
+      } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        console.error(`[Cron] Error syncing ${storeUid}:`, errorMsg);
         totalErrors++;
-        results.push({ storeUid, error: error.message });
+        results.push({ storeUid, error: errorMsg });
       }
     }
+
+    // Calculate quota usage estimation
+    const estimatedReads = storesSnap.size + totalSynced + (storesSnap.size * 2); // stores + batch queries + updates
+    const estimatedWrites = totalSynced + storesSnap.size; // reviews + sync stats
+
+    // Log sync result to Firestore for monitoring
+    await db.collection("syncLogs").add({
+      timestamp: Date.now(),
+      source: "vercel-cron",
+      totalStores: storesSnap.size,
+      totalSynced,
+      totalErrors,
+      quotaUsage: {
+        reads: estimatedReads,
+        writes: estimatedWrites
+      },
+      results: results.slice(0, 10) // Store first 10 for debugging
+    }).catch(err => console.error("Failed to log sync:", err));
 
     return res.status(200).json({
       ok: true,
@@ -165,13 +183,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       totalErrors,
       results,
       timestamp: Date.now(),
+      quotaEstimate: {
+        reads: estimatedReads,
+        writes: estimatedWrites,
+        note: "Actual usage may vary. Free tier: 50K reads, 20K writes/day"
+      }
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Cron Sync Error]:", error);
     return res.status(500).json({ 
       error: "Internal server error",
-      message: error.message 
+      message: error instanceof Error ? error.message : "Unknown error"
     });
   }
 }

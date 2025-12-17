@@ -55,25 +55,45 @@ export default function SetPasswordPage() {
           <h1 className="text-2xl font-semibold">إنشاء/تعيين كلمة المرور</h1>
           {!tokenFromQuery && <p className="text-red-600">Token مفقود في الرابط.</p>}
 
-          <label className="block">
+          <label htmlFor="onboarding-email" className="block">
             <span className="block text-sm mb-1">الإيميل (اختياري — يُفضّل تعبئته)</span>
-            <input type="email" className="w-full border rounded-md p-2"
-              placeholder="you@example.com" value={email}
-              onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+            <input 
+              id="onboarding-email"
+              type="email" 
+              className="w-full border rounded-md p-2"
+              placeholder="you@example.com" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)} 
+              autoComplete="email"
+              aria-label="البريد الإلكتروني"
+            />
           </label>
 
-          <label className="block">
+          <label htmlFor="onboarding-password" className="block">
             <span className="block text-sm mb-1">كلمة المرور</span>
-            <input type="password" className="w-full border rounded-md p-2"
-              placeholder="••••••••" value={password}
+            <input 
+              id="onboarding-password"
+              type="password" 
+              className="w-full border rounded-md p-2"
+              placeholder="••••••••" 
+              value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password" minLength={6} required />
+              autoComplete="new-password" 
+              minLength={6} 
+              required 
+              aria-label="كلمة المرور"
+              aria-required="true"
+            />
           </label>
 
-          {err && <p className="text-red-600 text-sm">{err}</p>}
+          {err && <p className="text-red-600 text-sm" role="alert" aria-live="polite">{err}</p>}
 
-          <button type="submit" disabled={!tokenFromQuery || submitting}
-            className="w-full rounded-md bg-black text-white py-2 disabled:opacity-60">
+          <button 
+            type="submit" 
+            disabled={!tokenFromQuery || submitting}
+            className="w-full rounded-md bg-black text-white py-2 disabled:opacity-60"
+            aria-label="حفظ كلمة المرور والمتابعة"
+          >
             {submitting ? "جاري الحفظ..." : "حفظ ومتابعة"}
           </button>
         </form>

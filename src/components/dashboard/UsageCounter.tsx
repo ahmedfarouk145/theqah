@@ -29,9 +29,8 @@ export default function UsageCounter() {
         } else {
           setError(response.data.message || 'فشل في جلب البيانات');
         }
-      } catch (err) {
+      } catch {
         setError('حدث خطأ في الاتصال');
-        console.error('[UsageCounter] Error:', err);
       } finally {
         setLoading(false);
       }

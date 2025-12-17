@@ -7,12 +7,12 @@ import { isAxiosError } from 'axios';
 import { format } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import Image from 'next/image';
-import { getAuth } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell,
   AreaChart, Area, LineChart, Line, Tooltip, CartesianGrid
 } from 'recharts';
+import Pagination from '@/components/ui/Pagination';
 
 type Review = {
   id: string;
@@ -35,58 +35,19 @@ const tabs: Array<{ id: TabId; label: string; icon: string }> = [
   { id: 'table', label: 'الجدول', icon: '📋' },
 ];
 
-function toTs(v: unknown): number {
-  if (typeof v === 'number') return v;
-  if (typeof v === 'string') {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : Date.parse(v);
-  }
-  return 0;
-}
-
-function toBool(v: unknown): boolean {
-  if (typeof v === 'boolean') return v;
-  if (typeof v === 'number') return v !== 0;
-  if (typeof v === 'string') return ['1', 'true', 'yes', 'y'].includes(v.toLowerCase());
-  return false;
-}
-
-function normalizeReview(raw: Record<string, unknown>): Review {
-  const id = String(raw['id'] ?? raw['_id'] ?? raw['reviewId'] ?? raw['docId'] ?? '');
-  const productId = (raw['productId'] ?? raw['product_id']) as string | undefined;
-
-  const starsRaw = raw['stars'];
-  const starsNum = typeof starsRaw === 'number' ? starsRaw : Number(starsRaw ?? 0);
-  const stars = Number.isFinite(starsNum) ? starsNum : 0;
-
-  const createdAt =
-    toTs(raw['createdAt'] ?? raw['created'] ?? raw['timestamp'] ?? raw['created_at']) || Date.now();
-
-  const bvCandidate =
-    raw['buyerVerified'] ??
-    raw['trustedBuyer'] ??
-    raw['trusted_buyer'] ??
-    raw['buyer_trusted'] ??
-    raw['verified'] ??
-    raw['isVerified'] ??
-    raw['verifiedBuyer'] ??
-    raw['buyer_verified'];
-
-  const buyerVerified = toBool(bvCandidate);
-  const text = (raw['text'] ?? raw['comment'] ?? '') as string | undefined;
-  const comment = (raw['comment'] as string | undefined) ?? undefined;
-  const status = raw['status'] as Review['status'] | undefined;
-
-  return { id, productId, stars, text, comment, createdAt, buyerVerified, status };
-}
-
 export default function ReviewsTab({ storeName }: { storeName?: string }) {
+  const { user } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showLogo, setShowLogo] = useState(true);
   const [tab, setTab] = useState<TabId>('overview');
   const [filter, setFilter] = useState<FilterId>('all');
+  
+  // Pagination state
+  const [hasMore, setHasMore] = useState(false);
+  const [cursors, setCursors] = useState<string[]>([]);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -95,9 +56,6 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
   }, []);
 
   const fetchReviews = useCallback(async (): Promise<void> => {
-    const auth = getAuth(app);
-    const user = auth.currentUser;
-
     if (!user) {
       if (mountedRef.current) {
         setLoading(false);
@@ -112,45 +70,77 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
       // خذ توكن حديث
       const idToken = await user.getIdToken(/* forceRefresh */ true);
 
-      const res = await axios.get('/api/reviews/list', {
+      const params = new URLSearchParams({ limit: '50' });
+      if (currentCursor) {
+        params.append('cursor', currentCursor);
+      }
+      if (filter !== 'all') {
+        params.append('status', filter);
+      }
+
+      const res = await axios.get(`/api/reviews/list?${params}`, {
         headers: { Authorization: `Bearer ${idToken}` },
       });
 
-      const items = (res.data?.items ?? res.data?.reviews ?? []) as unknown[];
-      const normalized = (Array.isArray(items) ? items : [])
-        .map((r) => normalizeReview((r ?? {}) as Record<string, unknown>))
-        .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+      const items = (res.data?.items ?? res.data?.reviews ?? []) as Review[];
+      const pagination = res.data?.pagination;
 
-      if (mountedRef.current) setReviews(normalized);
+      if (mountedRef.current) {
+        setReviews(items);
+        setHasMore(pagination?.hasMore ?? false);
+      }
     } catch (err: unknown) {
       const status = isAxiosError(err) ? err.response?.status ?? 0 : 0;
 
       // لو Unauthorized جرّب تجدد التوكن مرة تانيه
-      if (status === 401) {
+      if (status === 401 && user) {
         try {
-          const fresh = await getAuth(app).currentUser?.getIdToken(true);
+          const fresh = await user.getIdToken(true);
           if (fresh) {
-            const res2 = await axios.get('/api/reviews/list', {
+            const params2 = new URLSearchParams({ limit: '50' });
+            if (currentCursor) params2.append('cursor', currentCursor);
+            if (filter !== 'all') params2.append('status', filter);
+            
+            const res2 = await axios.get(`/api/reviews/list?${params2}`, {
               headers: { Authorization: `Bearer ${fresh}` },
             });
-            const items2 = (res2.data?.items ?? res2.data?.reviews ?? []) as unknown[];
-            const normalized2 = (Array.isArray(items2) ? items2 : [])
-              .map((r) => normalizeReview((r ?? {}) as Record<string, unknown>))
-              .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
-            if (mountedRef.current) setReviews(normalized2);
+            const items2 = (res2.data?.items ?? res2.data?.reviews ?? []) as Review[];
+            const pagination2 = res2.data?.pagination;
+            
+            if (mountedRef.current) {
+              setReviews(items2);
+              setHasMore(pagination2?.hasMore ?? false);
+            }
             return;
           }
         } catch { /* ignore */ }
       }
 
-      console.error('Error loading reviews:', err);
       if (mountedRef.current) setError('حدث خطأ أثناء تحميل التقييمات');
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, []);
+  }, [user, currentCursor, filter]);
 
   useEffect(() => { fetchReviews(); }, [fetchReviews]);
+
+  const handleNextPage = () => {
+    if (reviews.length > 0 && hasMore) {
+      const nextCursor = reviews[reviews.length - 1].id;
+      setCursors(prev => [...prev, currentCursor!]);
+      setCurrentCursor(nextCursor);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (cursors.length > 0) {
+      const prevCursor = cursors[cursors.length - 1];
+      setCursors(prev => prev.slice(0, -1));
+      setCurrentCursor(prevCursor);
+    } else {
+      setCurrentCursor(null);
+    }
+  };
 
   const fmtDate = (v?: number | string): string => {
     if (v == null) return '-';
@@ -181,7 +171,8 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
     })),
     monthly: Object.values(
       reviews.reduce<Record<string, MonthAgg>>((acc, review) => {
-        const date = new Date(toTs(review.createdAt));
+        const timestamp = typeof review.createdAt === 'number' ? review.createdAt : Date.now();
+        const date = new Date(timestamp);
         const key = format(date, 'yyyy-MM');
         const name = format(date, 'MMM', { locale: arSA });
         if (!acc[key]) acc[key] = { name, reviews: 0, avg: 0, total: 0 };
@@ -224,6 +215,7 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
           <p className="text-red-600 mb-6">{error}</p>
           <button
             onClick={fetchReviews}
+            aria-label="إعادة محاولة تحميل التقييمات"
             className="px-8 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:from-red-600 hover:to-pink-700 transition-all duration-300 transform hover:scale-105"
           >
             إعادة المحاولة
@@ -283,6 +275,8 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
+                aria-label={`عرض ${t.label}`}
+                aria-pressed={tab === t.id}
                 className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-bold transition-all duration-300 transform hover:scale-105 ${
                   tab === t.id
                     ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
@@ -415,9 +409,10 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
               <div className="flex gap-3">
                 <button
                   onClick={fetchReviews}
+                  aria-label="تحديث قائمة التقييمات"
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-300 transform hover:scale-105"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   تحديث
@@ -499,8 +494,7 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
                                     width={14}
                                     height={14}
                                     className="rounded-full"
-                                    onError={(e) => {
-                                      console.error('Logo load failed:', e);
+                                    onError={() => {
                                       setShowLogo(false);
                                     }}
                                     unoptimized={true}  // تجاوز next/image optimization
@@ -547,12 +541,24 @@ export default function ReviewsTab({ storeName }: { storeName?: string }) {
       {/* FAB */}
       <button
         onClick={fetchReviews}
+        aria-label="تحديث التقييمات"
         className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 flex items-center justify-center group z-50"
       >
-        <svg className="w-6 h-6 group-hover:animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 group-hover:animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
       </button>
+
+      {/* Pagination */}
+      <Pagination
+        hasMore={hasMore}
+        onNext={handleNextPage}
+        onPrevious={handlePreviousPage}
+        hasPrevious={cursors.length > 0 || currentCursor !== null}
+        loading={loading}
+        currentCount={reviews.length}
+        itemName="تقييم"
+      />
     </div>
   );
 }

@@ -1,0 +1,163 @@
+/* Accessibility Styles - TheQah */
+
+/* Focus indicators for better keyboard navigation */
+*:focus {
+  outline: 2px solid #15803d;
+  outline-offset: 2px;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid #15803d;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(21, 128, 61, 0.2);
+}
+
+/* Skip to main content link */
+.skip-to-main {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 1em;
+  background-color: #15803d;
+  color: white;
+  text-decoration: none;
+  border-radius: 0 0 0.5em 0;
+  font-weight: 600;
+}
+
+.skip-to-main:focus {
+  left: 0;
+  top: 0;
+}
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.sr-only-focusable:focus,
+.sr-only-focusable:active {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Better button states */
+button:disabled,
+input:disabled,
+textarea:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+button:focus,
+a:focus,
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid #15803d;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  * {
+    border-color: currentColor !important;
+  }
+  
+  button, 
+  a,
+  input,
+  textarea,
+  select {
+    outline: 2px solid currentColor !important;
+  }
+  
+  .bg-green-700,
+  .bg-green-800 {
+    background-color: #000 !important;
+    color: #fff !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Better link visibility */
+a:not([class]) {
+  text-decoration: underline;
+  color: #15803d;
+}
+
+a:not([class]):hover {
+  text-decoration: none;
+}
+
+a:not([class]):focus {
+  outline: 2px solid #15803d;
+  outline-offset: 2px;
+  background-color: rgba(21, 128, 61, 0.1);
+}
+
+/* Error messages should be visible and announced */
+[role="alert"],
+[aria-live="polite"],
+[aria-live="assertive"] {
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+[role="alert"] {
+  background-color: #fee;
+  border: 1px solid #c33;
+  color: #a00;
+}
+
+/* Better form field focus states */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #15803d !important;
+  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.2) !important;
+}
+
+/* Button focus states */
+button:focus-visible {
+  outline: 2px solid #15803d;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(21, 128, 61, 0.2);
+}
+
+/* Ensure sufficient color contrast for disabled elements */
+:disabled {
+  color: #6b7280;
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+}

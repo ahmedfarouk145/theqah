@@ -62,37 +62,16 @@ const StatCard = ({
   gradient?: string;
 }) => (
   <div
-    className={`group relative bg-white rounded-3xl border border-gray-200/50 p-8 shadow-xl hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-4 hover:scale-105 cursor-pointer overflow-hidden backdrop-blur-sm`}
+    className={`group relative bg-white rounded-2xl border border-gray-200/50 p-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer overflow-hidden`}
     style={{
       animationDelay: `${delay}ms`,
-      animation: 'slideInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+      animation: 'fadeInUp 0.5s ease-out forwards',
       opacity: 0,
-      transform: 'translateY(50px) rotateX(10deg)',
-      perspective: '1000px',
     }}
   >
     {/* Animated Background Orbs */}
-    <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-xl group-hover:scale-150 transition-all duration-1000" />
-    <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-tr from-pink-400/20 to-orange-600/20 rounded-full blur-xl group-hover:scale-125 transition-all duration-1000 delay-200" />
-
-    {/* Floating Particles */}
-    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000">
-      {[...Array(6)].map((_, i) => (
-        <div
-          key={i}
-          className="absolute w-1 h-1 bg-blue-400 rounded-full animate-pulse"
-          style={{
-            left: `${20 + i * 15}%`,
-            top: `${10 + i * 10}%`,
-            animationDelay: `${i * 200}ms`,
-            animationDuration: '2s',
-          }}
-        />
-      ))}
-    </div>
-
-    {/* Glass Morphism Effect */}
-    <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 backdrop-blur-sm" />
+    {/* Subtle background effect */}
+    <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-white/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
     <div className="relative z-10">
       <div className="flex items-center justify-between mb-6">
@@ -125,12 +104,6 @@ const StatCard = ({
         {subtitle && <p className="text-sm text-gray-700 group-hover:text-gray-800 transition-colors font-medium">{subtitle}</p>}
       </div>
     </div>
-
-    {/* Holographic Shine Effect */}
-    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1200 ease-out" />
-
-    {/* 3D Border Effect */}
-    <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 via-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
   </div>
 );
 
@@ -152,7 +125,7 @@ const ChartCard = ({
     className="relative bg-white rounded-3xl border border-gray-200/50 p-8 shadow-2xl hover:shadow-3xl transition-all duration-700 transform hover:-translate-y-2 hover:scale-[1.02] overflow-hidden backdrop-blur-sm group"
     style={{
       animationDelay: `${delay}ms`,
-      animation: 'slideInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+      animation: 'fadeInUp 0.5s ease-out forwards',
       opacity: 0,
       transform: 'translateY(50px) rotateX(5deg)',
       perspective: '1000px',
@@ -183,11 +156,8 @@ const ChartCard = ({
         </div>
       </div>
 
-      <div className="group-hover:scale-[1.01] transition-transform duration-500 transform-gpu">{children}</div>
+      <div>{children}</div>
     </div>
-
-    {/* Holographic Border */}
-    <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-sm" />
   </div>
 );
 
@@ -209,7 +179,7 @@ const MetricCard = ({
     className="group relative bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 p-6 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 overflow-hidden"
     style={{
       animationDelay: `${delay}ms`,
-      animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+      animation: 'fadeInUp 0.5s ease-out forwards',
       opacity: 0,
       transform: 'translateY(30px)',
     }}
@@ -309,10 +279,9 @@ export default function DashboardAnalytics() {
         // 1) axios (بالهيدر لو عندنا توكن)
         const res = await axios.get('/api/store/dashboard', { headers });
         if (!cancelled) setData(res.data);
-      } catch (err) {
-        console.error('Dashboard API error (axios):', err);
-
-        try {
+      } catch {
+        // Silent fallback to fetch API
+        try{
           // 2) fetch fallback + نفس الهيدر
           const absolute =
             typeof window !== 'undefined'
@@ -327,8 +296,8 @@ export default function DashboardAnalytics() {
           const json = (await f.json()) as AnalyticsData;
 
           if (!cancelled) setData(json);
-        } catch (e) {
-          console.error('Dashboard API error (fetch fallback):', e);
+        } catch {
+          // Failed to fetch data, set to null
           if (!cancelled) setData(null);
         }
       } finally {
@@ -372,8 +341,6 @@ export default function DashboardAnalytics() {
         
         const j = await r.json();
         
-        console.log("[AI Response]", j); // ✅ لوج للتأكد
-        
         if (!cancelled) {
           if (j.ok && j.text) {
             setAiSummary(j.text);
@@ -382,8 +349,6 @@ export default function DashboardAnalytics() {
           }
         }
       } catch (e) {
-        console.error("[AI Fetch Error]", e); // ✅ لوج الخطأ
-        
         if (!cancelled) {
           const msg = e instanceof Error ? e.message : String(e);
           if (msg.includes('aborted') || msg.includes('timeout')) {
@@ -405,33 +370,13 @@ export default function DashboardAnalytics() {
   if (loading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <div className="text-center space-y-8">
-          {/* 3D Loading Animation */}
-          <div className="relative">
-            <div className="w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin shadow-2xl" />
-            <div
-              className="absolute inset-0 w-20 h-20 border-4 border-transparent border-r-purple-600 rounded-full animate-spin shadow-2xl"
-              style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}
-            />
-            <div
-              className="absolute inset-2 w-16 h-16 border-2 border-transparent border-b-pink-500 rounded-full animate-spin"
-              style={{ animationDuration: '2s' }}
-            />
-
-            {/* Pulsing Center */}
-            <div className="absolute inset-6 w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full animate-pulse shadow-lg" />
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-2xl font-bold text-gray-900 animate-pulse">جاري تحميل الإحصائيات</p>
-            <p className="text-sm text-gray-800">تحليل البيانات وإعداد التقارير...</p>
-
-            {/* Loading Progress Dots */}
-            <div className="flex items-center justify-center gap-2 mt-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 200}ms` }} />
-              ))}
-            </div>
+        <div className="text-center space-y-4">
+          {/* Simple Loading Spinner */}
+          <div className="w-12 h-12 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
+          
+          <div className="space-y-2">
+            <p className="text-xl font-semibold text-gray-900">جاري تحميل الإحصائيات</p>
+            <p className="text-sm text-gray-600">تحليل البيانات...</p>
           </div>
         </div>
       </div>
@@ -487,7 +432,7 @@ export default function DashboardAnalytics() {
         <div
           className="inline-flex items-center gap-4 px-8 py-4 bg-white/80 backdrop-blur-sm rounded-full shadow-2xl border border-gray-200/50 hover:scale-105 transition-all duration-500"
           style={{
-            animation: 'slideInDown 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+            animation: 'fadeInUp 0.5s ease-out forwards',
             opacity: 0,
             transform: 'translateY(-50px)',
           }}
@@ -593,9 +538,8 @@ export default function DashboardAnalytics() {
         {/* Reviews Pie */}
         <ChartCard title="توزيع التقييمات التفاعلي" subtitle="نسب الرضا والتحسينات المطلوبة" delay={500} icon={Eye}>
           <div className="h-96 flex items-center justify-center">
-            <div className="relative group-hover:scale-105 transition-transform duration-700 transform-gpu">
-              <ResponsiveContainer width={350} height={350}>
-                <PieChart>
+            <div className="relative group-hover:scale-105 transition-transform duration-700 transform-gpu" style={{ width: 350, height: 350 }}>
+                <PieChart width={350} height={350}>
                   <defs>
                     <linearGradient id="positiveGradient" x1="0" y1="0" x2="1" y2="1">
                       <stop offset="0%" stopColor="#10b981" />
@@ -635,7 +579,6 @@ export default function DashboardAnalytics() {
                     }}
                   />
                 </PieChart>
-              </ResponsiveContainer>
 
               {/* Center badge */}
               <div className="absolute inset-0 flex items-center justify-center">
@@ -697,7 +640,7 @@ export default function DashboardAnalytics() {
           className="relative bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-200/50 p-8 shadow-2xl hover:shadow-3xl transition-all duration-700 transform hover:-translate-y-2 overflow-hidden group"
           style={{
             animationDelay: '700ms',
-            animation: 'slideInLeft 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+            animation: 'fadeInUp 0.5s ease-out forwards',
             opacity: 0,
             transform: 'translateX(-50px)',
           }}
@@ -724,7 +667,7 @@ export default function DashboardAnalytics() {
           className="relative bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-200/50 p-8 shadow-2xl hover:shadow-3xl transition-all duration-700 transform hover:-translate-y-2 overflow-hidden group"
           style={{
             animationDelay: '800ms',
-            animation: 'slideInRight 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+            animation: 'fadeInUp 0.5s ease-out forwards',
             opacity: 0,
             transform: 'translateX(50px)',
           }}
@@ -776,7 +719,7 @@ export default function DashboardAnalytics() {
     className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
     style={{
       animationDelay: '900ms',
-      animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+      animation: 'fadeInUp 0.5s ease-out forwards',
       opacity: 0,
       transform: 'translateY(30px)',
     }}
@@ -794,7 +737,7 @@ export default function DashboardAnalytics() {
     className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
     style={{
       animationDelay: '1000ms',
-      animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+      animation: 'fadeInUp 0.5s ease-out forwards',
       opacity: 0,
       transform: 'translateY(30px)',
     }}
@@ -816,7 +759,7 @@ export default function DashboardAnalytics() {
     className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
     style={{
       animationDelay: '1100ms',
-      animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+      animation: 'fadeInUp 0.5s ease-out forwards',
       opacity: 0,
       transform: 'translateY(30px)',
     }}
@@ -836,7 +779,7 @@ export default function DashboardAnalytics() {
     className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
     style={{
       animationDelay: '1200ms',
-      animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+      animation: 'fadeInUp 0.5s ease-out forwards',
       opacity: 0,
       transform: 'translateY(30px)',
     }}
@@ -873,54 +816,24 @@ export default function DashboardAnalytics() {
           }
         }
 
-        @keyframes slideInLeft {
+        @keyframes fadeInUp {
           from {
             opacity: 0;
-            transform: translateX(-50px) rotateY(10deg);
+            transform: translateY(20px);
           }
           to {
             opacity: 1;
-            transform: translateX(0) rotateY(0deg);
+            transform: translateY(0);
           }
         }
 
-        @keyframes slideInRight {
-          from {
-            opacity: 0;
-            transform: translateX(50px) rotateY(-10deg);
+        /* Respect user's motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
           }
-          to {
-            opacity: 1;
-            transform: translateX(0) rotateY(0deg);
-          }
-        }
-
-        @keyframes float {
-          0%,
-          100% {
-            transform: translateY(0px) rotate(0deg);
-          }
-          50% {
-            transform: translateY(-20px) rotate(5deg);
-          }
-        }
-
-        @keyframes pulse-glow {
-          0%,
-          100% {
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-          }
-          50% {
-            box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
-          }
-        }
-
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-
-        .animate-pulse-glow {
-          animation: pulse-glow 2s ease-in-out infinite;
         }
       `}</style>
     </div>

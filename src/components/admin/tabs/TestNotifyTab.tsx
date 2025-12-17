@@ -77,23 +77,67 @@ export default function TestNotifyTab() {
       </header>
 
       <section className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-3 items-center bg-white dark:bg-neutral-900 border rounded-2xl p-4">
-        <label className="text-sm">رقم الجوال</label>
-        <input className={inputCls} value={to} onChange={(e) => setTo(e.target.value)} placeholder="+9665XXXXXXXX" />
+        <label htmlFor="test-notify-phone" className="text-sm">رقم الجوال</label>
+        <input 
+          id="test-notify-phone"
+          className={inputCls} 
+          value={to} 
+          onChange={(e) => setTo(e.target.value)} 
+          placeholder="+9665XXXXXXXX"
+          type="tel"
+          aria-label="رقم الجوال للاختبار"
+        />
 
-        <label className="text-sm">البريد (اختياري)</label>
-        <input className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" />
+        <label htmlFor="test-notify-email" className="text-sm">البريد (اختياري)</label>
+        <input 
+          id="test-notify-email"
+          className={inputCls} 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)} 
+          placeholder="user@example.com"
+          type="email"
+          aria-label="البريد الإلكتروني للاختبار"
+        />
 
-        <label className="text-sm">الرابط المختصر</label>
-        <input className={inputCls} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://tq.sa/r/AbCd" />
+        <label htmlFor="test-notify-url" className="text-sm">الرابط المختصر</label>
+        <input 
+          id="test-notify-url"
+          className={inputCls} 
+          value={url} 
+          onChange={(e) => setUrl(e.target.value)} 
+          placeholder="https://tq.sa/r/AbCd"
+          type="url"
+          aria-label="رابط المراجعة"
+        />
 
-        <label className="text-sm">اسم المتجر</label>
-        <input className={inputCls} value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="متجر ثقة" />
+        <label htmlFor="test-notify-store" className="text-sm">اسم المتجر</label>
+        <input 
+          id="test-notify-store"
+          className={inputCls} 
+          value={storeName} 
+          onChange={(e) => setStoreName(e.target.value)} 
+          placeholder="متجر ثقة"
+          aria-label="اسم المتجر"
+        />
 
-        <label className="text-sm">اسم العميل</label>
-        <input className={inputCls} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="عميل" />
+        <label htmlFor="test-notify-customer" className="text-sm">اسم العميل</label>
+        <input 
+          id="test-notify-customer"
+          className={inputCls} 
+          value={customerName} 
+          onChange={(e) => setCustomerName(e.target.value)} 
+          placeholder="عميل"
+          aria-label="اسم العميل"
+        />
 
-        <label className="text-sm">اللغة</label>
-        <select className={inputCls} value={locale} onChange={(e) => setLocale(e.target.value as 'ar' | 'en')}>
+        <label htmlFor="test-notify-locale" className="text-sm">اللغة</label>
+        <select 
+          id="test-notify-locale"
+          className={inputCls} 
+          value={locale} 
+          onChange={(e) => setLocale(e.target.value as 'ar' | 'en')}
+          aria-label="اختيار اللغة"
+        >
           <option value="ar">العربية</option>
           <option value="en">English</option>
         </select>

@@ -5,6 +5,7 @@ import { dbAdmin } from "@/lib/firebaseAdmin";
 import { fetchStoreInfo, fetchUserInfo, getOwnerAccessToken } from "@/lib/sallaClient";
 import { canSendInvite } from "@/server/subscription/usage";
 import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
+import { trackWebhook } from "@/server/monitoring/metrics";
 
 export const runtime = "nodejs";
 export const config = { api: { bodyParser: false } };
@@ -538,38 +539,30 @@ async function ensureInviteForOrder(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
 
+  const webhookStartTime = Date.now();
   const raw = await readRawBody(req);
   const db = dbAdmin();
 
-  // (1) Security check + basic log row
+  // (1) Security check + basic log row (C8: Auth bypass removed)
   const verification = verifySallaRequest(req, raw);
   
-  // DEVELOPMENT BYPASS: Skip auth in localhost for testing
-  const isDevelopment = process.env.NODE_ENV === "development" || req.headers.host?.includes("localhost");
-  // PRODUCTION BYPASS: Allow missing auth in production for Salla webhooks (temporary)
-  const isProduction = process.env.NODE_ENV === "production" || req.headers.host?.includes("vercel");
-  const authBypass = (isDevelopment && (!WEBHOOK_SECRET && !WEBHOOK_TOKEN)) || 
-                    (isProduction && (!WEBHOOK_SECRET && !WEBHOOK_TOKEN));
-  
   await fbLog(db, {
-    level: (verification.ok || authBypass) ? "info" : "warn",
+    level: verification.ok ? "info" : "warn",
     scope: "auth",
-    msg: (verification.ok || authBypass) ? "verification ok" : "verification failed",
+    msg: verification.ok ? "verification ok" : "verification failed",
     event: null, idemKey: null, merchant: null, orderId: null,
     meta: {
       strategyHeader: getHeader(req, "x-salla-security-strategy") || "auto",
-      hasSecret: !!WEBHOOK_SECRET, hasToken: !!WEBHOOK_TOKEN,
+      hasSecret: !!WEBHOOK_SECRET, 
+      hasToken: !!WEBHOOK_TOKEN,
       sigLen: (getHeader(req, "x-salla-signature") || "").length,
       from: req.headers["x-forwarded-for"] || req.socket.remoteAddress,
-      isDevelopment,
-      isProduction,
-      authBypass,
       nodeEnv: process.env.NODE_ENV,
       host: req.headers.host
     }
   });
   
-  if (!verification.ok && !authBypass) return res.status(401).json({ error: "unauthorized" });
+  if (!verification.ok) return res.status(401).json({ error: "unauthorized" });
 
   // (2) Proceed synchronously (no early ACK). Vercel Node runtime may stop work after responding.
 
@@ -1054,6 +1047,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           fbLog(db, { level: "info", scope: "invite", msg: "tokens voided", event, idemKey, merchant: merchantId, orderId: oid, meta: { count: q.docs.length, reason } });
         }
       }
+    } else if (event === "review.added") {
+      // Sync single review from Salla when added
+      const reviewId = (dataRaw as { id?: string | number })?.id;
+      const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
+      if (reviewId && storeUid) {
+        try {
+          const { syncSingleReview } = await import("@/server/salla/sync-single-review");
+          const result = await syncSingleReview(storeUid, String(reviewId));
+          if (result.ok) {
+            fbLog(db, { level: "info", scope: "review", msg: "review synced from webhook", event, idemKey, merchant: merchantId, meta: { reviewId } });
+          } else {
+            fbLog(db, { level: "error", scope: "review", msg: "failed to sync review", event, idemKey, merchant: merchantId, meta: { reviewId, error: result.error } });
+          }
+        } catch (syncErr) {
+          const errMsg = syncErr instanceof Error ? syncErr.message : String(syncErr);
+          fbLog(db, { level: "error", scope: "review", msg: "review sync exception", event, idemKey, merchant: merchantId, meta: { reviewId, error: errMsg } });
+        }
+      }
     }
 
     // E) processed + known/unhandled logs
@@ -1077,6 +1088,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     fbLog(db, { level: "info", scope: "handler", msg: "processing finished ok", event, idemKey, merchant: merchantId, orderId });
     await idemRef.set({ statusFlag: "done", processingFinishedAt: Date.now() }, { merge: true });
+    
+    // Track successful webhook
+    const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
+    trackWebhookCompletion(event, storeUid, true, Date.now() - webhookStartTime);
+    
     try { res.status(200).json({ ok: true }); } catch {}
 
   } catch (e) {
@@ -1174,4 +1190,15 @@ async function fbLog(
         console.error("[WEBHOOK_LOG][WRITE_FAIL]", err);
       });
   }
+}
+
+// Track webhook completion at the end of handler
+function trackWebhookCompletion(event: string, storeUid: string | undefined, success: boolean, duration: number, error?: string) {
+  trackWebhook({
+    event,
+    storeUid,
+    success,
+    duration,
+    error
+  }).catch(() => {}); // Silent fail
 }

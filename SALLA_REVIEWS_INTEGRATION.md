@@ -3,6 +3,55 @@
 ## Overview
 تم تنفيذ integration كامل مع Salla Reviews API لجلب المراجعات من Salla ومطابقتها مع المراجعات المخزنة لدينا.
 
+## 🔴 Critical Setup Requirements (MUST DO)
+
+### 1. Enable "Questions & Reviews" Scope in Salla Partners Portal
+**Status:** ⚠️ غير مفعّل حالياً
+
+**Steps:**
+1. Go to [Salla Partners Portal](https://salla.partners/)
+2. Select your app
+3. Scroll to **App Scope** section
+4. Under **"Questions & Reviews"**:
+   - ✅ Check **"Read Only"**
+5. Click **"Update the scopes"**
+
+**⚠️ Without this, API calls will fail with 403 Forbidden**
+
+---
+
+### 2. Change Webhook Security Strategy to "Signature"
+**Status:** ⚠️ Currently using "Token" (must change)
+
+**Steps:**
+1. In the same app settings page
+2. Scroll to **"Webhooks/Notifications"** section
+3. Under **"Webhook Security Strategy"**:
+   - Change from **Token** to **Signature**
+4. Save changes
+
+**Why:** Our code uses signature verification (`X-Salla-Signature` header)
+
+---
+
+### 3. Add "review.added" Event
+**Status:** ✅ تم إضافته
+
+~~**Steps:**~~
+~~1. **FIRST:** Enable "Questions & Reviews" scope (step #1)~~
+~~2. Save and wait a few minutes~~
+~~3. Go back to **"Webhooks/Notifications"** section~~
+~~4. Click **"Show Events"** in **Store Events**~~
+~~5. Look for **"Miscellaneous"** tab or section~~
+~~6. Find and ✅ enable **"review.added"** event~~
+~~7. Save changes~~
+
+**✅ Completed**
+
+**Webhook URL:** `https://theqah.com/api/salla/webhook`
+
+---
+
 ## Changes Made
 
 ### 1. OAuth Scopes Update
@@ -72,10 +121,10 @@ Automatic synchronization every 6 hours:
 
 **Features:**
 - ✅ Syncs reviews from all connected Salla stores
-- ✅ Filters reviews by subscription start date
-- ✅ Respects quota limits (subscription.limit)
-- ✅ Skips stores without active subscription
+- ✅ Unlimited syncing (no quota limits)
+- ✅ Syncs all historical reviews
 - ✅ Batch processing for performance
+- ✅ Prevents duplicates
 - ✅ Detailed logging and error reporting
 
 **Response:**
@@ -89,8 +138,8 @@ Automatic synchronization every 6 hours:
     {
       "storeUid": "salla:12345",
       "synced": 5,
-      "available": 100,
-      "filtered": 8
+      "verified": 3,
+      "total": 15
     }
   ],
   "timestamp": 1702345678000
@@ -146,6 +195,7 @@ Reviews from Salla are stored with this structure:
   // Status
   status: "approved",  // approved | pending | rejected
   trustedBuyer: false, // Salla reviews are NOT from our system
+  verified: true,      // ✨ true = came after subscription (show logo)
   
   // Timestamps
   publishedAt: 1702345678000,
@@ -171,14 +221,33 @@ No new environment variables needed. Uses existing:
 - `SALLA_CLIENT_SECRET`
 - `CRON_SECRET` (optional, for cron job security)
 
-### 2. Vercel Cron Configuration
-Add to `vercel.json`:
+### 2. Hybrid Sync Strategy
 
+**🎯 Best Approach:** Webhook (Real-time) + GitHub Actions (Daily backup)
+
+#### A. Real-time Webhook (Immediate)
+- Salla sends webhook when new review is created
+- Handler in `src/pages/api/salla/webhook.ts` processes `review.created` event
+- Calls `syncSingleReview()` to fetch and save review
+
+#### B. Daily Backup Sync (GitHub Actions - FREE)
+- Runs once daily at 3 AM UTC
+- Catches any missed reviews from webhook
+- Syncs historical reviews
+- Free 2,000 minutes/month on GitHub
+
+**Setup:**
+1. GitHub Actions file already created: `.github/workflows/sync-salla-reviews.yml`
+2. Add secret in GitHub: `Settings` → `Secrets` → `CRON_SECRET`
+3. Enable Actions in repo settings
+
+**Alternative (Vercel Pro only):**
 ```json
+// vercel.json
 {
   "crons": [{
     "path": "/api/cron/sync-salla-reviews",
-    "schedule": "0 */6 * * *"
+    "schedule": "0 3 * * *"
   }]
 }
 ```
@@ -224,41 +293,133 @@ db.collection("reviews")
 
 ---
 
-## Quota Management
+## Review Verification System
 
-Reviews are subject to subscription limits:
+✨ **Unlimited Sync with Smart Verification:**
 
-1. **Filter by date:** Only reviews created AFTER subscription start
-2. **Respect limit:** Stop syncing when `currentCount >= subscription.limit`
-3. **Cron handles:** Automatic quota checks in background sync
+### How it works:
+1. **Sync All Reviews:** جلب كل المراجعات من Salla (historical + new)
+2. **Verify Post-Subscription Only:** المراجعات اللي جت **بعد** الاشتراك تاخد علامة `verified: true`
+3. **Show Logo:** المراجعات المعتمدة (`verified: true`) يظهر جنبها لوجو TheQah
+
+### Verification Logic:
+```typescript
+const reviewDate = new Date(sallaReview.created_at).getTime();
+const subscriptionStart = subscription.startedAt;
+const isVerified = subscriptionStart > 0 && reviewDate >= subscriptionStart;
+```
+
+### Review Schema:
+- `verified: true` → Review came after subscription (show logo ✅)
+- `verified: false` → Historical review before subscription (no logo)
+- `trustedBuyer: false` → All Salla reviews (not from our invite system)
 
 ---
 
 ## Widget Display
 
-The widget now shows both types of reviews:
-- ✅ **Our reviews:** `source: undefined` or `trustedBuyer: true`
-- ✅ **Salla reviews:** `source: "salla_native"`
+The widget shows reviews with different badges:
 
-To differentiate in UI:
+### Badge Logic:
 ```typescript
-if (review.source === "salla_native") {
-  // Show "مراجعة من سلة" badge
-} else if (review.trustedBuyer) {
-  // Show "مشتري موثق" badge
+if (review.trustedBuyer) {
+  // Show "مشتري موثق" badge (from our invite system)
+  badge = "verified_buyer";
+} else if (review.source === "salla_native" && review.verified) {
+  // Show TheQah logo (Salla review verified after subscription)
+  badge = "theqah_logo";
+} else {
+  // No badge (historical Salla review before subscription)
+  badge = null;
 }
 ```
+
+### Review Types:
+- ✅ **Our System:** `trustedBuyer: true` → "مشتري موثق" badge
+- ✅ **Salla (Verified):** `source: "salla_native"` + `verified: true` → TheQah logo
+- ⭕ **Salla (Historical):** `source: "salla_native"` + `verified: false` → No badge
+
+---
+
+## Automation Strategy (Hybrid Approach)
+
+We use **Webhook (real-time) + GitHub Actions (backup)** for reliability:
+
+### ✅ Real-time: Salla Webhook
+**Event:** `review.added`
+**Handler:** `src/pages/api/salla/webhook.ts` (line ~1046)
+
+```typescript
+} else if (event === "review.added") {
+  const reviewId = (dataRaw as { id?: string | number })?.id;
+  if (reviewId && uid) {
+    const { syncSingleReview } = await import("@/server/salla/sync-single-review");
+    const result = await syncSingleReview(uid, String(reviewId));
+    // Logs to Firestore if successful/failed
+  }
+}
+```
+
+**Function:** `src/server/salla/sync-single-review.ts`
+- Fetches single review by ID from Salla API
+- Applies verification logic
+- Prevents duplicates
+- ~500ms response time
+
+---
+
+### ✅ Backup: GitHub Actions (Cron)
+**File:** `.github/workflows/sync-salla-reviews.yml`
+**Schedule:** Daily at 3 AM UTC (recommended: every 6 hours)
+
+```yaml
+on:
+  schedule:
+    - cron: '0 3 * * *'  # Daily at 3 AM UTC
+  workflow_dispatch:     # Manual trigger
+```
+
+**Endpoint:** `POST /api/cron/sync-salla-reviews`
+**Auth:** `x-vercel-cron-secret: CRON_SECRET`
+
+**What it does:**
+- Syncs ALL connected stores
+- Fetches ALL reviews (pagination)
+- Applies verification logic
+- Catches missed webhooks
+
+---
+
+### 📊 Why Hybrid?
+
+| Issue | Webhook | Cron | Hybrid |
+|-------|---------|------|--------|
+| Webhook fails | ❌ Lost | ✅ Caught | ✅ |
+| Network timeout | ❌ Lost | ✅ Caught | ✅ |
+| Server downtime | ❌ Lost | ✅ Caught | ✅ |
+| Real-time sync | ✅ Yes | ❌ Delayed | ✅ |
+| Resource usage | ✅ Low | ⚠️ Medium | ⚠️ Medium |
 
 ---
 
 ## Next Steps
 
-1. ✅ Deploy changes to production
-2. ✅ Set up Vercel cron
-3. ⏳ Add dashboard UI for manual sync trigger
-4. ⏳ Add "re-connect" banner for existing merchants
-5. ⏳ Update widget to display Salla reviews with badge
-6. ⏳ Monitor sync job logs in Vercel dashboard
+### ⚠️ Critical (Required):
+1. ⏳ Enable **"Questions & Reviews"** scope in Salla Partners Portal
+2. ⏳ Change webhook security to **"Signature"** (currently using Token)
+3. ✅ ~~Add **"review.added"** event in Store Events~~ (Done!)
+4. ⏳ Add **CRON_SECRET** to GitHub repository secrets
+
+### 🔄 Deployment:
+5. ✅ Code changes ready (webhook handler added)
+6. ⏳ Deploy to production
+7. ⏳ Test webhook with Salla demo store
+
+### 📊 Post-Launch:
+8. ⏳ Add dashboard UI for manual sync trigger
+9. ⏳ Add "re-connect" banner for existing merchants
+10. ⏳ Update widget to display Salla reviews with badge
+11. ⏳ Monitor sync logs in Firestore (`webhooks_salla_known` collection)
 
 ---
 
@@ -319,9 +480,9 @@ if (review.source === "salla_native") {
 - Merchant may need to re-authorize
 
 ### Issue: Reviews not syncing
-- Check subscription status
-- Verify `subscription.startedAt` exists
-- Check quota limit
+- Check store connection status (`salla.connected`)
+- Verify access token is valid
+- Check Firestore write permissions
 
 ### Issue: Duplicate reviews
 - Check `reviewId` format: `salla_{merchantId}_{sallaReviewId}`

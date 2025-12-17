@@ -1,0 +1,57 @@
+name: Sync Salla Reviews (Daily Backup)
+
+on:
+  schedule:
+    # يشتغل كل يوم الساعة 3 صباحاً بتوقيت UTC (مرة واحدة كنسخة احتياطية)
+    - cron: '0 3 * * *'
+  
+  # يمكن تشغيله manual من GitHub
+  workflow_dispatch:
+
+jobs:
+  sync-reviews:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Sync Reviews (GitHub Backup)
+        run: |
+          echo "🔄 Starting GitHub backup sync..."
+          
+          response=$(curl -s -w "\n%{http_code}" \
+            -X GET \
+            -H "x-vercel-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -H "User-Agent: GitHub-Actions-Backup-Cron" \
+            https://theqah.com/api/cron/sync-salla-reviews)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "📊 Response Code: $http_code"
+          echo "📝 Response Body: $body"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Sync completed successfully"
+          else
+            echo "❌ Sync failed with code $http_code"
+            exit 1
+          fi
+      
+      - name: Check System Health
+        if: success()
+        run: |
+          echo "🏥 Checking system health..."
+          
+          response=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.ADMIN_SECRET }}" \
+            https://theqah.com/api/admin/monitor-sync)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Health Status: $http_code"
+          echo "$body" | jq '.summary, .quotaStatus' || echo "$body"
+      
+      - name: Send notification on failure
+        if: failure()
+        run: |
+          echo "::error::⚠️ Salla reviews sync failed! Check logs and monitoring dashboard."

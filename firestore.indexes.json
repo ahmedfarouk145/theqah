@@ -61,6 +61,44 @@
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid",       "order": "ASCENDING" },
+        { "fieldPath": "sallaReviewId",  "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid", "order": "ASCENDING" },
+        { "fieldPath": "source",   "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid", "order": "ASCENDING" },
+        { "fieldPath": "source",   "order": "ASCENDING" },
+        { "fieldPath": "verified", "order": "ASCENDING" },
+        { "fieldPath": "status",   "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid", "order": "ASCENDING" },
+        { "fieldPath": "source",   "order": "ASCENDING" },
+        { "fieldPath": "verified", "order": "ASCENDING" },
+        { "fieldPath": "status",   "order": "ASCENDING" },
+        { "fieldPath": "productId","order": "ASCENDING" }
+      ]
+    },
 
   
     {
@@ -182,6 +220,32 @@
         { "fieldPath": "publishedAt", "order": "ASCENDING" }
       ]
     },
+    
+    {
+      "collectionGroup": "metrics",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "type",      "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "metrics",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "severity",  "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "metrics",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "storeUid",  "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    
     {
       "collectionGroup": "reviews",
       "queryScope": "COLLECTION",

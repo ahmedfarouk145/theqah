@@ -121,5 +121,6 @@ export const SCOPE_DESCRIPTIONS: Record<SallaScope, string> = {
   'webhooks.read_write': 'إدارة الإشعارات والأحداث (مطلوب)',
   'products.read': 'قراءة بيانات المنتجات للتقييمات المتقدمة',
   'notifications.read': 'قراءة إشعارات المتجر',
-  'analytics.read': 'الوصول لتحليلات المتجر'
+  'analytics.read': 'الوصول لتحليلات المتجر',
+  'reviews.read': 'قراءة تقييمات المنتجات من سلة (مطلوب للمزامنة)'
 };

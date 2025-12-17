@@ -20,9 +20,13 @@ export default function NavbarLanding() {
   );
 
   return (
-    <nav className="w-full flex items-center justify-between px-6 py-4 shadow-md bg-white fixed top-0 z-50" dir="rtl">
-      {/* Logo + Name */}
-      <Link href="/" className="flex items-center gap-4 group">
+    <>
+      <a href="#main-content" className="skip-to-main">
+        انتقل إلى المحتوى الرئيسي
+      </a>
+      <nav className="w-full flex items-center justify-between px-6 py-4 shadow-md bg-white fixed top-0 z-50" dir="rtl" role="navigation" aria-label="التنقل الرئيسي">
+        {/* Logo + Name */}
+        <Link href="/" className="flex items-center gap-4 group" aria-label="الذهاب إلى الصفحة الرئيسية">
         <div className="w-14 h-14 rounded-full overflow-hidden border border-green-300 shadow-sm group-hover:scale-105 transition-transform">
           <Image
             src="/logo.png"
@@ -59,9 +63,13 @@ export default function NavbarLanding() {
         </Link>
 
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger aria-label="فتح القائمة" className="p-2 rounded-md border border-green-200">
+          <SheetTrigger 
+            aria-label="فتح قائمة التنقل"
+            aria-expanded={open}
+            className="p-2 rounded-md border border-green-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
             {/* أيقونة همبرجر بسيطة بـ SVG عشان ما نعتمد مكتبة خارجية */}
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
               <path d="M4 6h16M4 12h16M4 18h16" stroke="#166534" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </SheetTrigger>
@@ -87,6 +95,7 @@ export default function NavbarLanding() {
           </SheetContent>
         </Sheet>
       </div>
-    </nav>
+      </nav>
+    </>
   );
 }

@@ -137,6 +137,21 @@ body {
     background-size: 200% 100%; animation: shimmer 1.25s linear infinite;
   }
 
+  /* Feedback Widget Animation */
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+
   /* Scrollbar (webkit) */
   .nice-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
   .nice-scroll::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; }

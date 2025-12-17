@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "2.0.0"; // Simple verified badge version
+  const SCRIPT_VERSION = "3.0.0"; // Smart badge: message OR logos on Salla reviews
   
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -14,6 +14,7 @@
   })();
 
   const API_BASE = `${SCRIPT_ORIGIN}/api/public/reviews`;
+  const CHECK_API = `${SCRIPT_ORIGIN}/api/reviews/check-verified`;
   const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png?v=3`;
 
   // ——— Helpers ———
@@ -142,12 +143,80 @@
     };
   }
 
-  // ——— تركيب البادج المبسط ———
+  // ——— Extract product ID from page ———
+  function extractProductId() {
+    const fromData = document.querySelector("[data-product-id], [data-productid]");
+    if (fromData) {
+      const id = fromData.getAttribute("data-product-id") || fromData.getAttribute("data-productid");
+      if (id) return id;
+    }
+    const match = location.pathname.match(/\/product\/(\d+)/);
+    if (match) return match[1];
+    const urlParams = new URLSearchParams(location.search);
+    return urlParams.get('product_id') || urlParams.get('productId') || null;
+  }
+
+  // ——— Check verified reviews ———
+  async function checkVerifiedReviews(storeId, productId) {
+    try {
+      const params = new URLSearchParams({ storeId });
+      if (productId) params.append('productId', productId);
+      const response = await fetch(`${CHECK_API}?${params}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!response.ok) return { hasVerified: false, reviews: [] };
+      return await response.json();
+    } catch (e) {
+      console.warn('Check verified failed:', e.message);
+      return { hasVerified: false, reviews: [] };
+    }
+  }
+
+  // ——— Add logos to Salla reviews ———
+  function addLogosToSallaReviews(verifiedIds) {
+    if (!verifiedIds || verifiedIds.length === 0) return;
+    const selectors = ['[data-review-id]', '.product-review', '.review-item', '.s-review-item'];
+    selectors.forEach(selector => {
+      const reviewElements = document.querySelectorAll(selector);
+      reviewElements.forEach(el => {
+        const reviewId = el.getAttribute('data-review-id') || el.getAttribute('data-id') || el.querySelector('[data-review-id]')?.getAttribute('data-review-id');
+        if (!reviewId || !verifiedIds.includes(reviewId)) return;
+        if (el.querySelector('.theqah-verified-logo')) return;
+        let insertPoint = el.querySelector('.review-header') || el.querySelector('.review-stars') || el.querySelector('.review-rating') || el.firstElementChild;
+        if (!insertPoint) return;
+        const logo = document.createElement('img');
+        logo.src = LOGO_URL;
+        logo.className = 'theqah-verified-logo';
+        logo.alt = 'Verified by Theqah';
+        logo.style.cssText = 'width:24px;height:24px;margin:0 8px;display:inline-block;vertical-align:middle;border-radius:4px;';
+        insertPoint.style.display = 'flex';
+        insertPoint.style.alignItems = 'center';
+        insertPoint.style.gap = '8px';
+        insertPoint.appendChild(logo);
+      });
+    });
+  }
+
+  // ——— تركيب البادج الذكي ———
   async function mountOne(hostEl, store, lang, theme) {
     if (hostEl.getAttribute("data-state") === "done") return;
     if (hostEl.getAttribute("data-state") === "mounting") return;
     hostEl.setAttribute("data-state", "mounting");
 
+    // ✨ Check for verified reviews
+    const productId = extractProductId();
+    const checkResult = await checkVerifiedReviews(store, productId);
+    
+    if (checkResult.hasVerified) {
+      // Has verified reviews - add logos to Salla reviews
+      const verifiedIds = checkResult.reviews.map(r => r.sallaReviewId);
+      addLogosToSallaReviews(verifiedIds);
+      hostEl.setAttribute("data-state", "done");
+      return;
+    }
+
+    // No verified reviews - show message
     const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
     
     const style = h("style", {
@@ -249,7 +318,6 @@
   }
 
   // ——— الدالة الرئيسية ———
-  let mountedOnce = false;
   const safeMount = async () => {
     const existingHost = document.querySelector("#theqah-reviews, .theqah-reviews");
 

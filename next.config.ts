@@ -1,4 +1,8 @@
 /** @type {import('next').NextConfig} */
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 const isProd = process.env.NODE_ENV === "production";
 
 // 🧱 الدومينات المسموح لها تعمل embed (iframe) لصفحاتك
@@ -36,6 +40,23 @@ if (process.env.CSP_EXTRA_ANCESTORS) {
 const cspFrameAncestors = `frame-ancestors ${ALLOWED_ANCESTORS.join(" ")};`;
 
 const nextConfig = {
+  // ======= Performance Budgets =======
+  // Enforce bundle size limits to prevent performance regression
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts', '@radix-ui/react-dialog'],
+  },
+  // Bundle analysis warnings
+  webpack: (config: any, { isServer }: { isServer: boolean }) => {
+    if (!isServer) {
+      // Warn if bundle exceeds limits
+      config.performance = {
+        maxAssetSize: 300000, // 300 KB
+        maxEntrypointSize: 500000, // 500 KB
+        hints: 'warning',
+      };
+    }
+    return config;
+  },
   // ======= إعدادات الصور =======
   images: {
     // الدومينات المسموحة للصور الخارجية
@@ -140,4 +161,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(nextConfig);

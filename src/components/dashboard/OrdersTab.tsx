@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Upload, Plus, Download, FileText, Send, Check, X, AlertCircle } from 'lucide-react';
 import axios from '@/lib/axiosInstance';
 import { isAxiosError } from 'axios';
+import Pagination from '@/components/ui/Pagination';
 
 type Order = {
   id: string;                // Document ID في كولكشن orders
@@ -26,21 +27,51 @@ export default function OrdersTab() {
   const [csvUploading, setCsvUploading] = useState(false);
   const [adding, setAdding] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  
+  // Pagination state
+  const [hasMore, setHasMore] = useState(false);
+  const [cursors, setCursors] = useState<string[]>([]);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
 
-  useEffect(() => { fetchOrders(); }, []);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
-      const res = await axios.get('/api/orders');
-      const list: Order[] = res.data?.items ?? res.data?.orders ?? [];
-      setOrders((Array.isArray(list) ? list : []).sort(
-        (a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)
-      ));
-    } catch (err: unknown) {
-      console.error('Error loading orders', err);
+      const params = new URLSearchParams({ limit: '50' });
+      if (currentCursor) {
+        params.append('cursor', currentCursor);
+      }
+      
+      const res = await axios.get(`/api/orders?${params}`);
+      const list: Order[] = res.data?.orders ?? [];
+      const pagination = res.data?.pagination;
+      
+      setOrders(list);
+      setHasMore(pagination?.hasMore ?? false);
+    } catch {
       setError('حدث خطأ أثناء تحميل الطلبات');
     } finally {
       setLoading(false);
+    }
+  }, [currentCursor]);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const handleNextPage = () => {
+    if (orders.length > 0 && hasMore) {
+      const nextCursor = orders[orders.length - 1].id;
+      setCursors(prev => [...prev, currentCursor!]);
+      setCurrentCursor(nextCursor);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (cursors.length > 0) {
+      const prevCursor = cursors[cursors.length - 1];
+      setCursors(prev => prev.slice(0, -1));
+      setCurrentCursor(prevCursor);
+    } else {
+      setCurrentCursor(null);
     }
   };
 
@@ -60,7 +91,6 @@ export default function OrdersTab() {
       if (isAxiosError(err)) {
         const status = err.response?.status;
         const data = err.response?.data;
-        console.error('send-review error:', status, data);
         alert(`فشل في إرسال رابط التقييم ❌\n${JSON.stringify(data ?? { status }, null, 2)}`);
       } else {
         alert('فشل في إرسال رابط التقييم ❌');
@@ -387,6 +417,17 @@ export default function OrdersTab() {
           </div>
         </div>
       )}
+
+      {/* Pagination */}
+      <Pagination
+        hasMore={hasMore}
+        onNext={handleNextPage}
+        onPrevious={handlePreviousPage}
+        hasPrevious={cursors.length > 0 || currentCursor !== null}
+        loading={loading}
+        currentCount={orders.length}
+        itemName="طلب"
+      />
     </div>
   );
 }

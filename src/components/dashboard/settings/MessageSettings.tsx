@@ -3,10 +3,10 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import axios from '@/lib/axiosInstance';
-import { getAuth } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function MessageSettings() {
+  const { user } = useAuth();
   const [senderName, setSenderName] = useState('');
   const [defaultMethod, setDefaultMethod] = useState<'whatsapp' | 'sms' | 'email'>('whatsapp');
   const [smsTemplate, setSmsTemplate] = useState('');
@@ -28,8 +28,6 @@ export default function MessageSettings() {
       setError('');
       setLoading(true);
 
-      const auth = getAuth(app);
-      const user = auth.currentUser;
       if (!user) {
         throw new Error('UNAUTHENTICATED');
       }
@@ -49,7 +47,6 @@ export default function MessageSettings() {
       setEmailTemplate(appCfg.email_template || '');
     } catch (e: unknown) {
       if (!mountedRef.current) return;
-      console.error('Error loading settings:', e);
       setError(
         (e as Error)?.message === 'UNAUTHENTICATED'
           ? 'غير مصرح: الرجاء تسجيل الدخول.'
@@ -58,7 +55,7 @@ export default function MessageSettings() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => { fetchSettings(); }, [fetchSettings]);
 
@@ -67,8 +64,6 @@ export default function MessageSettings() {
       setError('');
       setSaving(true);
 
-      const auth = getAuth(app);
-      const user = auth.currentUser;
       if (!user) {
         throw new Error('UNAUTHENTICATED');
       }
@@ -91,7 +86,6 @@ export default function MessageSettings() {
       setTimeout(() => mountedRef.current && setSaved(false), 2000);
     } catch (e: unknown) {
       if (!mountedRef.current) return;
-      console.error('Error saving settings:', e);
       setError(
         (e as Error)?.message === 'UNAUTHENTICATED'
           ? 'غير مصرح: الرجاء تسجيل الدخول.'
@@ -100,7 +94,7 @@ export default function MessageSettings() {
     } finally {
       if (mountedRef.current) setSaving(false);
     }
-  }, [senderName, defaultMethod, smsTemplate, whatsappTemplate, emailTemplate]);
+  }, [user, senderName, defaultMethod, smsTemplate, whatsappTemplate, emailTemplate]);
 
   if (loading) return <p>جارٍ تحميل الإعدادات...</p>;
   if (error) return <p className="text-red-500">{error}</p>;

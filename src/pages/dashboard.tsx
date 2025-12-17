@@ -2,19 +2,36 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import DashboardAnalytics from '@/components/dashboard/Analytics';
-import OrdersTab from '@/components/dashboard/OrdersTab';
-import ReviewsTab from '@/components/dashboard/Reviews';
-import SettingsTab from '@/components/dashboard/StoreSettings';
-import SupportTab from '@/components/dashboard/Support';
-import PendingReviewsTab from '@/features/reviews/PendingReviewsTab';
+import dynamic from 'next/dynamic';
+import FeedbackWidget from '@/components/FeedbackWidget';
+import ReAuthBanner from '@/components/dashboard/ReAuthBanner';
 import { useFlag } from '@/features/flags/useFlag';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 import axios from '@/lib/axiosInstance';
 import { motion } from 'framer-motion';
 import { Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
+
+// Dynamic imports with loading states
+const DashboardAnalytics = dynamic(() => import('@/components/dashboard/Analytics'), {
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>,
+  ssr: false
+});
+const OrdersTab = dynamic(() => import('@/components/dashboard/OrdersTab'), {
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
+});
+const ReviewsTab = dynamic(() => import('@/components/dashboard/Reviews'), {
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
+});
+const SettingsTab = dynamic(() => import('@/components/dashboard/StoreSettings'), {
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
+});
+const SupportTab = dynamic(() => import('@/components/dashboard/Support'), {
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
+});
+const PendingReviewsTab = dynamic(() => import('@/features/reviews/PendingReviewsTab'), {
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
+});
 
 const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', 'الإعدادات', 'المساعدة'] as const;
 type Tab = (typeof tabs)[number] | 'التقييمات المعلقة';
@@ -27,6 +44,7 @@ function getCookie(name: string): string | null {
 
 export default function DashboardPage() {
   const dashboardV2Enabled = useFlag('DASHBOARD_V2');
+  const { user, loading: authLoading } = useAuth();
 
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (typeof window !== 'undefined') {
@@ -35,24 +53,11 @@ export default function DashboardPage() {
     return 'الإحصائيات';
   });
 
-  const [authLoading, setAuthLoading] = useState(true);
-  const [userPresent, setUserPresent] = useState(false);
-
   const [storeUid, setStoreUid] = useState<string | undefined>(undefined);
   const [storeName, setStoreName] = useState<string | undefined>(undefined);
   const [storeLoading, setStoreLoading] = useState(true);
 
   useEffect(() => { localStorage.setItem('dash_active_tab', activeTab); }, [activeTab]);
-
-  // مراقبة تسجيل الدخول (لو عندك صلاحيات إضافية بعد اللوجين)
-  useEffect(() => {
-    const auth = getAuth(app);
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUserPresent(!!u);
-      setAuthLoading(false);
-    });
-    return () => unsub();
-  }, []);
 
   // حدّد storeUid من query أو cookie
   useEffect(() => {
@@ -80,23 +85,19 @@ export default function DashboardPage() {
         } catch { /* ignore */ }
 
         // fallback: APIs محلية تتطلّب توكن (لو عندك)
-        if (!name) {
-          const auth = getAuth(app);
-          const user = auth.currentUser;
-          if (user) {
-            const idToken = await user.getIdToken(true);
-            const tryProfileEndpoints = ['/api/store/profile', '/api/store/info', '/api/store'];
-            for (const ep of tryProfileEndpoints) {
-              try {
-                const res = await axios.get(ep, { headers: { Authorization: `Bearer ${idToken}` } });
-                name =
-                  res.data?.storeName ??
-                  res.data?.name ??
-                  res.data?.store?.name ??
-                  res.data?.profile?.storeName;
-                if (name) break;
-              } catch { /* ignore */ }
-            }
+        if (!name && user) {
+          const idToken = await user.getIdToken(true);
+          const tryProfileEndpoints = ['/api/store/profile', '/api/store/info', '/api/store'];
+          for (const ep of tryProfileEndpoints) {
+            try {
+              const res = await axios.get(ep, { headers: { Authorization: `Bearer ${idToken}` } });
+              name =
+                res.data?.storeName ??
+                res.data?.name ??
+                res.data?.store?.name ??
+                res.data?.profile?.storeName;
+              if (name) break;
+            } catch { /* ignore */ }
           }
         }
 
@@ -106,7 +107,7 @@ export default function DashboardPage() {
       }
     };
     run();
-  }, [storeUid]);
+  }, [storeUid, user]);
 
   const headerRight = useMemo(() => {
     if (storeLoading) {
@@ -142,7 +143,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!userPresent) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <motion.div
@@ -173,6 +174,9 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-green-800">لوحة التحكم</h1>
         {headerRight}
       </div>
+
+      {/* C6: Re-authorization Banner */}
+      <ReAuthBanner storeUid={storeUid} />
 
       <div className="flex space-x-2 mb-6 rtl:space-x-reverse">
         {tabs.map((tab) => (
@@ -211,6 +215,9 @@ export default function DashboardPage() {
         {activeTab === 'الإعدادات' && <SettingsTab storeUid={storeUid} storeName={storeName} />}
         {activeTab === 'المساعدة' && <SupportTab />}
       </div>
+
+      {/* Feedback Widget - Available on all tabs */}
+      <FeedbackWidget userName={storeName} />
     </div>
   );
 }

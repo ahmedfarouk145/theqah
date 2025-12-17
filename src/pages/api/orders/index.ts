@@ -27,13 +27,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { uid } = await requireUser(req);
     const db = dbAdmin();
 
-    const snap = await db.collection('orders')
+    // Pagination parameters
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100); // Max 100 items
+    const cursor = req.query.cursor as string | undefined;
+
+    let query = db.collection('orders')
       .where('storeUid', '==', uid)
       .orderBy('createdAt', 'desc')
-      .limit(200)
-      .get();
+      .limit(limit + 1); // Fetch one extra to check if there's a next page
 
-    const orders: OrderDTO[] = snap.docs.map((d) => {
+    // Apply cursor if provided
+    if (cursor) {
+      const cursorDoc = await db.collection('orders').doc(cursor).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const snap = await query.get();
+    const hasMore = snap.docs.length > limit;
+    const docs = hasMore ? snap.docs.slice(0, limit) : snap.docs;
+
+    const orders: OrderDTO[] = docs.map((d) => {
       const x = d.data() as OrderDoc;
       const created =
         typeof x.createdAt === 'number'
@@ -49,9 +64,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
     });
 
-    res.status(200).json({ orders });
-  } catch (e) {
-    console.error('orders list error', e);
+    const nextCursor = hasMore && docs.length > 0 ? docs[docs.length - 1].id : null;
+
+    res.status(200).json({ 
+      orders,
+      pagination: {
+        hasMore,
+        nextCursor,
+        limit
+      }
+    });
+  } catch {
     res.status(401).json({ message: 'Unauthorized' });
   }
 }

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import NavbarLanding from '@/components/NavbarLanding';
+import FeedbackWidget from '@/components/FeedbackWidget';
 
 export default function LandingPage() {
   const [storesCount, setStoresCount] = useState(300);
@@ -38,11 +39,14 @@ export default function LandingPage() {
   return (
     <>
       <NavbarLanding />
-      <div className="h-20" />
+      <div className="h-20" aria-hidden="true" />
 
-      <main className="font-sans text-[#0e1e1a] bg-white overflow-x-hidden">
+      <main id="main-content" className="font-sans text-[#0e1e1a] bg-white overflow-x-hidden" role="main">
         {/* Hero Section */}
-        <section className="min-h-[90vh] flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-green-50 to-white relative overflow-hidden">
+        <section 
+          className="min-h-[90vh] flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-green-50 to-white relative overflow-hidden"
+          aria-label="قسم البطل - مقدمة عن مشتري موثّق"
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -55,7 +59,14 @@ export default function LandingPage() {
             transition={{ duration: 1 }}
             className="z-10 max-w-2xl space-y-6"
           >
-            <Image src="/logo.png" alt="مشتري موثّق" width={100} height={100} className="mx-auto" />
+            <Image 
+              src="/logo.png" 
+              alt="شعار مشتري موثّق - منصة تقييمات العملاء الموثوقة" 
+              width={100} 
+              height={100} 
+              className="mx-auto"
+              priority
+            />
             <h1 className="text-4xl md:text-5xl font-extrabold text-green-900 leading-tight">
               مشتري موثّق  تقييمات حقيقية بعد الشراء
             </h1>
@@ -70,7 +81,8 @@ export default function LandingPage() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.97 }}
-                className="bg-green-700 text-white px-10 py-3 rounded-full text-lg shadow-md hover:bg-green-800 transition"
+                className="bg-green-700 text-white px-10 py-3 rounded-full text-lg shadow-md hover:bg-green-800 transition focus:outline-none focus:ring-4 focus:ring-green-300"
+                aria-label="ابدأ الاشتراك المجاني في مشتري موثّق"
               >
                 ابدأ الآن مجاناً
               </motion.button>
@@ -185,10 +197,10 @@ export default function LandingPage() {
         </section>
 
         {/* Footer */}
-<footer className="bg-green-100 py-6 text-sm text-green-900 border-t border-green-200">
+<footer className="bg-green-100 py-6 text-sm text-green-900 border-t border-green-200" role="contentinfo" aria-label="معلومات التذييل">
   <div className="max-w-6xl mx-auto px-4 flex flex-col gap-3">
     {/* الروابط */}
-    <div className="flex justify-center gap-6 flex-wrap">
+    <nav className="flex justify-center gap-6 flex-wrap" role="navigation" aria-label="روابط التذييل">
       <Link href="/privacy-policy" className="hover:underline">
         سياسة الخصوصية
       </Link>
@@ -198,7 +210,7 @@ export default function LandingPage() {
       <Link href="/support" className="hover:underline">
         الدعم والمساعدة
       </Link>
-    </div>
+    </nav>
 
     {/* النص */}
     <p className="text-center md:text-right">
@@ -217,10 +229,11 @@ export default function LandingPage() {
   >
     <Image
       src="/qudwa-logo.png"
-      alt="جمعية قدوة لرعاية الأيتام"
+      alt="شعار جمعية قدوة لرعاية الأيتام - شريك مشتري موثّق"
       width={80}
       height={80}
       className="opacity-90 hover:opacity-100 transition"
+      loading="lazy"
     />
   </a>
 
@@ -233,16 +246,21 @@ export default function LandingPage() {
   >
     <Image
       src="/eauth-logo.png"
-      alt="التحقق من شهادة مُشتري موثّق"
+      alt="شعار التحقق الإلكتروني - شهادة مُشتري موثّق معتمدة"
       width={40}
       height={40}
       className="opacity-90 hover:opacity-100 transition"
+      style={{ width: 'auto', height: 40 }}
+      loading="lazy"
     />
   </a>
 </div>
   </div>
 </footer>
       </main>
+
+      {/* Feedback Widget - Available on all pages */}
+      <FeedbackWidget />
     </>
   );
 }
