@@ -103,7 +103,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await db
       .collection("webhook_errors")
       .add({ at: Date.now(), scope: "subscription_fetch", storeUid, error: msg })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('[Subscription] Failed to delete old subscription doc:', err);
+      });
     return res.status(200).json({
       ok: true,
       subscription: cur ?? null,

@@ -115,7 +115,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           presetUid = typeof st?.uid === "string" ? st.uid : null;
           returnTo  = typeof st?.returnTo === "string" ? st.returnTo : null;
           ownerUid  = typeof st?.ownerUid === "string" ? st.ownerUid : null;
-          await stRef.delete().catch(() => {});
+          await stRef.delete().catch((err) => {
+            console.error('[Callback] Failed to delete state doc:', err);
+          });
         } else {
           try {
             const parsed = JSON.parse(decodeURIComponent(state)) as { uid?: string; returnTo?: string; ownerUid?: string };

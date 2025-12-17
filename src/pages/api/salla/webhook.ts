@@ -585,7 +585,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await db.collection("webhook_errors").add({
       at: Date.now(), scope: "parse", error: e instanceof Error ? e.message : String(e),
       raw: raw.toString("utf8").slice(0, 2000), headers: req.headers
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error('[Webhook] Failed to log parse error:', err);
+    });
     return;
   }
 
@@ -833,7 +835,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 await db.collection("webhook_errors").add({
                   at: Date.now(), scope: "password_email", event,
                   error: r.error, email: targetEmail, storeUid
-                }).catch(() => {});
+                }).catch((err) => {
+                  console.error('[Webhook] Failed to update order stats:', err);
+                });
               } else {
                 await fbLog(db, { level: "info", scope: "password_email", msg: "sent ok", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail } });
               }
@@ -1076,7 +1080,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       at: Date.now(), event, processed: true, status: statusFin
       }, { merge: true }),
       new Promise((_, reject) => setTimeout(() => reject(new Error("processed_events_timeout")), 2000))
-    ]).catch(() => {});
+    ]).catch((err) => {
+      console.error('[Webhook] Failed to mark event as processed:', err);
+    });
 
     const knownPrefixes = ["order.","shipment.","product.","customer.","category.","brand.","store.","cart.","invoice.","specialoffer.","app."];
     const isKnown = knownPrefixes.some((p)=>event.startsWith(p)) || event === "review.added";
@@ -1084,7 +1090,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       db.collection(isKnown ? "webhooks_salla_known" : "webhooks_salla_unhandled")
         .add({ at: Date.now(), event, data: dataRaw }),
       new Promise((_, reject) => setTimeout(() => reject(new Error("webhooks_salla_timeout")), 2000))
-    ]).catch(() => {});
+    ]).catch((err) => {
+      console.error('[Webhook] Failed to log webhook event:', err);
+    });
 
     fbLog(db, { level: "info", scope: "handler", msg: "processing finished ok", event, idemKey, merchant: merchantId, orderId });
     await idemRef.set({ statusFlag: "done", processingFinishedAt: Date.now() }, { merge: true });
@@ -1200,5 +1208,7 @@ function trackWebhookCompletion(event: string, storeUid: string | undefined, suc
     success,
     duration,
     error
-  }).catch(() => {}); // Silent fail
+  }).catch((err) => {
+    console.error('[Webhook] Failed to track webhook completion:', err);
+  });
 }

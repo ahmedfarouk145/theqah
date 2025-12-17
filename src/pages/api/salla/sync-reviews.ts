@@ -169,7 +169,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         "salla.lastReviewsSyncAt": Date.now(),
         "salla.lastReviewsSyncCount": savedReviews.length,
         "salla.totalReviewsSynced": (storeData?.salla?.totalReviewsSynced || 0) + savedReviews.length,
-      }).catch(() => {}); // Silent fail
+      }).catch((updateError) => {
+        console.error(`[Sync] Failed to update store sync stats:`, updateError);
+      });
     }
 
     // Calculate quota usage

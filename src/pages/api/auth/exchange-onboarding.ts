@@ -86,7 +86,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // (اختياري) ربط عكسي
     await db.collection("owners").doc(userUid).collection("stores").doc(storeUid)
       .set({ platform: "salla", linkedAt: Date.now() }, { merge: true })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('[Auth] Failed to delete onboarding state:', err);
+      });
 
     // علّم التوكن كمستخدم
     await tokSnap.ref.set({ usedAt: Date.now(), ownerUid: userUid, storeUid }, { merge: true });

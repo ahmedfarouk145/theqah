@@ -28,8 +28,29 @@ export interface MetricEvent {
   userId?: string;
   storeUid?: string;
   error?: string;
+  errorStack?: string; // H4: Full stack trace for errors
+  errorType?: string; // H4: Error constructor name
   metadata?: Record<string, unknown>;
   timestamp: number;
+}
+
+/**
+ * H4: Extract comprehensive error information
+ */
+function extractErrorDetails(error: unknown): { message: string; stack?: string; type?: string } {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      stack: error.stack,
+      type: error.constructor.name
+    };
+  }
+  
+  if (typeof error === "string") {
+    return { message: error };
+  }
+  
+  return { message: String(error) };
 }
 
 class MetricsCollector {
@@ -121,6 +142,36 @@ class MetricsCollector {
   async forceFlush(): Promise<void> {
     await this.flush();
   }
+
+  /**
+   * H4: Track error with full context and stack trace
+   */
+  async trackError(error: unknown, context: {
+    endpoint?: string;
+    method?: string;
+    userId?: string;
+    storeUid?: string;
+    severity?: SeverityLevel;
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    const errorDetails = extractErrorDetails(error);
+    
+    await this.track({
+      type: "api_error",
+      severity: context.severity || "error",
+      endpoint: context.endpoint,
+      method: context.method,
+      userId: context.userId,
+      storeUid: context.storeUid,
+      error: errorDetails.message,
+      errorStack: errorDetails.stack,
+      errorType: errorDetails.type,
+      metadata: {
+        ...context.metadata,
+        errorDetails
+      }
+    });
+  }
 }
 
 // Singleton instance
@@ -147,7 +198,8 @@ export async function trackApiCall(params: {
 }
 
 /**
- * Helper to track errors
+ * H4: Helper to track errors with enhanced context
+ * @deprecated Use trackErrorWithContext for better error tracking
  */
 export async function trackError(params: {
   endpoint: string;
@@ -161,6 +213,20 @@ export async function trackError(params: {
     severity: "error",
     ...params
   });
+}
+
+/**
+ * H4: Track error with full stack trace and context
+ */
+export async function trackErrorWithContext(error: unknown, context: {
+  endpoint?: string;
+  method?: string;
+  userId?: string;
+  storeUid?: string;
+  severity?: SeverityLevel;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  await metrics.trackError(error, context);
 }
 
 /**

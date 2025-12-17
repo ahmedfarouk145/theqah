@@ -1,9 +1,11 @@
 name: Sync Salla Reviews (Daily Backup)
 
 on:
-  schedule:
-    # يشتغل كل يوم الساعة 3 صباحاً بتوقيت UTC (مرة واحدة كنسخة احتياطية)
-    - cron: '0 3 * * *'
+  # DISABLED: Waiting for GitHub repo transfer to work account
+  # Uncomment after adding CRON_SECRET to GitHub Secrets
+  # schedule:
+  #   # يشتغل كل يوم الساعة 3 صباحاً بتوقيت UTC (مرة واحدة كنسخة احتياطية)
+  #   - cron: '0 3 * * *'
   
   # يمكن تشغيله manual من GitHub
   workflow_dispatch:

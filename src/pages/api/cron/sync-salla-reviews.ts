@@ -140,7 +140,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           "salla.lastReviewsSyncAt": Date.now(),
           "salla.lastReviewsSyncCount": saved,
           "salla.totalReviewsSynced": (storeData?.salla?.totalReviewsSynced || 0) + saved,
-        }).catch(() => {}); // Silent fail
+        }).catch((updateError) => {
+          console.error(`[Cron] Failed to update store stats for ${storeUid}:`, updateError);
+        });
 
         totalSynced += saved;
         results.push({ 

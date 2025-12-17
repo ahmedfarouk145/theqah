@@ -134,6 +134,8 @@ export function sanitizeMetricEvent(event: {
   return {
     ...event,
     error: event.error ? sanitizeError(event.error) : undefined,
+    errorStack: event.errorStack ? sanitizeError(event.errorStack) : undefined, // H4: Sanitize stack traces
+    errorType: event.errorType, // H4: Keep error type (no PII)
     metadata: event.metadata ? sanitizeMetadata(event.metadata) : undefined,
   };
 }
