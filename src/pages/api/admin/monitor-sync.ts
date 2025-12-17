@@ -26,16 +26,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const now = Date.now();
     const oneDayAgo = now - (24 * 60 * 60 * 1000);
     
-    // Get recent sync logs
-    const syncLogsSnap = await db.collection("syncLogs")
+    // H5: Pagination for sync logs
+    const limit = parseInt(String(req.query.limit || "20"));
+    const page = parseInt(String(req.query.page || "1"));
+    
+    // Get recent sync logs with pagination
+    let query = db.collection("syncLogs")
       .orderBy("timestamp", "desc")
-      .limit(10)
-      .get();
+      .limit(limit);
+    
+    if (page > 1 && req.query.cursor) {
+      const cursorDoc = await db.collection("syncLogs").doc(String(req.query.cursor)).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
 
+    const syncLogsSnap = await query.get();
     const recentSyncs = syncLogsSnap.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
+    
+    const hasMore = syncLogsSnap.docs.length === limit;
+    const lastDoc = syncLogsSnap.docs[syncLogsSnap.docs.length - 1];
+    const nextCursor = hasMore && lastDoc ? lastDoc.id : null;
 
     // Get all connected stores
     const storesSnap = await db.collection("stores")
@@ -156,6 +171,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       alerts,
       stores: storeHealth,
       recentSyncs: recentSyncs.slice(0, 5),
+      
+      // H5: Pagination metadata
+      pagination: {
+        page,
+        limit,
+        hasMore,
+        nextCursor,
+        totalFetched: recentSyncs.length
+      },
+      
       quotaStatus: {
         estimatedDailyReads: Math.round(estimatedDailyReads),
         estimatedDailyWrites: Math.round(estimatedDailyWrites),

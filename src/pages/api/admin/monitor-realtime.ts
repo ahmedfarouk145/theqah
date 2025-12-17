@@ -26,12 +26,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const now = Date.now();
     const fiveMinutesAgo = now - (5 * 60 * 1000);
 
+    // H5: Pagination for realtime (default 500, max 1000)
+    const limit = Math.min(parseInt(String(req.query.limit || "500")), 1000);
+    const page = parseInt(String(req.query.page || "1"));
+    
     // Get very recent metrics
-    const metricsSnap = await db.collection("metrics")
+    let query = db.collection("metrics")
       .where("timestamp", ">=", fiveMinutesAgo)
       .orderBy("timestamp", "desc")
-      .limit(500)
-      .get();
+      .limit(limit);
+    
+    // Cursor-based pagination
+    if (page > 1 && req.query.cursor) {
+      const cursorDoc = await db.collection("metrics").doc(String(req.query.cursor)).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const metricsSnap = await query.get();
 
     const metrics = metricsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Record<string, unknown> & { id: string }));
 
@@ -71,6 +84,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       storeUid: m.storeUid as string | undefined
     }));
 
+    // H5: Pagination metadata
+    const hasMore = metricsSnap.docs.length === limit;
+    const lastDoc = metricsSnap.docs[metricsSnap.docs.length - 1];
+    const nextCursor = hasMore && lastDoc ? lastDoc.id : null;
+
     return res.status(200).json({
       ok: true,
       timestamp: now,
@@ -86,6 +104,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
 
       activity: activityStream,
+
+      // H5: Pagination info
+      pagination: {
+        page,
+        limit,
+        hasMore,
+        nextCursor,
+        totalFetched: metrics.length
+      },
 
       health: {
         status: errors.length > 10 ? "⚠️ High error rate" :

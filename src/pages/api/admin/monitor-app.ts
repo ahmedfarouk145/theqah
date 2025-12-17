@@ -32,14 +32,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     const startTime = now - period;
 
-    // Fetch metrics from the period
-    const metricsSnap = await db.collection("metrics")
+    // H5: Pagination support
+    const page = parseInt(String(req.query.page || "1"));
+    const limit = parseInt(String(req.query.limit || "1000"));
+    
+    // Fetch metrics from the period with pagination
+    let query = db.collection("metrics")
       .where("timestamp", ">=", startTime)
       .orderBy("timestamp", "desc")
-      .limit(10000) // Reasonable limit
-      .get();
+      .limit(limit);
+    
+    // If page > 1, use cursor-based pagination
+    if (page > 1 && req.query.cursor) {
+      const cursorDoc = await db.collection("metrics").doc(String(req.query.cursor)).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
 
+    const metricsSnap = await query.get();
     const metrics = metricsSnap.docs.map(doc => doc.data());
+    
+    // Pagination metadata
+    const hasMore = metricsSnap.docs.length === limit;
+    const lastDoc = metricsSnap.docs[metricsSnap.docs.length - 1];
+    const nextCursor = hasMore && lastDoc ? lastDoc.id : null;
 
     // Aggregate metrics
     const apiCalls = metrics.filter(m => m.type === "api_call");
@@ -273,7 +290,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       alerts: alerts.sort((a, b) => {
         const severityOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
         return (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99);
-      })
+      }),
+
+      // H5: Pagination metadata
+      pagination: {
+        page,
+        limit,
+        hasMore,
+        nextCursor,
+        totalFetched: metrics.length
+      }
     });
 
   } catch (error: unknown) {
