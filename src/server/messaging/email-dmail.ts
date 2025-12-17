@@ -1,5 +1,6 @@
 // src/server/messaging/email-dmail.ts
 import nodemailer from "nodemailer";
+import { trackEmail } from "@/server/monitoring/metrics";
 
 export type EmailSendResult =
   | { ok: true; id: string | null }
@@ -33,6 +34,7 @@ export async function sendEmailDmail(
   html: string,
   textFallback?: string
 ): Promise<EmailSendResult> {
+  const startTime = Date.now();
   const { host, port, user, pass, from } = getConfig();
 
   const transporter = nodemailer.createTransport({
@@ -70,11 +72,43 @@ export async function sendEmailDmail(
       },
     });
 
+    const duration = Date.now() - startTime;
     console.log(`✅ تم إرسال الإيميل بنجاح - Message ID: ${info.messageId}`);
+    
+    // H8: Track email success
+    await trackEmail({
+      to,
+      subject,
+      success: true,
+      duration,
+      messageId: info.messageId || undefined,
+      metadata: { 
+        provider: 'Dmail',
+        host,
+        port
+      }
+    });
+    
     return { ok: true, id: info.messageId || null };
   } catch (e) {
+    const duration = Date.now() - startTime;
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`❌ فشل في إرسال الإيميل إلى ${to}:`, { error: msg, subject });
+    
+    // H8: Track email failure
+    await trackEmail({
+      to,
+      subject,
+      success: false,
+      error: msg,
+      duration,
+      metadata: {
+        provider: 'Dmail',
+        host,
+        port
+      }
+    });
+    
     return { ok: false, error: msg };
   }
 }

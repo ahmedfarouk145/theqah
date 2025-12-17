@@ -272,3 +272,59 @@ export async function trackWebhook(params: {
     error: params.error
   });
 }
+
+/**
+ * H7: Helper to track SMS sending
+ */
+export async function trackSMS(params: {
+  to: string;
+  success: boolean;
+  error?: string;
+  duration?: number;
+  storeUid?: string;
+  userId?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  await metrics.track({
+    type: "sms_sent",
+    severity: params.success ? "info" : "warning",
+    metadata: {
+      to: params.to, // Will be sanitized by sanitize.ts
+      duration: params.duration,
+      ...params.metadata
+    },
+    storeUid: params.storeUid,
+    userId: params.userId,
+    error: params.error
+  });
+}
+
+/**
+ * H8: Helper to track email sending
+ */
+export async function trackEmail(params: {
+  to: string;
+  subject: string;
+  success: boolean;
+  error?: string;
+  duration?: number;
+  storeUid?: string;
+  userId?: string;
+  messageId?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  await metrics.track({
+    type: "email_sent",
+    severity: params.success ? "info" : "warning",
+    metadata: {
+      to: params.to, // Will be sanitized by sanitize.ts
+      subject: params.subject,
+      messageId: params.messageId,
+      duration: params.duration,
+      ...params.metadata
+    },
+    storeUid: params.storeUid,
+    userId: params.userId,
+    error: params.error
+  });
+}
