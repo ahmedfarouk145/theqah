@@ -79,6 +79,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           productId: null,
           platform: platform || "web",
           trustedBuyer: false,
+          verified: false,
+          verifiedReason: null, // Not verified - no token
           status: "pending",
           published: false,
           publishedAt: null,
@@ -124,6 +126,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         productIds: tok.productIds ?? [],
         platform: platform || tok.platform || "web",
         trustedBuyer: true,
+        verified: true,
+        verifiedReason: 'invited_purchase', // Verified via our invite system
         status: "pending",
         published: false,
         publishedAt: null,

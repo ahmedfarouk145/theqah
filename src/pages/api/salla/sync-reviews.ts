@@ -53,6 +53,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       params.append("product_id", productId);
     }
 
+    // ✨ Incremental sync: fetch only new reviews since last sync
+    const lastSyncAt = storeData?.salla?.lastReviewsSyncAt || 0;
+    if (lastSyncAt > 0 && req.query.incremental !== 'false') {
+      const lastSyncDate = new Date(lastSyncAt).toISOString();
+      params.append("created_at[gt]", lastSyncDate);
+      console.log(`[Manual Sync] Incremental sync for ${storeUid} since ${lastSyncDate}`);
+    } else {
+      console.log(`[Manual Sync] Full sync for ${storeUid}`);
+    }
+
     const url = `${baseUrl}?${params.toString()}`;
 
     // Fetch reviews from Salla
@@ -108,6 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ? new Date(sallaReview.created_at).getTime() 
         : 0;
       const isVerified = subscriptionStart > 0 && reviewDate >= subscriptionStart;
+      const verifiedReason: string | null = isVerified ? 'subscription_date' : 'salla_native';
 
       // Map Salla review to our schema
       const reviewDoc = {
@@ -135,6 +146,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status: sallaReview.status || "approved",
         trustedBuyer: false, // Salla reviews are not from our invite system
         verified: isVerified, // ✨ معتمد فقط إذا جاء بعد الاشتراك
+        verifiedReason, // ✨ سبب التحقق
         publishedAt: reviewDate || Date.now(),
         createdAt: Date.now(),
         updatedAt: Date.now(),

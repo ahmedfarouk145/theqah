@@ -1,4 +1,12 @@
 // src/utils/mapReview.ts
+export type VerifiedReason = 
+  | 'subscription_date'      // Review created after subscription start
+  | 'manual_verification'    // Manually verified by admin
+  | 'auto_verified'          // Auto-verified by system rules
+  | 'salla_native'           // Native Salla review (trusted)
+  | 'invited_purchase'       // From our invite system with order verification
+  | null;                    // Not verified
+
 export type ReviewOut = {
   id: string;
   name: string;
@@ -14,6 +22,8 @@ export type ReviewOut = {
   lastModified?: string;
   platform?: string;
   trustedBuyer?: boolean;
+  verified?: boolean;
+  verifiedReason?: VerifiedReason;
   images?: string[];
 };
 //eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,6 +56,8 @@ export function mapReview(id: string, d: any, storeName: string, storeDomain?: s
     lastModified: toIso(d?.lastModified),
     platform: d?.platform || "web",
     trustedBuyer: !!d?.trustedBuyer,
+    verified: !!d?.verified,
+    verifiedReason: d?.verifiedReason || null,
     images: Array.isArray(d?.images) ? d.images.slice(0, 10) : [],
   };
 }

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "npm run build:widgets && next build",
-    "build:widgets": "terser public/widgets/theqah-widget.js -o public/widgets/theqah-widget.min.js -c -m && terser public/widgets/theqah-stars.js -o public/widgets/theqah-stars.min.js -c -m",
+    "build:widgets": "node scripts/minify-widgets.js",
+    "minify": "node scripts/minify-widgets.js",
     "start": "next start",
     "lint": "next lint",
     "test:webhook": "node tools/salla-webhook-tester.js",

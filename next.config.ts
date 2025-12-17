@@ -40,6 +40,10 @@ if (process.env.CSP_EXTRA_ANCESTORS) {
 const cspFrameAncestors = `frame-ancestors ${ALLOWED_ANCESTORS.join(" ")};`;
 
 const nextConfig = {
+  // ======= Compression =======
+  // Enable gzip compression for API responses and pages (L4)
+  compress: true,
+  
   // ======= Performance Budgets =======
   // Enforce bundle size limits to prevent performance regression
   experimental: {

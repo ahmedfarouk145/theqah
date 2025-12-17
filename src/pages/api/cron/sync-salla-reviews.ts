@@ -51,16 +51,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
-        // Fetch reviews from Salla (first page only for cron)
-        const response = await fetch(
-          "https://api.salla.dev/admin/v2/reviews?per_page=50",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/json",
-            },
-          }
-        );
+        // ✨ Incremental sync: fetch only new reviews since last sync
+        const lastSyncAt = storeData?.salla?.lastReviewsSyncAt || 0;
+        let apiUrl = "https://api.salla.dev/admin/v2/reviews?per_page=50";
+        
+        // If we have a lastSyncAt, filter by created_at (Salla supports filtering)
+        if (lastSyncAt > 0) {
+          const lastSyncDate = new Date(lastSyncAt).toISOString();
+          apiUrl += `&created_at[gt]=${lastSyncDate}`;
+          console.log(`[Cron] Incremental sync for ${storeUid} since ${lastSyncDate}`);
+        } else {
+          console.log(`[Cron] Full sync for ${storeUid} (first sync)`);
+        }
+
+        // Fetch reviews from Salla
+        const response = await fetch(apiUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
 
         if (!response.ok) {
           console.error(`[Cron] Salla API error for ${storeUid}:`, response.status);
