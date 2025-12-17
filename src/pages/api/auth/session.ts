@@ -1,6 +1,7 @@
 // File: src/pages/api/auth/session.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authAdmin } from '@/lib/firebaseAdmin';
+import { trackAuth } from '@/server/activity-tracker';
 
 type SameSiteOpt = 'Lax' | 'Strict' | 'None';
 
@@ -81,6 +82,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const sessionCookie = await authAdmin().createSessionCookie(idToken, {
         expiresIn: expiresInMs,
       });
+
+      // Track login activity
+      const { trackAuth } = await import('@/server/activity-tracker');
+      trackAuth({
+        userId: decoded.uid,
+        storeUid: (decoded as { storeUid?: string }).storeUid,
+        action: 'login',
+        req
+      }).catch(err => console.error('[Session] Failed to track login:', err));
 
       res.setHeader(
         'Set-Cookie',

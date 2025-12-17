@@ -41,6 +41,7 @@ const APP_BASE_URL   = (
 ).replace(/\/+$/,"");
 const WEBHOOK_LOG_DEST = (process.env.WEBHOOK_LOG_DEST || "console").trim().toLowerCase(); // console | firestore
 const ENABLE_FIRESTORE_LOGS = process.env.ENABLE_FIRESTORE_LOGS === "true"; // Better env control
+const isDevelopment = process.env.NODE_ENV === "development";
 
 /* ===================== Utils ===================== */
 const lc = (x: unknown) => String(x ?? "").toLowerCase();
