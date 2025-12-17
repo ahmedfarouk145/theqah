@@ -1,6 +1,7 @@
 // src/pages/api/public/reviews/index.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
+import { rateLimitPublic, RateLimitPresets } from "@/server/rate-limit-public";
 
 // -------- helpers --------
 type QueryLike = NextApiRequest["query"];
@@ -44,6 +45,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method !== "GET") return res.status(405).json({ error: "method_not_allowed" });
+
+  // Rate limiting - 100 requests per 15 minutes per IP
+  const limited = await rateLimitPublic(req, res, {
+    ...RateLimitPresets.PUBLIC_MODERATE,
+    identifier: "public-reviews"
+  });
+  if (limited) return; // 429 response already sent
 
   const { storeUid, productId, limit, sort, sinceDays } = parseQuery(req.query);
   if (!storeUid) {

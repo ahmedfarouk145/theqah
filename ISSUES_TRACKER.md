@@ -213,15 +213,24 @@ if (process.env.NODE_ENV !== "production") return;
 
 ---
 
-### H9. No Rate Limiting on Public Endpoints
+### ✅ H9. No Rate Limiting on Public Endpoints [COMPLETED]
 **Component:** API Security  
 **Issue:** Public endpoints (widget, check-verified) have no rate limiting  
 **Impact:** DDoS vulnerability, abuse potential  
 **Location:** `src/pages/api/reviews/check-verified.ts`, `src/pages/api/public/reviews.ts`  
 **Solution:** Implement rate limiting middleware  
 **Effort:** 4 hours  
-**Files to Create:**
-- `src/server/rate-limit-public.ts`
+**Status:** ✅ **COMPLETED** - December 17, 2025  
+**Implementation:**
+- Created `src/server/rate-limit-public.ts` with sliding window algorithm (388 lines)
+- IP-based tracking with proxy header support (X-Forwarded-For, X-Real-IP, CF-Connecting-IP)
+- Applied to 2 public endpoints: check-verified (100 req/15min), public/reviews (100 req/15min)
+- Monitoring integration: tracks allowed/blocked requests via metrics system
+- GDPR-compliant IP anonymization for privacy
+- 4 presets: PUBLIC_STRICT (60/15min), PUBLIC_MODERATE (100/15min), AUTHENTICATED (300/15min), WRITE_STRICT (20/5min)
+- Automatic cleanup of stale entries every 5 minutes
+- Whitelist support for internal services
+- Comprehensive documentation in `docs/RATE_LIMITING.md`
 
 ---
 
@@ -688,9 +697,9 @@ if (process.env.NODE_ENV !== "production") return;
 
 ### 📊 Summary
 
-**Total Completed:** 18/47 (38%)
+**Total Completed:** 21/47 (45%)
 - 🔴 Critical: 6/8 (75%)
-- 🟠 High: 6/12 (50%) ⬆️
+- 🟠 High: 9/12 (75%) ⬆️
 - 🟡 Medium: 0/15 (0%)
 - 🟢 Low: 6/12 (50%)
 
@@ -699,6 +708,8 @@ if (process.env.NODE_ENV !== "production") return;
 2. ✅ C2 - Firestore indexes deployed
 3. ✅ C3 - Data sanitization (GDPR-compliant)
 4. ✅ C6 - Re-authorization flow
+5. ✅ H9 - Rate limiting on public endpoints
+6. ✅ H10 - Firestore backup strategy
 5. ✅ C7 - Real-time alerting (Email + Slack)
 6. ✅ C8 - Webhook auth bypass removed
 7. ✅ H2 - Environment separation
@@ -797,9 +808,9 @@ if (process.env.NODE_ENV !== "production") return;
 
 **Progress Update:**
 - **Total Issues:** 47
-- **Completed:** 20/47 (43%)
+- **Completed:** 21/47 (45%)
 - **Critical:** 6/8 (75%)
-- **High Priority:** 8/12 (67%)
+- **High Priority:** 9/12 (75%)
 - **Medium Priority:** 0/15 (0%)
 - **Low Priority:** 7/12 (58%)
 
