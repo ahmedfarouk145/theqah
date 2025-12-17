@@ -1154,6 +1154,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error("webhook_errors_timeout")), 3000))
     ]).catch(() => {});
+    
+    // Enqueue for retry (H6: Webhook retry logic)
+    try {
+      const { enqueueWebhookRetry } = await import("@/server/queue/webhook-retry");
+      const storeUid = pickStoreUidFromSalla(dataRaw, body.merchant);
+      
+      await enqueueWebhookRetry({
+        event,
+        merchant: merchantId,
+        orderId,
+        rawBody: raw,
+        headers: req.headers,
+        error: e instanceof Error ? e : new Error(String(e)),
+        storeUid,
+        priority: event.includes("order") ? "high" : "normal",
+      });
+      
+      console.log(`[WEBHOOK] Enqueued for retry: ${event} (orderId: ${orderId})`);
+    } catch (retryErr) {
+      console.error(`[WEBHOOK] Failed to enqueue retry:`, retryErr);
+    }
+    
     await idemRef.set({ statusFlag: "failed", lastError: err, processingFinishedAt: Date.now(), errorStack: stack?.substring(0, 500) }, { merge: true });
     try { res.status(500).json({ ok: false, error: err }); } catch {}
   }
