@@ -1056,7 +1056,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
     } else if (event === "review.added") {
-      // Fetch and save review from Salla API (webhook doesn't include review ID)
+      // Save review immediately from webhook (don't wait for Salla API indexing)
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
       if (storeUid && dataRaw && typeof dataRaw === 'object') {
         try {
@@ -1064,6 +1064,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const reviewType = String(reviewData.type || "");
           const product = reviewData.product as Record<string, unknown> | undefined;
           const order = reviewData.order as Record<string, unknown> | undefined;
+          const customer = reviewData.customer as Record<string, unknown> | undefined;
           const productId = product?.id;
           const orderId = order?.id;
           
@@ -1078,75 +1079,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(200).json({ ok: true, processed: true });
           }
 
-          // Get access token to fetch review details
-          const { getOwnerAccessToken } = await import("@/lib/sallaClient");
-          const token = await getOwnerAccessToken(db, storeUid);
-          
-          if (!token) {
-            fbLog(db, { level: "error", scope: "review", msg: "no access token", event, idemKey, merchant: merchantId });
-            return res.status(200).json({ ok: true, processed: true });
-          }
-
-          // Fetch reviews for this product with retry (Salla might not have indexed yet)
-          const reviewsUrl = `https://api.salla.dev/admin/v2/reviews?product_id=${productId}&per_page=20`;
-          let sallaReview: Record<string, unknown> | null = null;
-          
-          // Try up to 3 times with delays
-          for (let attempt = 1; attempt <= 3; attempt++) {
-            if (attempt > 1) {
-              // Wait before retry: 2s, then 3s
-              await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-            }
-            
-            const reviewsResponse = await fetch(reviewsUrl, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: "application/json",
-              },
-            });
-
-            if (!reviewsResponse.ok) {
-              if (attempt === 3) {
-                fbLog(db, { level: "error", scope: "review", msg: "failed to fetch reviews from salla after retries", event, idemKey, merchant: merchantId, meta: { status: reviewsResponse.status } });
-                return res.status(200).json({ ok: true, processed: true });
-              }
-              continue;
-            }
-
-            const reviewsJson = await reviewsResponse.json();
-            const reviews = reviewsJson?.data || [];
-            
-            // Find the review that matches this order
-            const found = reviews.find((r: Record<string, unknown>) => 
-              String(r.order_id) === String(orderId) && 
-              String(r.product_id) === String(productId)
-            );
-
-            if (found && found.id) {
-              sallaReview = found;
-              fbLog(db, { level: "info", scope: "review", msg: `review found on attempt ${attempt}`, event, idemKey, merchant: merchantId, meta: { reviewId: found.id } });
-              break;
-            }
-          }
-
-          if (!sallaReview || !sallaReview.id) {
-            fbLog(db, { level: "warn", scope: "review", msg: "review not found in salla api after 3 attempts", event, idemKey, merchant: merchantId, meta: { orderId, productId } });
-            return res.status(200).json({ ok: true, processed: true });
-          }
-
-          // Now save with sallaReviewId
-          const sallaReviewId = String(sallaReview.id);
-          const docId = `salla_${merchantId}_${sallaReviewId}`;
-          
-          // Check if already exists
+          // Check if already exists (using orderId + productId)
           const existingQuery = await db.collection("reviews")
             .where("storeUid", "==", storeUid)
-            .where("sallaReviewId", "==", sallaReviewId)
+            .where("orderId", "==", String(orderId))
+            .where("productId", "==", String(productId))
             .limit(1)
             .get();
 
           if (!existingQuery.empty) {
-            fbLog(db, { level: "info", scope: "review", msg: "review already exists", event, idemKey, merchant: merchantId, meta: { sallaReviewId } });
+            fbLog(db, { level: "info", scope: "review", msg: "review already exists", event, idemKey, merchant: merchantId, meta: { orderId, productId } });
             return res.status(200).json({ ok: true, processed: true });
           }
 
@@ -1162,16 +1104,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             : Date.now();
           const isVerified = subscriptionStart > 0 && reviewDate >= subscriptionStart;
 
-          // Save review with sallaReviewId
-          const customer = reviewData.customer as Record<string, unknown> | undefined;
+          // Create doc ID using order + product (we'll update with sallaReviewId later if needed)
+          const docId = `salla_${merchantId}_order_${orderId}_product_${productId}`;
+
+          // Save review immediately
           const reviewDoc = {
             reviewId: docId,
             storeUid,
-            sallaReviewId, // ✅ This is the key field for widget matching!
             orderId: String(orderId),
+            productId: String(productId),
             source: "salla_native",
             
-            productId: String(productId),
             productName: String(product?.name || ""),
             
             stars: Number(reviewData.rating || 0),
@@ -1190,16 +1133,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             createdAt: Date.now(),
             updatedAt: Date.now(),
             
-            sallaData: {
-              isVerified: Boolean(sallaReview.is_verified) || false,
-              helpful: Number(sallaReview.helpful) || 0,
-              notHelpful: Number(sallaReview.not_helpful) || 0,
-            },
+            // sallaReviewId will be added by background job later
+            needsSallaId: true, // Flag for background processing
           };
 
           await db.collection("reviews").doc(docId).set(reviewDoc);
 
-          fbLog(db, { level: "info", scope: "review", msg: "review saved from webhook with salla id", event, idemKey, merchant: merchantId, meta: { sallaReviewId, orderId, productId, verified: isVerified } });
+          fbLog(db, { level: "info", scope: "review", msg: "review saved from webhook (will fetch salla id later)", event, idemKey, merchant: merchantId, meta: { orderId, productId, verified: isVerified } });
           
         } catch (syncErr) {
           const errMsg = syncErr instanceof Error ? syncErr.message : String(syncErr);

@@ -66,10 +66,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Return verified review IDs for logo placement
+    // Support both sallaReviewId (new) and orderId+productId (fallback)
     const reviews = snapshot.docs.map(doc => {
       const data = doc.data();
       return {
-        sallaReviewId: data.sallaReviewId,
+        sallaReviewId: data.sallaReviewId || null,
+        orderId: data.orderId || null,
+        productId: data.productId || null,
         stars: data.stars,
         verified: data.verified
       };
