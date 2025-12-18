@@ -216,8 +216,10 @@
       return;
     }
 
-    // No verified reviews - show message
-    const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
+    // No verified reviews - don't show anything (keep Salla reviews visible)
+    hostEl.setAttribute("data-state", "done");
+    hostEl.style.display = "none"; // Hide the widget container but keep other content visible
+    return;
     
     const style = h("style", {
       html: `
