@@ -1061,13 +1061,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (storeUid && dataRaw && typeof dataRaw === 'object') {
         try {
           const reviewData = dataRaw as Record<string, unknown>;
+          const reviewType = String(reviewData.type || "");
           const product = reviewData.product as Record<string, unknown> | undefined;
           const order = reviewData.order as Record<string, unknown> | undefined;
           const productId = product?.id;
           const orderId = order?.id;
           
+          // Skip testimonials (store reviews) - we only track product reviews
+          if (reviewType === "testimonial" || !product) {
+            fbLog(db, { level: "info", scope: "review", msg: "skipping testimonial review", event, idemKey, merchant: merchantId });
+            return res.status(200).json({ ok: true, processed: true });
+          }
+          
           if (!productId || !orderId) {
-            fbLog(db, { level: "warn", scope: "review", msg: "missing product or order id", event, idemKey, merchant: merchantId, meta: reviewData });
+            fbLog(db, { level: "warn", scope: "review", msg: "missing product or order id", event, idemKey, merchant: merchantId, meta: { type: reviewType, hasProduct: !!product, hasOrder: !!order } });
             return res.status(200).json({ ok: true, processed: true });
           }
 
@@ -1080,31 +1087,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(200).json({ ok: true, processed: true });
           }
 
-          // Fetch reviews for this product to find the new one
-          const reviewsUrl = `https://api.salla.dev/admin/v2/reviews?product_id=${productId}&per_page=10`;
-          const reviewsResponse = await fetch(reviewsUrl, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/json",
-            },
-          });
+          // Fetch reviews for this product with retry (Salla might not have indexed yet)
+          const reviewsUrl = `https://api.salla.dev/admin/v2/reviews?product_id=${productId}&per_page=20`;
+          let sallaReview: Record<string, unknown> | null = null;
+          
+          // Try up to 3 times with delays
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            if (attempt > 1) {
+              // Wait before retry: 2s, then 3s
+              await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+            }
+            
+            const reviewsResponse = await fetch(reviewsUrl, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+              },
+            });
 
-          if (!reviewsResponse.ok) {
-            fbLog(db, { level: "error", scope: "review", msg: "failed to fetch reviews from salla", event, idemKey, merchant: merchantId, meta: { status: reviewsResponse.status } });
-            return res.status(200).json({ ok: true, processed: true });
+            if (!reviewsResponse.ok) {
+              if (attempt === 3) {
+                fbLog(db, { level: "error", scope: "review", msg: "failed to fetch reviews from salla after retries", event, idemKey, merchant: merchantId, meta: { status: reviewsResponse.status } });
+                return res.status(200).json({ ok: true, processed: true });
+              }
+              continue;
+            }
+
+            const reviewsJson = await reviewsResponse.json();
+            const reviews = reviewsJson?.data || [];
+            
+            // Find the review that matches this order
+            const found = reviews.find((r: Record<string, unknown>) => 
+              String(r.order_id) === String(orderId) && 
+              String(r.product_id) === String(productId)
+            );
+
+            if (found && found.id) {
+              sallaReview = found;
+              fbLog(db, { level: "info", scope: "review", msg: `review found on attempt ${attempt}`, event, idemKey, merchant: merchantId, meta: { reviewId: found.id } });
+              break;
+            }
           }
 
-          const reviewsJson = await reviewsResponse.json();
-          const reviews = reviewsJson?.data || [];
-          
-          // Find the review that matches this order
-          const sallaReview = reviews.find((r: Record<string, unknown>) => 
-            String(r.order_id) === String(orderId) && 
-            String(r.product_id) === String(productId)
-          );
-
           if (!sallaReview || !sallaReview.id) {
-            fbLog(db, { level: "warn", scope: "review", msg: "review not found in salla api", event, idemKey, merchant: merchantId, meta: { orderId, productId } });
+            fbLog(db, { level: "warn", scope: "review", msg: "review not found in salla api after 3 attempts", event, idemKey, merchant: merchantId, meta: { orderId, productId } });
             return res.status(200).json({ ok: true, processed: true });
           }
 
