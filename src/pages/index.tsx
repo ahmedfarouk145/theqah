@@ -3,10 +3,15 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import NavbarLanding from '@/components/NavbarLanding';
-import FeedbackWidget from '@/components/FeedbackWidget';
+
+// Lazy load non-critical components
+const FeedbackWidget = dynamic(() => import('@/components/FeedbackWidget'), {
+  ssr: false,
+  loading: () => null,
+});
 
 export default function LandingPage() {
   const [storesCount, setStoresCount] = useState(300);
@@ -18,8 +23,8 @@ export default function LandingPage() {
       const response = await fetch('/api/public/stats');
       if (response.ok) {
         const data = await response.json();
-        setStoresCount((data.stores || 0) + 300); // يبدأ من 300 ويضيف الداتا الحقيقية
-        setReviewsCount((data.reviews || 0) + 5000); // يبدأ من 500 ويضيف الداتا الحقيقية
+        setStoresCount((data.stores || 0) + 300);
+        setReviewsCount((data.reviews || 0) + 5000);
       }
     } catch (error) {
       console.log('Failed to fetch stats:', error);
@@ -27,12 +32,8 @@ export default function LandingPage() {
   };
 
   useEffect(() => {
-    // جلب البيانات عند تحميل الصفحة
     fetchCounts();
-    
-    // تحديث البيانات كل 15 دقيقة (900000 ms = 15 دقيقة)
     const interval = setInterval(fetchCounts, 900000);
-    
     return () => clearInterval(interval);
   }, []);
 
@@ -42,28 +43,18 @@ export default function LandingPage() {
       <div className="h-20" aria-hidden="true" />
 
       <main id="main-content" className="font-sans text-[#0e1e1a] bg-white overflow-x-hidden" role="main">
-        {/* Hero Section */}
-        <section 
+        {/* Hero Section - CSS animations instead of framer-motion */}
+        <section
           className="min-h-[90vh] flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-green-50 to-white relative overflow-hidden"
           aria-label="قسم البطل - مقدمة عن مشتري موثّق"
         >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1 }}
-            className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-100 via-white to-transparent opacity-20 pointer-events-none"
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1 }}
-            className="z-10 max-w-2xl space-y-6"
-          >
-            <Image 
-              src="/logo.png" 
-              alt="شعار مشتري موثّق - منصة تقييمات العملاء الموثوقة" 
-              width={100} 
-              height={100} 
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-green-100 via-white to-transparent opacity-20 pointer-events-none animate-fade-in" />
+          <div className="z-10 max-w-2xl space-y-6 animate-slide-up">
+            <Image
+              src="/logo.png"
+              alt="شعار مشتري موثّق - منصة تقييمات العملاء الموثوقة"
+              width={100}
+              height={100}
               className="mx-auto"
               priority
             />
@@ -71,23 +62,21 @@ export default function LandingPage() {
               مشتري موثّق  تقييمات حقيقية بعد الشراء
             </h1>
             <p className="text-lg md:text-xl text-gray-600 leading-relaxed">
-           اجمع تقييمات عملائك تلقائيًا بعد الشراء، واعرضها مباشرة أسفل المنتج كتقييمات موثوقة
-           <br />
-           <span className="text-green-600 font-semibold text-lg">
-             أكثر من {storesCount.toLocaleString()} متجر يثق بنا و {reviewsCount.toLocaleString()} تقييم موثّق
-           </span>
+              اجمع تقييمات عملائك تلقائيًا بعد الشراء، واعرضها مباشرة أسفل المنتج كتقييمات موثوقة
+              <br />
+              <span className="text-green-600 font-semibold text-lg">
+                أكثر من {storesCount.toLocaleString()} متجر يثق بنا و {reviewsCount.toLocaleString()} تقييم موثّق
+              </span>
             </p>
             <Link href="/signup">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.97 }}
-                className="bg-green-700 text-white px-10 py-3 rounded-full text-lg shadow-md hover:bg-green-800 transition focus:outline-none focus:ring-4 focus:ring-green-300"
+              <button
+                className="bg-green-700 text-white px-10 py-3 rounded-full text-lg shadow-md hover:bg-green-800 hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-300"
                 aria-label="ابدأ الاشتراك المجاني في مشتري موثّق"
               >
                 ابدأ الآن مجاناً
-              </motion.button>
+              </button>
             </Link>
-          </motion.div>
+          </div>
         </section>
 
         {/* Features Section */}
@@ -98,22 +87,19 @@ export default function LandingPage() {
               {[
                 { icon: '💬', title: 'إرسال تلقائي للرسائل', desc: 'SMS / واتساب / بريد إلكتروني بعد كل عملية شراء' },
                 { icon: '🧠', title: 'ذكاء اصطناعي فلتر', desc: 'منع التقييمات المسيئة تلقائيًا وبذكاء' },
-                { icon: '🌟', title: ' عرض التقييمات الموثوقة ', desc: 'اعرض جميع التقييمات بعلامة “مشتري موثّق” لتُظهر المراجعات الحقيقية من المشترين الفعليين' },
+                { icon: '🌟', title: ' عرض التقييمات الموثوقة ', desc: 'اعرض جميع التقييمات بعلامة "مشتري موثّق" لتُظهر المراجعات الحقيقية من المشترين الفعليين' },
               ].map((feat, i) => (
-                <motion.div
+                <div
                   key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.3, duration: 0.8 }}
-                  viewport={{ once: true }}
-                  className="bg-white rounded-xl p-6 shadow hover:shadow-xl transition"
+                  className="bg-white rounded-xl p-6 shadow hover:shadow-xl transition-all duration-300"
+                  style={{ animationDelay: `${i * 150}ms` }}
                 >
                   <div className="text-4xl mb-4 bg-green-100 text-green-800 w-14 h-14 rounded-full mx-auto flex items-center justify-center">
                     {feat.icon}
                   </div>
                   <h3 className="text-xl font-semibold mb-2 text-green-900">{feat.title}</h3>
                   <p className="text-gray-600 leading-relaxed">{feat.desc}</p>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
@@ -128,18 +114,14 @@ export default function LandingPage() {
                 'اربط متجرك مع مشتري موثّق (سلة / زد / Webhook)',
                 'نرسل رابط التقييم تلقائيًا بعد الشراء',
                 'العميل يقيّم المنتج أو الخدمة بسهولة',
-               ' نعرض التقييمات الموثقة تحت المنتج و في صفحة عامة',
+                ' نعرض التقييمات الموثقة تحت المنتج و في صفحة عامة',
               ].map((step, i) => (
-                <motion.div
+                <div
                   key={i}
-                  initial={{ opacity: 0, x: 30 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.2, duration: 0.6 }}
-                  viewport={{ once: true }}
-                  className="bg-green-50 rounded-xl p-5 text-lg text-green-900 shadow-sm"
+                  className="bg-green-50 rounded-xl p-5 text-lg text-green-900 shadow-sm hover:shadow-md transition-shadow duration-200"
                 >
                   <span className="font-bold text-green-600 ml-2">{i + 1}.</span> {step}
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
@@ -148,23 +130,11 @@ export default function LandingPage() {
         {/* Stats Section */}
         <section className="py-16 px-6 bg-gradient-to-b from-green-50 to-green-100">
           <div className="max-w-4xl mx-auto text-center">
-            <motion.h2 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              viewport={{ once: true }}
-              className="text-3xl font-bold mb-8 text-green-800"
-            >
+            <h2 className="text-3xl font-bold mb-8 text-green-800">
               الثقة في الأرقام
-            </motion.h2>
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.8 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6 }}
-                viewport={{ once: true }}
-                className="text-center"
-              >
+              <div className="text-center">
                 <div className="text-5xl font-bold text-green-600 mb-2">
                   {storesCount.toLocaleString()}+
                 </div>
@@ -174,14 +144,8 @@ export default function LandingPage() {
                 <p className="text-green-600 mt-2">
                   متاجر من جميع أنحاء المملكة
                 </p>
-              </motion.div>
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.8 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                viewport={{ once: true }}
-                className="text-center"
-              >
+              </div>
+              <div className="text-center">
                 <div className="text-5xl font-bold text-green-600 mb-2">
                   {reviewsCount.toLocaleString()}+
                 </div>
@@ -191,75 +155,67 @@ export default function LandingPage() {
                 <p className="text-green-600 mt-2">
                   تقييمات حقيقية من مشترين فعليين
                 </p>
-              </motion.div>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Footer */}
-<footer className="bg-green-100 py-6 text-sm text-green-900 border-t border-green-200" role="contentinfo" aria-label="معلومات التذييل">
-  <div className="max-w-6xl mx-auto px-4 flex flex-col gap-3">
-    {/* الروابط */}
-    <nav className="flex justify-center gap-6 flex-wrap" role="navigation" aria-label="روابط التذييل">
-      <Link href="/privacy-policy" className="hover:underline">
-        سياسة الخصوصية
-      </Link>
-      <Link href="/terms" className="hover:underline">
-        الشروط والأحكام
-      </Link>
-      <Link href="/support" className="hover:underline">
-        الدعم والمساعدة
-      </Link>
-    </nav>
-
-    {/* النص */}
-    <p className="text-center md:text-right">
-      ©️ مُشتري موثّق. جميع الحقوق محفوظة.
-      <br />
-      النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية
-    </p>
-{/* اللوجوهات: تحت يمين وبحجم أصغر */}
-<div className="w-full flex justify-end gap-4">
-  {/* لوجو جمعية قدوة */}
-  <a
-    href="https://www.qudwa.org.sa"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="inline-flex items-center justify-center"
-  >
-    <Image
-      src="/qudwa-logo.png"
-      alt="شعار جمعية قدوة لرعاية الأيتام - شريك مشتري موثّق"
-      width={80}
-      height={80}
-      className="opacity-90 hover:opacity-100 transition"
-      loading="lazy"
-    />
-  </a>
-
-  {/* لوجو eauth الموجود فعلاً */}
-  <a
-    href="https://eauthenticate.saudibusiness.gov.sa/certificate-details/0000203970"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="inline-flex items-center justify-center"
-  >
-    <Image
-      src="/eauth-logo.png"
-      alt="شعار التحقق الإلكتروني - شهادة مُشتري موثّق معتمدة"
-      width={40}
-      height={40}
-      className="opacity-90 hover:opacity-100 transition"
-      style={{ width: 'auto', height: 40 }}
-      loading="lazy"
-    />
-  </a>
-</div>
-  </div>
-</footer>
+        <footer className="bg-green-100 py-6 text-sm text-green-900 border-t border-green-200" role="contentinfo" aria-label="معلومات التذييل">
+          <div className="max-w-6xl mx-auto px-4 flex flex-col gap-3">
+            <nav className="flex justify-center gap-6 flex-wrap" role="navigation" aria-label="روابط التذييل">
+              <Link href="/privacy-policy" className="hover:underline">
+                سياسة الخصوصية
+              </Link>
+              <Link href="/terms" className="hover:underline">
+                الشروط والأحكام
+              </Link>
+              <Link href="/support" className="hover:underline">
+                الدعم والمساعدة
+              </Link>
+            </nav>
+            <p className="text-center md:text-right">
+              ©️ مُشتري موثّق. جميع الحقوق محفوظة.
+              <br />
+              النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية
+            </p>
+            <div className="w-full flex justify-end gap-4">
+              <a
+                href="https://www.qudwa.org.sa"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center"
+              >
+                <Image
+                  src="/qudwa-logo.png"
+                  alt="شعار جمعية قدوة لرعاية الأيتام - شريك مشتري موثّق"
+                  width={80}
+                  height={80}
+                  className="opacity-90 hover:opacity-100 transition"
+                  loading="lazy"
+                />
+              </a>
+              <a
+                href="https://eauthenticate.saudibusiness.gov.sa/certificate-details/0000203970"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center"
+              >
+                <Image
+                  src="/eauth-logo.png"
+                  alt="شعار التحقق الإلكتروني - شهادة مُشتري موثّق معتمدة"
+                  width={40}
+                  height={40}
+                  className="opacity-90 hover:opacity-100 transition"
+                  style={{ width: 'auto', height: 40 }}
+                  loading="lazy"
+                />
+              </a>
+            </div>
+          </div>
+        </footer>
       </main>
 
-      {/* Feedback Widget - Available on all pages */}
       <FeedbackWidget />
     </>
   );

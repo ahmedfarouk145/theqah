@@ -8,15 +8,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const db = dbAdmin();
-    
+
     // جلب عدد المتاجر
     const storesSnapshot = await db.collection('stores').count().get();
     const storesCount = storesSnapshot.data().count;
-    
+
     // جلب عدد التقييمات
     const reviewsSnapshot = await db.collection('reviews').count().get();
     const reviewsCount = reviewsSnapshot.data().count;
-    
+
+    // Cache for 5 minutes (CDN) + 10 minutes stale-while-revalidate
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+
     res.status(200).json({
       stores: storesCount,
       reviews: reviewsCount

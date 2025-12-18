@@ -2,9 +2,9 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyCPV-BkAqO68q0F_Rp7vDCjmoo22Y3b5fk',
-  authDomain: 'thaqa-7630a.firebaseapp.com',
-  projectId: 'thaqa-7630a',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyCxgpNDnSC5gGmGh9ttVBH9DFtZdyisph8',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'theqah-d3ee0.firebaseapp.com',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'theqah-d3ee0',
 };
 
 const app = initializeApp(firebaseConfig);

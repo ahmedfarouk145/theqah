@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/webhook-retry",
-      "schedule": "* * * * *"
+      "schedule": "*/5 * * * *"
     }
   ],
   "headers": [

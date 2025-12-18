@@ -1056,21 +1056,90 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
     } else if (event === "review.added") {
-      // Sync single review from Salla when added
-      const reviewId = (dataRaw as { id?: string | number })?.id;
+      // Save review directly from webhook payload (Salla doesn't send review ID)
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
-      if (reviewId && storeUid) {
+      if (storeUid && dataRaw && typeof dataRaw === 'object') {
         try {
-          const { syncSingleReview } = await import("@/server/salla/sync-single-review");
-          const result = await syncSingleReview(storeUid, String(reviewId));
-          if (result.ok) {
-            fbLog(db, { level: "info", scope: "review", msg: "review synced from webhook", event, idemKey, merchant: merchantId, meta: { reviewId } });
-          } else {
-            fbLog(db, { level: "error", scope: "review", msg: "failed to sync review", event, idemKey, merchant: merchantId, meta: { reviewId, error: result.error } });
+          const reviewData = dataRaw as Record<string, unknown>;
+          const product = reviewData.product as Record<string, unknown> | undefined;
+          const order = reviewData.order as Record<string, unknown> | undefined;
+          const customer = reviewData.customer as Record<string, unknown> | undefined;
+          const productId = product?.id;
+          const orderId = order?.id;
+          
+          if (!productId || !orderId) {
+            fbLog(db, { level: "warn", scope: "review", msg: "missing product or order id", event, idemKey, merchant: merchantId, meta: reviewData });
+            return res.status(200).json({ ok: true, processed: true });
           }
+
+          // Get store subscription info
+          const storeSnap = await db.collection("stores").doc(storeUid).get();
+          const storeData = storeSnap.data();
+          const subscription = storeData?.subscription || {};
+          const subscriptionStart = subscription.startedAt || 0;
+          
+          // Check verification status
+          const orderDate = order?.date as Record<string, unknown> | undefined;
+          const reviewDate = orderDate?.date && typeof orderDate.date === 'string'
+            ? new Date(orderDate.date).getTime() 
+            : Date.now();
+          const isVerified = subscriptionStart > 0 && reviewDate >= subscriptionStart;
+
+          // Create unique doc ID using order + product
+          const docId = `salla_${merchantId}_order_${orderId}_product_${productId}`;
+          
+          // Check if already exists
+          const existingQuery = await db.collection("reviews")
+            .where("storeUid", "==", storeUid)
+            .where("orderId", "==", String(orderId))
+            .where("productId", "==", String(productId))
+            .limit(1)
+            .get();
+
+          if (!existingQuery.empty) {
+            fbLog(db, { level: "info", scope: "review", msg: "review already exists", event, idemKey, merchant: merchantId, meta: { orderId, productId } });
+            return res.status(200).json({ ok: true, processed: true });
+          }
+
+          // Save review
+          const reviewDoc = {
+            reviewId: docId,
+            storeUid,
+            orderId: String(orderId),
+            source: "salla_native",
+            
+            productId: String(productId),
+            productName: String(product?.name || ""),
+            
+            stars: Number(reviewData.rating || 0),
+            text: String(reviewData.content || ""),
+            
+            author: {
+              displayName: String(customer?.name || "عميل سلة"),
+              email: String(customer?.email || ""),
+              mobile: String(customer?.mobile || ""),
+            },
+            
+            status: "approved",
+            trustedBuyer: false,
+            verified: isVerified,
+            publishedAt: reviewDate,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            
+            webhookData: {
+              type: String(reviewData.type || ""),
+              rating: String(reviewData.rating || ""),
+            },
+          };
+
+          await db.collection("reviews").doc(docId).set(reviewDoc);
+
+          fbLog(db, { level: "info", scope: "review", msg: "review saved from webhook", event, idemKey, merchant: merchantId, meta: { orderId, productId, verified: isVerified } });
+          
         } catch (syncErr) {
           const errMsg = syncErr instanceof Error ? syncErr.message : String(syncErr);
-          fbLog(db, { level: "error", scope: "review", msg: "review sync exception", event, idemKey, merchant: merchantId, meta: { reviewId, error: errMsg } });
+          fbLog(db, { level: "error", scope: "review", msg: "review save exception", event, idemKey, merchant: merchantId, meta: { error: errMsg } });
         }
       }
     }
