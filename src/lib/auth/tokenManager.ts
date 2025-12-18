@@ -23,3 +23,7 @@ export function clearToken() {
   inMemoryToken = null;
   if (refreshTimer) clearTimeout(refreshTimer);
 }
+
+// Default export for compatibility
+const tokenManager = { setToken, getToken, clearToken };
+export default tokenManager;

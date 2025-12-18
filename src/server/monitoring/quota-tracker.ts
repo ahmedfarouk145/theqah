@@ -96,7 +96,7 @@ export async function trackOperation(params: {
 
     // Increment counter for the operation type
     const increment = params.count || 1;
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       timestamp: now,
     };
 
@@ -119,9 +119,9 @@ export async function trackOperation(params: {
 
     // Track in metrics for real-time monitoring
     await metrics.track({
-      name: `firestore_${params.type}`,
-      value: increment,
-      labels: {
+      type: "database",
+      severity: "info",
+      metadata: {
         collection: params.collection || "unknown",
         operation: params.operation || "unknown",
       },
@@ -371,10 +371,10 @@ export async function checkAndAlert(): Promise<void> {
 
       for (const alert of criticalAlerts) {
         await sendAlert({
-          level: alert.level === "danger" ? "critical" : "warning",
+          severity: alert.level === "danger" ? "critical" : "warning",
           title: `Firestore Quota Alert: ${alert.type}`,
           message: alert.message,
-          data: {
+          details: {
             current: alert.current,
             limit: alert.limit,
             percent: Math.round((alert.current / alert.limit) * 100),

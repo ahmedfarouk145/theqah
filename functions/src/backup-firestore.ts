@@ -101,7 +101,7 @@ export const backupFirestore = functions.pubsub
           }
           
           // Prepare collection data
-          const documents: any[] = [];
+          const documents: Array<{id: string; data: admin.firestore.DocumentData; path: string}> = [];
           let collectionSize = 0;
           
           snapshot.forEach(doc => {
@@ -188,7 +188,7 @@ export const backupFirestore = functions.pubsub
       });
       
       // Cleanup old backups (retention policy)
-      await cleanupOldBackups(bucket, BACKUP_RETENTION_DAYS);
+      await cleanupOldBackups(storage, BACKUP_RETENTION_DAYS);
       
       return { success: true, metadata };
       
@@ -245,11 +245,11 @@ export const backupFirestore = functions.pubsub
 /**
  * Cleanup old backups beyond retention period
  */
-async function cleanupOldBackups(bucket: any, retentionDays: number): Promise<void> {
+async function cleanupOldBackups(storage: ReturnType<typeof admin.storage>, retentionDays: number): Promise<void> {
   console.log(`[Backup Cleanup] Starting cleanup of backups older than ${retentionDays} days`);
   
   try {
-    const [files] = await bucket.getFiles({ prefix: "backups/" });
+    const [files] = await storage.bucket().getFiles({ prefix: "backups/" });
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
     const cutoffTimestamp = cutoffDate.getTime();
@@ -314,7 +314,7 @@ export const manualBackup = functions.https.onRequest(async (req, res) => {
   
   try {
     // Trigger the backup function manually
-    const result = await backupFirestore.run(null as any, {} as any);
+    const result = await backupFirestore.run(null as unknown, {} as Record<string, never>);
     
     res.status(200).json({
       success: true,

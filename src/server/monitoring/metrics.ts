@@ -6,10 +6,12 @@ import { sendCriticalAlert } from "./alerts";
 export type MetricType = 
   | "api_call"
   | "api_error" 
+  | "database"
   | "database_read"
   | "database_write"
   | "auth_event"
   | "webhook_received"
+  | "http_request"
   | "email_sent"
   | "sms_sent"
   | "review_created"
@@ -72,8 +74,10 @@ class MetricsCollector {
     const sanitized = sanitizeMetricEvent(event);
     
     const metricEvent: MetricEvent = {
-      ...sanitized,
-      timestamp: Date.now()
+      type: event.type,
+      severity: event.severity,
+      timestamp: Date.now(),
+      ...sanitized
     };
 
     this.buffer.push(metricEvent);
@@ -89,14 +93,14 @@ class MetricsCollector {
       
       // C7: Send critical alerts (non-blocking)
       sendCriticalAlert({
-        endpoint: sanitized.endpoint,
-        method: sanitized.method,
-        statusCode: sanitized.statusCode,
-        error: sanitized.error,
-        userId: sanitized.userId,
-        storeUid: sanitized.storeUid,
-        severity: sanitized.severity,
-        metadata: sanitized.metadata
+        endpoint: sanitized.endpoint as string | undefined,
+        method: sanitized.method as string | undefined,
+        statusCode: sanitized.statusCode as number | undefined,
+        error: sanitized.error as string | undefined,
+        userId: sanitized.userId as string | undefined,
+        storeUid: sanitized.storeUid as string | undefined,
+        severity: sanitized.severity as string | undefined,
+        metadata: sanitized.metadata as Record<string, unknown> | undefined
       }).catch(err => {
         console.error("[METRIC] Failed to send alert:", err);
       });

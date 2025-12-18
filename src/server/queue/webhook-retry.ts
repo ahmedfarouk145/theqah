@@ -19,7 +19,7 @@
  * - Admin APIs for manual retry
  */
 
-import type { NextApiRequest } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { metrics } from "@/server/monitoring/metrics";
 
@@ -172,11 +172,11 @@ export async function enqueueWebhookRetry(params: {
     // Track metrics
     if (DEFAULT_CONFIG.enableMetrics) {
       await metrics.track({
-        name: "webhook_retry_enqueued",
-        value: 1,
-        labels: {
+        type: "webhook_received",
+        severity: "info",
+        storeUid: params.storeUid || "unknown",
+        metadata: {
           event: params.event,
-          storeUid: params.storeUid || "unknown",
           priority: entry.priority,
         },
       });
@@ -245,11 +245,11 @@ export async function processRetryQueue(): Promise<{
           
           if (DEFAULT_CONFIG.enableMetrics) {
             await metrics.track({
-              name: "webhook_retry_succeeded",
-              value: 1,
-              labels: {
+              type: "webhook_received",
+              severity: "info",
+              storeUid: entry.storeUid || "unknown",
+              metadata: {
                 event: entry.event,
-                storeUid: entry.storeUid || "unknown",
                 attempts: entry.attempts + 1,
               },
             });
@@ -331,7 +331,7 @@ async function retryWebhookProcessing(entry: WebhookRetryEntry): Promise<boolean
     };
 
     // Call handler
-    await webhookHandler(mockReq, mockRes as any);
+    await webhookHandler(mockReq, mockRes as unknown as NextApiResponse);
 
     // Check if successful (2xx status code)
     return statusCode >= 200 && statusCode < 300;
@@ -388,11 +388,11 @@ async function moveToDLQ(entry: WebhookRetryEntry): Promise<void> {
     // Track metrics
     if (DEFAULT_CONFIG.enableMetrics) {
       await metrics.track({
-        name: "webhook_moved_to_dlq",
-        value: 1,
-        labels: {
+        type: "api_error",
+        severity: "error",
+        storeUid: entry.storeUid || "unknown",
+        metadata: {
           event: entry.event,
-          storeUid: entry.storeUid || "unknown",
           attempts: entry.attempts,
         },
       });
@@ -609,13 +609,13 @@ export async function listDLQEntries(params: {
       .limit(limit + 1);
 
     if (params.onlyUnreviewed) {
-      query = query.where("reviewedAt", "==", null) as any;
+      query = query.where("reviewedAt", "==", null);
     }
 
     if (params.startAfter) {
       const startDoc = await db.collection("webhook_dead_letter").doc(params.startAfter).get();
       if (startDoc.exists) {
-        query = query.startAfter(startDoc) as any;
+        query = query.startAfter(startDoc);
       }
     }
 

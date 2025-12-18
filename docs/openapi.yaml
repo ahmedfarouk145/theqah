@@ -1,0 +1,843 @@
+openapi: 3.0.3
+info:
+  title: TheQah API
+  description: |
+    Complete API reference for TheQah - Review Management System for Salla stores.
+    
+    ## Features
+    - OAuth 2.0 integration with Salla
+    - Automatic review collection from Salla orders
+    - Review moderation and verification
+    - Customizable review widgets
+    - Analytics and reporting
+    - Multi-language support (Arabic/English)
+    
+    ## Base URL
+    - Production: `https://theqah.com/api`
+    - Development: `http://localhost:3000/api`
+    
+    ## Authentication
+    TheQah uses session-based authentication for dashboard access and OAuth 2.0 for Salla integration.
+    
+  version: 0.1.0
+  contact:
+    name: TheQah Support
+    email: support@theqah.com
+    url: https://theqah.com
+  license:
+    name: Proprietary
+    url: https://theqah.com/terms
+
+servers:
+  - url: https://theqah.com/api
+    description: Production server
+  - url: http://localhost:3000/api
+    description: Development server
+
+tags:
+  - name: Authentication
+    description: OAuth flows and session management
+  - name: Reviews
+    description: Review management and moderation
+  - name: Salla Integration
+    description: Salla platform integration and webhooks
+  - name: Public API
+    description: Public endpoints for widgets and analytics
+  - name: Admin
+    description: Administrative endpoints (requires admin access)
+  - name: Analytics
+    description: Usage tracking and statistics
+  - name: Health
+    description: System health and monitoring
+
+components:
+  securitySchemes:
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
+      description: Session-based authentication for dashboard
+    
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Salla OAuth access token
+
+  schemas:
+    # Error schemas
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - statusCode
+          properties:
+            code:
+              type: string
+              enum:
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - INVALID_TOKEN
+                - TOKEN_EXPIRED
+                - VALIDATION_ERROR
+                - MISSING_REQUIRED_FIELD
+                - INVALID_FORMAT
+                - INVALID_INPUT
+                - NOT_FOUND
+                - ALREADY_EXISTS
+                - DUPLICATE
+                - OPERATION_FAILED
+                - TRANSACTION_FAILED
+                - EXTERNAL_API_ERROR
+                - QUOTA_EXCEEDED
+                - RATE_LIMIT_EXCEEDED
+                - INSUFFICIENT_PERMISSIONS
+                - SUBSCRIPTION_INACTIVE
+                - SUBSCRIPTION_REQUIRED
+                - INTERNAL_ERROR
+                - SERVICE_UNAVAILABLE
+                - TIMEOUT
+                - DATABASE_ERROR
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: "بيانات غير صحيحة. يرجى التحقق من المدخلات."
+            statusCode:
+              type: integer
+              example: 400
+            timestamp:
+              type: string
+              format: date-time
+            requestId:
+              type: string
+              format: uuid
+            details:
+              type: object
+              additionalProperties: true
+
+    # Review schemas
+    Review:
+      type: object
+      required:
+        - id
+        - storeId
+        - rating
+        - createdAt
+      properties:
+        id:
+          type: string
+          example: "rev_abc123"
+        storeId:
+          type: string
+          example: "store_xyz789"
+        productId:
+          type: string
+          nullable: true
+        productName:
+          type: string
+          nullable: true
+        orderId:
+          type: string
+          nullable: true
+        customerName:
+          type: string
+          example: "أحمد محمد"
+        customerEmail:
+          type: string
+          format: email
+          example: "ahmed@example.com"
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        comment:
+          type: string
+          nullable: true
+          example: "منتج ممتاز، أنصح بالشراء"
+        isVerified:
+          type: boolean
+          example: true
+        verifiedReason:
+          type: string
+          nullable: true
+          enum:
+            - subscription_date
+            - manual_verification
+            - auto_verified
+            - salla_native
+            - invited_purchase
+          example: "salla_native"
+        status:
+          type: string
+          enum:
+            - pending
+            - approved
+            - rejected
+          example: "approved"
+        isPublished:
+          type: boolean
+          example: true
+        responseText:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ReviewSubmit:
+      type: object
+      required:
+        - rating
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+          maxLength: 1000
+        productId:
+          type: string
+        orderId:
+          type: string
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+          format: email
+
+    # Store schemas
+    Store:
+      type: object
+      required:
+        - id
+        - name
+        - domain
+      properties:
+        id:
+          type: string
+          example: "store_123"
+        name:
+          type: string
+          example: "متجر الإلكترونيات"
+        domain:
+          type: string
+          example: "electronics.salla.sa"
+        logo:
+          type: string
+          format: uri
+          nullable: true
+        sallaId:
+          type: string
+        isActive:
+          type: boolean
+        subscription:
+          $ref: '#/components/schemas/Subscription'
+        createdAt:
+          type: string
+          format: date-time
+
+    # Subscription schemas
+    Subscription:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum:
+            - TRIAL
+            - PAID_MONTHLY
+            - PAID_ANNUAL
+          example: "PAID_MONTHLY"
+        status:
+          type: string
+          enum:
+            - active
+            - inactive
+            - cancelled
+          example: "active"
+        reviewsUsed:
+          type: integer
+          example: 250
+        reviewsLimit:
+          type: integer
+          example: 1000
+        currentPeriodStart:
+          type: string
+          format: date-time
+        currentPeriodEnd:
+          type: string
+          format: date-time
+        price:
+          type: number
+          example: 21
+        currency:
+          type: string
+          example: "SAR"
+
+    # Stats schemas
+    Stats:
+      type: object
+      properties:
+        totalReviews:
+          type: integer
+          example: 1234
+        averageRating:
+          type: number
+          format: float
+          example: 4.5
+        verifiedReviews:
+          type: integer
+          example: 987
+        reviewsByRating:
+          type: object
+          properties:
+            "1":
+              type: integer
+            "2":
+              type: integer
+            "3":
+              type: integer
+            "4":
+              type: integer
+            "5":
+              type: integer
+
+    # Pagination
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        perPage:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 100
+        totalPages:
+          type: integer
+          example: 5
+        hasNext:
+          type: boolean
+          example: true
+        hasPrev:
+          type: boolean
+          example: false
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "UNAUTHORIZED"
+              message: "غير مصرح لك بالوصول. يرجى تسجيل الدخول."
+              statusCode: 401
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "FORBIDDEN"
+              message: "ليس لديك صلاحية للقيام بهذا الإجراء."
+              statusCode: 403
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "NOT_FOUND"
+              message: "المراجعة غير موجودة."
+              statusCode: 404
+
+    RateLimitExceeded:
+      description: Too many requests
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per time window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in current window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when the rate limit resets
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "RATE_LIMIT_EXCEEDED"
+              message: "تجاوزت الحد المسموح من الطلبات. حاول مرة أخرى بعد 5 دقيقة."
+              statusCode: 429
+
+    QuotaExceeded:
+      description: Monthly quota exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "QUOTA_EXCEEDED"
+              message: "تم الوصول للحد الشهري (1000/1000 مراجعة)."
+              statusCode: 429
+              details:
+                used: 1000
+                limit: 1000
+                resetDate: "2025-02-01T00:00:00Z"
+
+  parameters:
+    LocaleHeader:
+      name: Accept-Language
+      in: header
+      description: Preferred language (ar or en)
+      required: false
+      schema:
+        type: string
+        enum:
+          - ar
+          - en
+        default: ar
+
+    RequestIdHeader:
+      name: X-Request-ID
+      in: header
+      description: Optional request ID for tracking
+      required: false
+      schema:
+        type: string
+        format: uuid
+
+    Page:
+      name: page
+      in: query
+      description: Page number (1-based)
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PerPage:
+      name: perPage
+      in: query
+      description: Items per page
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Simple health check endpoint for monitoring
+      operationId: getHealth
+      parameters:
+        - name: detailed
+          in: query
+          description: Include detailed system checks
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  uptime:
+                    type: integer
+                    example: 123456
+                  service:
+                    type: string
+                    example: "theqah-api"
+                  version:
+                    type: string
+                    example: "0.1.0"
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: "ok"
+        '503':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reviews:
+    get:
+      tags:
+        - Reviews
+      summary: List reviews
+      description: Get paginated list of reviews for authenticated store
+      operationId: listReviews
+      security:
+        - SessionAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/LocaleHeader'
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum:
+              - pending
+              - approved
+              - rejected
+        - name: rating
+          in: query
+          description: Filter by rating
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+        - name: isVerified
+          in: query
+          description: Filter by verification status
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Reviews retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /reviews/submit:
+    post:
+      tags:
+        - Reviews
+      summary: Submit new review
+      description: Submit a new review for a product or order
+      operationId: submitReview
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewSubmit'
+      responses:
+        '201':
+          description: Review submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Review'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/QuotaExceeded'
+
+  /reviews/moderate:
+    patch:
+      tags:
+        - Reviews
+      summary: Moderate review
+      description: Approve or reject a review
+      operationId: moderateReview
+      security:
+        - SessionAuth: []
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reviewId
+                - status
+              properties:
+                reviewId:
+                  type: string
+                status:
+                  type: string
+                  enum:
+                    - approved
+                    - rejected
+                responseText:
+                  type: string
+      responses:
+        '200':
+          description: Review moderated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Review'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /public/reviews:
+    get:
+      tags:
+        - Public API
+      summary: Get public reviews
+      description: Get approved reviews for display in widget (rate-limited)
+      operationId: getPublicReviews
+      parameters:
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: productId
+          in: query
+          description: Filter by product
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reviews retrieved successfully
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /public/stats:
+    get:
+      tags:
+        - Public API
+      summary: Get public statistics
+      description: Get review statistics for display (rate-limited)
+      operationId: getPublicStats
+      parameters:
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Stats'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /salla/webhook:
+    post:
+      tags:
+        - Salla Integration
+      summary: Salla webhook receiver
+      description: Receives webhooks from Salla (order.updated, order.created, etc.)
+      operationId: sallaWebhook
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  type: string
+                  example: "order.updated"
+                merchant:
+                  type: string
+                data:
+                  type: object
+      responses:
+        '200':
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /salla/sync-reviews:
+    post:
+      tags:
+        - Salla Integration
+      summary: Manual review sync
+      description: Manually trigger review sync from Salla
+      operationId: syncSallaReviews
+      security:
+        - SessionAuth: []
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+      responses:
+        '200':
+          description: Sync completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      synced:
+                        type: integer
+                      skipped:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/dashboard:
+    get:
+      tags:
+        - Admin
+      summary: Admin dashboard stats
+      description: Get comprehensive dashboard statistics (admin only)
+      operationId: getAdminDashboard
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: Dashboard stats retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      totalStores:
+                        type: integer
+                      totalReviews:
+                        type: integer
+                      activeSubscriptions:
+                        type: integer
+                      revenue:
+                        type: number
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+security:
+  - SessionAuth: []

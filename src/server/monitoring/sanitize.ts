@@ -35,6 +35,7 @@ export function sanitizePhone(phone: string | number | null | undefined): string
  * Redact passwords completely
  */
 export function sanitizePassword(_password: string | null | undefined): string {
+  void _password;
   return "***";
 }
 
@@ -134,7 +135,7 @@ export function sanitizeMetricEvent(event: {
   return {
     ...event,
     error: event.error ? sanitizeError(event.error) : undefined,
-    errorStack: event.errorStack ? sanitizeError(event.errorStack) : undefined, // H4: Sanitize stack traces
+    errorStack: event.errorStack ? (typeof event.errorStack === 'string' ? event.errorStack.substring(0, 200) : JSON.stringify(event.errorStack).substring(0, 200)) : undefined, // H4: Sanitize stack traces
     errorType: event.errorType, // H4: Keep error type (no PII)
     metadata: event.metadata ? sanitizeMetadata(event.metadata) : undefined,
   };

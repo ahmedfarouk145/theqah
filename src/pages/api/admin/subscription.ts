@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const planType: string | null = first?.plan_type ?? null;
 
     // حوّل لخطة داخلية
-    const nextPlanId = mapSallaPlanToInternal(planName, planType) ?? null;
+    const nextPlanId = mapSallaPlanToInternal(planName, planType as 'monthly' | 'annual' | null) ?? null;
 
     // 6) تجنّب الكتابة لو مافيش تغيير
     const samePlan = (cur?.planId ?? null) === nextPlanId;

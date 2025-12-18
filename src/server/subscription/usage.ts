@@ -11,18 +11,18 @@ import { dbAdmin } from "@/lib/firebaseAdmin";
 import { 
   canAddReviews, 
   reserveReviewQuota, 
-  getSubscriptionQuota,
-  // Legacy imports (deprecated)
-  canSendInvites,
-  reserveInviteQuota 
+  getSubscriptionQuota
+  // Legacy imports removed - use canAddReviews/reserveReviewQuota instead
 } from "./quota-checker";
 
-function monthKey(ts: number = Date.now()): string {
-  const d = new Date(ts);
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
+// Helper to get month key for quota tracking
+// @unused - kept for potential future use
+// function monthKey(ts: number = Date.now()): string {
+//   const d = new Date(ts);
+//   const y = d.getUTCFullYear();
+//   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+//   return `${y}-${m}`;
+// }
 
 /**
  * Track review creation and increment quota

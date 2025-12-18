@@ -116,4 +116,6 @@ export const logger = {
   },
 };
 
-export default { info, warn, error, debug, fatal, logger, createLogger, time };
+const logging = { info, warn, error, debug, fatal, logger, createLogger, time };
+
+export default logging;

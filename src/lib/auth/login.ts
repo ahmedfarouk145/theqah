@@ -69,3 +69,6 @@ export function getCurrentUser() {
   const auth = getAuth(app);
   return auth.currentUser;
 }
+
+// Alias for compatibility
+export const login = loginUser;

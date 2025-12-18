@@ -260,7 +260,7 @@ export const ERROR_MESSAGES = {
 } as const;
 
 // Export all as default for convenient access
-export default {
+const CONSTANTS = {
   TIME,
   TIMEOUT,
   LIMITS,
@@ -277,3 +277,5 @@ export default {
   ENV,
   ERROR_MESSAGES,
 };
+
+export default CONSTANTS;

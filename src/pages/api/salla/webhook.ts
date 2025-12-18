@@ -869,7 +869,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       // استخدام دالة التعيين الجديدة
       const { mapSallaPlanToInternal } = await import("@/config/plans");
-      const planId = mapSallaPlanToInternal(planName, planType);
+      const planId = mapSallaPlanToInternal(planName, planType as 'monthly' | 'annual' | null);
 
       if (storeUid && planId) {
         // تحديث subscription في stores collection
@@ -996,7 +996,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Try standard invite creation first
         await Promise.race([
           ensureInviteForOrder(db, fullOrder, dataRaw, body.merchant),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Invite creation timeout')), 20000))
+          new Promise<void>((_resolve, reject) => {
+            void _resolve;
+            setTimeout(() => reject(new Error('Invite creation timeout')), 20000);
+          })
         ]);
         fbLog(db, { level: "info", scope: "invite", msg: "invite auto-created for order", event, idemKey, merchant: merchantId, orderId });
       } catch (primaryErr) {
@@ -1080,7 +1083,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       db.collection("processed_events").doc(keyOf(event, orderIdFin, statusFin)).set({
       at: Date.now(), event, processed: true, status: statusFin
       }, { merge: true }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("processed_events_timeout")), 2000))
+      new Promise<void>((_resolve, reject) => {
+        void _resolve;
+        setTimeout(() => reject(new Error("processed_events_timeout")), 2000);
+      })
     ]).catch((err) => {
       console.error('[Webhook] Failed to mark event as processed:', err);
     });
@@ -1090,7 +1096,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     Promise.race([
       db.collection(isKnown ? "webhooks_salla_known" : "webhooks_salla_unhandled")
         .add({ at: Date.now(), event, data: dataRaw }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("webhooks_salla_timeout")), 2000))
+      new Promise<void>((_resolve, reject) => {
+        void _resolve;
+        setTimeout(() => reject(new Error("webhooks_salla_timeout")), 2000);
+      })
     ]).catch((err) => {
       console.error('[Webhook] Failed to log webhook event:', err);
     });
@@ -1152,7 +1161,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           dataKeys: Object.keys(dataRaw as Record<string, unknown>)
         }
       }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("webhook_errors_timeout")), 3000))
+      new Promise<void>((_resolve, reject) => {
+        void _resolve;
+        setTimeout(() => reject(new Error("webhook_errors_timeout")), 3000);
+      })
     ]).catch(() => {});
     
     // Enqueue for retry (H6: Webhook retry logic)
@@ -1165,7 +1177,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         merchant: merchantId,
         orderId,
         rawBody: raw,
-        headers: req.headers,
+        headers: Object.fromEntries(
+          Object.entries(req.headers).filter(([, v]) => v !== undefined)
+        ) as Record<string, string | string[]>,
         error: e instanceof Error ? e : new Error(String(e)),
         storeUid,
         priority: event.includes("order") ? "high" : "normal",

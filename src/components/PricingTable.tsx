@@ -2,7 +2,7 @@ import React from "react";
 import { PLANS } from "@/config/plans";
 
 export default function PricingTable() {
-  const plans = [PLANS.STARTER, PLANS.SALES_BOOST, PLANS.EXPANSION];
+  const plans = [PLANS.TRIAL, PLANS.PAID_MONTHLY, PLANS.PAID_ANNUAL];
 
   return (
     <section className="w-full py-10">
@@ -45,11 +45,11 @@ export default function PricingTable() {
                 </div>
 
                 <p className="mt-2 text-gray-600">
-                  {p.invitesPerMonth ? `${p.invitesPerMonth} دعوة شهريًا` : "دعوات مخصّصة حسب الاتفاق"}
+                  {p.reviewsPerMonth ? `${p.reviewsPerMonth} مراجعة شهرياً` : "مراجعات مخصصة حسب الاتفاق"}
                 </p>
 
                 <ul className="mt-4 space-y-2">
-                  {p.features.map((f, i) => (
+                  {p.features.map((f: string, i: number) => (
                     <li key={i} className="flex items-start gap-2">
                       <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
                       <span>{f}</span>

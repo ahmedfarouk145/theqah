@@ -240,7 +240,7 @@ export function formatErrorResponse(
     error: {
       code,
       message: getErrorMessage(code, locale, params),
-      ...(details && { details }),
+      ...(details ? { details } : {}),
     },
   };
 }

@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const userId = session.uid;
+  const userId = session.user?.uid || 'unknown';
 
   if (req.method === "GET") {
     const action = req.query.action as string;

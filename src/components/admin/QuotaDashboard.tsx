@@ -12,7 +12,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -158,7 +157,7 @@ export default function QuotaDashboard() {
       {status.alerts.length > 0 && (
         <div className="space-y-2">
           {status.alerts.map((alert, idx) => (
-            <Alert key={idx} variant={getAlertColor(alert.level) as any}>
+            <Alert key={idx} variant={getAlertColor(alert.level) as 'default' | 'destructive'}>
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle className="capitalize">
                 {alert.level} - {alert.type}

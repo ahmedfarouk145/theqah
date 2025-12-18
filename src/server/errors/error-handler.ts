@@ -10,7 +10,6 @@ import {
   getErrorMessage, 
   translateResource, 
   getLocaleFromHeaders,
-  formatErrorResponse,
   type Locale,
   type ErrorCode as I18nErrorCode 
 } from '@/locales/errors';
@@ -104,7 +103,7 @@ export class AppError extends Error {
     return {
       error: this.code,
       message: this.getLocalizedMessage(),
-      ...(this.details && { details: this.details }),
+      ...(this.details ? { details: this.details } : {}),
     };
   }
 }

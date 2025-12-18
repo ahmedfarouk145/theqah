@@ -6,13 +6,41 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { trackActivity } from "@/server/activity-tracker";
+import { trackActivity, type ActivityAction } from "@/server/activity-tracker";
 import { authAdmin, dbAdmin } from "@/lib/firebaseAdmin";
 
 function getSessionCookie(req: NextApiRequest): string | null {
   const cookie = req.headers.cookie || "";
   const match = cookie.match(/session=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : null;
+}
+
+const validActivityActions: ActivityAction[] = [
+  "auth.login",
+  "auth.logout",
+  "auth.signup",
+  "auth.password_reset",
+  "dashboard.view",
+  "reviews.view",
+  "reviews.sync",
+  "reviews.approve",
+  "reviews.reject",
+  "reviews.delete",
+  "settings.view",
+  "settings.update",
+  "widget.install",
+  "widget.customize",
+  "subscription.view",
+  "subscription.upgrade",
+  "subscription.cancel",
+  "api.call",
+  "admin.access",
+  "admin.user_view",
+  "admin.store_view",
+];
+
+function isActivityAction(value: unknown): value is ActivityAction {
+  return typeof value === "string" && validActivityActions.includes(value as ActivityAction);
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -41,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { action, metadata } = req.body;
 
-    if (!action || typeof action !== "string") {
+    if (!isActivityAction(action)) {
       return res.status(400).json({ error: "action required" });
     }
 
@@ -49,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await trackActivity({
       userId,
       storeUid,
-      action: action as any,
+      action,
       metadata,
       req
     });

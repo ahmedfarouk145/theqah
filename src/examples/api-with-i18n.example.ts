@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 /**
  * Example API Endpoint with i18n Error Handling
  * 
@@ -34,8 +36,9 @@ export default asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =>
 
 /**
  * Example 2: Using validation errors with field names
+ * @example Used in API endpoints for form validation
  */
-async function handleValidation(req: NextApiRequest, res: NextApiResponse) {
+async function handleValidation(req: NextApiRequest, _res: NextApiResponse) {
   const locale = getLocaleFromHeaders(req.headers);
   const { email, name } = req.body;
 
@@ -60,9 +63,10 @@ async function handleValidation(req: NextApiRequest, res: NextApiResponse) {
 
 /**
  * Example 3: Quota exceeded with custom details
+ * @example Used in subscription quota checks
  */
-async function handleQuotaCheck(storeUid: string, locale: 'ar' | 'en' = 'ar') {
-  const quota = await getQuota(storeUid);
+async function handleQuotaCheck(_storeUid: string, locale: 'ar' | 'en' = 'ar') {
+  const quota = await getQuota(_storeUid);
 
   if (quota.used >= quota.limit) {
     throw Errors.quotaExceeded(
@@ -76,6 +80,7 @@ async function handleQuotaCheck(storeUid: string, locale: 'ar' | 'en' = 'ar') {
 
 /**
  * Example 4: External API errors
+ * @example Used when calling external APIs like Salla
  */
 async function callSallaAPI(locale: 'ar' | 'en' = 'ar') {
   try {
@@ -94,9 +99,10 @@ async function callSallaAPI(locale: 'ar' | 'en' = 'ar') {
 
 /**
  * Example 5: Rate limiting
+ * @example Used in rate limiting middleware
  */
-async function checkRateLimit(ip: string, locale: 'ar' | 'en' = 'ar') {
-  const isLimited = await checkRateLimitForIP(ip);
+async function checkRateLimit(_ip: string, locale: 'ar' | 'en' = 'ar') {
+  const isLimited = await checkRateLimitForIP(_ip);
 
   if (isLimited) {
     // Will show: "تم تجاوز الحد الأقصى للطلبات. يرجى المحاولة بعد 15 دقيقة."
@@ -149,8 +155,8 @@ export async function exampleCompleteEndpoint(req: NextApiRequest, res: NextApiR
 
 // Dummy functions for examples
 async function someOperation() { return null; }
-async function getQuota(storeUid: string) { return { used: 100, limit: 1000 }; }
-async function checkRateLimitForIP(ip: string) { return false; }
-async function checkPermission(storeUid: string) { return true; }
-async function canAddReview(storeUid: string) { return true; }
-async function doSomething(storeUid: string, reviewId: string) { return {}; }
+async function getQuota(_storeUid: string) { return { used: 100, limit: 1000 }; }
+async function checkRateLimitForIP(_ip: string) { return false; }
+async function checkPermission(_storeUid: string) { return true; }
+async function canAddReview(_storeUid: string) { return true; }
+async function doSomething(_storeUid: string, _reviewId: string) { return {}; }

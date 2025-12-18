@@ -60,6 +60,7 @@ export default async function handler(
         await dbAdmin().collection("_health_check").limit(1).get();
         response.checks.database = "ok";
       } catch (error) {
+        console.warn("[HEALTH] Database check failed:", error);
         response.checks.database = "error";
         response.status = "degraded";
       }

@@ -25,7 +25,7 @@ export interface SyncOptions {
   storeUid: string;
   incremental?: boolean;
   limit?: number;
-  fetchReviews: (storeUid: string, lastSyncTime?: number) => Promise<any[]>;
+  fetchReviews: (storeUid: string, lastSyncTime?: number) => Promise<unknown[]>;
 }
 
 /**
@@ -78,7 +78,7 @@ export async function updateSyncStats(
     const db = dbAdmin();
     const storeRef = db.collection("stores").doc(storeUid);
     
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       lastReviewsSyncAt: stats.lastSyncAt || Date.now(),
       updatedAt: Date.now(),
     };
@@ -105,9 +105,10 @@ export async function updateSyncStats(
     
     // Track metric for failed stats update
     await metrics.track({
-      name: "sync_stats_update_failed",
-      value: 1,
-      labels: { storeUid, error: (error as Error).message },
+      type: "api_error",
+      severity: "error",
+      storeUid,
+      error: (error as Error).message,
     });
   }
 }
@@ -117,8 +118,8 @@ export async function updateSyncStats(
  */
 export async function processReviews(
   storeUid: string,
-  externalReviews: any[],
-  mapReviewFn: (review: any) => any
+  externalReviews: unknown[],
+  mapReviewFn: (review: unknown) => unknown
 ): Promise<{ newReviews: number; updatedReviews: number }> {
   const db = dbAdmin();
   let newReviews = 0;
@@ -126,7 +127,7 @@ export async function processReviews(
   
   for (const extReview of externalReviews) {
     try {
-      const reviewData = mapReviewFn(extReview);
+      const reviewData = mapReviewFn(extReview) as Record<string, unknown> | null;
       
       if (!reviewData || !reviewData.externalId) {
         console.warn(`[SYNC_COMMON] Invalid review data, skipping`);
@@ -137,7 +138,7 @@ export async function processReviews(
       const existingQuery = await db
         .collection("reviews")
         .where("storeUid", "==", storeUid)
-        .where("externalId", "==", reviewData.externalId)
+        .where("externalId", "==", reviewData.externalId as string)
         .limit(1)
         .get();
       
@@ -220,12 +221,13 @@ export async function performSync(options: SyncOptions): Promise<SyncResult> {
     
     // Track sync metric
     await metrics.track({
-      name: "reviews_sync_completed",
-      value: reviewsToProcess.length,
-      labels: {
-        storeUid,
+      type: "sync_completed",
+      severity: "info",
+      storeUid,
+      duration,
+      metadata: {
         incremental: incremental.toString(),
-        duration: duration.toString(),
+        reviewsProcessed: reviewsToProcess.length,
       },
     });
     
@@ -244,13 +246,11 @@ export async function performSync(options: SyncOptions): Promise<SyncResult> {
     
     // Track error metric
     await metrics.track({
-      name: "reviews_sync_failed",
-      value: 1,
-      labels: {
-        storeUid,
-        error: errorMessage,
-        duration: duration.toString(),
-      },
+      type: "api_error",
+      severity: "error",
+      storeUid,
+      error: errorMessage,
+      duration,
     });
     
     // Update sync stats with error

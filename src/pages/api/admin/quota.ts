@@ -20,8 +20,6 @@ import {
   getHistoricalQuota,
   isQuotaHealthy,
   cleanupOldQuotaData,
-  type QuotaStatus,
-  type QuotaStats,
 } from "@/server/monitoring/quota-tracker";
 
 export default async function handler(

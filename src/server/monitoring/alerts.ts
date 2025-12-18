@@ -64,6 +64,8 @@ export async function sendEmailAlert(params: {
   method?: string;
   statusCode?: number;
   error?: string;
+  errorStack?: string;
+  errorType?: string;
   userId?: string;
   storeUid?: string;
   metadata?: Record<string, unknown>;
@@ -73,15 +75,17 @@ export async function sendEmailAlert(params: {
     method = "unknown",
     statusCode = 0,
     error = "Unknown error",
+    errorStack,
+    errorType: errType,
     userId,
     storeUid,
     metadata
   } = params;
   
-  const errorType = getErrorType({ endpoint, error, statusCode });
+  const errorTypeKey = getErrorType({ endpoint, error, statusCode });
   
-  if (!shouldSendAlert(errorType)) {
-    console.log(`[ALERT] Rate limited: ${errorType}`);
+  if (!shouldSendAlert(errorTypeKey)) {
+    console.log(`[ALERT] Rate limited: ${errorTypeKey}`);
     return;
   }
   
@@ -90,8 +94,6 @@ export async function sendEmailAlert(params: {
     console.warn("[ALERT] No admin email configured, skipping alert");
     return;
   }
-  
-  const { error, errorStack, errorType: errType, endpoint, method, statusCode, userId, storeUid, metadata } = params;
   const timestamp = new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' });
   const subject = ` خطأ حرج في TheQah - ${endpoint}`;
   
@@ -155,12 +157,23 @@ export async function sendSlackAlert(params: {
   }
 }
 
+export async function sendAlert(params: {
+  title: string;
+  message: string;
+  severity?: 'info' | 'warning' | 'critical';
+  details?: Record<string, unknown>;
+}) {
+  return sendCriticalAlert(params);
+}
+
 export async function sendCriticalAlert(params: {
   endpoint?: string;
   method?: string;
   statusCode?: number;
-  error?: string;  errorStack?: string; // H4: Stack trace
-  errorType?: string; // H4: Error type  userId?: string;
+  error?: string;
+  errorStack?: string; // H4: Stack trace
+  errorType?: string; // H4: Error type
+  userId?: string;
   storeUid?: string;
   severity?: string;
   metadata?: Record<string, unknown>;

@@ -41,9 +41,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Track metrics
     await metrics.track({
-      name: "webhook_retry_cron_execution",
-      value: duration,
-      labels: {
+      type: "sync_completed",
+      severity: "info",
+      duration,
+      metadata: {
         success: result.ok ? "true" : "false",
         processed: result.processed,
         succeeded: result.succeeded,
@@ -61,7 +62,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     return res.status(200).json({
-      ok: true,
       ...result,
       duration,
     });
@@ -71,9 +71,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error("[WEBHOOK_RETRY_CRON] Error:", error);
 
     await metrics.track({
-      name: "webhook_retry_cron_error",
-      value: 1,
-      labels: { error: errMsg.substring(0, 100) },
+      type: "api_error",
+      severity: "error",
+      error: errMsg.substring(0, 100),
     });
 
     return res.status(500).json({

@@ -1,7 +1,6 @@
 // File: src/pages/api/auth/session.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authAdmin } from '@/lib/firebaseAdmin';
-import { trackAuth } from '@/server/activity-tracker';
 
 type SameSiteOpt = 'Lax' | 'Strict' | 'None';
 

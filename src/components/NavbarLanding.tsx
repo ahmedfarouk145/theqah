@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { SimpleThemeToggle } from '@/components/ThemeToggle';
 import { useState } from 'react';
 
 export default function NavbarLanding() {
@@ -24,10 +25,10 @@ export default function NavbarLanding() {
       <a href="#main-content" className="skip-to-main">
         انتقل إلى المحتوى الرئيسي
       </a>
-      <nav className="w-full flex items-center justify-between px-6 py-4 shadow-md bg-white fixed top-0 z-50" dir="rtl" role="navigation" aria-label="التنقل الرئيسي">
+      <nav className="w-full flex items-center justify-between px-6 py-4 shadow-md bg-white dark:bg-gray-900 fixed top-0 z-50 border-b dark:border-gray-800" dir="rtl" role="navigation" aria-label="التنقل الرئيسي">
         {/* Logo + Name */}
         <Link href="/" className="flex items-center gap-4 group" aria-label="الذهاب إلى الصفحة الرئيسية">
-        <div className="w-14 h-14 rounded-full overflow-hidden border border-green-300 shadow-sm group-hover:scale-105 transition-transform">
+        <div className="w-14 h-14 rounded-full overflow-hidden border border-green-300 dark:border-green-700 shadow-sm group-hover:scale-105 transition-transform">
           <Image
             src="/logo.png"
             alt="شعار ثقة"
@@ -37,17 +38,18 @@ export default function NavbarLanding() {
             priority
           />
         </div>
-        <span className="text-2xl font-extrabold text-green-800 tracking-tight group-hover:text-green-900 transition-colors">
+        <span className="text-2xl font-extrabold text-green-800 dark:text-green-400 tracking-tight group-hover:text-green-900 dark:group-hover:text-green-300 transition-colors">
           مشتري موثّق
         </span>
       </Link>
 
       {/* Desktop Navigation */}
-      <div className="hidden md:flex items-center gap-6 text-sm text-green-700 font-medium">
+      <div className="hidden md:flex items-center gap-6 text-sm text-green-700 dark:text-green-400 font-medium">
         {NavLinks}
+        <SimpleThemeToggle />
         <Link
           href="/login"
-          className="bg-green-700 text-white px-5 py-2 rounded-full hover:bg-green-800 transition"
+          className="bg-green-700 dark:bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-800 dark:hover:bg-green-700 transition"
         >
           تسجيل الدخول
         </Link>
@@ -55,6 +57,7 @@ export default function NavbarLanding() {
 
       {/* Mobile */}
       <div className="md:hidden flex items-center gap-4">
+        <SimpleThemeToggle />
         <Link
           href="/login"
           className="text-green-700 hover:text-green-900 font-semibold transition"

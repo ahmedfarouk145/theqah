@@ -78,10 +78,10 @@ export function createLogger(req: NextApiRequest) {
 
   return {
     requestId,
-    log: (...args: any[]) => console.log(`[${requestId}]`, ...args),
-    error: (...args: any[]) => console.error(`[${requestId}]`, ...args),
-    warn: (...args: any[]) => console.warn(`[${requestId}]`, ...args),
-    info: (...args: any[]) => console.info(`[${requestId}]`, ...args),
-    debug: (...args: any[]) => console.debug(`[${requestId}]`, ...args),
+    log: (...args: unknown[]) => console.log(`[${requestId}]`, ...args),
+    error: (...args: unknown[]) => console.error(`[${requestId}]`, ...args),
+    warn: (...args: unknown[]) => console.warn(`[${requestId}]`, ...args),
+    info: (...args: unknown[]) => console.info(`[${requestId}]`, ...args),
+    debug: (...args: unknown[]) => console.debug(`[${requestId}]`, ...args),
   };
 }
