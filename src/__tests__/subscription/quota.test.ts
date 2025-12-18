@@ -7,14 +7,26 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock Firestore
-const mockFirestore = {
-  collection: vi.fn(() => mockFirestore),
-  doc: vi.fn(() => mockFirestore),
+type MockFirestore = {
+  collection: ReturnType<typeof vi.fn>;
+  doc: ReturnType<typeof vi.fn>;
+  get: ReturnType<typeof vi.fn>;
+  set: ReturnType<typeof vi.fn>;
+  update: ReturnType<typeof vi.fn>;
+  runTransaction: ReturnType<typeof vi.fn>;
+};
+
+const mockFirestore: MockFirestore = {
+  collection: vi.fn(),
+  doc: vi.fn(),
   get: vi.fn(),
   set: vi.fn(),
   update: vi.fn(),
   runTransaction: vi.fn(),
 };
+
+mockFirestore.collection.mockReturnValue(mockFirestore);
+mockFirestore.doc.mockReturnValue(mockFirestore);
 
 vi.mock('@/lib/firebaseAdmin', () => ({
   dbAdmin: () => mockFirestore,
@@ -99,7 +111,7 @@ describe('Subscription Quota System', () => {
         update: vi.fn(),
       };
 
-      mockFirestore.runTransaction.mockImplementation(async (callback) => {
+      mockFirestore.runTransaction.mockImplementation(async (callback: (t: typeof mockTransaction) => Promise<unknown>) => {
         return callback(mockTransaction);
       });
 

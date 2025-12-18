@@ -51,6 +51,13 @@ const nextConfig = {
   },
   // Bundle analysis warnings
   webpack: (config: any, { isServer }: { isServer: boolean }) => {
+    // Exclude Firebase Cloud Functions from compilation
+    config.externals = config.externals || [];
+    config.externals.push({
+      'firebase-functions': 'firebase-functions',
+      'firebase-admin': 'firebase-admin',
+    });
+
     if (!isServer) {
       // Warn if bundle exceeds limits
       config.performance = {
@@ -60,6 +67,15 @@ const nextConfig = {
       };
     }
     return config;
+  },
+  
+  // Exclude functions directory from Next.js compilation
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js'].map(ext => `page.${ext}`).concat(['tsx', 'ts', 'jsx', 'js']),
+  
+  // Ignore functions directory during build
+  eslint: {
+    ignoreDuringBuilds: false,
+    dirs: ['src', 'pages', 'components', 'lib', 'utils'],
   },
   // ======= إعدادات الصور =======
   images: {

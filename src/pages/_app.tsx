@@ -2,12 +2,14 @@ import type { AppProps } from 'next/app';
 import '@/styles/globals.css';
 import '@/styles/accessibility.css';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import Head from 'next/head';
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   return (
-    <AuthProvider>
-      <Head>
+    <ThemeProvider>
+      <AuthProvider>
+        <Head>
         <title>theqah</title>
 
         {/* Standard favicon */}
@@ -27,7 +29,8 @@ export default function MyApp({ Component, pageProps }: AppProps) {
         {/* Optional: description for SEO */}
         <meta name="description" content="theqah - Your website description here" />
       </Head>
-<Component {...pageProps} />
-    </AuthProvider>
+      <Component {...pageProps} />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
