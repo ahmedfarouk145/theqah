@@ -341,13 +341,12 @@
       CURRENT_SCRIPT?.dataset?.theme ||
       "light";
 
-    // تنظيف placeholder
-    if (store && (store.includes('{') || /STORE_ID/i.test(store))) {
-      console.warn('Clearing placeholder store:', store);
+    // تنظيف placeholder - تجاهل أي store ID يحتوي على placeholder
+    if (store && (store.includes('{') || /STORE_ID/i.test(store) || store === 'salla:' || !store.includes(':'))) {
       store = '';
     }
 
-    // محاولة auto-resolve
+    // محاولة auto-resolve - دائماً نحاول resolve من domain
     if (!store) {
       try { 
         const resolveTimeout = new Promise((_, reject) => 
@@ -356,7 +355,7 @@
         store = await Promise.race([resolveStore(), resolveTimeout]);
       }
       catch (err) { 
-        console.warn('Store auto-resolution failed:', err.message);
+        console.warn('[Theqah] Store auto-resolution failed:', err.message);
         store = null;
       }
     }
@@ -369,16 +368,8 @@
     }
     
     if (!store) {
-      if (host && host.getAttribute("data-mounted") !== "1") {
-        const msg = document.createElement("div");
-        msg.className = "theqah-widget-empty";
-        msg.style.cssText = "padding:12px;border:1px dashed #94a3b8;border-radius:12px;opacity:.8;font:13px system-ui;";
-        msg.textContent = (String(lang).toLowerCase() === 'ar')
-          ? "لم يتم العثور على معرف المتجر. تأكد من تثبيت التطبيق في متجر سلة."
-          : "Store ID not found. Make sure the app is installed in your Salla store.";
-        host.appendChild(msg);
-        host.setAttribute("data-mounted", "1");
-      }
+      // Silent fail - don't show error message in production, just log to console
+      console.log('[Theqah] Could not resolve store ID. App might not be installed or store not registered.');
       return;
     }
 
