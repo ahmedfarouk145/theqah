@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { rateLimitPublic, RateLimitPresets } from "@/server/rate-limit-public";
+import { setCorsHeaders } from "@/server/middleware/cors";
 
 export const config = { api: { bodyParser: true } };
 
@@ -10,6 +11,18 @@ export const config = { api: { bodyParser: true } };
  * GET /api/reviews/check-verified?storeId=salla:12345&productId=123
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Set CORS headers for widget access from Salla stores
+  setCorsHeaders(req, res, {
+    origin: true, // Allow all origins (public endpoint)
+    methods: ["GET", "OPTIONS"],
+    credentials: false
+  });
+
+  // Handle preflight
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
