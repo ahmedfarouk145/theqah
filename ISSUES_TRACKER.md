@@ -443,13 +443,37 @@ if (process.env.NODE_ENV !== "production") return;
 
 ---
 
-### M8. Subscription Limit Checks Missing in Some Flows
+### ✅ M8. Subscription Limit Checks [COMPLETED]
 **Component:** Subscription System  
 **Issue:** Quota checks exist but not enforced everywhere  
 **Impact:** Users might exceed limits  
 **Location:** Various API endpoints  
 **Solution:** Audit all endpoints and add checks  
-**Effort:** 6 hours
+**Effort:** 6 hours  
+**Status:** ✅ **COMPLETED** - December 18, 2025  
+**Implementation:**
+- Created src/server/subscription/quota-checker.ts (comprehensive quota system)
+- **New Pricing Model:** Single plan with 1,000 reviews/month
+  - TRIAL: 10 reviews/month (free trial)
+  - PAID_MONTHLY: 1,000 reviews/month (21 SAR/month - 30% discount)
+  - PAID_ANNUAL: 1,000 reviews/month (210 SAR/year - 42% discount, 17.5 SAR/month)
+- **Launch Offer:** First 10 days with permanent discount guarantee
+- Core functions:
+  - getSubscriptionQuota() - Retrieve current quota status
+  - canSendInvites() - Check if allowed to send review invites
+  - reserveInviteQuota() - Atomic quota reservation with transaction
+  - canCreateReview() - Review creation permission (always allowed)
+  - canSyncReviews() - Sync permission (requires store connection)
+  - resetMonthlyQuota() - Monthly reset on 1st of month
+  - getQuotaSummary() - Admin dashboard with pricing info
+  - requireActiveSubscription() - Validation that throws error
+  - requireInviteQuota() - Validation that throws error
+- Arabic error messages for better UX
+- Fair use policy: Up to 1,000 reviews/month
+- Updated src/config/plans.ts with new pricing structure
+- Created PRICING_MODEL.md documentation (comprehensive pricing guide)
+- Integration with error-handler.ts (M11) for consistent errors
+- Uses Firestore transactions (M12) for atomic operations
 
 ---
 
@@ -881,15 +905,15 @@ if (process.env.NODE_ENV !== "production") return;
 - [x] **H11: Fix silent failures** ✅ (Dec 17, 2025) - 9 silent catches replaced with error logging
 - [x] **H12: User activity tracking** ✅ (Dec 17, 2025) - 20+ action types with DAU/MAU analytics
 
-#### Medium Priority Issues (9/15 completed = 60%)
+#### Medium Priority Issues (10/15 completed = 67%)
 - [x] **M1: Incremental sync** ✅ (Dec 18, 2025)
 - [x] **M2: Widget caching** ✅ (Dec 18, 2025)
 - [x] **M3: Widget loading states** ✅ (Dec 18, 2025)
 - [x] **M4: Verification logic clarity** ✅ (Dec 18, 2025)
-- [ ] M5: Add tests
+- - [ ] M5: Add tests
 - [ ] M6: i18n error messages
 - [ ] M7: API documentation
-- [ ] M8: Subscription limit checks
+- [x] **M8: Subscription limit checks** ✅ (Dec 18, 2025)
 - [ ] M9: TypeScript strict mode
 - [x] **M10: Extract magic numbers** ✅ (Dec 18, 2025)
 - [x] **M11: Standardize error handling** ✅ (Dec 18, 2025)
@@ -914,10 +938,10 @@ if (process.env.NODE_ENV !== "production") return;
 
 ### 📊 Summary
 
-**Total Completed:** 33/47 (70%)
+**Total Completed:** 34/47 (72%)
 - 🔴 Critical: 6/8 (75%)
 - 🟠 High: 12/12 (100%) ✅ ALL COMPLETE!
-- 🟡 Medium: 9/15 (60%) ⬆️⬆️
+- 🟡 Medium: 10/15 (67%) ⬆️⬆️⬆️
 - 🟢 Low: 6/12 (50%)
 
 **Recent Completions (Dec 17-18, 2025):**

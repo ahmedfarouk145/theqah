@@ -1,62 +1,89 @@
-export type PlanId = "STARTER" | "SALES_BOOST" | "EXPANSION";
+/**
+ * Launch Offer Pricing (عرض الإطلاق)
+ * Single plan with all features - 1,000 reviews/month
+ * 
+ * Pricing:
+ * - Monthly: 21 SAR/month (30% discount from 30 SAR)
+ * - Annual: 210 SAR/year (42% discount, 17.5 SAR/month)
+ * 
+ * Offer Terms:
+ * - Limited time: First 10 days after launch
+ * - Fair use: Up to 1,000 reviews/month
+ * - Price guarantee: Discount stays as long as subscription is active
+ */
+
+export type PlanId = "TRIAL" | "PAID_MONTHLY" | "PAID_ANNUAL";
 
 export interface PlanDef {
   id: PlanId;
   name: string;
-  nameEn?: string;
-  priceSar: number | null;      // null = بالاتفاق
+  nameEn: string;
+  priceSar: number;
   priceBeforeDiscount?: number; // السعر قبل الخصم
-  invitesPerMonth: number | null; // null = غير محدود/مخصص
+  reviewsPerMonth: number;
+  billingCycle: 'trial' | 'monthly' | 'annual';
+  savingsPercent?: number;
   features: string[];
   highlight?: boolean;
 }
 
 export const PLANS: Record<PlanId, PlanDef> = {
-  STARTER: {
-    id: "STARTER",
-    name: "باقة الانطلاقة",
-    nameEn: "Starter Plan",
-    priceSar: 19,
-    priceBeforeDiscount: 27,
-    invitesPerMonth: 100,
+  TRIAL: {
+    id: "TRIAL",
+    name: "تجريبي مجاني",
+    nameEn: "Free Trial",
+    priceSar: 0,
+    reviewsPerMonth: 10,
+    billingCycle: 'trial',
     features: [
-      "شارة \"مُشتري موثّق\" بجانب كل تقييم لإثبات مصداقيته",
-      "اعتماد التقييمات قبل نشرها من لوحة التحكم",
-      "جمع تقييمات حقيقية من عملائك بعد كل عملية شراء",
-      "100 دعوة تقييم موثوقة شهريًا",
-      "بدون رسوم خفية أو خدمات إضافية داخل الباقة",
+      "نظام \"مشتري موثق\" كامل للتجربة",
+      "توثيق المراجعات مع شارة الثقة",
+      "ويدجت قابل للتضمين في المتجر",
+      "لوحة تحكم لإدارة المراجعات",
+      "10 مراجعات شهرياً للتجربة",
     ],
   },
-  SALES_BOOST: {
-    id: "SALES_BOOST",
-    name: "باقة زيادة المبيعات",
-    nameEn: "Sales Boost Plan",
-    priceSar: 29,
-    priceBeforeDiscount: 41,
-    invitesPerMonth: 250,
+  PAID_MONTHLY: {
+    id: "PAID_MONTHLY",
+    name: "الخيار المرن (شهري)",
+    nameEn: "Flexible Plan (Monthly)",
+    priceSar: 21,
+    priceBeforeDiscount: 30,
+    reviewsPerMonth: 1000,
+    billingCycle: 'monthly',
+    savingsPercent: 30,
     features: [
-      "شارة \"مُشتري موثّق\" بجانب كل تقييم",
-      "اعتماد التقييمات قبل نشرها من لوحة التحكم",
-      "فلترة ذكية للتقييمات لحجب الألفاظ غير اللائقة تلقائيًا",
-      "250 دعوة تقييم موثوقة شهريًا",
-      "شارة \"مُشتري موثّق\" تظهر أسفل المنتج لزيادة الثقة وتحفيز الشراء",
+      "✅ نظام \"مشتري موثق\" كامل (توثيق + ويدجت + لوحة تحكم)",
+      "✅ حتى 1,000 مراجعة شهرياً",
+      "✅ شارة \"مُشتري موثّق\" بجانب كل تقييم",
+      "✅ اعتماد التقييمات قبل نشرها من لوحة التحكم",
+      "✅ فلترة ذكية للألفاظ غير اللائقة تلقائياً",
+      "✅ جمع تقييمات حقيقية من عملائك بعد كل عملية شراء",
+      "✅ ويدجت احترافي قابل للتضمين في صفحات المنتجات",
+      "✅ تقارير تحليلية لقياس رضا العملاء",
+      "💎 خصم 30% (بدلاً من 30 ريال)",
+      "🔒 ضمان السعر: خصمك يستمر معك طالما اشتراكك ساري",
+    ],
+  },
+  PAID_ANNUAL: {
+    id: "PAID_ANNUAL",
+    name: "الخيار الأذكى (سنوي)",
+    nameEn: "Smart Plan (Annual)",
+    priceSar: 210,
+    priceBeforeDiscount: 360,
+    reviewsPerMonth: 1000,
+    billingCycle: 'annual',
+    savingsPercent: 42,
+    features: [
+      "✅ جميع مزايا الخيار الشهري",
+      "✅ حتى 1,000 مراجعة شهرياً",
+      "💰 وفّر 42% - الشهر بـ 17.5 ريال فقط!",
+      "💎 دفع سنوي: 210 ريال للسنة كاملة",
+      "🎁 وفّرت 150 ريال في السنة",
+      "🔒 ضمان السعر: خصمك يستمر معك طالما اشتراكك ساري",
+      "⚡ الخيار الأوفر والأذكى!",
     ],
     highlight: true, // الأكثر رواجًا
-  },
-  EXPANSION: {
-    id: "EXPANSION",
-    name: "باقة التوسّع",
-    nameEn: "Expansion Plan",
-    priceSar: 49,
-    priceBeforeDiscount: 69,
-    invitesPerMonth: 600,
-    features: [
-      "جميع مزايا باقة زيادة المبيعات",
-      "600 دعوة تقييم موثوقة شهريًا",
-      "تقارير تحليلية متقدمة لقياس رضا العملاء ونسبة التفاعل",
-      "فلترة مطوّرة بمعايير أعلى لجودة المراجعات",
-      "إمكانية عرض صفحة عامة تحتوي على جميع تقييمات المتجر بشكل احترافي",
-    ],
   },
 };
 
@@ -70,38 +97,40 @@ export function getCycleBoundaries(date = new Date()) {
 
 /**
  * تحويل اسم الباقة من Salla إلى المعرف الداخلي
- * يدعم أسماء بالعربية والإنجليزية
+ * 
+ * Launch offer: Single paid plan with two billing cycles
  */
-export function mapSallaPlanToInternal(planName?: string | null, planType?: string | null): PlanId | null {
+export function mapSallaPlanToInternal(planName?: string | null, billingCycle?: 'monthly' | 'annual' | null): PlanId | null {
   if (!planName) return null;
   
   const normalized = String(planName).toLowerCase().trim();
   
   // دعم الأسماء بالعربية والإنجليزية
   const mapping: Record<string, PlanId> = {
-    // أسماء بالعربية
-    "انطلاقة": "STARTER",
-    "الانطلاقة": "STARTER",
-    "باقة الانطلاقة": "STARTER",
-    "زيادة المبيعات": "SALES_BOOST",
-    "زيادة مبيعات": "SALES_BOOST",
-    "باقة زيادة المبيعات": "SALES_BOOST",
-    "توسع": "EXPANSION",
-    "التوسع": "EXPANSION",
-    "باقة التوسع": "EXPANSION",
-    "توسّع": "EXPANSION",
-    "باقة التوسّع": "EXPANSION",
-    // أسماء بالإنجليزية
-    "starter": "STARTER",
-    "starter plan": "STARTER",
-    "sales boost": "SALES_BOOST",
-    "sales boost plan": "SALES_BOOST",
-    "expansion": "EXPANSION",
-    "expansion plan": "EXPANSION",
-    // أسماء قديمة (للتوافق مع النظام القديم)
-    "start": "STARTER",
-    "growth": "SALES_BOOST",
-    "scale": "EXPANSION",
+    // نظام جديد (عرض الإطلاق)
+    "تجريبي": "TRIAL",
+    "trial": "TRIAL",
+    "free trial": "TRIAL",
+    "مجاني": "TRIAL",
+    
+    // الباقة المدفوعة (حسب دورة الفوترة)
+    "مدفوع": billingCycle === 'annual' ? "PAID_ANNUAL" : "PAID_MONTHLY",
+    "paid": billingCycle === 'annual' ? "PAID_ANNUAL" : "PAID_MONTHLY",
+    "شهري": "PAID_MONTHLY",
+    "monthly": "PAID_MONTHLY",
+    "الخيار المرن": "PAID_MONTHLY",
+    "سنوي": "PAID_ANNUAL",
+    "annual": "PAID_ANNUAL",
+    "yearly": "PAID_ANNUAL",
+    "الخيار الأذكى": "PAID_ANNUAL",
+    
+    // أسماء قديمة (للتوافق مع النظام القديم - تحويل للباقة المدفوعة)
+    "انطلاقة": "PAID_MONTHLY",
+    "starter": "PAID_MONTHLY",
+    "زيادة المبيعات": "PAID_MONTHLY",
+    "sales boost": "PAID_MONTHLY",
+    "توسع": "PAID_ANNUAL",
+    "expansion": "PAID_ANNUAL",
   };
   
   // البحث المباشر
@@ -116,13 +145,6 @@ export function mapSallaPlanToInternal(planName?: string | null, planType?: stri
     }
   }
   
-  // البحث عن طريق planType
-  if (planType) {
-    const typeNormalized = String(planType).toLowerCase().trim();
-    if (typeNormalized === "starter") return "STARTER";
-    if (typeNormalized === "sales_boost" || typeNormalized === "sales-boost") return "SALES_BOOST";
-    if (typeNormalized === "expansion") return "EXPANSION";
-  }
-  
-  return null;
+  // افتراضي: إذا لم يتم تحديد، استخدم الشهري
+  return billingCycle === 'annual' ? "PAID_ANNUAL" : "PAID_MONTHLY";
 }
