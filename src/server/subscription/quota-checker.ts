@@ -92,9 +92,10 @@ export async function getSubscriptionQuota(
 }
 
 /**
- * Check if store can send review invites
+ * Check if store can add reviews
+ * Note: Salla removed invite system, now we track reviews directly
  */
-export async function canSendInvites(
+export async function canAddReviews(
   db: Firestore,
   storeUid: string,
   count: number = 1
@@ -123,17 +124,23 @@ export async function canSendInvites(
 }
 
 /**
- * Reserve quota for review invites
+ * @deprecated Use canAddReviews instead. Salla removed invite system.
+ */
+export const canSendInvites = canAddReviews;
+
+/**
+ * Reserve quota for reviews
  * Returns updated quota after reservation
  * 
+ * Note: Salla removed invite system, now we track reviews directly
  * Fair Use: Up to 1,000 reviews/month per paid subscription
  */
-export async function reserveInviteQuota(
+export async function reserveReviewQuota(
   db: Firestore,
   storeUid: string,
   count: number = 1
 ): Promise<SubscriptionQuota> {
-  const check = await canSendInvites(db, storeUid, count);
+  const check = await canAddReviews(db, storeUid, count);
 
   if (!check.allowed) {
     if (check.reason === 'subscription_inactive') {
@@ -144,7 +151,7 @@ export async function reserveInviteQuota(
         `تم الوصول للحد الشهري (${check.quota?.reviewsUsed}/${check.quota?.monthlyReviews} مراجعة). يتم التجديد في بداية الشهر القادم.`
       );
     }
-    throw Errors.forbidden('لا يمكن إرسال الدعوات');
+    throw Errors.forbidden('لا يمكن إضافة المراجعة');
   }
 
   // Increment usage atomically
@@ -170,24 +177,21 @@ export async function reserveInviteQuota(
 }
 
 /**
- * Check if store can create reviews
+ * @deprecated Use reserveReviewQuota instead. Salla removed invite system.
+ */
+export const reserveInviteQuota = reserveReviewQuota;
+
+/**
+ * Check if store can create reviews (with quota check)
+ * Note: Now checks quota since Salla removed invite system
  */
 export async function canCreateReview(
   db: Firestore,
   storeUid: string
 ): Promise<{ allowed: boolean; reason?: string }> {
-  const storeDoc = await db.collection('stores').doc(storeUid).get();
-  
-  if (!storeDoc.exists) {
-    return { allowed: false, reason: 'store_not_found' };
-  }
-
-  const storeData = storeDoc.data();
-  const plan = storeData?.subscription?.plan;
-
-  // Review creation is always allowed regardless of plan
-  // Only invite sending is quota-limited
-  return { allowed: true };
+  // Use the same logic as canAddReviews
+  const result = await canAddReviews(db, storeUid, 1);
+  return { allowed: result.allowed, reason: result.reason };
 }
 
 /**
@@ -304,13 +308,14 @@ export async function requireActiveSubscription(
 /**
  * Validate review quota before operation
  * Throws error if quota exceeded
+ * Note: Salla removed invite system, now validates review quota
  */
-export async function requireInviteQuota(
+export async function requireReviewQuota(
   db: Firestore,
   storeUid: string,
   count: number = 1
 ): Promise<void> {
-  const check = await canSendInvites(db, storeUid, count);
+  const check = await canAddReviews(db, storeUid, count);
 
   if (!check.allowed) {
     if (check.reason === 'subscription_inactive') {
@@ -321,6 +326,11 @@ export async function requireInviteQuota(
         `تم الوصول للحد الشهري (${check.quota?.reviewsUsed}/${check.quota?.monthlyReviews} مراجعة). يتم التجديد في بداية الشهر القادم.`
       );
     }
-    throw Errors.forbidden('لا يمكن إرسال الدعوات');
+    throw Errors.forbidden('لا يمكن إضافة المراجعة');
   }
 }
+
+/**
+ * @deprecated Use requireReviewQuota instead. Salla removed invite system.
+ */
+export const requireInviteQuota = requireReviewQuota;

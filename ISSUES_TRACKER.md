@@ -458,18 +458,24 @@ if (process.env.NODE_ENV !== "production") return;
   - PAID_MONTHLY: 1,000 reviews/month (21 SAR/month - 30% discount)
   - PAID_ANNUAL: 1,000 reviews/month (210 SAR/year - 42% discount, 17.5 SAR/month)
 - **Launch Offer:** First 10 days with permanent discount guarantee
-- Core functions:
+- **Core functions (updated to reviews-only):**
   - getSubscriptionQuota() - Retrieve current quota status
-  - canSendInvites() - Check if allowed to send review invites
-  - reserveInviteQuota() - Atomic quota reservation with transaction
-  - canCreateReview() - Review creation permission (always allowed)
+  - canAddReviews() - Check if allowed to add reviews (replaces canSendInvites)
+  - reserveReviewQuota() - Atomic quota reservation with transaction
+  - canCreateReview() - Review creation permission with quota check
   - canSyncReviews() - Sync permission (requires store connection)
   - resetMonthlyQuota() - Monthly reset on 1st of month
   - getQuotaSummary() - Admin dashboard with pricing info
   - requireActiveSubscription() - Validation that throws error
-  - requireInviteQuota() - Validation that throws error
+  - requireReviewQuota() - Validation that throws error (replaces requireInviteQuota)
+- Updated src/server/subscription/usage.ts:
+  - onReviewCreated() - Track review creation (replaces onInviteSent)
+  - canAddReview() - Check review permission (replaces canSendInvite)
+  - getUsageStats() - Get current usage statistics
+  - Deprecated old invite functions with backward compatibility
+- **Note:** Salla removed invite system, system now tracks reviews directly
 - Arabic error messages for better UX
-- Fair use policy: Up to 1,000 reviews/month
+- Fair use policy: Up to 1,000 reviews/month (reviews only, no invites)
 - Updated src/config/plans.ts with new pricing structure
 - Created PRICING_MODEL.md documentation (comprehensive pricing guide)
 - Integration with error-handler.ts (M11) for consistent errors
