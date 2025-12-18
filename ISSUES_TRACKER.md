@@ -423,13 +423,55 @@ if (process.env.NODE_ENV !== "production") return;
 
 ---
 
-### M6. Error Messages Not i18n
+### ✅ M6. Error Messages i18n [COMPLETED]
 **Component:** Error Handling  
 **Issue:** Error messages in English only  
 **Impact:** Poor UX for Arabic users  
 **Location:** All API endpoints  
 **Solution:** Create error message dictionary  
-**Effort:** 8 hours
+**Effort:** 8 hours  
+**Status:** ✅ **COMPLETED** - December 18, 2025  
+**Implementation:**
+- Created src/locales/errors.ts (comprehensive i18n system)
+- **Error message dictionary with 23 error codes:**
+  - Authentication: UNAUTHORIZED, FORBIDDEN, INVALID_TOKEN, TOKEN_EXPIRED
+  - Validation: VALIDATION_ERROR, MISSING_REQUIRED_FIELD, INVALID_FORMAT, INVALID_INPUT
+  - Resources: NOT_FOUND, ALREADY_EXISTS, DUPLICATE
+  - Operations: OPERATION_FAILED, TRANSACTION_FAILED, EXTERNAL_API_ERROR
+  - Business: QUOTA_EXCEEDED, RATE_LIMIT_EXCEEDED, INSUFFICIENT_PERMISSIONS, SUBSCRIPTION_INACTIVE, SUBSCRIPTION_REQUIRED
+  - System: INTERNAL_ERROR, SERVICE_UNAVAILABLE, TIMEOUT, DATABASE_ERROR
+- **All messages in Arabic and English**
+- **Key functions:**
+  - getErrorMessage(code, locale, params) - Get localized message with parameter substitution
+  - translateResource(resource, locale) - Translate resource names (Store, Review, etc.)
+  - getLocaleFromHeaders(headers) - Auto-detect locale from Accept-Language header
+  - formatErrorResponse() - Format error response with localization
+- Updated src/server/errors/error-handler.ts:
+  - AppError class now supports .withLocale() and .withParams()
+  - getLocalizedMessage() method for runtime localization
+  - handleApiError() now accepts locale and headers options
+  - All Errors creators updated to support locale parameter
+  - Errors.notFound(), Errors.duplicate(), Errors.validation() use translated resource names
+- Created src/examples/api-with-i18n.example.ts:
+  - 6 usage examples showing different error scenarios
+  - Complete endpoint example with validation, permissions, quota checks
+  - Best practices for implementing i18n in API endpoints
+- **Parameter substitution:**
+  - Use {param} syntax in messages
+  - Example: "تم الوصول للحد الشهري ({used}/{limit} مراجعة)"
+- **Automatic locale detection:**
+  - Reads Accept-Language header
+  - Defaults to Arabic for Saudi market
+  - Can be explicitly set per error
+- **Resource name translation:**
+  - Store → المتجر
+  - Review → المراجعة
+  - User → المستخدم
+  - And 8 more common resources
+- **Backward compatible:**
+  - Existing error code still works
+  - English messages available for English-speaking users
+  - Falls back to original message if i18n fails
 
 ---
 
@@ -911,13 +953,13 @@ if (process.env.NODE_ENV !== "production") return;
 - [x] **H11: Fix silent failures** ✅ (Dec 17, 2025) - 9 silent catches replaced with error logging
 - [x] **H12: User activity tracking** ✅ (Dec 17, 2025) - 20+ action types with DAU/MAU analytics
 
-#### Medium Priority Issues (10/15 completed = 67%)
+#### Medium Priority Issues (11/15 completed = 73%)
 - [x] **M1: Incremental sync** ✅ (Dec 18, 2025)
 - [x] **M2: Widget caching** ✅ (Dec 18, 2025)
 - [x] **M3: Widget loading states** ✅ (Dec 18, 2025)
 - [x] **M4: Verification logic clarity** ✅ (Dec 18, 2025)
 - - [ ] M5: Add tests
-- [ ] M6: i18n error messages
+- [x] **M6: i18n error messages** ✅ (Dec 18, 2025)
 - [ ] M7: API documentation
 - [x] **M8: Subscription limit checks** ✅ (Dec 18, 2025)
 - [ ] M9: TypeScript strict mode
@@ -944,7 +986,7 @@ if (process.env.NODE_ENV !== "production") return;
 
 ### 📊 Summary
 
-**Total Completed:** 34/47 (72%)
+**Total Completed:** 35/47 (74%)
 - 🔴 Critical: 6/8 (75%)
 - 🟠 High: 12/12 (100%) ✅ ALL COMPLETE!
 - 🟡 Medium: 10/15 (67%) ⬆️⬆️⬆️

@@ -2,9 +2,18 @@
  * Standardized Error Handling Utilities
  * 
  * Provides consistent error handling patterns across the application
+ * Supports Arabic and English error messages via i18n
  */
 
 import type { NextApiResponse } from 'next';
+import { 
+  getErrorMessage, 
+  translateResource, 
+  getLocaleFromHeaders,
+  formatErrorResponse,
+  type Locale,
+  type ErrorCode as I18nErrorCode 
+} from '@/locales/errors';
 
 /**
  * Application error codes
@@ -45,9 +54,12 @@ export const ErrorCodes = {
 export type ErrorCode = typeof ErrorCodes[keyof typeof ErrorCodes];
 
 /**
- * Application error class
+ * Application error class with i18n support
  */
 export class AppError extends Error {
+  public locale: Locale = 'ar';
+  public params?: Record<string, string | number>;
+
   constructor(
     public code: ErrorCode,
     message: string,
@@ -58,17 +70,47 @@ export class AppError extends Error {
     this.name = 'AppError';
   }
 
+  /**
+   * Set locale for error message
+   */
+  withLocale(locale: Locale): this {
+    this.locale = locale;
+    return this;
+  }
+
+  /**
+   * Set parameters for message interpolation
+   */
+  withParams(params: Record<string, string | number>): this {
+    this.params = params;
+    return this;
+  }
+
+  /**
+   * Get localized message
+   */
+  getLocalizedMessage(): string {
+    // Try to get i18n message
+    const i18nCode = this.code.toUpperCase().replace(/_/g, '_') as I18nErrorCode;
+    try {
+      return getErrorMessage(i18nCode, this.locale, this.params);
+    } catch {
+      // Fallback to original message
+      return this.message;
+    }
+  }
+
   toJSON() {
     return {
       error: this.code,
-      message: this.message,
+      message: this.getLocalizedMessage(),
       ...(this.details && { details: this.details }),
     };
   }
 }
 
 /**
- * Common error creators
+ * Common error creators with i18n support
  */
 export const Errors = {
   unauthorized: (message = 'Unauthorized') =>
@@ -77,34 +119,46 @@ export const Errors = {
   forbidden: (message = 'Forbidden') =>
     new AppError(ErrorCodes.FORBIDDEN, message, 403),
 
-  notFound: (resource: string) =>
-    new AppError(ErrorCodes.NOT_FOUND, `${resource} not found`, 404),
+  notFound: (resource: string, locale: Locale = 'ar') => {
+    const translatedResource = translateResource(resource, locale);
+    return new AppError(ErrorCodes.NOT_FOUND, `${resource} not found`, 404)
+      .withLocale(locale)
+      .withParams({ resource: translatedResource });
+  },
 
-  validation: (message: string, details?: unknown) =>
-    new AppError(ErrorCodes.VALIDATION_ERROR, message, 400, details),
+  validation: (message: string, details?: unknown, locale: Locale = 'ar') =>
+    new AppError(ErrorCodes.VALIDATION_ERROR, message, 400, details).withLocale(locale),
 
-  duplicate: (resource: string) =>
-    new AppError(ErrorCodes.DUPLICATE, `${resource} already exists`, 409),
+  duplicate: (resource: string, locale: Locale = 'ar') => {
+    const translatedResource = translateResource(resource, locale);
+    return new AppError(ErrorCodes.DUPLICATE, `${resource} already exists`, 409)
+      .withLocale(locale)
+      .withParams({ resource: translatedResource });
+  },
 
-  quotaExceeded: (message = 'Quota exceeded') =>
-    new AppError(ErrorCodes.QUOTA_EXCEEDED, message, 429),
+  quotaExceeded: (message = 'Quota exceeded', details?: string) =>
+    new AppError(ErrorCodes.QUOTA_EXCEEDED, message, 429)
+      .withParams({ details: details || '' }),
 
-  rateLimitExceeded: (message = 'Rate limit exceeded') =>
-    new AppError(ErrorCodes.RATE_LIMIT_EXCEEDED, message, 429),
+  rateLimitExceeded: (retryMinutes?: number) =>
+    new AppError(ErrorCodes.RATE_LIMIT_EXCEEDED, 'Rate limit exceeded', 429)
+      .withParams({ retry: String(retryMinutes || 15) }),
 
-  externalApi: (service: string, message: string) =>
+  externalApi: (service: string, message: string, locale: Locale = 'ar') =>
     new AppError(
       ErrorCodes.EXTERNAL_API_ERROR,
       `${service} API error: ${message}`,
       502
-    ),
+    )
+      .withLocale(locale)
+      .withParams({ service }),
 
   internal: (message = 'Internal server error', details?: unknown) =>
     new AppError(ErrorCodes.INTERNAL_ERROR, message, 500, details),
 };
 
 /**
- * Error handler middleware for API routes
+ * Error handler middleware for API routes with i18n support
  */
 export function handleApiError(
   error: unknown,
@@ -112,14 +166,28 @@ export function handleApiError(
   options: {
     logError?: boolean;
     includeStack?: boolean;
+    locale?: Locale;
+    headers?: Record<string, string | string[] | undefined>;
   } = {}
 ): void {
-  const { logError = true, includeStack = process.env.NODE_ENV === 'development' } = options;
+  const { 
+    logError = true, 
+    includeStack = process.env.NODE_ENV === 'development',
+    headers
+  } = options;
+
+  // Determine locale from headers or options
+  const locale = options.locale || (headers ? getLocaleFromHeaders(headers) : 'ar');
 
   // Handle AppError
   if (error instanceof AppError) {
     if (logError) {
       console.error(`[AppError] ${error.code}:`, error.message, error.details);
+    }
+
+    // Set locale if not already set
+    if (!error.locale || error.locale === 'ar') {
+      error.withLocale(locale);
     }
 
     res.status(error.statusCode).json({
@@ -137,7 +205,7 @@ export function handleApiError(
 
     res.status(500).json({
       error: ErrorCodes.INTERNAL_ERROR,
-      message: error.message || 'Internal server error',
+      message: getErrorMessage('INTERNAL_ERROR', locale),
       ...(includeStack && { stack: error.stack }),
     });
     return;
