@@ -148,6 +148,55 @@ Automatic synchronization every 6 hours:
 
 ---
 
+### 4. Cron Job for Review ID Backfill
+**File:** `src/pages/api/cron/backfill-review-ids.ts`
+
+**NEW ✨** - Automatic backfilling of Salla review IDs every 10 minutes:
+
+**Endpoint:** `GET /api/cron/backfill-review-ids`
+
+**Authentication:** Requires `Authorization: Bearer CRON_SECRET` header
+
+**Purpose:** 
+Salla's `review.added` webhook doesn't include the review ID in the payload. When a new review is created, we save it immediately with `orderId` + `productId` but without `sallaReviewId`. This cron job fetches the review ID from Salla API once it's indexed (10-20 seconds after creation).
+
+**Features:**
+- ✅ Processes reviews with `needsSallaId: true` flag
+- ✅ Fetches reviews from Salla API by product ID
+- ✅ Matches reviews by `order_id` field
+- ✅ Updates Firestore with `sallaReviewId`
+- ✅ Removes `needsSallaId` flag after success
+- ✅ Batch processing (50 reviews per run)
+- ✅ Detailed logging and error handling
+
+**How it works:**
+1. Query Firestore for reviews where `needsSallaId === true`
+2. For each review, fetch from Salla API: `GET /admin/v2/reviews?products[]={productId}&per_page=100`
+3. Find matching review by `order_id`
+4. Update review document with `sallaReviewId` and `backfilledAt` timestamp
+5. Remove `needsSallaId` flag
+
+**Response:**
+```json
+{
+  "success": true,
+  "processed": 15,
+  "updated": 12,
+  "failed": 0,
+  "errors": []
+}
+```
+
+**Why needed:**
+- Salla webhook `review.added` only sends: `order.id`, `product.id`, `rating`, `content`, `customer` BUT NOT `review.id`
+- Salla API takes 10+ seconds to index new reviews (race condition)
+- Widget needs `sallaReviewId` to match DOM elements with `data-review-id="{id}"`
+- Without this, verification badges won't appear on Salla's native reviews
+
+**Schedule:** Every 10 minutes via `vercel.json` crons
+
+---
+
 ### 4. Widget Update
 **File:** `public/widgets/theqah-widget.js`
 
