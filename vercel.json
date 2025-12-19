@@ -1,16 +1,12 @@
 {
   "crons": [
     {
-      "path": "/api/cron/sync-salla-reviews",
-      "schedule": "0 */6 * * *"
-    },
-    {
       "path": "/api/cron/webhook-retry",
       "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/backfill-review-ids",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }

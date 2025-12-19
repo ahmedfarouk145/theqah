@@ -1141,6 +1141,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           fbLog(db, { level: "info", scope: "review", msg: "review saved from webhook (will fetch salla id later)", event, idemKey, merchant: merchantId, meta: { orderId, productId, verified: isVerified } });
           
+          // Trigger background job to fetch sallaReviewId (fire-and-forget)
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${req.headers.host}`;
+          fetch(`${appUrl}/api/jobs/fetch-review-id`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.CRON_SECRET}`,
+            },
+            body: JSON.stringify({
+              reviewDocId: docId,
+              merchantId,
+              orderId: String(orderId),
+            }),
+          }).catch((err) => {
+            console.error('Failed to trigger background job:', err);
+            // Non-blocking: job will be picked up by hourly cron backup
+          });
+          
         } catch (syncErr) {
           const errMsg = syncErr instanceof Error ? syncErr.message : String(syncErr);
           fbLog(db, { level: "error", scope: "review", msg: "review save exception", event, idemKey, merchant: merchantId, meta: { error: errMsg } });

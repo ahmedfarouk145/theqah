@@ -1,0 +1,131 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { getDb } from '@/server/firebase-admin';
+
+// Allow longer execution time for retries (Pro plan: 300s, Hobby: 10s)
+export const config = {
+  maxDuration: 300,
+};
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  // Security: Only allow POST requests with CRON_SECRET
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { reviewDocId, merchantId, orderId } = req.body;
+
+  if (!reviewDocId || !merchantId || !orderId) {
+    return res.status(400).json({ 
+      error: 'Missing required fields: reviewDocId, merchantId, orderId' 
+    });
+  }
+
+  // Fire-and-forget: Return 202 immediately
+  res.status(202).json({ 
+    message: 'Job accepted, processing in background',
+    reviewDocId 
+  });
+
+  // Continue processing in background
+  try {
+    await processReviewIdFetch(reviewDocId, merchantId, orderId);
+  } catch (error) {
+    console.error('Background job failed:', error);
+    // Error is logged but not returned to client (already responded)
+  }
+}
+
+async function processReviewIdFetch(
+  reviewDocId: string,
+  merchantId: string,
+  orderId: string
+) {
+  const db = getDb();
+  const retryDelays = [5000, 10000, 15000]; // 5s, 10s, 15s
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < retryDelays.length; attempt++) {
+    try {
+      // Wait before retry (skip on first attempt)
+      if (attempt > 0) {
+        await sleep(retryDelays[attempt - 1]);
+        console.log(`Retry attempt ${attempt + 1} for review ${reviewDocId}`);
+      }
+
+      // Fetch merchant's access token
+      const merchantDoc = await db.collection('merchants').doc(merchantId).get();
+      if (!merchantDoc.exists) {
+        throw new Error(`Merchant ${merchantId} not found`);
+      }
+
+      const merchantData = merchantDoc.data();
+      const accessToken = merchantData?.salla_access_token;
+      if (!accessToken) {
+        throw new Error(`No access token for merchant ${merchantId}`);
+      }
+
+      // Fetch reviews from Salla API
+      const response = await fetch(
+        'https://api.salla.dev/admin/v2/reviews',
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Salla API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const reviews = data.data || [];
+
+      // Find review by order_id (string comparison)
+      const matchingReview = reviews.find(
+        (r: { order_id: string }) => String(r.order_id) === String(orderId)
+      );
+
+      if (!matchingReview) {
+        throw new Error(`Review not found for order ${orderId} (may not be indexed yet)`);
+      }
+
+      // Success! Update Firestore with sallaReviewId
+      await db.collection('reviews').doc(reviewDocId).update({
+        sallaReviewId: matchingReview.id,
+        needsSallaId: false,
+        fetchedAt: new Date().toISOString(),
+        fetchAttempts: attempt + 1,
+      });
+
+      console.log(`✅ Successfully fetched review ID for ${reviewDocId} on attempt ${attempt + 1}`);
+      return; // Success, exit function
+
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`Attempt ${attempt + 1} failed:`, error);
+      
+      // If this is the last attempt, mark as failed
+      if (attempt === retryDelays.length - 1) {
+        await db.collection('reviews').doc(reviewDocId).update({
+          fetchFailed: true,
+          fetchError: lastError.message,
+          fetchAttempts: attempt + 1,
+          lastFetchAttempt: new Date().toISOString(),
+        });
+        console.error(`❌ All attempts failed for ${reviewDocId}`);
+      }
+    }
+  }
+}
