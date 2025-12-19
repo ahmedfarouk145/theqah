@@ -1143,7 +1143,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           
           // Trigger background job to fetch sallaReviewId (fire-and-forget)
           const appUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${req.headers.host}`;
-          fetch(`${appUrl}/api/jobs/fetch-review-id`, {
+          const jobUrl = `${appUrl}/api/jobs/fetch-review-id`;
+          
+          console.log(`[BACKGROUND_JOB] Triggering job for review ${docId} at ${jobUrl}`);
+          
+          // Note: We don't await this so webhook responds immediately
+          // The background job runs independently with its own retry logic
+          fetch(jobUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1155,7 +1161,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               orderId: String(orderId),
             }),
           }).catch((err) => {
-            console.error('Failed to trigger background job:', err);
+            console.error('[BACKGROUND_JOB] Failed to trigger:', err);
             // Non-blocking: job will be picked up by hourly cron backup
           });
           
