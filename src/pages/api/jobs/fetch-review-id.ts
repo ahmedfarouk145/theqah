@@ -76,16 +76,17 @@ async function processReviewIdFetch(
 
       console.log(`[PROCESS] Attempt ${attempt + 1}: Fetching merchant ${merchantIdStr}`);
       
-      // Fetch merchant's access token (convert to string for Firestore)
-      const merchantDoc = await db.collection('merchants').doc(merchantIdStr).get();
-      if (!merchantDoc.exists) {
-        throw new Error(`Merchant ${merchantIdStr} not found`);
+      // Fetch merchant's access token from salla_tokens collection
+      const storeUid = `salla:${merchantIdStr}`;
+      const tokenDoc = await db.collection('salla_tokens').doc(storeUid).get();
+      if (!tokenDoc.exists) {
+        throw new Error(`Store ${storeUid} not found in salla_tokens`);
       }
 
-      const merchantData = merchantDoc.data();
-      const accessToken = merchantData?.salla_access_token;
+      const tokenData = tokenDoc.data();
+      const accessToken = tokenData?.accessToken;
       if (!accessToken) {
-        throw new Error(`No access token for merchant ${merchantIdStr}`);
+        throw new Error(`No access token for store ${storeUid}`);
       }
 
       // Fetch reviews from Salla API

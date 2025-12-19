@@ -3,7 +3,18 @@
 
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { writeFileSync } from 'fs';
+import { writeFileSync, readFileSync } from 'fs';
+
+// Load environment variables from .env.local
+const envContent = readFileSync('.env.local', 'utf-8');
+envContent.split('\n').forEach(line => {
+  const match = line.match(/^([^=]+)=(.*)$/);
+  if (match) {
+    const key = match[1].trim();
+    const value = match[2].trim().replace(/^["']|["']$/g, '');
+    process.env[key] = value;
+  }
+});
 
 // Initialize Firebase Admin using environment variables
 const app = initializeApp({

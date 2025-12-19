@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import NavbarLanding from '@/components/NavbarLanding';
 import axios from 'axios';
-import { motion } from 'framer-motion';
 
 export default function SupportPage() {
   const [form, setForm] = useState({ name: '', email: '', message: '' });
@@ -41,35 +40,21 @@ export default function SupportPage() {
       <NavbarLanding />
       <div className="h-20" />
 
-      {/* Hero Section */}
+      {/* Hero Section - CSS animation instead of framer-motion */}
       <section className="py-16 text-center bg-gradient-to-b from-green-50 to-white">
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-4xl font-extrabold text-green-900"
-        >
+        <h1 className="text-4xl font-extrabold text-green-900 animate-fade-in">
           الدعم والمساعدة
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-          className="mt-4 text-gray-600"
-        >
+        </h1>
+        <p className="mt-4 text-gray-600 animate-fade-in" style={{ animationDelay: '0.2s' }}>
           نحن هنا لخدمتك. إذا كان لديك أي استفسار أو مشكلة، لا تتردد في التواصل معنا.
-        </motion.p>
+        </p>
       </section>
 
       {/* Support Form */}
       <section className="max-w-4xl mx-auto px-6 py-12">
-        <motion.form
+        <form
           onSubmit={handleSubmit}
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          viewport={{ once: true }}
-          className="bg-green-50 p-6 rounded-xl shadow space-y-4"
+          className="bg-green-50 p-6 rounded-xl shadow space-y-4 animate-slide-up"
         >
           <h2 className="text-xl font-semibold text-green-700 mb-4">أرسل تذكرة دعم</h2>
 
@@ -111,33 +96,25 @@ export default function SupportPage() {
           {status === 'error' && (
             <p className="text-red-600 mt-2">❌ حدث خطأ أثناء الإرسال. حاول مرة أخرى لاحقًا.</p>
           )}
-        </motion.form>
+        </form>
       </section>
 
       {/* FAQs Section */}
       <section className="max-w-4xl mx-auto px-6 pb-16">
-        <motion.h2
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-xl font-semibold text-green-700 mb-6"
-        >
+        <h2 className="text-xl font-semibold text-green-700 mb-6 animate-fade-in">
           الأسئلة الشائعة
-        </motion.h2>
+        </h2>
 
         <div className="space-y-4">
           {faqs.map((faq, i) => (
-            <motion.details
+            <details
               key={i}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.2, duration: 0.5 }}
-              viewport={{ once: true }}
-              className="bg-gray-50 p-4 rounded-lg border border-gray-200"
+              className="bg-gray-50 p-4 rounded-lg border border-gray-200 animate-slide-up"
+              style={{ animationDelay: `${i * 0.1}s` }}
             >
               <summary className="cursor-pointer font-medium text-green-800">{faq.q}</summary>
               <p className="mt-2 text-gray-700">{faq.a}</p>
-            </motion.details>
+            </details>
           ))}
         </div>
       </section>
