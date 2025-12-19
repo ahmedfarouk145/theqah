@@ -1,6 +1,7 @@
 // lighthouse-auth.js - Run Lighthouse on authenticated pages
 const puppeteer = require('puppeteer');
-const lighthouse = require('lighthouse');
+const lighthouseModule = require('lighthouse');
+const lighthouse = lighthouseModule.default || lighthouseModule;
 const fs = require('fs');
 
 const LOGIN_URL = 'http://localhost:3000/login';
@@ -24,13 +25,14 @@ async function run() {
     console.log('📝 Logging in...');
     await page.goto(LOGIN_URL, { waitUntil: 'networkidle2' });
     
-    // Fill login form
-    await page.type('input[type="email"], input[name="email"]', EMAIL);
-    await page.type('input[type="password"], input[name="password"]', PASSWORD);
+    // Fill login form - using correct selectors
+    await page.waitForSelector('#email');
+    await page.type('#email', EMAIL);
+    await page.type('#password', PASSWORD);
     
     // Click login button and wait for navigation
     await Promise.all([
-      page.waitForNavigation({ waitUntil: 'networkidle2' }),
+      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
       page.click('button[type="submit"]')
     ]);
     

@@ -53,10 +53,14 @@ export default async function handler(
 
 async function processReviewIdFetch(
   reviewDocId: string,
-  merchantId: string,
-  orderId: string
+  merchantId: string | number,
+  orderId: string | number
 ) {
   console.log('[PROCESS] Starting with params:', { reviewDocId, merchantId, orderId });
+  
+  // Convert to strings for consistency
+  const merchantIdStr = String(merchantId);
+  const orderIdStr = String(orderId);
   
   const db = getDb();
   const retryDelays = [5000, 10000, 15000]; // 5s, 10s, 15s
@@ -70,18 +74,18 @@ async function processReviewIdFetch(
         console.log(`Retry attempt ${attempt + 1} for review ${reviewDocId}`);
       }
 
-      console.log(`[PROCESS] Attempt ${attempt + 1}: Fetching merchant ${merchantId}`);
+      console.log(`[PROCESS] Attempt ${attempt + 1}: Fetching merchant ${merchantIdStr}`);
       
-      // Fetch merchant's access token
-      const merchantDoc = await db.collection('merchants').doc(merchantId).get();
+      // Fetch merchant's access token (convert to string for Firestore)
+      const merchantDoc = await db.collection('merchants').doc(merchantIdStr).get();
       if (!merchantDoc.exists) {
-        throw new Error(`Merchant ${merchantId} not found`);
+        throw new Error(`Merchant ${merchantIdStr} not found`);
       }
 
       const merchantData = merchantDoc.data();
       const accessToken = merchantData?.salla_access_token;
       if (!accessToken) {
-        throw new Error(`No access token for merchant ${merchantId}`);
+        throw new Error(`No access token for merchant ${merchantIdStr}`);
       }
 
       // Fetch reviews from Salla API
@@ -104,11 +108,11 @@ async function processReviewIdFetch(
 
       // Find review by order_id (string comparison)
       const matchingReview = reviews.find(
-        (r: { order_id: string }) => String(r.order_id) === String(orderId)
+        (r: { order_id: string }) => String(r.order_id) === orderIdStr
       );
 
       if (!matchingReview) {
-        throw new Error(`Review not found for order ${orderId} (may not be indexed yet)`);
+        throw new Error(`Review not found for order ${orderIdStr} (may not be indexed yet)`);
       }
 
       console.log(`[PROCESS] Found matching review, updating Firestore doc: ${reviewDocId}`);
