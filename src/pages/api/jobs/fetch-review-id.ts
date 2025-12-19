@@ -22,9 +22,15 @@ export default async function handler(
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  // Debug: Log received body
+  console.log('[FETCH_REVIEW_ID] Received body:', JSON.stringify(req.body));
+  
   const { reviewDocId, merchantId, orderId } = req.body;
 
+  console.log('[FETCH_REVIEW_ID] Parsed params:', { reviewDocId, merchantId, orderId });
+
   if (!reviewDocId || !merchantId || !orderId) {
+    console.error('[FETCH_REVIEW_ID] Missing params:', { reviewDocId, merchantId, orderId });
     return res.status(400).json({ 
       error: 'Missing required fields: reviewDocId, merchantId, orderId' 
     });
@@ -50,6 +56,8 @@ async function processReviewIdFetch(
   merchantId: string,
   orderId: string
 ) {
+  console.log('[PROCESS] Starting with params:', { reviewDocId, merchantId, orderId });
+  
   const db = getDb();
   const retryDelays = [5000, 10000, 15000]; // 5s, 10s, 15s
   let lastError: Error | null = null;
@@ -62,6 +70,8 @@ async function processReviewIdFetch(
         console.log(`Retry attempt ${attempt + 1} for review ${reviewDocId}`);
       }
 
+      console.log(`[PROCESS] Attempt ${attempt + 1}: Fetching merchant ${merchantId}`);
+      
       // Fetch merchant's access token
       const merchantDoc = await db.collection('merchants').doc(merchantId).get();
       if (!merchantDoc.exists) {
@@ -101,6 +111,8 @@ async function processReviewIdFetch(
         throw new Error(`Review not found for order ${orderId} (may not be indexed yet)`);
       }
 
+      console.log(`[PROCESS] Found matching review, updating Firestore doc: ${reviewDocId}`);
+      
       // Success! Update Firestore with sallaReviewId
       await db.collection('reviews').doc(reviewDocId).update({
         sallaReviewId: matchingReview.id,
@@ -115,9 +127,11 @@ async function processReviewIdFetch(
     } catch (error) {
       lastError = error as Error;
       console.error(`Attempt ${attempt + 1} failed:`, error);
+      console.error(`[PROCESS] Error details - reviewDocId: "${reviewDocId}", type: ${typeof reviewDocId}`);
       
       // If this is the last attempt, mark as failed
       if (attempt === retryDelays.length - 1) {
+        console.log(`[PROCESS] Final attempt failed, marking doc as failed: ${reviewDocId}`);
         await db.collection('reviews').doc(reviewDocId).update({
           fetchFailed: true,
           fetchError: lastError.message,
