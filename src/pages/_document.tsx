@@ -23,9 +23,7 @@ export default function Document() {
                 <link rel="preconnect" href="https://api.salla.dev" />
                 <link rel="preconnect" href="https://api.salla.sa" />
 
-                {/* DNS prefetch as fallback */}
-                <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-                <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+                {/* DNS prefetch as fallback for non-font services */}
                 <link rel="dns-prefetch" href="https://firebaseapp.com" />
                 <link rel="dns-prefetch" href="https://api.salla.dev" />
             </Head>

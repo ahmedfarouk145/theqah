@@ -3,34 +3,46 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import FeedbackWidget from '@/components/FeedbackWidget';
-import ReAuthBanner from '@/components/dashboard/ReAuthBanner';
 import { useFlag } from '@/features/flags/useFlag';
 import { useAuth } from '@/contexts/AuthContext';
 import axios from '@/lib/axiosInstance';
-import { motion } from 'framer-motion';
 import { Loader2, Lock } from 'lucide-react';
 import Link from 'next/link';
 
-// Dynamic imports with loading states
+// Dynamic imports with loading states - all ssr: false for faster initial load
 const DashboardAnalytics = dynamic(() => import('@/components/dashboard/Analytics'), {
   loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>,
   ssr: false
 });
 const OrdersTab = dynamic(() => import('@/components/dashboard/OrdersTab'), {
-  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>,
+  ssr: false
 });
 const ReviewsTab = dynamic(() => import('@/components/dashboard/Reviews'), {
-  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>,
+  ssr: false
 });
 const SettingsTab = dynamic(() => import('@/components/dashboard/StoreSettings'), {
-  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>,
+  ssr: false
 });
 const SupportTab = dynamic(() => import('@/components/dashboard/Support'), {
-  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>,
+  ssr: false
 });
 const PendingReviewsTab = dynamic(() => import('@/features/reviews/PendingReviewsTab'), {
-  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>,
+  ssr: false
+});
+
+// Lazy load non-critical UI components
+const FeedbackWidget = dynamic(() => import('@/components/FeedbackWidget'), {
+  ssr: false,
+  loading: () => null
+});
+const ReAuthBanner = dynamic(() => import('@/components/dashboard/ReAuthBanner'), {
+  ssr: false,
+  loading: () => null
 });
 
 const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', 'الإعدادات', 'المساعدة'] as const;
@@ -67,12 +79,11 @@ export default function DashboardPage() {
     setStoreUid(qUid || cUid || undefined);
   }, []);
 
-  // جلب اسم المتجر (اختياري — يحاول عدة مسارات)
+  // جلب اسم المتجر (بشكل غير مانع)
   useEffect(() => {
     const run = async () => {
       setStoreLoading(true);
       try {
-        // حاول من الـ status أولاً (لأن عندنا uid/كوكي)
         let name: string | undefined;
         const statusUrl = storeUid ? `/api/salla/status?uid=${encodeURIComponent(storeUid)}` : '/api/salla/status';
         try {
@@ -84,7 +95,6 @@ export default function DashboardPage() {
             undefined;
         } catch { /* ignore */ }
 
-        // fallback: APIs محلية تتطلّب توكن (لو عندك)
         if (!name && user) {
           const idToken = await user.getIdToken(true);
           const tryProfileEndpoints = ['/api/store/profile', '/api/store/info', '/api/store'];
@@ -127,29 +137,24 @@ export default function DashboardPage() {
     );
   }, [storeLoading, storeName]);
 
-  // ملاحظة: لو حاب تمنع الوصول بدون لوجين، احتفظ بالشرط التالي:
+  // Loading state - simpler, no framer-motion
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-4"
-        >
+        <div className="flex flex-col items-center gap-4 animate-fade-in">
           <Loader2 className="h-8 w-8 animate-spin text-green-600" />
           <p className="text-gray-600">جارٍ التحقق من حالة تسجيل الدخول…</p>
-        </motion.div>
+        </div>
       </div>
     );
   }
 
+  // Not logged in - simpler, no framer-motion
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg text-center"
+        <div
+          className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg text-center animate-slide-up"
           dir="rtl"
         >
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -157,13 +162,13 @@ export default function DashboardPage() {
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">يرجى تسجيل الدخول</h2>
           <p className="text-gray-600 mb-6">مطلوب تسجيل الدخول للوصول للوحة التحكم.</p>
-          <Link 
+          <Link
             href="/login"
             className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
           >
             تسجيل الدخول
           </Link>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -175,19 +180,19 @@ export default function DashboardPage() {
         {headerRight}
       </div>
 
-      {/* C6: Re-authorization Banner */}
+      {/* C6: Re-authorization Banner - lazy loaded */}
       <ReAuthBanner storeUid={storeUid} />
 
-      <div className="flex space-x-2 mb-6 rtl:space-x-reverse">
+      {/* Tabs with fixed height to prevent CLS */}
+      <div className="flex space-x-2 mb-6 rtl:space-x-reverse min-h-[44px]">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-md font-medium border transition ${
-              activeTab === tab
+            className={`px-4 py-2 rounded-md font-medium border transition ${activeTab === tab
                 ? 'bg-green-700 text-white border-green-700'
                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-            }`}
+              }`}
           >
             {tab}
           </button>
@@ -195,28 +200,27 @@ export default function DashboardPage() {
         {dashboardV2Enabled && (
           <button
             onClick={() => setActiveTab('التقييمات المعلقة')}
-            className={`px-4 py-2 rounded-md font-medium border transition ${
-              activeTab === 'التقييمات المعلقة'
+            className={`px-4 py-2 rounded-md font-medium border transition ${activeTab === 'التقييمات المعلقة'
                 ? 'bg-blue-700 text-white border-blue-700'
                 : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'
-            }`}
+              }`}
           >
             التقييمات المعلقة
           </button>
         )}
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
+      {/* Content with fixed min-height to prevent CLS */}
+      <div className="bg-white p-6 rounded-lg shadow min-h-[400px]">
         {activeTab === 'الإحصائيات' && <DashboardAnalytics />}
         {activeTab === 'الطلبات' && <OrdersTab />}
         {activeTab === 'التقييمات' && <ReviewsTab storeName={storeName} />}
         {activeTab === 'التقييمات المعلقة' && dashboardV2Enabled && <PendingReviewsTab />}
-        {/* ✅ مرّر storeUid و storeName هنا */}
         {activeTab === 'الإعدادات' && <SettingsTab storeUid={storeUid} storeName={storeName} />}
         {activeTab === 'المساعدة' && <SupportTab />}
       </div>
 
-      {/* Feedback Widget - Available on all tabs */}
+      {/* Feedback Widget - lazy loaded */}
       <FeedbackWidget userName={storeName} />
     </div>
   );
