@@ -1,6 +1,5 @@
 import Head from "next/head";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { ShoppingBag, Zap, ArrowRight, CheckCircle } from "lucide-react";
 
 export default function ConnectIndex() {
@@ -16,7 +15,7 @@ export default function ConnectIndex() {
       features: ["ربط تلقائي", "إشعارات فورية", "تقارير شاملة"]
     },
     {
-      name: "منصة سلة", 
+      name: "منصة سلة",
       id: "salla",
       href: "/connect/salla",
       color: "from-green-500 to-emerald-600",
@@ -32,33 +31,29 @@ export default function ConnectIndex() {
       <Head><title>ربط متجرك | مشتري موثق</title></Head>
       <div dir="rtl" className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-green-50/30">
         <div className="max-w-4xl mx-auto p-6 py-12">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12"
-          >
+          {/* Header - CSS animation instead of framer-motion */}
+          <div className="text-center mb-12 animate-fade-in">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">اختَر منصتك للبدء</h1>
             <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
               اربط متجرك مع مشتري موثق لإرسال روابط التقييمات تلقائيًا بعد كل عملية شراء ناجحة
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid md:grid-cols-2 gap-8">
             {platforms.map((platform, index) => (
-              <motion.div
+              <div
                 key={platform.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                className="animate-slide-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <Link 
+                <Link
                   href={platform.href}
                   className="group block"
                 >
                   <div className={`relative rounded-2xl bg-gradient-to-br ${platform.bgColor} border border-gray-200/50 p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden`}>
                     {/* Background Decoration */}
                     <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-white/30 to-transparent rounded-full blur-2xl" />
-                    
+
                     <div className="relative z-10">
                       {/* Icon */}
                       <div className={`w-16 h-16 bg-gradient-to-br ${platform.color} rounded-xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
@@ -93,21 +88,16 @@ export default function ConnectIndex() {
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
                   </div>
                 </Link>
-              </motion.div>
+              </div>
             ))}
           </div>
 
           {/* Help Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-12 text-center"
-          >
+          <div className="mt-12 text-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
             <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200/50 p-6 shadow-lg">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">تحتاج مساعدة؟</h3>
               <p className="text-gray-600 mb-4">فريق الدعم متاح لمساعدتك في عملية الربط</p>
-              <Link 
+              <Link
                 href="/support"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
               >
@@ -115,7 +105,7 @@ export default function ConnectIndex() {
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </>

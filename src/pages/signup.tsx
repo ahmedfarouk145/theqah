@@ -8,7 +8,6 @@ import { doc, setDoc } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast, Toaster } from 'sonner';
-import { motion } from 'framer-motion';
 import { Mail, Key, Store, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -58,15 +57,11 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#e3f4e0] via-[#f0fdf4] to-[#d9f2e3] px-4">
       <Toaster position="top-center" />
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="w-full max-w-lg bg-white border border-[#cce4d5] shadow-xl rounded-2xl p-8"
-      >
+      {/* CSS animation instead of framer-motion */}
+      <div className="w-full max-w-lg bg-white border border-[#cce4d5] shadow-xl rounded-2xl p-8 animate-slide-up">
         {/* Header */}
         <div className="text-center space-y-4">
-          <Image src="/logo.png" alt="شعار مشتري موثّق" width={60} height={60} className="mx-auto" />
+          <Image src="/logo.png" alt="شعار مشتري موثّق" width={60} height={60} className="mx-auto" priority />
           <h1 className="text-2xl font-bold text-[#004225]">✨ أنشئ حسابك في مشتري موثّق</h1>
           <p className="text-sm text-gray-600">سجّل خلال دقيقة، ثم اختر ربط زد أو سلّة</p>
         </div>
@@ -131,7 +126,7 @@ export default function SignupPage() {
             </Link>
           </p>
         </form>
-      </motion.div>
+      </div>
     </div>
   );
 }
