@@ -355,7 +355,7 @@
         store = await Promise.race([resolveStore(), resolveTimeout]);
       }
       catch (err) { 
-        console.warn('[Theqah] Store auto-resolution failed:', err.message);
+        // Silent fail
         store = null;
       }
     }
@@ -363,13 +363,12 @@
     const host = existingHost || ensureHostUnderProduct();
     
     if (!host) {
-      console.log('[Theqah] Not a product page - widget skipped');
+      // Not a product page - widget skipped
       return;
     }
     
     if (!store) {
-      // Silent fail - don't show error message in production, just log to console
-      console.log('[Theqah] Could not resolve store ID. App might not be installed or store not registered.');
+      // Silent fail - store not resolved
       return;
     }
 

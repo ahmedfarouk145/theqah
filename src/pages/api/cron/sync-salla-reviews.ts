@@ -13,11 +13,9 @@ export const config = {
  * Vercel Cron: 0 star/6 star star star (every 6 hours)
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Verify cron secret
-  const cronSecret = req.headers["x-vercel-cron-secret"] || req.headers["authorization"];
-  const expectedSecret = process.env.CRON_SECRET || process.env.SALLA_WEBHOOK_SECRET;
-  
-  if (cronSecret !== expectedSecret) {
+  // Verify cron authorization
+  const authHeader = req.headers.authorization;
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
