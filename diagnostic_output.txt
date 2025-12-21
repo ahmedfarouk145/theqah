@@ -1,0 +1,104 @@
+Starting Salla API Test (File Mode)...
+Fetching token for store: salla:982747175
+✅ Access token retrieved. Querying Salla API...
+API Response Status: 200 OK
+Total reviews returned: 15
+
+--- SAMPLE REVIEW STRUCTURE ---
+{
+  "id": 1829593071,
+  "type": "testimonial",
+  "rating": 5,
+  "content": null,
+  "order_id": 2138412118,
+  "is_published": true,
+  "created_at": "2025-12-21 17:12:00",
+  "customer": {
+    "id": 904443859,
+    "name": "احمد محمد",
+    "mobile": 548863809,
+    "email": "abyusiffan23@gmail.com",
+    "avatart": "https://cdn.assets.salla.network/prod/admin/cp/assets/images/avatar_male.png",
+    "country": "السعودية",
+    "city": "سكاكا"
+  }
+}
+
+--- ALL ORDER IDs ---
+[
+  {
+    "id": 1829593071,
+    "order_id": 2138412118,
+    "type": "testimonial"
+  },
+  {
+    "id": 1345067509,
+    "order_id": 2138412118,
+    "type": "rating"
+  },
+  {
+    "id": 1995161946,
+    "order_id": 677183115,
+    "type": "testimonial"
+  },
+  {
+    "id": 137128871,
+    "order_id": 677183115,
+    "type": "rating"
+  },
+  {
+    "id": 936880545,
+    "order_id": 677183115,
+    "type": "shipping"
+  },
+  {
+    "id": 883009946,
+    "order_id": 1242320607,
+    "type": "testimonial"
+  },
+  {
+    "id": 2082280934,
+    "order_id": 1242320607,
+    "type": "rating"
+  },
+  {
+    "id": 401452159,
+    "order_id": 644083957,
+    "type": "testimonial"
+  },
+  {
+    "id": 1847726147,
+    "order_id": 644083957,
+    "type": "rating"
+  },
+  {
+    "id": 56933192,
+    "order_id": 644083957,
+    "type": "shipping"
+  },
+  {
+    "id": 278191813,
+    "order_id": 1174375393,
+    "type": "testimonial"
+  },
+  {
+    "id": 1012800711,
+    "order_id": 1174375393,
+    "type": "rating"
+  },
+  {
+    "id": 1910014632,
+    "order_id": 1622133434,
+    "type": "testimonial"
+  },
+  {
+    "id": 959712948,
+    "order_id": 1622133434,
+    "type": "rating"
+  },
+  {
+    "id": 1388689148,
+    "order_id": 2102203079,
+    "type": "testimonial"
+  }
+]

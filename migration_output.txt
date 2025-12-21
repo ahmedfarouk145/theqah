@@ -1,0 +1,19 @@
+Starting Review Order ID Migration...
+Found 6 reviews to check.
+Processing review salla_982747175_order_1289968575_product_1927638714 (Order: 1289968575)
+ -> 1289968575 does not look like a Reference ID (or already fixed). Skipping.
+Processing review salla_982747175_order_1553897648_product_1927638714 (Order: 1553897648)
+ -> 1553897648 does not look like a Reference ID (or already fixed). Skipping.
+Processing review salla_982747175_order_225136883_product_1927638714 (Order: 225136883)
+ -> 225136883 looks like a Reference ID. Searching Salla API for Internal ID...
+ -> ✅ Found Internal ID: 2138412118 for Reference 225136883
+ -> ✅ Updated Firestore doc.
+Processing review salla_982747175_order_662847033_product_1927638714 (Order: 662847033)
+ -> 662847033 looks like a Reference ID. Searching Salla API for Internal ID...
+ -> ⚠️ Order not found in Salla API.
+Processing review salla_982747175_order_712846334_product_1927638714 (Order: 712846334)
+ -> 712846334 looks like a Reference ID. Searching Salla API for Internal ID...
+ -> ⚠️ Order not found in Salla API.
+Processing review salla_982747175_order_785141541_product_1927638714 (Order: 785141541)
+ -> 785141541 looks like a Reference ID. Searching Salla API for Internal ID...
+ -> ⚠️ Order not found in Salla API.

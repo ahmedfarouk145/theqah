@@ -1,0 +1,4 @@
+Checking subscription for salla:982747175...
+Subscription Data: {}
+startedAt: undefined
+❌ Result: verified is FALSE because subscription.startedAt is missing or 0.

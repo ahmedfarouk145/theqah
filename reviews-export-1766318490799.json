@@ -1,0 +1,148 @@
+[
+  {
+    "id": "salla_982747175_order_1289968575_product_1927638714",
+    "reviewId": "salla_982747175_order_1289968575_product_1927638714",
+    "storeUid": "salla:982747175",
+    "orderId": "1289968575",
+    "productId": "1927638714",
+    "source": "salla_native",
+    "productName": "فستان",
+    "stars": 5,
+    "text": "رائع",
+    "author": {
+      "displayName": "احمد محمد",
+      "email": "abyusiffan23@gmail.com",
+      "mobile": "+966548863809"
+    },
+    "status": "approved",
+    "trustedBuyer": false,
+    "verified": false,
+    "publishedAt": 1766183983000,
+    "createdAt": 1766173391176,
+    "updatedAt": 1766173391176,
+    "needsSallaId": true
+  },
+  {
+    "id": "salla_982747175_order_1553897648_product_1927638714",
+    "reviewId": "salla_982747175_order_1553897648_product_1927638714",
+    "storeUid": "salla:982747175",
+    "orderId": "1553897648",
+    "productId": "1927638714",
+    "source": "salla_native",
+    "productName": "فستان",
+    "stars": 5,
+    "text": "رائع!",
+    "author": {
+      "displayName": "احمد محمد",
+      "email": "abyusiffan23@gmail.com",
+      "mobile": "+966548863809"
+    },
+    "status": "approved",
+    "trustedBuyer": false,
+    "verified": false,
+    "publishedAt": 1766181458000,
+    "createdAt": 1766170709679,
+    "updatedAt": 1766170709679,
+    "needsSallaId": true
+  },
+  {
+    "id": "salla_982747175_order_2102203079_product_1927638714",
+    "reviewId": "salla_982747175_order_2102203079_product_1927638714",
+    "storeUid": "salla:982747175",
+    "orderId": "2102203079",
+    "source": "salla_native",
+    "productId": "1927638714",
+    "productName": "فستان",
+    "stars": 5,
+    "text": "رائع جدا",
+    "author": {
+      "displayName": "احمد محمد",
+      "email": "abyusiffan23@gmail.com",
+      "mobile": "+966548863809"
+    },
+    "trustedBuyer": false,
+    "verified": false,
+    "createdAt": 1766089972992,
+    "updatedAt": 1766089972992,
+    "webhookData": {
+      "type": "rating",
+      "rating": "5"
+    },
+    "publishedAt": 1766145720902,
+    "lastModified": {
+      "_seconds": 1766145720,
+      "_nanoseconds": 902000000
+    },
+    "published": true,
+    "status": "published"
+  },
+  {
+    "id": "salla_982747175_order_662847033_product_1927638714",
+    "reviewId": "salla_982747175_order_662847033_product_1927638714",
+    "storeUid": "salla:982747175",
+    "orderId": "662847033",
+    "productId": "1927638714",
+    "source": "salla_native",
+    "productName": "فستان",
+    "stars": 5,
+    "text": "رائع",
+    "author": {
+      "displayName": "احمد محمد",
+      "email": "abyusiffan23@gmail.com",
+      "mobile": "+966548863809"
+    },
+    "status": "approved",
+    "trustedBuyer": false,
+    "verified": false,
+    "publishedAt": 1766179830000,
+    "createdAt": 1766169197672,
+    "updatedAt": 1766169197673,
+    "needsSallaId": true
+  },
+  {
+    "id": "salla_982747175_order_712846334_product_1927638714",
+    "reviewId": "salla_982747175_order_712846334_product_1927638714",
+    "storeUid": "salla:982747175",
+    "orderId": "712846334",
+    "productId": "1927638714",
+    "source": "salla_native",
+    "productName": "فستان",
+    "stars": 5,
+    "text": "جيد جدا",
+    "author": {
+      "displayName": "احمد محمد",
+      "email": "abyusiffan23@gmail.com",
+      "mobile": "+966548863809"
+    },
+    "status": "approved",
+    "trustedBuyer": false,
+    "verified": false,
+    "publishedAt": 1766178671000,
+    "createdAt": 1766168182034,
+    "updatedAt": 1766168182034,
+    "needsSallaId": true
+  },
+  {
+    "id": "salla_982747175_order_785141541_product_1927638714",
+    "reviewId": "salla_982747175_order_785141541_product_1927638714",
+    "storeUid": "salla:982747175",
+    "orderId": "785141541",
+    "productId": "1927638714",
+    "source": "salla_native",
+    "productName": "فستان",
+    "stars": 5,
+    "text": "رائع",
+    "author": {
+      "displayName": "احمد محمد",
+      "email": "abyusiffan23@gmail.com",
+      "mobile": "+966548863809"
+    },
+    "status": "approved",
+    "trustedBuyer": false,
+    "verified": false,
+    "publishedAt": 1766324202000,
+    "createdAt": 1766313506664,
+    "updatedAt": 1766313506664,
+    "needsSallaId": true
+  }
+]

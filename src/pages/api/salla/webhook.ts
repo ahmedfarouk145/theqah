@@ -14,14 +14,14 @@ export const config = { api: { bodyParser: false } };
 type Dict = Record<string, unknown>;
 
 interface SallaCustomer { name?: string; email?: string; mobile?: string | number; }
-interface SallaItem { id?: string|number; product?: { id?: string|number }|null; product_id?: string|number; }
+interface SallaItem { id?: string | number; product?: { id?: string | number } | null; product_id?: string | number; }
 interface SallaOrder {
-  id?: string|number; order_id?: string|number; reference_id?: string|number; number?: string|number;
+  id?: string | number; order_id?: string | number; reference_id?: string | number; number?: string | number;
   status?: string; order_status?: string; new_status?: string; shipment_status?: string;
   payment_status?: string;
   customer?: SallaCustomer; items?: SallaItem[];
-  store?: { id?: string|number; name?: string; domain?: string; url?: string } | null;
-  merchant?: { id?: string|number; name?: string; domain?: string; url?: string } | null;
+  store?: { id?: string | number; name?: string; domain?: string; url?: string } | null;
+  merchant?: { id?: string | number; name?: string; domain?: string; url?: string } | null;
 }
 interface SallaWebhookBody {
   event: string;
@@ -32,13 +32,13 @@ interface SallaWebhookBody {
 
 /* ===================== Env ===================== */
 const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
-const WEBHOOK_TOKEN  = (process.env.SALLA_WEBHOOK_TOKEN  || "").trim();
-const APP_BASE_URL   = (
-  process.env.APP_BASE_URL || 
-  process.env.NEXT_PUBLIC_APP_URL || 
-  process.env.NEXT_PUBLIC_BASE_URL || 
+const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
+const APP_BASE_URL = (
+  process.env.APP_BASE_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_BASE_URL ||
   (process.env.NODE_ENV === "development" ? "http://localhost:3000" : "")
-).replace(/\/+$/,"");
+).replace(/\/+$/, "");
 const WEBHOOK_LOG_DEST = (process.env.WEBHOOK_LOG_DEST || "console").trim().toLowerCase(); // console | firestore
 const ENABLE_FIRESTORE_LOGS = process.env.ENABLE_FIRESTORE_LOGS === "true"; // Better env control
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -51,25 +51,25 @@ const lc = (x: unknown) => String(x ?? "").toLowerCase();
 function safeMobile(mobile: string | number | null | undefined): string | null {
   if (!mobile) return null;
   let cleaned = typeof mobile === 'string' ? mobile.trim() : String(mobile).trim();
-  
+
   // ✅ إزالة الرموز غير المرغوبة
   cleaned = cleaned.replace(/[\s\-\(\)]/g, '');
-  
+
   // ✅ إزالة + في البداية
   if (cleaned.startsWith('+')) {
     cleaned = cleaned.substring(1);
   }
-  
+
   // ✅ إصلاح التكرار: 966966 → 966
   if (cleaned.startsWith('966966')) {
     cleaned = cleaned.substring(3);
   }
-  
+
   // ✅ إضافة 966 لو الرقم يبدأ بـ 5 (رقم سعودي محلي)
   if (cleaned.startsWith('5') && cleaned.length === 9) {
     cleaned = '966' + cleaned;
   }
-  
+
   return cleaned || null;
 }
 
@@ -104,19 +104,19 @@ function extractProvidedToken(req: NextApiRequest): string {
   const auth = getHeader(req, "authorization").trim();
   if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
   return getHeader(req, "x-salla-token").trim()
-      || getHeader(req, "x-webhook-token").trim()
-      || (typeof req.query.t === "string" ? req.query.t.trim() : "");
+    || getHeader(req, "x-webhook-token").trim()
+    || (typeof req.query.t === "string" ? req.query.t.trim() : "");
 }
 function verifyToken(req: NextApiRequest): boolean {
   const provided = extractProvidedToken(req);
   return !!WEBHOOK_TOKEN && !!provided && timingSafeEq(provided, WEBHOOK_TOKEN);
 }
-function verifySallaRequest(req: NextApiRequest, raw: Buffer): { ok: boolean; strategy: "signature"|"token"|"none" } {
+function verifySallaRequest(req: NextApiRequest, raw: Buffer): { ok: boolean; strategy: "signature" | "token" | "none" } {
   const strategy = lc(getHeader(req, "x-salla-security-strategy") || "");
   if (strategy === "signature") return { ok: verifySignature(raw, req), strategy: "signature" };
-  if (strategy === "token")     return { ok: verifyToken(req),      strategy: "token" };
+  if (strategy === "token") return { ok: verifyToken(req), strategy: "token" };
   if (verifySignature(raw, req)) return { ok: true, strategy: "signature" };
-  if (verifyToken(req))          return { ok: true, strategy: "token" };
+  if (verifyToken(req)) return { ok: true, strategy: "token" };
   return { ok: false, strategy: "none" };
 }
 
@@ -145,26 +145,26 @@ function saveMultipleDomainFormats(
   originalDomain: string | null | undefined
 ) {
   if (!originalDomain) return Promise.resolve();
-  
+
   const u = normalizeUrl(originalDomain);
   if (!u) return Promise.resolve();
-  
+
   const hostname = u.host.toLowerCase();
   const origin = u.origin.toLowerCase();
   const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
-  
+
   const domainsToSave = [
     origin, // https://demostore.salla.sa
     hostname, // demostore.salla.sa
   ];
-  
+
   if (firstSeg.startsWith("dev-")) {
     domainsToSave.push(`${origin}/${firstSeg}`, `${hostname}/${firstSeg}`);
   }
-  
+
   console.log(`[webhook] Saving multiple domain formats for ${uid}:`, domainsToSave);
-  
-  const promises = domainsToSave.map(domain => 
+
+  const promises = domainsToSave.map(domain =>
     db.collection("domains").doc(encodeUrlForFirestore(domain)).set({
       base: domain,
       key: encodeUrlForFirestore(domain),
@@ -172,11 +172,11 @@ function saveMultipleDomainFormats(
       storeUid: uid,
       provider: "salla",
       updatedAt: Date.now(),
-    }, { merge: true }).catch(err => 
+    }, { merge: true }).catch(err =>
       console.warn(`[webhook] Failed to save domain ${domain}:`, err)
     )
   );
-  
+
   return Promise.all(promises);
 }
 function encodeUrlForFirestore(url: string | null | undefined): string {
@@ -208,21 +208,21 @@ function extractProductIds(items?: SallaItem[]): string[] {
 // استخراج اسم المنتج الأساسي (أول منتج في الطلب)
 function extractMainProductName(items?: SallaItem[]): string | undefined {
   if (!Array.isArray(items) || !items.length) return undefined;
-  
+
   const firstItem = items[0];
   // جرب استخراج الاسم من عدة مصادر محتملة
   const unknownItem = firstItem as unknown;
-  const name = 
-    (unknownItem as { name?: string })?.name || 
-    (unknownItem as { product?: { name?: string } })?.product?.name || 
-    (unknownItem as { product_name?: string })?.product_name || 
+  const name =
+    (unknownItem as { name?: string })?.name ||
+    (unknownItem as { product?: { name?: string } })?.product?.name ||
+    (unknownItem as { product_name?: string })?.product_name ||
     (unknownItem as { title?: string })?.title ||
     undefined;
-    
+
   return typeof name === 'string' ? name.trim() : undefined;
 }
 function validEmailOrPhone(c?: SallaCustomer) {
-  const email = c?.email?.trim(); 
+  const email = c?.email?.trim();
   const mobile = safeMobile(c?.mobile);
   const hasEmail = !!email && email.includes("@");
   const hasMobile = !!mobile && mobile.length > 5;
@@ -247,8 +247,8 @@ async function saveDomainAndFlags(
       uid,
       storeId:
         typeof merchantId === "number" ? merchantId :
-        typeof merchantId === "string" ? merchantId :
-        null,
+          typeof merchantId === "string" ? merchantId :
+            null,
       connected: true,
       installed: true,
       ...(base ? { domain: base } : {}),
@@ -270,7 +270,7 @@ async function saveDomainAndFlags(
 
   await db.collection("salla_app_events").add({
     at: now, event, type: "domain_flags_saved", uid, base: base ?? null,
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 async function upsertOrderSnapshot(
@@ -297,10 +297,10 @@ async function ensureInviteForOrder(
   db: FirebaseFirestore.Firestore,
   order: SallaOrder,
   rawData: Dict,
-  bodyMerchant?: string|number
+  bodyMerchant?: string | number
 ) {
   console.log(`[INVITE FLOW] Starting invite creation for order...`);
-  
+
   // Use reference_id (visible order number) for consistency with Salla API
   const orderId = String(order.reference_id ?? order.id ?? order.order_id ?? "");
   console.log(`[INVITE FLOW] 1. OrderId check: ${orderId || "MISSING"}`);
@@ -314,22 +314,22 @@ async function ensureInviteForOrder(
   if ((!customer?.email && !customer?.mobile) && rawData["order"] && typeof rawData["order"] === "object") {
     customer = (rawData["order"] as Dict)["customer"] as SallaCustomer || customer;
   }
-  
+
   // Enhanced email and mobile extraction - try multiple sources
   let customerEmail = customer?.email || "";
   let customerMobile = customer?.mobile || "";
-  
+
   if (!customerEmail || !customerMobile) {
     const orderData = rawData["order"] as Dict | undefined;
-    
+
     if (!customerEmail) {
-      customerEmail = 
-        (orderData?.customer as Dict)?.email as string || 
+      customerEmail =
+        (orderData?.customer as Dict)?.email as string ||
         (orderData?.billing_address as Dict)?.email as string ||
         (orderData?.shipping_address as Dict)?.email as string ||
         "";
     }
-    
+
     if (!customerMobile) {
       const mobiles = [
         (orderData?.customer as Dict)?.mobile,
@@ -337,7 +337,7 @@ async function ensureInviteForOrder(
         (orderData?.shipping_address as Dict)?.mobile || (orderData?.shipping_address as Dict)?.phone,
         customer?.mobile
       ];
-      
+
       for (const mob of mobiles) {
         if (mob) {
           customerMobile = typeof mob === 'string' ? mob : String(mob);
@@ -346,19 +346,19 @@ async function ensureInviteForOrder(
       }
     }
   }
-  
+
   // Normalize mobile format safely
   const normalizedMobile = safeMobile(customerMobile) || '';
-  
+
   // If still no email, use mobile as fallback for SMS-only  
   const finalCustomer = customer ? {
     ...customer,
     email: customerEmail.trim() || customer.email || "",
     mobile: normalizedMobile
   } : undefined;
-  
+
   console.log(`[INVITE FLOW] 2. Customer found: email=${customerEmail || "none"}, mobile=${finalCustomer?.mobile || "none"}`);
-  
+
   const cv = validEmailOrPhone(finalCustomer);
   console.log(`[INVITE FLOW] 3. Customer validation: ${cv.ok ? "PASSED" : "FAILED"}`);
   if (!cv.ok) {
@@ -387,7 +387,7 @@ async function ensureInviteForOrder(
   const orderTrackingRef = db.collection("order_status_tracking").doc(orderId);
   const trackingSnap = await orderTrackingRef.get();
   const previousStatus = trackingSnap.exists ? lc(trackingSnap.data()?.status ?? "") : "";
-  
+
   console.log(`[INVITE FLOW] 5.2. Previous status: "${previousStatus || "none"}", Current: "${currentStatus}"`);
 
   // ✅ تحديث الحالة المحفوظة
@@ -400,34 +400,34 @@ async function ensureInviteForOrder(
   console.log(`[INVITE FLOW] 5.3. Status tracking updated`);
 
   // ✅ فحص: هل الحالة الجديدة = "تم التوصيل" أو "تم التنفيذ"؟
-  const isCompleted = 
-    currentStatus === "completed" || 
+  const isCompleted =
+    currentStatus === "completed" ||
     currentStatus === "تم التنفيذ" ||
     currentStatus === "delivered" ||
     currentStatus === "تم التوصيل";
-  
+
   console.log(`[INVITE FLOW] 5.4. Is order completed? ${isCompleted}`);
-  
+
   if (!isCompleted) {
     console.log(`[INVITE FLOW] ❌ SKIP: Order not completed yet (status: ${currentStatus}). Waiting for completion`);
     return;
   }
-  
+
   // ✅ فحص: هل الحالة اتغيرت فعلاً؟ (نتجاهل التكرار إلا لو الحالة كانت محفوظة قبل كده)
   if (previousStatus && previousStatus === currentStatus) {
     console.log(`[INVITE FLOW] ❌ SKIP: Status unchanged (${currentStatus}), invite already sent before`);
     return;
   }
-  
+
   if (previousStatus) {
     console.log(`[INVITE FLOW] ✅ Status changed from "${previousStatus}" to "${currentStatus}"`);
   } else {
     console.log(`[INVITE FLOW] ✅ First time seeing order with completed status "${currentStatus}"`);
   }
-  
+
   console.log(`[INVITE FLOW] ✅ Proceeding with invite...`);
 
-  let storeUid: string|null = pickStoreUidFromSalla(rawData, bodyMerchant) || null;
+  let storeUid: string | null = pickStoreUidFromSalla(rawData, bodyMerchant) || null;
   console.log(`[INVITE FLOW] 6. StoreUid from payload: ${storeUid || "none"}`);
   if (!storeUid) {
     const orderDoc = await db.collection("orders").doc(orderId).get().catch(() => null);
@@ -444,7 +444,7 @@ async function ensureInviteForOrder(
     console.log(`[INVITE FLOW] ❌ FAILED: Quota exceeded - ${planCheck.reason}`);
     await db.collection("quota_events").add({
       at: Date.now(), storeUid, orderId, type: "invite_blocked", reason: planCheck.reason
-    }).catch(()=>{});
+    }).catch(() => { });
     return;
   }
 
@@ -464,10 +464,10 @@ async function ensureInviteForOrder(
   // سلة طلبوا نقرأ التقييمات من API بتاعهم بدل ما نبعت دعوات
   // Future: هنستخدم GET /admin/v2/reviews endpoint لقراءة تقييمات سلة
   // هنفلتر التقييمات بناءً على تاريخ بداية الاشتراك و quota
-  
+
   console.log(`[INVITE FLOW] 12. ⚠️ Token creation DISABLED - Using Salla Reviews API instead`);
   console.log(`[INVITE FLOW] 12.1. Order tracked: ${orderId} for store: ${storeUid}`);
-  
+
   /*
   const tokenId = crypto.randomBytes(10).toString("hex");
   const reviewUrl = `${APP_BASE_URL}/review/${tokenId}`;
@@ -534,7 +534,7 @@ async function ensureInviteForOrder(
   
   console.log(`[INVITE FLOW] 🎉 COMPLETED: Review token ${tokenId} created for order ${orderId}`);
   */
-  
+
   console.log(`[INVITE FLOW] 🎉 COMPLETED: Order ${orderId} processed (no token/message - Salla API mode)`);
 }
 
@@ -548,7 +548,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // (1) Security check + basic log row (C8: Auth bypass removed)
   const verification = verifySallaRequest(req, raw);
-  
+
   await fbLog(db, {
     level: verification.ok ? "info" : "warn",
     scope: "auth",
@@ -556,7 +556,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     event: null, idemKey: null, merchant: null, orderId: null,
     meta: {
       strategyHeader: getHeader(req, "x-salla-security-strategy") || "auto",
-      hasSecret: !!WEBHOOK_SECRET, 
+      hasSecret: !!WEBHOOK_SECRET,
       hasToken: !!WEBHOOK_TOKEN,
       sigLen: (getHeader(req, "x-salla-signature") || "").length,
       from: req.headers["x-forwarded-for"] || req.socket.remoteAddress,
@@ -564,7 +564,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       host: req.headers.host
     }
   });
-  
+
   if (!verification.ok) return res.status(401).json({ error: "unauthorized" });
 
   // (2) Proceed synchronously (no early ACK). Vercel Node runtime may stop work after responding.
@@ -573,7 +573,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let body: SallaWebhookBody = { event: "" };
   try {
     body = JSON.parse(raw.toString("utf8") || "{}");
-    
+
     // TEMPORARY DEBUG - Remove after fixing
     console.log('🔍 [SALLA DEBUG]', {
       event: body.event,
@@ -583,8 +583,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       timestamp: new Date().toISOString()
     });
   } catch (e) {
-    await fbLog(db, { level: "error", scope: "parse", msg: "invalid json", event: null, idemKey: null, merchant: null, orderId: null,
-      meta: { err: e instanceof Error ? e.message : String(e), rawFirst2000: raw.toString("utf8").slice(0, 2000) } });
+    await fbLog(db, {
+      level: "error", scope: "parse", msg: "invalid json", event: null, idemKey: null, merchant: null, orderId: null,
+      meta: { err: e instanceof Error ? e.message : String(e), rawFirst2000: raw.toString("utf8").slice(0, 2000) }
+    });
     await db.collection("webhook_errors").add({
       at: Date.now(), scope: "parse", error: e instanceof Error ? e.message : String(e),
       raw: raw.toString("utf8").slice(0, 2000), headers: req.headers
@@ -611,8 +613,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const merchantId: string | number | null =
     typeof merchantIdRaw === "number" ? merchantIdRaw :
-    typeof merchantIdRaw === "string" ? merchantIdRaw :
-    null;
+      typeof merchantIdRaw === "string" ? merchantIdRaw :
+        null;
 
   // (4) Idempotency
   const sigHeader = getHeader(req, "x-salla-signature") || "";
@@ -641,7 +643,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // (5) Main processing
   try {
     await fbLog(db, { level: "info", scope: "handler", msg: "processing start", event, idemKey, merchant: merchantId, orderId });
-    
+
     // Early debug logging
     console.log(`[SALLA PROCESSING] Starting - Event: ${event}, OrderId: ${orderId}` + (merchantId ? `, MerchantId: ${merchantId}` : ''));
     console.log(`[SALLA PROCESSING] Data keys: ${Object.keys(dataRaw as Record<string, unknown>).join(', ')}`);
@@ -652,7 +654,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant);
       console.log(`[AUTO-DOMAIN] Full payload inspection:`, JSON.stringify(dataRaw, null, 2));
-      
+
       const payloadDomainGeneric =
         (typeof (dataRaw["store"] as Dict | undefined)?.["domain"] === "string" ? ((dataRaw["store"] as Dict)["domain"] as string) : undefined) ??
         (typeof (dataRaw["merchant"] as Dict | undefined)?.["domain"] === "string" ? ((dataRaw["merchant"] as Dict)["domain"] as string) : undefined) ??
@@ -662,7 +664,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const baseGeneric = toDomainBase(payloadDomainGeneric);
       console.log(`[AUTO-DOMAIN] Event: ${event}, StoreUid: ${storeUidFromEvent}, Domain: ${payloadDomainGeneric}, Base: ${baseGeneric}`);
-      
+
       // FORCE SAVE if we have storeUidFromEvent but no domain - try to fetch it
       if (storeUidFromEvent && !baseGeneric && merchantId) {
         console.log(`[AUTO-DOMAIN] No domain in payload, attempting to fetch store info for merchant ${merchantId}`);
@@ -674,7 +676,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               'Content-Type': 'application/json'
             }
           });
-          
+
           if (response.ok) {
             const storeInfo = await response.json();
             const fetchedDomain = storeInfo?.data?.domain || storeInfo?.domain;
@@ -721,8 +723,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (typeof (dataRaw["access_token"]) === "string" && (dataRaw["access_token"] as string).trim())
           ? (dataRaw["access_token"] as string).trim()
           : (typeof (dataRaw["token"]) === "object" && dataRaw["token"] && typeof (dataRaw["token"] as Dict)["access_token"] === "string"
-              ? ((dataRaw["token"] as Dict)["access_token"] as string).trim()
-              : "");
+            ? ((dataRaw["token"] as Dict)["access_token"] as string).trim()
+            : "");
 
       // دومين من البودي (إن وُجد)
       const domainInPayload =
@@ -745,16 +747,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // خزّن OAuth لو متاح
       const refresh =
         typeof dataRaw["refresh_token"] === "string" ? (dataRaw["refresh_token"] as string) :
-        (typeof (dataRaw["token"] as Dict | undefined)?.["refresh_token"] === "string"
-          ? ((dataRaw["token"] as Dict)["refresh_token"] as string) : "");
+          (typeof (dataRaw["token"] as Dict | undefined)?.["refresh_token"] === "string"
+            ? ((dataRaw["token"] as Dict)["refresh_token"] as string) : "");
 
       const expiresNumRaw = (dataRaw["expires"] as unknown) ?? (dataRaw["token"] as Dict | undefined)?.["expires"];
       const expires = typeof expiresNumRaw === "number" ? expiresNumRaw : Number(expiresNumRaw ?? 0);
 
       const scopeStr =
         typeof dataRaw["scope"] === "string" ? (dataRaw["scope"] as string) :
-        (typeof (dataRaw["token"] as Dict | undefined)?.["scope"] === "string"
-          ? ((dataRaw["token"] as Dict)["scope"] as string) : "");
+          (typeof (dataRaw["token"] as Dict | undefined)?.["scope"] === "string"
+            ? ((dataRaw["token"] as Dict)["scope"] as string) : "");
 
       if (storeUid && tokenFromPayload) {
         await db.collection("owners").doc(storeUid).set({
@@ -863,30 +865,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // ملاحظة: app.trial.* events قد تأتي من Salla لكن النظام يعالجها كأحداث subscription عادية
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
       const payload = dataRaw as Dict;
-      
+
       // استخراج اسم الباقة من payload (يدعم عدة حقول)
-      const planName = 
-        String(payload["plan_name"] ?? payload["name"] ?? payload["plan"] ?? "").trim() || 
+      const planName =
+        String(payload["plan_name"] ?? payload["name"] ?? payload["plan"] ?? "").trim() ||
         (typeof payload["plan"] === "object" ? String((payload["plan"] as Dict)["name"] ?? "").trim() : "");
       const planType = String(payload["plan_type"] ?? payload["type"] ?? "").trim() || null;
-      
+
       // استخدام دالة التعيين الجديدة
       const { mapSallaPlanToInternal } = await import("@/config/plans");
       const planId = mapSallaPlanToInternal(planName, planType as 'monthly' | 'annual' | null);
 
       if (storeUid && planId) {
         // تحديث subscription في stores collection
+
+        const startedAtPayload =
+          payload["start_date"] ?? payload["started_at"] ?? payload["created_at"];
+        const startedAt = startedAtPayload ? new Date(String(startedAtPayload)).getTime() : Date.now();
+
         await db.collection("stores").doc(storeUid).set({
           uid: storeUid,
-          subscription: { 
-            planId, 
-            raw: payload, 
+          subscription: {
+            planId,
+            startedAt,
+            raw: payload,
             syncedAt: Date.now(),
-            updatedAt: Date.now() 
+            updatedAt: Date.now()
           },
           updatedAt: Date.now(),
         }, { merge: true });
-        
+
         // تحديث plan في نفس document (للتوافق مع النظام القديم)
         await db.collection("stores").doc(storeUid).set({
           plan: {
@@ -895,28 +903,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             updatedAt: Date.now()
           }
         }, { merge: true });
-        
-        fbLog(db, { 
-          level: "info", 
-          scope: "subscription", 
-          msg: "plan set from webhook", 
-          event, 
-          idemKey, 
-          merchant: merchantId, 
-          orderId, 
-          meta: { storeUid, planName, planType, planId } 
+
+        fbLog(db, {
+          level: "info",
+          scope: "subscription",
+          msg: "plan set from webhook",
+          event,
+          idemKey,
+          merchant: merchantId,
+          orderId,
+          meta: { storeUid, planName, planType, planId }
         });
       } else {
         const reason = !storeUid ? "missing storeUid" : "invalid plan mapping";
-        fbLog(db, { 
-          level: "warn", 
-          scope: "subscription", 
-          msg: `subscription event failed: ${reason}`, 
-          event, 
-          idemKey, 
-          merchant: merchantId, 
-          orderId, 
-          meta: { planName, planType, planId } 
+        fbLog(db, {
+          level: "warn",
+          scope: "subscription",
+          msg: `subscription event failed: ${reason}`,
+          event,
+          idemKey,
+          merchant: merchantId,
+          orderId,
+          meta: { planName, planType, planId }
         });
       }
     }
@@ -925,35 +933,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`[SALLA STEP] C) Checking order/shipment events for: ${event}`);
     if (event.startsWith("order.") || event.startsWith("shipment.") || event === "updated_order") {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant) || null;
-      
+
       // Special handling for updated_order event
       if (event === "updated_order") {
         console.log(`[UPDATED_ORDER] Processing order state change for ${orderId}`);
-        
+
         // Extract previous and current states if available
         const dataRecord = dataRaw as Record<string, unknown>;
         const previousState = (dataRecord?.previous_status as string) || (dataRecord?.old_status as string);
         const currentState = asOrder.status || asOrder.order_status || (dataRecord?.new_status as string);
-        
+
         console.log(`[UPDATED_ORDER] State change: ${previousState || 'unknown'} → ${currentState || 'unknown'}`);
-        
+
         // Log the state change
-        await fbLog(db, { 
-          level: "info", 
-          scope: "orders", 
-          msg: "order state updated", 
-          event, 
-          idemKey, 
-          merchant: merchantId, 
-          orderId, 
-          meta: { 
-            storeUidFromEvent, 
-            previousState, 
+        await fbLog(db, {
+          level: "info",
+          scope: "orders",
+          msg: "order state updated",
+          event,
+          idemKey,
+          merchant: merchantId,
+          orderId,
+          meta: {
+            storeUidFromEvent,
+            previousState,
             currentState,
             changeDetected: true
-          } 
+          }
         });
-        
+
         // Save state change history
         try {
           await db.collection("order_state_changes").add({
@@ -974,9 +982,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.error(`[UPDATED_ORDER] Failed to record state change:`, historyErr);
         }
       }
-      
+
       try {
-      await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
+        await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
         fbLog(db, { level: "info", scope: "orders", msg: "order snapshot upserted", event, idemKey, merchant: merchantId, orderId, meta: { storeUidFromEvent } });
       } catch (err) {
         console.error(`[ORDER_SNAPSHOT_ERROR] Failed to upsert order ${orderId}:`, err);
@@ -990,10 +998,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (event === "order.updated" || event === "order.status.updated") {
       // ✅ إرسال الدعوة عند تحديث الطلب - مع تتبع الحالة لتجنب التكرار
       console.log(`[INVITE DEBUG] Order update event detected for order: ${orderId}`);
-      
+
       // ✅ استخراج الـ order الكامل من الـ payload
       const fullOrder = (dataRaw["order"] as SallaOrder | undefined) || asOrder;
-      
+
       // Enhanced invitation creation with fallback mechanisms
       try {
         // Try standard invite creation first
@@ -1007,16 +1015,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         fbLog(db, { level: "info", scope: "invite", msg: "invite auto-created for order", event, idemKey, merchant: merchantId, orderId });
       } catch (primaryErr) {
         console.error(`[INVITE_ERROR] Primary invite creation failed for order ${orderId}:`, primaryErr);
-        
+
         // FALLBACK: Force create review token even with missing data
         try {
           console.log(`[INVITE_FALLBACK] Attempting fallback invite creation for ${orderId}`);
-          
+
           const storeUidFallback = pickStoreUidFromSalla(dataRaw, body.merchant) || `salla:${merchantId}`;
           const tokenId = crypto.randomBytes(10).toString("hex");
           const fallbackBaseUrl = APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://theqah.com";
           const reviewUrl = `${fallbackBaseUrl}/review/${tokenId}`;
-          
+
           // Create minimal review token
           await db.collection("review_tokens").doc(tokenId).set({
             id: tokenId,
@@ -1035,25 +1043,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             eventType: event,
             meta: { fallbackCreation: true, originalError: (primaryErr as Error).message }
           }, { merge: true });
-          
+
           console.log(`[INVITE_FALLBACK] ✅ Fallback review token created: ${tokenId}`);
           fbLog(db, { level: "info", scope: "invite", msg: "fallback invite created", event, idemKey, merchant: merchantId, orderId, meta: { tokenId, fallback: true } });
-          
+
         } catch (fallbackErr) {
           console.error(`[INVITE_FALLBACK] ❌ Fallback also failed:`, fallbackErr);
-          fbLog(db, { level: "error", scope: "invite", msg: "both primary and fallback invite creation failed", event, idemKey, merchant: merchantId, orderId, meta: { 
-            primaryError: (primaryErr as Error).message, 
-            fallbackError: (fallbackErr as Error).message 
-          }});
+          fbLog(db, {
+            level: "error", scope: "invite", msg: "both primary and fallback invite creation failed", event, idemKey, merchant: merchantId, orderId, meta: {
+              primaryError: (primaryErr as Error).message,
+              fallbackError: (fallbackErr as Error).message
+            }
+          });
         }
       }
     } else if (event === "order.cancelled" || event === "order.refunded") {
       const oid = orderId;
       if (oid) {
-        const q = await db.collection("review_tokens").where("orderId","==",oid).get();
+        const q = await db.collection("review_tokens").where("orderId", "==", oid).get();
         if (!q.empty) {
           const reason = event === "order.cancelled" ? "order_cancelled" : "order_refunded";
-          const batch = db.batch(); q.docs.forEach((d)=>batch.update(d.ref, { voidedAt: Date.now(), voidReason: reason }));
+          const batch = db.batch(); q.docs.forEach((d) => batch.update(d.ref, { voidedAt: Date.now(), voidReason: reason }));
           await batch.commit();
           fbLog(db, { level: "info", scope: "invite", msg: "tokens voided", event, idemKey, merchant: merchantId, orderId: oid, meta: { count: q.docs.length, reason } });
         }
@@ -1069,16 +1079,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const order = reviewData.order as Record<string, unknown> | undefined;
           const customer = reviewData.customer as Record<string, unknown> | undefined;
           const productId = product?.id;
-          // Use reference_id (visible order number) instead of id (internal ID)
-          // because Salla API uses reference_id for order_id field in reviews
-          const orderId = order?.reference_id || order?.id;
-          
+
+          // Use internal 'id' for orderId to match Salla API response (which returns internal IDs in order_id field)
+          // Use 'reference_id' for display purposes as orderNumber
+          const sallaOrderId = String(order?.id || order?.order_id || "");
+          const sallaReferenceId = String(order?.reference_id || "");
+
+          // Primary ID for matching with API must be the internal one
+          const orderId = sallaOrderId || sallaReferenceId;
+
+
           // Skip testimonials (store reviews) - we only track product reviews
           if (reviewType === "testimonial" || !product) {
             fbLog(db, { level: "info", scope: "review", msg: "skipping testimonial review", event, idemKey, merchant: merchantId });
             return res.status(200).json({ ok: true, processed: true });
           }
-          
+
           if (!productId || !orderId) {
             fbLog(db, { level: "warn", scope: "review", msg: "missing product or order id", event, idemKey, merchant: merchantId, meta: { type: reviewType, hasProduct: !!product, hasOrder: !!order } });
             return res.status(200).json({ ok: true, processed: true });
@@ -1102,10 +1118,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const storeData = storeSnap.data();
           const subscription = storeData?.subscription || {};
           const subscriptionStart = subscription.startedAt || 0;
-          
+
           const orderDate = order?.date as Record<string, unknown> | undefined;
           const reviewDate = orderDate?.date && typeof orderDate.date === 'string'
-            ? new Date(orderDate.date).getTime() 
+            ? new Date(orderDate.date).getTime()
             : Date.now();
           const isVerified = subscriptionStart > 0 && reviewDate >= subscriptionStart;
 
@@ -1117,27 +1133,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             reviewId: docId,
             storeUid,
             orderId: String(orderId),
+            orderNumber: sallaReferenceId || String(orderId), // Visible order number for UI
             productId: String(productId),
             source: "salla_native",
-            
+
             productName: String(product?.name || ""),
-            
+
             stars: Number(reviewData.rating || 0),
             text: String(reviewData.content || ""),
-            
+
             author: {
               displayName: String(customer?.name || "عميل سلة"),
               email: String(customer?.email || ""),
               mobile: String(customer?.mobile || ""),
             },
-            
+
             status: "approved",
             trustedBuyer: false,
             verified: isVerified,
             publishedAt: reviewDate,
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            
+
             // sallaReviewId will be added by background job later
             needsSallaId: true, // Flag for background processing
           };
@@ -1145,13 +1162,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           await db.collection("reviews").doc(docId).set(reviewDoc);
 
           fbLog(db, { level: "info", scope: "review", msg: "review saved from webhook (will fetch salla id later)", event, idemKey, merchant: merchantId, meta: { orderId, productId, verified: isVerified } });
-          
+
           // Trigger background job to fetch sallaReviewId (fire-and-forget)
           const appUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${req.headers.host}`;
           const jobUrl = `${appUrl}/api/jobs/fetch-review-id`;
-          
+
           console.log(`[BACKGROUND_JOB] Triggering job for review ${docId} at ${jobUrl}`);
-          
+
           // Note: We don't await this so webhook responds immediately
           // The background job runs independently with its own retry logic
           fetch(jobUrl, {
@@ -1169,7 +1186,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.error('[BACKGROUND_JOB] Failed to trigger:', err);
             // Non-blocking: job will be picked up by hourly cron backup
           });
-          
+
         } catch (syncErr) {
           const errMsg = syncErr instanceof Error ? syncErr.message : String(syncErr);
           fbLog(db, { level: "error", scope: "review", msg: "review save exception", event, idemKey, merchant: merchantId, meta: { error: errMsg } });
@@ -1183,7 +1200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const statusFin = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
     Promise.race([
       db.collection("processed_events").doc(keyOf(event, orderIdFin, statusFin)).set({
-      at: Date.now(), event, processed: true, status: statusFin
+        at: Date.now(), event, processed: true, status: statusFin
       }, { merge: true }),
       new Promise<void>((_resolve, reject) => {
         void _resolve;
@@ -1193,8 +1210,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('[Webhook] Failed to mark event as processed:', err);
     });
 
-    const knownPrefixes = ["order.","shipment.","product.","customer.","category.","brand.","store.","cart.","invoice.","specialoffer.","app."];
-    const isKnown = knownPrefixes.some((p)=>event.startsWith(p)) || event === "review.added";
+    const knownPrefixes = ["order.", "shipment.", "product.", "customer.", "category.", "brand.", "store.", "cart.", "invoice.", "specialoffer.", "app."];
+    const isKnown = knownPrefixes.some((p) => event.startsWith(p)) || event === "review.added";
     Promise.race([
       db.collection(isKnown ? "webhooks_salla_known" : "webhooks_salla_unhandled")
         .add({ at: Date.now(), event, data: dataRaw }),
@@ -1208,54 +1225,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     fbLog(db, { level: "info", scope: "handler", msg: "processing finished ok", event, idemKey, merchant: merchantId, orderId });
     await idemRef.set({ statusFlag: "done", processingFinishedAt: Date.now() }, { merge: true });
-    
+
     // Track successful webhook
     const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
     trackWebhookCompletion(event, storeUid, true, Date.now() - webhookStartTime);
-    
-    try { res.status(200).json({ ok: true }); } catch {}
+
+    try { res.status(200).json({ ok: true }); } catch { }
 
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e);
     const stack = e instanceof Error ? e.stack : undefined;
-    
+
     // Enhanced error logging with stack trace
     console.error(`[SALLA WEBHOOK ERROR] Event: ${event}, OrderId: ${orderId}, Merchant: ${merchantId}`);
     console.error(`[SALLA WEBHOOK ERROR] Error: ${err}`);
     if (stack) console.error(`[SALLA WEBHOOK ERROR] Stack: ${stack}`);
-    
+
     // Development debugging
     if (isDevelopment) {
       console.error(`[SALLA DEBUG] Full error context:`, {
         event, orderId, merchantId,
         hasSecret: !!WEBHOOK_SECRET,
-        hasToken: !!WEBHOOK_TOKEN, 
+        hasToken: !!WEBHOOK_TOKEN,
         hasAppBaseUrl: !!APP_BASE_URL,
         nodeEnv: process.env.NODE_ENV,
         host: req.headers.host
       });
     }
-    
-    fbLog(db, { 
-      level: "error", 
-      scope: "handler", 
-      msg: "processing failed", 
-      event, 
-      idemKey, 
-      merchant: merchantId, 
-      orderId, 
-      meta: { 
-        error: err, 
+
+    fbLog(db, {
+      level: "error",
+      scope: "handler",
+      msg: "processing failed",
+      event,
+      idemKey,
+      merchant: merchantId,
+      orderId,
+      meta: {
+        error: err,
         stack: stack?.substring(0, 500),
         hasCustomerData: !!((dataRaw as Record<string, unknown>).customer || ((dataRaw as Record<string, unknown>).order as Record<string, unknown>)?.customer),
         hasProductData: !!((dataRaw as Record<string, unknown>).items || ((dataRaw as Record<string, unknown>).order as Record<string, unknown>)?.items),
         dataKeys: Object.keys(dataRaw as Record<string, unknown>)
-      } 
+      }
     });
     Promise.race([
       db.collection("webhook_errors").add({
-        at: Date.now(), scope: "handler", event, orderId: orderId || "unknown", merchantId, 
-        error: err, stack: stack?.substring(0, 1000), 
+        at: Date.now(), scope: "handler", event, orderId: orderId || "unknown", merchantId,
+        error: err, stack: stack?.substring(0, 1000),
         raw: raw.toString("utf8").slice(0, 2000),
         debugData: {
           hasCustomerData: !!((dataRaw as Record<string, unknown>).customer || ((dataRaw as Record<string, unknown>).order as Record<string, unknown>)?.customer),
@@ -1267,13 +1284,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         void _resolve;
         setTimeout(() => reject(new Error("webhook_errors_timeout")), 3000);
       })
-    ]).catch(() => {});
-    
+    ]).catch(() => { });
+
     // Enqueue for retry (H6: Webhook retry logic)
     try {
       const { enqueueWebhookRetry } = await import("@/server/queue/webhook-retry");
       const storeUid = pickStoreUidFromSalla(dataRaw, body.merchant);
-      
+
       await enqueueWebhookRetry({
         event,
         merchant: merchantId,
@@ -1286,14 +1303,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         storeUid,
         priority: event.includes("order") ? "high" : "normal",
       });
-      
+
       console.log(`[WEBHOOK] Enqueued for retry: ${event} (orderId: ${orderId})`);
     } catch (retryErr) {
       console.error(`[WEBHOOK] Failed to enqueue retry:`, retryErr);
     }
-    
+
     await idemRef.set({ statusFlag: "failed", lastError: err, processingFinishedAt: Date.now(), errorStack: stack?.substring(0, 500) }, { merge: true });
-    try { res.status(500).json({ ok: false, error: err }); } catch {}
+    try { res.status(500).json({ ok: false, error: err }); } catch { }
   }
 }
 
