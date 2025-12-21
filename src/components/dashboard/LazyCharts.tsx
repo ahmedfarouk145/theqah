@@ -20,7 +20,7 @@ export const LazyAreaChart = dynamic(
     () => import('recharts').then(mod => {
         const { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } = mod;
         // Return a component that uses these
-        return function LazyArea({ data, dataKey }: { data: any[]; dataKey: string }) {
+        return function LazyArea({ data, dataKey }: { data: Array<Record<string, unknown>>; dataKey: string }) {
             return (
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
@@ -53,7 +53,7 @@ export const LazyAreaChart = dynamic(
 export const LazyBarChart = dynamic(
     () => import('recharts').then(mod => {
         const { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } = mod;
-        return function LazyBars({ data }: { data: any[] }) {
+        return function LazyBars({ data }: { data: Array<Record<string, unknown>> }) {
             return (
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
@@ -90,7 +90,7 @@ export const LazyBarChart = dynamic(
 export const LazyPieChart = dynamic(
     () => import('recharts').then(mod => {
         const { PieChart, Pie, Cell, Tooltip } = mod;
-        return function LazyPie({ data, positiveRate }: { data: any[]; positiveRate: number }) {
+        return function LazyPie({ data, positiveRate }: { data: Array<Record<string, unknown>>; positiveRate: number }) {
             return (
                 <div className="relative" style={{ width: 350, height: 350 }}>
                     <PieChart width={350} height={350}>
