@@ -16,7 +16,7 @@ type Dict = Record<string, unknown>;
 interface SallaCustomer { name?: string; email?: string; mobile?: string | number; }
 interface SallaItem { id?: string|number; product?: { id?: string|number }|null; product_id?: string|number; }
 interface SallaOrder {
-  id?: string|number; order_id?: string|number; number?: string|number;
+  id?: string|number; order_id?: string|number; reference_id?: string|number; number?: string|number;
   status?: string; order_status?: string; new_status?: string; shipment_status?: string;
   payment_status?: string;
   customer?: SallaCustomer; items?: SallaItem[];
@@ -278,7 +278,8 @@ async function upsertOrderSnapshot(
   order: SallaOrder,
   storeUid?: string | null
 ) {
-  const orderId = String(order.id ?? order.order_id ?? "");
+  // Use reference_id (visible order number) for consistency with Salla API
+  const orderId = String(order.reference_id ?? order.id ?? order.order_id ?? "");
   if (!orderId) return;
   await db.collection("orders").doc(orderId).set({
     id: orderId,
@@ -300,7 +301,8 @@ async function ensureInviteForOrder(
 ) {
   console.log(`[INVITE FLOW] Starting invite creation for order...`);
   
-  const orderId = String(order.id ?? order.order_id ?? "");
+  // Use reference_id (visible order number) for consistency with Salla API
+  const orderId = String(order.reference_id ?? order.id ?? order.order_id ?? "");
   console.log(`[INVITE FLOW] 1. OrderId check: ${orderId || "MISSING"}`);
   if (!orderId) {
     console.log(`[INVITE FLOW] ❌ FAILED: No orderId found`);
@@ -596,8 +598,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const dataRaw = (body.data ?? {}) as Dict;
   const asOrder = dataRaw as SallaOrder;
 
+  // Use reference_id (visible order number) for consistency with Salla API
   const orderId = (() => {
-    const v = asOrder?.id ?? asOrder?.order_id;
+    const v = asOrder?.reference_id ?? asOrder?.id ?? asOrder?.order_id;
     return v == null ? null : String(v);
   })();
 
@@ -1066,7 +1069,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const order = reviewData.order as Record<string, unknown> | undefined;
           const customer = reviewData.customer as Record<string, unknown> | undefined;
           const productId = product?.id;
-          const orderId = order?.id;
+          // Use reference_id (visible order number) instead of id (internal ID)
+          // because Salla API uses reference_id for order_id field in reviews
+          const orderId = order?.reference_id || order?.id;
           
           // Skip testimonials (store reviews) - we only track product reviews
           if (reviewType === "testimonial" || !product) {
