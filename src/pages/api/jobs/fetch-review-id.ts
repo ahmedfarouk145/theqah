@@ -91,7 +91,7 @@ async function processReviewIdFetch(
 
       // Fetch reviews from Salla API
       const response = await fetch(
-        'https://api.salla.dev/admin/v2/reviews',
+        'https://api.salla.dev/admin/v2/reviews?per_page=100',
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -108,8 +108,12 @@ async function processReviewIdFetch(
       const reviews = data.data || [];
 
       // Find review by order_id (string comparison)
+      // Only match product reviews (type: 'rating'), not testimonials
       const matchingReview = reviews.find(
-        (r: { order_id: string }) => String(r.order_id) === orderIdStr
+        (r: { order_id: string; type?: string }) => {
+          const isProductReview = !r.type || r.type === 'rating';
+          return isProductReview && String(r.order_id) === orderIdStr;
+        }
       );
 
       if (!matchingReview) {
