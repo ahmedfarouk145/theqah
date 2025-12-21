@@ -76,15 +76,15 @@ async function processReviewIdFetch(
 
       console.log(`[PROCESS] Attempt ${attempt + 1}: Fetching merchant ${merchantIdStr}`);
       
-      // Fetch merchant's access token from salla_tokens collection
+      // Fetch merchant's access token from owners collection
       const storeUid = `salla:${merchantIdStr}`;
-      const tokenDoc = await db.collection('salla_tokens').doc(storeUid).get();
-      if (!tokenDoc.exists) {
-        throw new Error(`Store ${storeUid} not found in salla_tokens`);
+      const ownerDoc = await db.collection('owners').doc(storeUid).get();
+      if (!ownerDoc.exists) {
+        throw new Error(`Store ${storeUid} not found in owners`);
       }
 
-      const tokenData = tokenDoc.data();
-      const accessToken = tokenData?.accessToken;
+      const ownerData = ownerDoc.data();
+      const accessToken = ownerData?.oauth?.access_token;
       if (!accessToken) {
         throw new Error(`No access token for store ${storeUid}`);
       }

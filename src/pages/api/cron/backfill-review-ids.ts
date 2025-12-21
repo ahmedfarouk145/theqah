@@ -58,19 +58,19 @@ export default async function handler(
       const review = reviewDoc.data();
       
       try {
-        // Get store access token from salla_tokens collection
+        // Get store access token from owners collection
         const storeUid = review.storeUid;
-        const tokenDoc = await db
-          .collection("salla_tokens")
+        const ownerDoc = await db
+          .collection("owners")
           .doc(storeUid)
           .get();
 
-        if (!tokenDoc.exists) {
-          throw new Error(`Store ${storeUid} not found in salla_tokens`);
+        if (!ownerDoc.exists) {
+          throw new Error(`Store ${storeUid} not found in owners`);
         }
 
-        const tokenData = tokenDoc.data();
-        if (!tokenData?.accessToken) {
+        const ownerData = ownerDoc.data();
+        if (!ownerData?.oauth?.access_token) {
           throw new Error(`No access token for store ${storeUid}`);
         }
 
@@ -80,7 +80,7 @@ export default async function handler(
         
         const sallaResponse = await fetch(apiUrl, {
           headers: {
-            Authorization: `Bearer ${tokenData.accessToken}`,
+            Authorization: `Bearer ${ownerData.oauth.access_token}`,
             Accept: "application/json"
           }
         });
