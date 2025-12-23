@@ -1,0 +1,247 @@
+=== Store Resolution Debug ===
+Time: 2025-12-23T19:43:42.320Z
+
+=== ALL STORES ===
+Found 11 stores:
+
+Store ID: 2LVHfkL3xohoKZPXA0an4UnS9dI3
+  uid: undefined
+  provider: undefined
+  salla.domain: undefined
+  salla.storeId: undefined
+  salla.connected: false
+  salla.installed: undefined
+  domain.base: undefined
+
+Store ID: 2onO1hYAB7WL5Nc0xisIezVJqVQ2
+  uid: undefined
+  provider: undefined
+  salla.domain: undefined
+  salla.storeId: undefined
+  salla.connected: false
+  salla.installed: undefined
+  domain.base: undefined
+
+Store ID: HIlGLfctUJQi3hf5js4mdEgeIx02
+  uid: undefined
+  provider: undefined
+  salla.domain: undefined
+  salla.storeId: undefined
+  salla.connected: false
+  salla.installed: undefined
+  domain.base: undefined
+
+Store ID: YyVNLMaRu5Z6pCByJLKKgTavlBO2
+  uid: undefined
+  provider: undefined
+  salla.domain: undefined
+  salla.storeId: undefined
+  salla.connected: false
+  salla.installed: undefined
+  domain.base: undefined
+
+Store ID: bJqMWvw9pVPGJjGPoLH5mRl2HdC3
+  uid: undefined
+  provider: undefined
+  salla.domain: undefined
+  salla.storeId: undefined
+  salla.connected: false
+  salla.installed: undefined
+  domain.base: undefined
+
+Store ID: k82PVAt8qnMcEByNR3O4sD25nuA2
+  uid: undefined
+  provider: undefined
+  salla.domain: undefined
+  salla.storeId: undefined
+  salla.connected: false
+  salla.installed: undefined
+  domain.base: undefined
+
+Store ID: salla:1272442348
+  uid: salla:1272442348
+  provider: salla
+  salla.domain: https://demostore.salla.sa/dev-f8bneeglpbnzn5uc
+  salla.storeId: 1272442348
+  salla.connected: true
+  salla.installed: true
+  domain.base: https://demostore.salla.sa/dev-f8bneeglpbnzn5uc
+
+Store ID: salla:1811561958
+  uid: salla:1811561958
+  provider: salla
+  salla.domain: https://demostore.salla.sa/dev-m8a0hrsuxtonclsz
+  salla.storeId: 1811561958
+  salla.connected: true
+  salla.installed: true
+  domain.base: https://demostore.salla.sa/dev-m8a0hrsuxtonclsz
+
+Store ID: salla:236490959
+  uid: salla:236490959
+  provider: salla
+  salla.domain: https://demostore.salla.sa/dev-mcifzosph5qbhctj
+  salla.storeId: 236490959
+  salla.connected: true
+  salla.installed: true
+  domain.base: https://demostore.salla.sa/dev-mcifzosph5qbhctj
+
+Store ID: salla:559541722
+  uid: salla:559541722
+  provider: salla
+  salla.domain: https://demostore.salla.sa/dev-rzxodocxqbufw8aq
+  salla.storeId: 559541722
+  salla.connected: true
+  salla.installed: true
+  domain.base: https://demostore.salla.sa/dev-rzxodocxqbufw8aq
+
+Store ID: salla:982747175
+  uid: salla:982747175
+  provider: salla
+  salla.domain: https://demostore.salla.sa/dev-6pvf7vguhv84lfoi
+  salla.storeId: 982747175
+  salla.connected: true
+  salla.installed: true
+  domain.base: https://demostore.salla.sa/dev-6pvf7vguhv84lfoi
+
+
+=== ALL DOMAINS ===
+Found 11 domains:
+
+Domain Key: demostore.salla.sa
+  base: demostore.salla.sa
+  storeUid: salla:982747175
+  provider: salla
+
+Domain Key: demostore.salla.sa_SLASH_dev-6pvf7vguhv84lfoi
+  base: demostore.salla.sa/dev-6pvf7vguhv84lfoi
+  storeUid: salla:982747175
+  provider: salla
+
+Domain Key: demostore.salla.sa_SLASH_dev-f8bneeglpbnzn5uc
+  base: demostore.salla.sa/dev-f8bneeglpbnzn5uc
+  storeUid: salla:1272442348
+  provider: salla
+
+Domain Key: demostore.salla.sa_SLASH_dev-m8a0hrsuxtonclsz
+  base: demostore.salla.sa/dev-m8a0hrsuxtonclsz
+  storeUid: salla:1811561958
+  provider: salla
+
+Domain Key: demostore.salla.sa_SLASH_dev-mcifzosph5qbhctj
+  base: demostore.salla.sa/dev-mcifzosph5qbhctj
+  storeUid: salla:236490959
+  provider: salla
+
+Domain Key: https_COLON__SLASH__SLASH_demostore.salla.sa
+  base: https://demostore.salla.sa
+  storeUid: salla:982747175
+  provider: salla
+
+Domain Key: https_COLON__SLASH__SLASH_demostore.salla.sa_SLASH_dev-6pvf7vguhv84lfoi
+  base: https://demostore.salla.sa/dev-6pvf7vguhv84lfoi
+  storeUid: salla:982747175
+  provider: salla
+
+Domain Key: https_COLON__SLASH__SLASH_demostore.salla.sa_SLASH_dev-f8bneeglpbnzn5uc
+  base: https://demostore.salla.sa/dev-f8bneeglpbnzn5uc
+  storeUid: salla:1272442348
+  provider: salla
+
+Domain Key: https_COLON__SLASH__SLASH_demostore.salla.sa_SLASH_dev-m8a0hrsuxtonclsz
+  base: https://demostore.salla.sa/dev-m8a0hrsuxtonclsz
+  storeUid: salla:1811561958
+  provider: salla
+
+Domain Key: https_COLON__SLASH__SLASH_demostore.salla.sa_SLASH_dev-mcifzosph5qbhctj
+  base: https://demostore.salla.sa/dev-mcifzosph5qbhctj
+  storeUid: salla:236490959
+  provider: salla
+
+Domain Key: https_COLON__SLASH__SLASH_demostore.salla.sa_SLASH_dev-rzxodocxqbufw8aq
+  base: https://demostore.salla.sa/dev-rzxodocxqbufw8aq
+  storeUid: salla:559541722
+  provider: salla
+
+
+=== LOOKING FOR DEMO STORE ===
+Found demo store:
+Document ID: salla:982747175
+{
+  "uid": "salla:982747175",
+  "provider": "salla",
+  "usage": {
+    "monthKey": "2025-12",
+    "invitesUsed": 1,
+    "updatedAt": 1764662908835
+  },
+  "domain": {
+    "key": "https_COLON__SLASH__SLASH_demostore.salla.sa_SLASH_dev-6pvf7vguhv84lfoi",
+    "base": "https://demostore.salla.sa/dev-6pvf7vguhv84lfoi",
+    "updatedAt": 1766087349380
+  },
+  "meta": {
+    "userinfo": {
+      "success": true,
+      "status": 200,
+      "data": {
+        "role": "user",
+        "mobile": "+966500000000",
+        "name": "Demo",
+        "created_at": "2025-09-04 01:18:44",
+        "merchant": {
+          "commercial_number": null,
+          "kyc_country": "SA",
+          "created_at": "2025-09-04 01:18:44",
+          "avatar": "https://salla-dev.s3.eu-central-1.amazonaws.com/logo/logo-fashion.jpg",
+          "subscription": {
+            "end_date": "2037-09-04 00:00:00",
+            "is_launched": false,
+            "renew": false,
+            "status": "active"
+          },
+          "type": "company",
+          "referral": {
+            "code": "S4KP8VZG",
+            "url": "https://s.salla.sa/register?coupon=S4KP8VZG&utm_source=referral&utm_campaign=salla-demo&utm_medium=dashboard"
+          },
+          "tax_number": null,
+          "domain": "https://demostore.salla.sa/dev-6pvf7vguhv84lfoi",
+          "name": "متجر تجريبي",
+          "currency": "SAR",
+          "id": 982747175,
+          "from_competitor": false,
+          "plan": "pro",
+          "store_location": null,
+          "status": "active",
+          "username": "dev-6pvf7vguhv84lfoi"
+        },
+        "id": 1193002788,
+        "email": "6pvf7vguhv84lfoi@email.partners",
+        "password_reset_required": 0,
+        "language": "en",
+        "context": {
+          "app": 1180703836,
+          "scope": "settings.read customers.read orders.read products.read webhooks.read_write reviews.read offline_access",
+          "exp": 1767296945
+        }
+      }
+    },
+    "updatedAt": 1766087350435
+  },
+  "salla": {
+    "connected": true,
+    "installed": true,
+    "uid": "salla:982747175",
+    "storeId": 982747175,
+    "domain": "https://demostore.salla.sa/dev-6pvf7vguhv84lfoi",
+    "lastReviewsSyncCount": 5,
+    "totalReviewsSynced": 25,
+    "lastReviewsSyncAt": 1766167249755
+  },
+  "subscription": {
+    "startedAt": 1758564719288,
+    "planId": "pro",
+    "status": "active"
+  },
+  "updatedAt": 1766340719288
+}

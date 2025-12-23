@@ -176,27 +176,81 @@
   // ——— Add logos to Salla reviews ———
   function addLogosToSallaReviews(verifiedIds) {
     if (!verifiedIds || verifiedIds.length === 0) return;
-    const selectors = ['[data-review-id]', '.product-review', '.review-item', '.s-review-item'];
+    
+    // Convert verified IDs to strings for comparison
+    const verifiedIdStrings = verifiedIds.map(id => String(id));
+    
+    // Salla modern theme uses salla-comment-item custom elements
+    // with internal divs having id="s-comments-item-[REVIEW_ID]"
+    const selectors = [
+      'salla-comment-item',           // Salla modern custom element
+      '.s-comments-item',              // Salla class selector
+      '[id^="s-comments-item-"]',      // Direct ID pattern match
+      '[data-review-id]',              // Legacy data attribute
+      '.product-review',               // Generic
+      '.review-item',                  // Generic
+      '.s-review-item'                 // Salla legacy
+    ];
+    
     selectors.forEach(selector => {
       const reviewElements = document.querySelectorAll(selector);
       reviewElements.forEach(el => {
-        const reviewId = el.getAttribute('data-review-id') || el.getAttribute('data-id') || el.querySelector('[data-review-id]')?.getAttribute('data-review-id');
-        if (!reviewId || !verifiedIds.includes(reviewId)) return;
+        // Extract review ID from multiple possible sources
+        let reviewId = null;
+        
+        // 1. From data-review-id attribute
+        reviewId = el.getAttribute('data-review-id') || el.getAttribute('data-id');
+        
+        // 2. From internal div with id="s-comments-item-[ID]"
+        if (!reviewId) {
+          const wrapperDiv = el.querySelector('[id^="s-comments-item-"]');
+          if (wrapperDiv) {
+            const idMatch = wrapperDiv.id.match(/s-comments-item-(\d+)/);
+            if (idMatch) reviewId = idMatch[1];
+          }
+        }
+        
+        // 3. From element's own id if it matches the pattern
+        if (!reviewId && el.id) {
+          const idMatch = el.id.match(/s-comments-item-(\d+)/);
+          if (idMatch) reviewId = idMatch[1];
+        }
+        
+        // 4. From nested element with data-review-id
+        if (!reviewId) {
+          reviewId = el.querySelector('[data-review-id]')?.getAttribute('data-review-id');
+        }
+        
+        if (!reviewId || !verifiedIdStrings.includes(String(reviewId))) return;
         if (el.querySelector('.theqah-verified-logo')) return;
-        let insertPoint = el.querySelector('.review-header') || el.querySelector('.review-stars') || el.querySelector('.review-rating') || el.firstElementChild;
+        
+        // Find best insertion point for Salla modern theme
+        let insertPoint = 
+          el.querySelector('.s-comments-item-user-info-name') ||  // User name in Salla
+          el.querySelector('.s-comments-item-user-wrapper') ||    // User wrapper
+          el.querySelector('.review-header') || 
+          el.querySelector('.review-stars') || 
+          el.querySelector('.review-rating') || 
+          el.firstElementChild;
+        
         if (!insertPoint) return;
+        
         const logo = document.createElement('img');
         logo.src = LOGO_URL;
         logo.className = 'theqah-verified-logo';
         logo.alt = 'Verified by Theqah';
+        logo.title = 'مشتري موثق - Verified Buyer';
         logo.style.cssText = 'width:24px;height:24px;margin:0 8px;display:inline-block;vertical-align:middle;border-radius:4px;';
         insertPoint.style.display = 'flex';
         insertPoint.style.alignItems = 'center';
         insertPoint.style.gap = '8px';
         insertPoint.appendChild(logo);
+        
+        console.log('[Theqah] Added verified badge to review:', reviewId);
       });
     });
   }
+
 
   // ——— تركيب البادج الذكي ———
   async function mountOne(hostEl, store, lang, theme) {
@@ -343,6 +397,7 @@
 
     // تنظيف placeholder - تجاهل أي store ID يحتوي على placeholder
     if (store && (store.includes('{') || /STORE_ID/i.test(store) || store === 'salla:' || !store.includes(':'))) {
+      console.log('[Theqah] Detected placeholder store:', store, '- attempting auto-resolve');
       store = '';
     }
 
@@ -353,9 +408,12 @@
           setTimeout(() => reject(new Error('Resolve timeout')), 5000)
         );
         store = await Promise.race([resolveStore(), resolveTimeout]);
+        if (store) {
+          console.log('[Theqah] Store resolved:', store);
+        }
       }
       catch (err) { 
-        // Silent fail
+        console.warn('[Theqah] Store resolution failed:', err.message);
         store = null;
       }
     }

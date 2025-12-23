@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/backfill-review-ids",
-      "schedule": "0 * * * *"
+      "schedule": "*/10 * * * *"
     }
   ]
 }
