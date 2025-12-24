@@ -235,16 +235,27 @@
         
         if (!insertPoint) return;
         
+        // Create clickable logo with link to theqah homepage
+        const logoLink = document.createElement('a');
+        logoLink.href = 'https://theqah.com.sa?ref=widget';
+        logoLink.target = '_blank';
+        logoLink.rel = 'noopener noreferrer';
+        logoLink.title = 'مشتري موثق - Verified Buyer | theqah.com.sa';
+        logoLink.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none;transition:transform 0.2s ease;';
+        logoLink.onmouseover = function() { this.style.transform = 'scale(1.1)'; };
+        logoLink.onmouseout = function() { this.style.transform = 'scale(1)'; };
+        
         const logo = document.createElement('img');
         logo.src = LOGO_URL;
         logo.className = 'theqah-verified-logo';
-        logo.alt = 'Verified by Theqah';
-        logo.title = 'مشتري موثق - Verified Buyer';
-        logo.style.cssText = 'width:24px;height:24px;margin:0 8px;display:inline-block;vertical-align:middle;border-radius:4px;';
+        logo.alt = 'مشتري موثق - Verified Buyer';
+        logo.style.cssText = 'width:32px;height:32px;margin:0 8px;display:inline-block;vertical-align:middle;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.1);cursor:pointer;';
+        
+        logoLink.appendChild(logo);
         insertPoint.style.display = 'flex';
         insertPoint.style.alignItems = 'center';
         insertPoint.style.gap = '8px';
-        insertPoint.appendChild(logo);
+        insertPoint.appendChild(logoLink);
         
         console.log('[Theqah] Added verified badge to review:', reviewId);
       });
