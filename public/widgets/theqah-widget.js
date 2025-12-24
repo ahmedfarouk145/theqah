@@ -249,7 +249,7 @@
         logo.src = LOGO_URL;
         logo.className = 'theqah-verified-logo';
         logo.alt = 'مشتري موثق - Verified Buyer';
-        logo.style.cssText = 'width:32px;height:32px;margin:0 8px;display:inline-block;vertical-align:middle;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.1);cursor:pointer;';
+        logo.style.cssText = 'width:60px;height:60px;margin:0 8px;display:inline-block;vertical-align:middle;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.15);cursor:pointer;';
         
         logoLink.appendChild(logo);
         insertPoint.style.display = 'flex';
