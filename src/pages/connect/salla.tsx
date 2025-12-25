@@ -1,78 +1,35 @@
 // src/pages/connect/salla.tsx
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getAuth } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import { motion } from 'framer-motion';
-import { Loader2, AlertCircle, CheckCircle, ArrowRight, ShoppingBag } from 'lucide-react';
+import { CheckCircle, ExternalLink, ShoppingBag, ArrowRight, Info } from 'lucide-react';
+
+// رابط تطبيق مشتري موثق في متجر سلة
+const SALLA_APP_STORE_URL = process.env.NEXT_PUBLIC_SALLA_APP_URL || 'https://apps.salla.sa/ar/app/1180703836';
+
 
 export default function ConnectSalla() {
-  const router = useRouter();
-  const [error, setError] = useState<string>('');
-  const [starting, setStarting] = useState<boolean>(true);
-  const cancelledRef = useRef(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [userEmail, setUserEmail] = useState<string>('');
 
   useEffect(() => {
-    cancelledRef.current = false;
-    return () => {
-      cancelledRef.current = true;
-    };
+    const auth = getAuth(app);
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setIsLoggedIn(!!user);
+      setUserEmail(user?.email || '');
+    });
+    return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    const start = async () => {
-      try {
-        setStarting(true);
-        setError('');
-
-        const auth = getAuth(app);
-        const user = auth.currentUser;
-
-        if (!user) {
-          throw new Error('غير مصرح: الرجاء تسجيل الدخول أولاً.');
-        }
-
-        // خُد توكن حديث
-        const idToken = await user.getIdToken(true);
-
-        const params = new URLSearchParams();
-        // مسار الرجوع بعد إنهاء التدفق في الكولباك
-        params.set('return', '/admin');
-
-        // استخدم رابط مطلق لو لزم الأمر
-        const url =
-          typeof window !== 'undefined'
-            ? new URL(`/api/salla/connect?${params.toString()}`, window.location.origin).toString()
-            : `/api/salla/connect?${params.toString()}`;
-
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${idToken}` },
-        });
-
-        if (!res.ok) {
-          //eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const j = await res.json().catch(() => ({} as any));
-          throw new Error(j?.message || `HTTP ${res.status}`);
-        }
-
-        const j = (await res.json()) as { url?: string };
-        if (!j?.url) throw new Error('Missing authorize URL');
-
-        // التحويل إلى صفحة موافقة سلة
-        window.location.assign(j.url);
-      } catch (e) {
-        if (cancelledRef.current) return;
-        setError(e instanceof Error ? e.message : String(e));
-        setStarting(false);
-      }
-    };
-
-    // ابدأ فوراً (بدون الاعتماد على useAuth)
-    start();
-  }, []);
+  const handleConnectClick = () => {
+    // فتح متجر سلة في تاب جديد
+    window.open(SALLA_APP_STORE_URL, '_blank');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-blue-50 flex items-center justify-center p-6">
@@ -80,108 +37,114 @@ export default function ConnectSalla() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="max-w-md w-full bg-white/90 backdrop-blur-sm border border-gray-200/50 rounded-2xl p-8 shadow-2xl"
+        className="max-w-lg w-full bg-white/90 backdrop-blur-sm border border-gray-200/50 rounded-2xl p-8 shadow-2xl"
         dir="rtl"
       >
-        {starting && !error && (
-          <div className="text-center space-y-6">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-xl"
-            >
-              <ShoppingBag className="w-10 h-10 text-white" />
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="space-y-3"
-            >
-              <h1 className="text-2xl font-extrabold text-gray-900">بدء ربط منصة سلة</h1>
-              <p className="text-gray-600 leading-relaxed">
-                جارٍ تحويلك إلى صفحة التفويض في سلة لإتمام الربط الآمن…
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="flex items-center justify-center gap-3"
-            >
-              <Loader2 className="h-6 w-6 animate-spin text-green-600" />
-              <span className="text-green-600 font-medium">جارٍ الاتصال بسلة...</span>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="bg-blue-50 border border-blue-200 rounded-lg p-4"
-            >
-              <div className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-blue-700">
-                  <p className="font-medium mb-1">نصيحة:</p>
-                  <p>تأكد من تسجيل الدخول في حساب سلة الخاص بك في نفس المتصفح</p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {error && (
+        {/* Header */}
+        <div className="text-center space-y-4 mb-8">
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center space-y-6"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-xl"
           >
-            <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-rose-600 rounded-full flex items-center justify-center mx-auto shadow-xl">
-              <AlertCircle className="w-10 h-10 text-white" />
+            <ShoppingBag className="w-10 h-10 text-white" />
+          </motion.div>
+
+          <h1 className="text-2xl font-extrabold text-gray-900">ربط متجر سلة</h1>
+          <p className="text-gray-600 leading-relaxed">
+            اربط متجرك في سلة مع مشتري موثق لتوثيق تقييمات عملائك تلقائياً
+          </p>
+        </div>
+
+        {/* Steps */}
+        <div className="space-y-4 mb-8">
+          <div className="flex items-start gap-3 p-4 bg-green-50 rounded-xl border border-green-100">
+            <span className="w-7 h-7 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">1</span>
+            <div>
+              <h3 className="font-bold text-gray-900 mb-1">اذهب لمتجر تطبيقات سلة</h3>
+              <p className="text-sm text-gray-600">اضغط الزر أدناه لفتح صفحة التطبيق في سلة</p>
             </div>
+          </div>
 
-            <div className="space-y-3">
-              <h1 className="text-2xl font-extrabold text-gray-900">تعذّر بدء الربط</h1>
-              <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
-                <p className="text-rose-700 font-medium text-sm">{error}</p>
-              </div>
+          <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+            <span className="w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">2</span>
+            <div>
+              <h3 className="font-bold text-gray-900 mb-1">ثبّت التطبيق</h3>
+              <p className="text-sm text-gray-600">اضغط "تثبيت" ووافق على الصلاحيات المطلوبة</p>
             </div>
+          </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                onClick={() => router.reload()}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
-              >
-                <ArrowRight className="w-4 h-4 transform rotate-180" />
-                إعادة المحاولة
-              </button>
-
-              <Link
-                href="/connect"
-                className="px-6 py-3 rounded-xl bg-gray-100 text-gray-700 font-medium shadow hover:shadow-md hover:bg-gray-200 transition-all duration-200"
-              >
-                العودة للربط
-              </Link>
+          <div className="flex items-start gap-3 p-4 bg-purple-50 rounded-xl border border-purple-100">
+            <span className="w-7 h-7 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">3</span>
+            <div>
+              <h3 className="font-bold text-gray-900 mb-1">يتم الربط تلقائياً</h3>
+              <p className="text-sm text-gray-600">سيتم ربط متجرك تلقائياً بحسابك هنا</p>
             </div>
+          </div>
+        </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-amber-700">
-                  <p className="font-medium mb-1">إذا استمرت المشكلة:</p>
-                  <ul className="space-y-1 text-xs">
-                    <li>• تأكد من اتصالك بالإنترنت</li>
-                    <li>• جرب مسح ذاكرة التخزين المؤقت للمتصفح</li>
-                    <li>• تواصل مع الدعم الفني</li>
-                  </ul>
-                </div>
+        {/* Login Check */}
+        {isLoggedIn === false && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6"
+          >
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-amber-700">
+                <p className="font-medium mb-1">يجب تسجيل الدخول أولاً</p>
+                <p>سجّل دخولك لربط متجرك بحسابك</p>
+                <Link href="/login" className="inline-flex items-center gap-1 mt-2 text-amber-800 font-bold hover:underline">
+                  تسجيل الدخول <ArrowRight className="w-4 h-4" />
+                </Link>
               </div>
             </div>
           </motion.div>
         )}
+
+        {isLoggedIn && userEmail && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <span className="text-sm text-green-700">
+                مسجّل دخول كـ: <strong>{userEmail}</strong>
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* CTA Button */}
+        <button
+          onClick={handleConnectClick}
+          disabled={isLoggedIn === false}
+          className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+        >
+          <span>فتح متجر سلة لتثبيت التطبيق</span>
+          <ExternalLink className="w-5 h-5" />
+        </button>
+
+        {/* Help */}
+        <div className="mt-6 text-center">
+          <Link
+            href="/support"
+            className="text-sm text-gray-500 hover:text-gray-700 transition"
+          >
+            تحتاج مساعدة؟ تواصل مع الدعم
+          </Link>
+        </div>
+
+        {/* Back */}
+        <div className="mt-4 text-center">
+          <Link
+            href="/connect"
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 transition"
+          >
+            <ArrowRight className="w-4 h-4 transform rotate-180" />
+            العودة لاختيار المنصة
+          </Link>
+        </div>
       </motion.div>
     </div>
   );
