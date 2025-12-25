@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+
 import { getAuth } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import { motion } from 'framer-motion';
@@ -71,7 +71,7 @@ export default function ConnectSalla() {
             <span className="w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">2</span>
             <div>
               <h3 className="font-bold text-gray-900 mb-1">ثبّت التطبيق</h3>
-              <p className="text-sm text-gray-600">اضغط "تثبيت" ووافق على الصلاحيات المطلوبة</p>
+              <p className="text-sm text-gray-600">اضغط &quot;تثبيت&quot; ووافق على الصلاحيات المطلوبة</p>
             </div>
           </div>
 
