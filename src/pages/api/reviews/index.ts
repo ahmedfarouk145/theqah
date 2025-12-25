@@ -20,10 +20,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .limit(200);
 
     // Add status filter if provided
-    if (statusFilter && ['pending', 'approved', 'rejected', 'published'].includes(statusFilter)) {
+    if (statusFilter && ['pending', 'pending_review', 'approved', 'rejected', 'published'].includes(statusFilter)) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       query = query.where('status', '==', statusFilter) as any;
     }
+
 
     const snap = await query.get();
 

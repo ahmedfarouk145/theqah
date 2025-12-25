@@ -6,6 +6,7 @@ import { fetchStoreInfo, fetchUserInfo, getOwnerAccessToken } from "@/lib/sallaC
 import { canSendInvite } from "@/server/subscription/usage";
 import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
 import { trackWebhook } from "@/server/monitoring/metrics";
+import { moderateReview } from "@/server/moderation";
 
 export const runtime = "nodejs";
 export const config = { api: { bodyParser: false } };
@@ -1128,7 +1129,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Create doc ID using order + product (we'll update with sallaReviewId later if needed)
           const docId = `salla_${merchantId}_order_${orderId}_product_${productId}`;
 
-          // Save review immediately
+          // ✅ Content moderation check
+          const reviewText = String(reviewData.content || "");
+          let reviewStatus = "approved";
+          let moderationFlags: string[] = [];
+          let needsManualReview = false;
+
+          if (reviewText.trim()) {
+            try {
+              const modResult = await moderateReview({
+                text: reviewText,
+                stars: Number(reviewData.rating || 0),
+                costSaving: true // Use cost-saving mode for webhook (high volume)
+              });
+
+              if (!modResult.ok) {
+                reviewStatus = "pending_review";
+                moderationFlags = modResult.flags || [];
+                needsManualReview = true;
+                console.log(`[MODERATION] Review flagged: ${docId}, reason: ${modResult.reason}, flags: ${moderationFlags.join(', ')}`);
+              }
+            } catch (modError) {
+              console.error(`[MODERATION] Error checking review ${docId}:`, modError);
+              // Continue without moderation if it fails
+            }
+          }
+
+          // Save review with moderation-aware status
           const reviewDoc = {
             reviewId: docId,
             storeUid,
@@ -1140,7 +1167,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             productName: String(product?.name || ""),
 
             stars: Number(reviewData.rating || 0),
-            text: String(reviewData.content || ""),
+            text: reviewText,
 
             author: {
               displayName: String(customer?.name || "عميل سلة"),
@@ -1148,12 +1175,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               mobile: String(customer?.mobile || ""),
             },
 
-            status: "approved",
+            status: reviewStatus,
             trustedBuyer: false,
             verified: isVerified,
             publishedAt: reviewDate,
             createdAt: Date.now(),
             updatedAt: Date.now(),
+
+            // Moderation info
+            ...(needsManualReview && {
+              moderation: {
+                flagged: true,
+                flags: moderationFlags,
+                checkedAt: Date.now(),
+              }
+            }),
 
             // sallaReviewId will be added by background job later
             needsSallaId: true, // Flag for background processing
@@ -1161,7 +1197,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           await db.collection("reviews").doc(docId).set(reviewDoc);
 
-          fbLog(db, { level: "info", scope: "review", msg: "review saved from webhook (will fetch salla id later)", event, idemKey, merchant: merchantId, meta: { orderId, productId, verified: isVerified } });
+          fbLog(db, { level: "info", scope: "review", msg: "review saved from webhook", event, idemKey, merchant: merchantId, meta: { orderId, productId, verified: isVerified, status: reviewStatus, flagged: needsManualReview } });
+
 
           // Trigger background job to fetch sallaReviewId (fire-and-forget)
           const appUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${req.headers.host}`;

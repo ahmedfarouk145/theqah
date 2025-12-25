@@ -16,8 +16,13 @@ type PendingReview = {
   createdAt?: number;
   status?: string;
   productId?: string;
+  productName?: string;
   author?: {
     displayName?: string;
+  };
+  moderation?: {
+    flagged?: boolean;
+    flags?: string[];
   };
 };
 
@@ -30,20 +35,21 @@ export default function PendingReviewsTab() {
   const fetchPendingReviews = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const auth = getAuth(app);
       const user = auth.currentUser;
-      
+
       if (!user) {
         setError('يرجى تسجيل الدخول أولاً');
         return;
       }
 
       const token = await user.getIdToken();
+      // Fetch both 'pending' and 'pending_review' statuses
       const response = await axios.get('/api/reviews', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { status: 'pending' },
+        params: { status: 'pending_review' },
       });
 
       setReviews(response.data.reviews || []);
@@ -66,7 +72,7 @@ export default function PendingReviewsTab() {
     try {
       const auth = getAuth(app);
       const user = auth.currentUser;
-      
+
       if (!user) {
         setError('يرجى تسجيل الدخول أولاً');
         return;
@@ -152,11 +158,10 @@ export default function PendingReviewsTab() {
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
-                      className={`w-5 h-5 ${
-                        star <= (review.stars || 0)
+                      className={`w-5 h-5 ${star <= (review.stars || 0)
                           ? 'text-yellow-400 fill-yellow-400'
                           : 'text-gray-300'
-                      }`}
+                        }`}
                     />
                   ))}
                   <span className="font-bold text-lg">{review.stars}/5</span>
@@ -184,6 +189,18 @@ export default function PendingReviewsTab() {
                 </button>
               </div>
             </div>
+            {review.moderation?.flags && review.moderation.flags.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                <p className="text-sm text-amber-700 font-medium">⚠️ أسباب الحجب:</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {review.moderation.flags.map((flag, i) => (
+                    <span key={i} className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded">
+                      {flag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             {review.text && (
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700 leading-relaxed">{review.text}</p>

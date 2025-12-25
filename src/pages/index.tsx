@@ -45,29 +45,29 @@ export default function LandingPage() {
         <section className="min-h-[85vh] flex flex-col justify-center items-center text-center px-4 sm:px-6 bg-white relative overflow-hidden">
           <div className="max-w-3xl space-y-6 z-10 animate-slide-up">
             {/* Logo with premium effects */}
-            <div className="relative inline-block group animate-float">
+            <div className="relative inline-block group animate-float max-w-[80vw]">
               {/* Outer glow ring */}
               <div className="absolute inset-0 bg-gradient-to-br from-green-300/30 via-emerald-400/20 to-green-500/30 rounded-full blur-3xl scale-150 animate-glow-pulse" />
 
               {/* Inner glow */}
               <div className="absolute inset-0 bg-green-400/30 rounded-full blur-2xl scale-125 animate-glow-pulse" style={{ animationDelay: '0.5s' }} />
 
-              {/* Decorative ring */}
-              <div className="absolute -inset-4 border-2 border-green-200/50 rounded-full" />
-              <div className="absolute -inset-8 border border-green-100/30 rounded-full" />
+              {/* Decorative ring - hidden on very small screens */}
+              <div className="absolute -inset-2 sm:-inset-4 border-2 border-green-200/50 rounded-full hidden sm:block" />
+              <div className="absolute -inset-4 sm:-inset-8 border border-green-100/30 rounded-full hidden sm:block" />
 
-              {/* Logo */}
+              {/* Logo - Responsive size */}
               <Image
                 src="/logo.png"
                 alt="شعار مشتري موثّق"
                 width={450}
                 height={450}
-
-                className="mx-auto relative drop-shadow-2xl transition-transform duration-500 group-hover:scale-105"
+                className="mx-auto relative drop-shadow-2xl transition-transform duration-500 group-hover:scale-105 w-[200px] h-[200px] sm:w-[300px] sm:h-[300px] md:w-[400px] md:h-[400px] lg:w-[450px] lg:h-[450px]"
                 priority
               />
 
             </div>
+
 
 
 

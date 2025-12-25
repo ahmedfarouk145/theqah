@@ -10,10 +10,12 @@
 html {
   direction: rtl;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
 html,
@@ -21,7 +23,10 @@ body,
 #__next {
   height: 100%;
   max-width: 100vw;
+  width: 100%;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
+  position: relative;
 }
 
 body {
@@ -29,7 +34,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: white;
+  overflow-x: hidden;
 }
+
 
 /* ==== Design Tokens (HSL variables) ==== */
 @layer base {

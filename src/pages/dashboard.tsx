@@ -190,32 +190,33 @@ export default function DashboardPage() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-md font-medium border transition ${activeTab === tab
-                ? 'bg-green-700 text-white border-green-700'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+              ? 'bg-green-700 text-white border-green-700'
+              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
               }`}
           >
             {tab}
           </button>
         ))}
-        {dashboardV2Enabled && (
-          <button
-            onClick={() => setActiveTab('التقييمات المعلقة')}
-            className={`px-4 py-2 rounded-md font-medium border transition ${activeTab === 'التقييمات المعلقة'
-                ? 'bg-blue-700 text-white border-blue-700'
-                : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'
-              }`}
-          >
-            التقييمات المعلقة
-          </button>
-        )}
+        {/* تاب التقييمات المعلقة - يظهر دائماً */}
+        <button
+          onClick={() => setActiveTab('التقييمات المعلقة')}
+          className={`px-4 py-2 rounded-md font-medium border transition ${activeTab === 'التقييمات المعلقة'
+            ? 'bg-amber-600 text-white border-amber-600'
+            : 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50'
+            }`}
+        >
+          ⚠️ التقييمات المعلقة
+        </button>
       </div>
+
 
       {/* Content with fixed min-height to prevent CLS */}
       <div className="bg-white p-6 rounded-lg shadow min-h-[400px]">
         {activeTab === 'الإحصائيات' && <DashboardAnalytics />}
         {activeTab === 'الطلبات' && <OrdersTab />}
         {activeTab === 'التقييمات' && <ReviewsTab storeName={storeName} />}
-        {activeTab === 'التقييمات المعلقة' && dashboardV2Enabled && <PendingReviewsTab />}
+        {activeTab === 'التقييمات المعلقة' && <PendingReviewsTab />}
+
         {activeTab === 'الإعدادات' && <SettingsTab storeUid={storeUid} storeName={storeName} />}
         {activeTab === 'المساعدة' && <SupportTab />}
       </div>

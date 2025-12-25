@@ -77,10 +77,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .limit(limit + 1); // Fetch one extra to check if there's a next page
 
     // Add status filter if provided
-    if (statusFilter && ['pending', 'approved', 'rejected'].includes(statusFilter)) {
+    if (statusFilter && ['pending', 'pending_review', 'approved', 'rejected', 'published'].includes(statusFilter)) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       query = query.where('status', '==', statusFilter) as any;
     }
+
 
     // Apply cursor if provided
     if (cursor) {
@@ -101,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const nextCursor = hasMore && docs.length > 0 ? docs[docs.length - 1].id : null;
 
-    return res.status(200).json({ 
+    return res.status(200).json({
       reviews,
       pagination: {
         hasMore,
