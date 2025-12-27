@@ -495,21 +495,18 @@
     const productId = extractProductId();
     const checkResult = await checkVerifiedReviews(store, productId);
     
+    // Always insert the certificate badge for subscribed stores
+    insertCertificateBadge(store, lang, theme, certificatePosition);
+    console.log('[Theqah] Certificate badge inserted for store:', store);
+    
     if (checkResult.hasVerified) {
       // Has verified reviews - add logos to Salla reviews
       const verifiedIds = checkResult.reviews.map(r => r.sallaReviewId);
       addLogosToSallaReviews(verifiedIds);
-      
-      // Also insert the certificate badge with position setting
-      insertCertificateBadge(store, lang, theme, certificatePosition);
-      
-      hostEl.setAttribute("data-state", "done");
-      return;
+      console.log('[Theqah] Added logos to verified reviews:', verifiedIds.length);
     }
 
-    // No verified reviews - don't show anything (keep Salla reviews visible)
     hostEl.setAttribute("data-state", "done");
-    hostEl.style.display = "none"; // Hide the widget container but keep other content visible
     return;
     
     const style = h("style", {
