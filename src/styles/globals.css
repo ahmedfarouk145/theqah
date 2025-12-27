@@ -37,6 +37,22 @@ body {
   overflow-x: hidden;
 }
 
+/* Ensure form elements inherit the Arabic font and have proper text color */
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+  color: #111827;
+  /* text-gray-900 - dark readable color */
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af;
+  /* text-gray-400 - lighter for placeholder */
+}
+
 
 /* ==== Design Tokens (HSL variables) ==== */
 @layer base {
