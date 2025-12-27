@@ -10,12 +10,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { uid } = await requireUser(req);
     const db = dbAdmin();
 
+    // First, lookup the user's linked store to get the storeUid
+    const userDoc = await db.collection('users').doc(uid).get();
+    const userData = userDoc.data();
+
+    // Try to get storeUid from user data or from stores collection
+    let storeUid = userData?.storeUid;
+
+    if (!storeUid) {
+      // Fallback: Check if there's a store with this user as owner
+      const storeSnap = await db.collection('stores')
+        .where('ownerUid', '==', uid)
+        .limit(1)
+        .get();
+
+      if (!storeSnap.empty) {
+        const storeData = storeSnap.docs[0].data();
+        storeUid = storeData.uid || storeData.storeUid || storeSnap.docs[0].id;
+      }
+    }
+
+    if (!storeUid) {
+      console.log('[reviews/index] No store found for user:', uid);
+      return res.status(200).json({ reviews: [], message: 'No store linked' });
+    }
+
     // Get status filter from query params
     const statusFilter = req.query.status as string | undefined;
 
     let query = db
       .collection('reviews')
-      .where('storeUid', '==', uid)
+      .where('storeUid', '==', storeUid)
       .orderBy('createdAt', 'desc')
       .limit(200);
 
@@ -42,3 +67,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ message: 'Unauthorized' });
   }
 }
+

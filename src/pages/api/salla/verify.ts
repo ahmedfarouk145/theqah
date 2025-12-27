@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 
 const REDACT = (s?: string | null) =>
-  !s ? null : s.length <= 12 ? `${s.length}ch:${s}` : `${s.length}ch:${s.slice(0,6)}…${s.slice(-6)}`;
+  !s ? null : s.length <= 12 ? `${s.length}ch:${s}` : `${s.length}ch:${s.slice(0, 6)}…${s.slice(-6)}`;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -16,6 +16,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const t = tok.exists ? tok.data() || {} : {};
     const s = store.exists ? store.data() || {} : {};
 
+    // Get scope from multiple possible locations
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tokenScope = (t as any).scope || '';
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const oauthScope = (s as any)?.salla?.oauth?.scope || '';
+    const scope = tokenScope || oauthScope;
+
     return res.json({
       ok: true,
       uid,
@@ -28,8 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         expiresAt: (t as any).expiresAt || null,
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         obtainedAt: (t as any).obtainedAt || null,
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        scope: (t as any).scope || null,
+        scope: scope,
       },
       store: {
         /*eslint-disable-next-line @typescript-eslint/no-explicit-any*/
@@ -42,8 +48,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         connectedAt: (s as any).connectedAt || null,
         //eslint-disable-next-line @typescript-eslint/no-explicit-any
         updatedAt: (s as any).updatedAt || null,
+        salla: {
+          //eslint-disable-next-line @typescript-eslint/no-explicit-any
+          oauth: (s as any)?.salla?.oauth || null,
+        }
       },
-      
+
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });

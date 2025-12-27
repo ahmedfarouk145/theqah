@@ -260,6 +260,27 @@
           }
         }
         
+        // 6. Check shadow DOM for salla-comment-item
+        if (!reviewId && el.shadowRoot) {
+          const shadowDiv = el.shadowRoot.querySelector('[id^="s-comments-item-"]');
+          if (shadowDiv) {
+            const idMatch = shadowDiv.id.match(/s-comments-item-(\d+)/);
+            if (idMatch) reviewId = idMatch[1];
+          }
+        }
+        
+        // Debug: Log element info if no ID found
+        if (!reviewId && selector === 'salla-comment-item') {
+          console.log('[Theqah] DEBUG: salla-comment-item found but no ID extracted:', {
+            tagName: el.tagName,
+            id: el.id,
+            className: el.className,
+            attributes: Array.from(el.attributes).map(a => `${a.name}="${a.value}"`).join(', '),
+            innerHTML: el.innerHTML?.substring(0, 200),
+            hasShadowRoot: !!el.shadowRoot
+          });
+        }
+        
         if (reviewId) {
           foundCount++;
           console.log(`[Theqah] Found review element with ID: ${reviewId}, matches: ${verifiedIdStrings.includes(String(reviewId))}`);
