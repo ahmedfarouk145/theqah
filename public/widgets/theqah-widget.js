@@ -16,6 +16,7 @@
   const API_BASE = `${SCRIPT_ORIGIN}/api/public/reviews`;
   const CHECK_API = `${SCRIPT_ORIGIN}/api/reviews/check-verified`;
   const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png?v=3`;
+  const CERTIFICATE_LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png?v=3`;
 
   // ——— Helpers ———
   const h = (tag, attrs = {}, children = []) => {
@@ -51,9 +52,17 @@
     const host = location.host.replace(/^www\./, '').toLowerCase();
 
     // ذاكرة + localStorage
-    if (G.storeUid) return G.storeUid;
+    if (G.storeData) return G.storeData;
     const cached = getCached(host);
-    if (cached) { G.storeUid = cached; return cached; }
+    if (cached) { 
+      // For backwards compatibility, handle both old format (string) and new format (object)
+      if (typeof cached === 'string') {
+        G.storeData = { storeUid: cached, certificatePosition: 'auto' };
+      } else {
+        G.storeData = cached;
+      }
+      return G.storeData;
+    }
 
     // single-flight
     if (G.resolvePromise) return G.resolvePromise;
@@ -71,9 +80,14 @@
         return r.ok ? r.json() : null;
       })
       .then(j => {
-        const uid = j?.storeUid || null;
-        if (uid) { G.storeUid = uid; setCached(host, uid); }
-        return uid;
+        if (!j?.storeUid) return null;
+        const storeData = {
+          storeUid: j.storeUid,
+          certificatePosition: j.certificatePosition || 'auto'
+        };
+        G.storeData = storeData;
+        setCached(host, storeData);
+        return storeData;
       })
       .catch(e => {
         clearTimeout(timeoutId);
@@ -262,9 +276,217 @@
     });
   }
 
+  // ——— إنشاء بادج شهادة توثيق التقييمات ———
+  function createCertificateBadge(lang = 'ar', theme = 'light') {
+    // Check if certificate already exists
+    if (document.querySelector('.theqah-certificate-badge')) return null;
+    
+    const isArabic = lang === 'ar';
+    const isDark = theme === 'dark';
+    
+    const title = isArabic 
+      ? 'شهادة توثيق التقييمات'
+      : 'Verified Reviews Certificate';
+    
+    const subtitle = isArabic 
+      ? 'جميع تقييمات هذا المتجر مدققة من مشتري موثق "طرف ثالث" لضمان المصداقية'
+      : 'All store reviews are audited by Mushtari Mowthaq (Third Party) to ensure credibility';
+    
+    // Create the certificate container
+    const container = h('div', { 
+      class: 'theqah-certificate-badge',
+      style: `
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Noto Sans, Arial, sans-serif;
+        direction: ${isArabic ? 'rtl' : 'ltr'};
+        text-align: center;
+        background: ${isDark 
+          ? 'linear-gradient(135deg, #0f1629 0%, #1e293b 100%)' 
+          : 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)'};
+        border: 2px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'};
+        border-radius: 16px;
+        padding: 24px;
+        margin: 20px auto;
+        max-width: 500px;
+        box-shadow: ${isDark 
+          ? '0 10px 25px -5px rgba(0, 0, 0, 0.4)' 
+          : '0 10px 25px -5px rgba(34, 197, 94, 0.15)'};
+        position: relative;
+        overflow: hidden;
+      `
+    });
+    
+    // Add decorative top border
+    container.innerHTML = `
+      <div style="
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #22c55e, #16a34a, #22c55e);
+      "></div>
+    `;
+    
+    // Create logo with link
+    const logoLink = h('a', {
+      href: 'https://theqah.com.sa?ref=certificate',
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      style: `
+        display: inline-block;
+        margin-bottom: 16px;
+        transition: transform 0.2s ease;
+      `
+    });
+    
+    const logo = h('img', {
+      src: CERTIFICATE_LOGO_URL,
+      alt: isArabic ? 'مشتري موثق' : 'Mushtari Mowthaq',
+      style: `
+        width: 72px;
+        height: 72px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      `
+    });
+    
+    logoLink.appendChild(logo);
+    logoLink.onmouseover = function() { this.style.transform = 'scale(1.05)'; };
+    logoLink.onmouseout = function() { this.style.transform = 'scale(1)'; };
+    
+    // Create title
+    const titleEl = h('h3', {
+      style: `
+        font-size: 20px;
+        font-weight: 700;
+        color: ${isDark ? '#22c55e' : '#15803d'};
+        margin: 0 0 12px 0;
+        line-height: 1.4;
+      `
+    }, title);
+    
+    // Create subtitle
+    const subtitleEl = h('p', {
+      style: `
+        font-size: 14px;
+        color: ${isDark ? '#94a3b8' : '#64748b'};
+        margin: 0;
+        line-height: 1.6;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+      `
+    }, subtitle);
+    
+    container.appendChild(logoLink);
+    container.appendChild(titleEl);
+    container.appendChild(subtitleEl);
+    
+    return container;
+  }
+
+  // ——— إدراج شهادة التوثيق في صفحة المتجر ———
+  function insertCertificateBadge(storeUid, lang, theme, position = 'auto') {
+    // Check if already inserted
+    if (document.querySelector('.theqah-certificate-badge')) return;
+    
+    const certificate = createCertificateBadge(lang, theme);
+    if (!certificate) return;
+    
+    // Smart Heuristics: find best placement based on position setting
+    const placement = findBestPlacement(position);
+    
+    if (!placement) {
+      console.log('[Theqah] No suitable placement found for certificate');
+      return;
+    }
+    
+    if (placement.type === 'floating') {
+      // Floating badge in corner
+      certificate.style.cssText += `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        max-width: 320px;
+        animation: theqah-slide-in 0.3s ease-out;
+      `;
+      document.body.appendChild(certificate);
+      console.log('[Theqah] Certificate badge inserted as floating');
+    } else if (placement.element) {
+      if (placement.position === 'before') {
+        placement.element.parentNode.insertBefore(certificate, placement.element);
+      } else {
+        placement.element.parentNode.insertBefore(certificate, placement.element.nextSibling);
+      }
+      console.log('[Theqah] Certificate badge inserted:', placement.position, 'reviews');
+    }
+  }
+
+  // ——— Smart Heuristics: تحديد أفضل مكان للشهادة ———
+  function findBestPlacement(position) {
+    // إذا حدد صاحب المتجر مكان معين
+    if (position === 'before-reviews') {
+      const reviews = document.querySelector(
+        'salla-products-comments, .s-comments-list, .product-reviews, #reviews, [data-reviews]'
+      );
+      if (reviews) return { element: reviews, position: 'before' };
+    }
+    
+    if (position === 'after-reviews') {
+      const reviews = document.querySelector(
+        'salla-products-comments, .s-comments-list, .product-reviews, #reviews, [data-reviews]'
+      );
+      if (reviews) return { element: reviews, position: 'after' };
+    }
+    
+    if (position === 'footer') {
+      const footer = document.querySelector('footer, .s-footer, .store-footer');
+      if (footer) return { element: footer, position: 'before' };
+    }
+    
+    if (position === 'floating') {
+      return { type: 'floating' };
+    }
+    
+    // Auto mode: Smart Heuristics based on page structure
+    // أولوية 1: قبل قسم التقييمات مباشرة
+    const reviewsSection = document.querySelector(
+      'salla-products-comments, .s-comments-list, .product-reviews, .reviews-section, #reviews, [data-reviews]'
+    );
+    if (reviewsSection) {
+      return { element: reviewsSection, position: 'before' };
+    }
+    
+    // أولوية 2: بعد وصف المنتج
+    const productDesc = document.querySelector(
+      '.product-description, .product__description, .s-product-description, [data-product-description]'
+    );
+    if (productDesc) {
+      return { element: productDesc, position: 'after' };
+    }
+    
+    // أولوية 3: بعد معلومات المنتج
+    const productInfo = document.querySelector(
+      '.product-info, .product__info, .s-product-info, .product-details'
+    );
+    if (productInfo) {
+      return { element: productInfo, position: 'after' };
+    }
+    
+    // أولوية 4: في الفوتر
+    const footer = document.querySelector('footer, .s-footer');
+    if (footer) {
+      return { element: footer, position: 'before' };
+    }
+    
+    // Fallback: Floating badge
+    return { type: 'floating' };
+  }
+
 
   // ——— تركيب البادج الذكي ———
-  async function mountOne(hostEl, store, lang, theme) {
+  async function mountOne(hostEl, store, lang, theme, certificatePosition = 'auto') {
     if (hostEl.getAttribute("data-state") === "done") return;
     if (hostEl.getAttribute("data-state") === "mounting") return;
     hostEl.setAttribute("data-state", "mounting");
@@ -277,6 +499,10 @@
       // Has verified reviews - add logos to Salla reviews
       const verifiedIds = checkResult.reviews.map(r => r.sallaReviewId);
       addLogosToSallaReviews(verifiedIds);
+      
+      // Also insert the certificate badge with position setting
+      insertCertificateBadge(store, lang, theme, certificatePosition);
+      
       hostEl.setAttribute("data-state", "done");
       return;
     }
@@ -413,14 +639,19 @@
     }
 
     // محاولة auto-resolve - دائماً نحاول resolve من domain
+    let storeData = null;
+    let certificatePosition = 'auto';
+    
     if (!store) {
       try { 
         const resolveTimeout = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Resolve timeout')), 5000)
         );
-        store = await Promise.race([resolveStore(), resolveTimeout]);
-        if (store) {
-          console.log('[Theqah] Store resolved:', store);
+        storeData = await Promise.race([resolveStore(), resolveTimeout]);
+        if (storeData) {
+          store = storeData.storeUid;
+          certificatePosition = storeData.certificatePosition || 'auto';
+          console.log('[Theqah] Store resolved:', store, 'position:', certificatePosition);
         }
       }
       catch (err) { 
@@ -441,7 +672,7 @@
       return;
     }
 
-    await mountOne(host, store, String(lang).toLowerCase(), String(theme).toLowerCase());
+    await mountOne(host, store, String(lang).toLowerCase(), String(theme).toLowerCase(), certificatePosition);
     mountedOnce = true;
   };
 

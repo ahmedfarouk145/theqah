@@ -24,7 +24,7 @@ function toDomainBase(domain: string | null | undefined): string | null {
   if (!u) return null;
   const origin = u.origin.toLowerCase();
   const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
-  
+
   // For Salla dev stores, we need to try both with and without dev segment
   if (firstSeg.startsWith("dev-")) {
     console.log(`[resolve] Detected dev store: ${origin}/${firstSeg}`);
@@ -64,25 +64,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { base, host, isTrial } = parseHrefBase(href);
     const hrefUrl = normalizeUrl(href);
-    
+
     console.log(`[RESOLVE] Starting resolution for: ${href}`);
     console.log(`[RESOLVE] Parsed - base: ${base}, host: ${host}, isTrial: ${isTrial}`);
-    
+
     const db = dbAdmin();
     let doc: FirebaseFirestore.DocumentSnapshot | null = null;
 
     if (base) {
       console.log(`[resolve] Looking for store with base: ${base}, host: ${host}`);
-      
+
       // Try multiple domain formats for Salla stores
       const domainVariations = [
         base, // Full URL: https://demostore.salla.sa/dev-6pvf7vguhv841foi
         `${host}${base.includes('/') ? base.substring(base.indexOf('/', 8)) : ''}`, // Host + path: demostore.salla.sa/dev-6pvf7vguhv841foi
         host, // Just hostname: demostore.salla.sa
       ];
-      
+
       console.log(`[resolve] Trying variations:`, domainVariations);
-      
+
       for (const variation of domainVariations) {
         // direct: salla.domain (قديم) ثم domain.base (جديد)
         const directSnap = await db.collection("stores")
@@ -114,7 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const encodedBase = encodeUrlForFirestore(base);
           let domainDoc = await db.collection("domains").doc(encodedBase).get();
           if (!domainDoc.exists) {
-            try { domainDoc = await db.collection("domains").doc(base).get(); } catch {}
+            try { domainDoc = await db.collection("domains").doc(base).get(); } catch { }
           }
           if (domainDoc.exists) {
             const d = domainDoc.data() as { storeUid?: string; uid?: string } | undefined;
@@ -133,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               const encHostDev = encodeUrlForFirestore(hostDev);
               let hostDoc = await db.collection("domains").doc(encHostDev).get();
               if (!hostDoc.exists) {
-                try { hostDoc = await db.collection("domains").doc(hostDev).get(); } catch {}
+                try { hostDoc = await db.collection("domains").doc(hostDev).get(); } catch { }
               }
               if (hostDoc.exists) {
                 const hd = hostDoc.data() as { storeUid?: string; uid?: string } | undefined;
@@ -152,7 +152,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               const encNorm = encodeUrlForFirestore(normalizedBase);
               let normDoc = await db.collection("domains").doc(encNorm).get();
               if (!normDoc.exists) {
-                try { normDoc = await db.collection("domains").doc(normalizedBase).get(); } catch {}
+                try { normDoc = await db.collection("domains").doc(normalizedBase).get(); } catch { }
               }
               if (normDoc.exists) {
                 const nd = normDoc.data() as { storeUid?: string; uid?: string } | undefined;
@@ -184,7 +184,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ].filter((v, i, arr) => v && arr.indexOf(v) === i);
 
         for (const v of variations) {
-         const snapVar = await db.collection("stores")
+          const snapVar = await db.collection("stores")
             .where("salla.domain", "==", v)
             .where("salla.connected", "==", true)
             .where("salla.installed", "==", true)
@@ -264,7 +264,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Enhanced debugging for store resolution failure
       const hrefUrl = normalizeUrl(href);
       const identifier = hrefUrl?.searchParams.get("identifier") || hrefUrl?.searchParams.get("merchant");
-      
+
       console.error("[RESOLVE DEBUG] Store not found - Full analysis:");
       console.error(`[RESOLVE DEBUG] Original href: ${href}`);
       console.error(`[RESOLVE DEBUG] Parsed base: ${base}`);
@@ -275,13 +275,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         `${host}${base?.includes('/') ? base.substring(base.indexOf('/', 8)) : ''}`,
         host,
       ]);
-      
+
       // Quick check what stores actually exist
       const allSallaStores = await db.collection("stores")
         .where("provider", "==", "salla")
         .limit(10) // Get more stores for debugging
         .get();
-      
+
       console.error(`[RESOLVE DEBUG] Found ${allSallaStores.size} Salla stores in database (any status):`);
       allSallaStores.docs.forEach(doc => {
         const data = doc.data();
@@ -314,13 +314,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       storeUid?: string;
       uid?: string;
       salla?: { uid?: string; storeId?: string | number };
+      settings?: { certificatePosition?: string };
     };
     const resolvedUid =
       data.storeUid || data.uid || data.salla?.uid || (data.salla?.storeId ? `salla:${data.salla.storeId}` : undefined);
 
     if (!resolvedUid) return res.status(404).json({ error: "UID_NOT_FOUND_FOR_DOMAIN", baseTried: base });
 
-    return res.status(200).json({ storeUid: resolvedUid });
+    // Return store settings including certificate position
+    const certificatePosition = data.settings?.certificatePosition || "auto";
+
+    return res.status(200).json({
+      storeUid: resolvedUid,
+      certificatePosition
+    });
   } catch (e) {
     console.error("[resolve] unexpected", e);
     return res.status(500).json({ error: "RESOLVE_FAILED" });

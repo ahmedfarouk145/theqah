@@ -41,10 +41,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ ok: true });
     }
 
-    res.setHeader("Allow", ["GET", "POST"]);
+    // PATCH: تحديث إعداد واحد مباشرة
+    if (req.method === "PATCH") {
+      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const body = (req.body ?? {}) as any;
+      if (typeof body !== "object") return res.status(400).json({ message: "Invalid payload" });
+
+      // دعم تحديث certificatePosition وأي إعدادات أخرى
+      const updates: Record<string, unknown> = {};
+
+      if (body.certificatePosition) {
+        const validPositions = ["auto", "before-reviews", "after-reviews", "footer", "floating"];
+        if (!validPositions.includes(body.certificatePosition)) {
+          return res.status(400).json({ message: "Invalid certificatePosition value" });
+        }
+        updates["settings.certificatePosition"] = body.certificatePosition;
+      }
+
+      // يمكن إضافة المزيد من الإعدادات هنا
+      if (body.widgetTheme) {
+        updates["settings.widgetTheme"] = body.widgetTheme;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No valid settings to update" });
+      }
+
+      await setDoc(storeRef, updates, { merge: true });
+      return res.status(200).json({ ok: true, updated: Object.keys(updates) });
+    }
+
+    res.setHeader("Allow", ["GET", "POST", "PATCH"]);
     return res.status(405).json({ message: "Method not allowed" });
   } catch (e) {
     console.error("Settings Error:", e);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
