@@ -193,6 +193,7 @@
     
     // Convert verified IDs to strings for comparison
     const verifiedIdStrings = verifiedIds.map(id => String(id));
+    console.log('[Theqah] Looking for reviews with IDs:', verifiedIdStrings);
     
     // Salla modern theme uses salla-comment-item custom elements
     // with internal divs having id="s-comments-item-[REVIEW_ID]"
@@ -201,19 +202,30 @@
       '.s-comments-item',              // Salla class selector
       '[id^="s-comments-item-"]',      // Direct ID pattern match
       '[data-review-id]',              // Legacy data attribute
+      '[data-comment-id]',             // Alternative data attribute
       '.product-review',               // Generic
       '.review-item',                  // Generic
-      '.s-review-item'                 // Salla legacy
+      '.s-review-item',                // Salla legacy
+      '.comment-item',                 // Comment item
+      '[class*="comment"]',            // Any class containing comment
+      '[class*="review"]'              // Any class containing review
     ];
+    
+    let foundCount = 0;
+    let addedCount = 0;
     
     selectors.forEach(selector => {
       const reviewElements = document.querySelectorAll(selector);
+      if (reviewElements.length > 0) {
+        console.log(`[Theqah] Found ${reviewElements.length} elements with selector: ${selector}`);
+      }
+      
       reviewElements.forEach(el => {
         // Extract review ID from multiple possible sources
         let reviewId = null;
         
-        // 1. From data-review-id attribute
-        reviewId = el.getAttribute('data-review-id') || el.getAttribute('data-id');
+        // 1. From data-review-id or data-comment-id attribute
+        reviewId = el.getAttribute('data-review-id') || el.getAttribute('data-id') || el.getAttribute('data-comment-id');
         
         // 2. From internal div with id="s-comments-item-[ID]"
         if (!reviewId) {
@@ -226,13 +238,31 @@
         
         // 3. From element's own id if it matches the pattern
         if (!reviewId && el.id) {
-          const idMatch = el.id.match(/s-comments-item-(\d+)/);
+          const idMatch = el.id.match(/s-comments-item-(\d+)/) || el.id.match(/comment-(\d+)/) || el.id.match(/review-(\d+)/);
           if (idMatch) reviewId = idMatch[1];
         }
         
         // 4. From nested element with data-review-id
         if (!reviewId) {
-          reviewId = el.querySelector('[data-review-id]')?.getAttribute('data-review-id');
+          reviewId = el.querySelector('[data-review-id]')?.getAttribute('data-review-id') ||
+                     el.querySelector('[data-comment-id]')?.getAttribute('data-comment-id');
+        }
+        
+        // 5. Try to find ID in any attribute
+        if (!reviewId) {
+          const attrs = el.attributes;
+          for (let i = 0; i < attrs.length; i++) {
+            const match = attrs[i].value.match(/(\d{5,})/); // Look for numeric IDs with 5+ digits
+            if (match) {
+              reviewId = match[1];
+              break;
+            }
+          }
+        }
+        
+        if (reviewId) {
+          foundCount++;
+          console.log(`[Theqah] Found review element with ID: ${reviewId}, matches: ${verifiedIdStrings.includes(String(reviewId))}`);
         }
         
         if (!reviewId || !verifiedIdStrings.includes(String(reviewId))) return;
@@ -242,12 +272,21 @@
         let insertPoint = 
           el.querySelector('.s-comments-item-user-info-name') ||  // User name in Salla
           el.querySelector('.s-comments-item-user-wrapper') ||    // User wrapper
+          el.querySelector('[class*="user-name"]') ||             // Any user name class
+          el.querySelector('[class*="user-info"]') ||             // Any user info class
+          el.querySelector('[class*="author"]') ||                // Author class
           el.querySelector('.review-header') || 
           el.querySelector('.review-stars') || 
           el.querySelector('.review-rating') || 
+          el.querySelector('[class*="rating"]') ||                // Any rating class
           el.firstElementChild;
         
-        if (!insertPoint) return;
+        if (!insertPoint) {
+          console.log('[Theqah] No insert point found for review:', reviewId);
+          return;
+        }
+        
+        console.log('[Theqah] Adding logo to review:', reviewId, 'at:', insertPoint.className || insertPoint.tagName);
         
         // Create clickable logo with link to theqah homepage
         const logoLink = document.createElement('a');
@@ -255,7 +294,7 @@
         logoLink.target = '_blank';
         logoLink.rel = 'noopener noreferrer';
         logoLink.title = 'مشتري موثق - Verified Buyer | theqah.com.sa';
-        logoLink.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none;transition:transform 0.2s ease;';
+        logoLink.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none;transition:transform 0.2s ease;margin-inline-start:8px;';
         logoLink.onmouseover = function() { this.style.transform = 'scale(1.1)'; };
         logoLink.onmouseout = function() { this.style.transform = 'scale(1)'; };
         
