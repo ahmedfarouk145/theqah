@@ -26,10 +26,11 @@ const AdminSubscriptions = dynamic(() => import('@/components/admin/AdminSubscri
   loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-green-600" /></div>,
   ssr: false
 });
-const TestNotifyTab = dynamic(() => import('@/components/admin/tabs/TestNotifyTab'), {
+const AdminMonitoring = dynamic(() => import('@/components/admin/AdminMonitoring'), {
   loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-green-600" /></div>,
   ssr: false
 });
+
 
 const adminTabs = [
   'مراجعة التقييمات',
@@ -37,7 +38,7 @@ const adminTabs = [
   'المتاجر',
   'الإحصائيات العامة',
   'إدارة الاشتراكات',
-  'اختبار القنوات',
+  'المراقبة',
 ] as const;
 
 type Tab = typeof adminTabs[number];
@@ -56,8 +57,8 @@ export default function AdminDashboard() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-md font-medium border transition text-sm ${activeTab === tab
-                ? 'bg-green-700 text-white border-green-700'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+              ? 'bg-green-700 text-white border-green-700'
+              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
               }`}
           >
             {tab}
@@ -72,7 +73,8 @@ export default function AdminDashboard() {
         {activeTab === 'المتاجر' && <AdminStores />}
         {activeTab === 'الإحصائيات العامة' && <AdminAnalytics />}
         {activeTab === 'إدارة الاشتراكات' && <AdminSubscriptions />}
-        {activeTab === 'اختبار القنوات' && <TestNotifyTab />}
+        {activeTab === 'المراقبة' && <AdminMonitoring />}
+
       </div>
     </div>
   );

@@ -3,7 +3,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useFlag } from '@/features/flags/useFlag';
 import { useAuth } from '@/contexts/AuthContext';
 import axios from '@/lib/axiosInstance';
 import { Loader2, Lock } from 'lucide-react';
@@ -40,10 +39,7 @@ const FeedbackWidget = dynamic(() => import('@/components/FeedbackWidget'), {
   ssr: false,
   loading: () => null
 });
-const ReAuthBanner = dynamic(() => import('@/components/dashboard/ReAuthBanner'), {
-  ssr: false,
-  loading: () => null
-});
+
 
 const tabs = ['الإحصائيات', 'الطلبات', 'التقييمات', 'الإعدادات', 'المساعدة'] as const;
 type Tab = (typeof tabs)[number] | 'التقييمات المعلقة';
@@ -55,7 +51,6 @@ function getCookie(name: string): string | null {
 }
 
 export default function DashboardPage() {
-  const dashboardV2Enabled = useFlag('DASHBOARD_V2');
   const { user, loading: authLoading } = useAuth();
 
   const [activeTab, setActiveTab] = useState<Tab>(() => {
@@ -180,8 +175,7 @@ export default function DashboardPage() {
         {headerRight}
       </div>
 
-      {/* C6: Re-authorization Banner - lazy loaded */}
-      <ReAuthBanner storeUid={storeUid} />
+
 
       {/* Tabs with fixed height to prevent CLS */}
       <div className="flex space-x-2 mb-6 rtl:space-x-reverse min-h-[44px]">

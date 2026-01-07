@@ -1,8 +1,9 @@
 // src/pages/api/reviews/check-verified.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { dbAdmin } from "@/lib/firebaseAdmin";
 import { rateLimitPublic, RateLimitPresets } from "@/server/rate-limit-public";
 import { setCorsHeaders } from "@/server/middleware/cors";
+import { VerificationService } from "@/server/services";
+import { handleApiError, ValidationError } from "@/server/core";
 
 export const config = { api: { bodyParser: true } };
 
@@ -37,58 +38,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { storeId, productId } = req.query;
 
   if (!storeId || typeof storeId !== "string") {
-    return res.status(400).json({ error: "storeId is required" });
+    throw new ValidationError("storeId is required", "storeId");
   }
 
   try {
-    const db = dbAdmin();
-    
-    // Build query
-    let query = db.collection("reviews")
-      .where("storeUid", "==", storeId)
-      .where("source", "==", "salla_native")
-      .where("verified", "==", true)
-      .where("status", "==", "approved");
+    const verificationService = new VerificationService();
+    const productIdStr = productId && typeof productId === "string" ? productId : undefined;
 
-    // Filter by product if provided
-    if (productId && typeof productId === "string") {
-      query = query.where("productId", "==", productId);
-    }
+    const result = await verificationService.getVerifiedReviews(storeId, productIdStr);
 
-    const snapshot = await query.get();
-
-    if (snapshot.empty) {
-      return res.status(200).json({
-        hasVerified: false,
-        count: 0,
-        reviews: []
-      });
-    }
-
-    // Return verified review IDs for logo placement
-    // Support both sallaReviewId (new) and orderId+productId (fallback)
-    const reviews = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        sallaReviewId: data.sallaReviewId || null,
-        orderId: data.orderId || null,
-        productId: data.productId || null,
-        stars: data.stars,
-        verified: data.verified
-      };
-    });
-
+    // Map to existing response format for backward compatibility
     return res.status(200).json({
-      hasVerified: true,
-      count: reviews.length,
-      reviews
+      hasVerified: result.hasVerified,
+      count: result.count,
+      reviews: result.reviews.map(r => ({
+        sallaReviewId: r.sallaReviewId || null,
+        orderId: r.orderId || null,
+        productId: r.productId || null,
+        stars: r.stars,
+        verified: r.verified
+      }))
     });
 
-  } catch (error: unknown) {
-    console.error("[Check Verified Error]:", error);
-    return res.status(500).json({ 
-      error: "Internal server error",
-      message: error instanceof Error ? error.message : "Unknown error"
-    });
+  } catch (error) {
+    handleApiError(res, error);
   }
 }

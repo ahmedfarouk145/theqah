@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { dbAdmin } from "@/lib/firebaseAdmin";
+import { VerificationService } from "@/server/services/verification.service";
 
 function allowCors(res: NextApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -8,7 +8,7 @@ function allowCors(res: NextApiResponse) {
 }
 
 function jsEscape(s: string) {
-  return (s || "").replace(/\\/g,"\\\\").replace(/`/g,"\\`");
+  return (s || "").replace(/\\/g, "\\\\").replace(/`/g, "\\`");
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -23,31 +23,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader("Cache-Control", "public, max-age=300"); // 5m
 
   const storeParam = typeof req.query.store === "string" ? req.query.store.trim() : "";
-  const color = typeof req.query.color === "string" ? `#${req.query.color.replace(/[^0-9a-fA-F]/g,"")}` : "#10b981"; // Emerald
-  const pos   = typeof req.query.pos === "string" ? req.query.pos : "br"; // br | bl
+  const color = typeof req.query.color === "string" ? `#${req.query.color.replace(/[^0-9a-fA-F]/g, "")}` : "#10b981"; // Emerald
+  const pos = typeof req.query.pos === "string" ? req.query.pos : "br"; // br | bl
 
-  const db = dbAdmin();
+  // Use VerificationService to get widget data
+  const verificationService = new VerificationService();
+  const { storeUid, storeName, publicReviewUrl } = storeParam
+    ? await verificationService.getWidgetData(storeParam)
+    : { storeUid: "", storeName: "متجرك", publicReviewUrl: "" };
 
-  // 1) نحاول إيجاد المتجر
-  let storeUid = "";
-  let storeName = "متجرك";
-  let publicReviewUrl = ""; // رابط صفحة تقييم/ملف عام – غيّره حسب مسارك
-
-  if (storeParam) {
-    // الشكل المتوقّع: salla:9827...
-    storeUid = storeParam;
-    try {
-      const sDoc = await db.collection("stores").doc(storeUid).get();
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const s = sDoc.data() as any;
-      storeName = s?.salla?.storeName || s?.storeName || storeName;
-
-      // لو عندك صفحة عامة للمتجر عندك (مثلاً /s/{id} أو /store/{id})
-      publicReviewUrl = `${(process.env.NEXT_PUBLIC_APP_URL || process.env.APP_BASE_URL || "").replace(/\/+$/,"")}/s/${encodeURIComponent(storeUid)}`;
-    } catch {}
-  }
-
-  // 2) ودجت بسيط: زر دائري ثابت + نافذة منبثقة تعرض CTA
+  // ودجت بسيط: زر دائري ثابت + نافذة منبثقة تعرض CTA
   const js = `
 (function(){
   try {

@@ -16,15 +16,13 @@ import {
 } from 'lucide-react';
 
 import ZidIntegrationTab from '@/components/dashboard/settings/ZidIntegrationTab';
-import MessageSettings from '@/components/dashboard/settings/MessageSettings';
 import SallaIntegrationTab from '@/components/dashboard/settings/SallaIntegrationTab';
-import UsageCounter from '@/components/dashboard/UsageCounter';
 
 type TabMeta = {
-  id: 'الربط' | 'الرسائل' | 'معلومات المتجر';
+  id: 'الربط' | 'معلومات المتجر';
   label: string;
   icon: LucideIcon;
-  color: string; // tailwind gradient
+  color: string;
   description: string;
 };
 
@@ -35,13 +33,6 @@ const settingsTabs: TabMeta[] = [
     icon: LinkIcon,
     color: 'from-blue-500 to-blue-600',
     description: 'ربط المتجر مع المنصات',
-  },
-  {
-    id: 'الرسائل',
-    label: 'الرسائل',
-    icon: MessageSquare,
-    color: 'from-emerald-500 to-emerald-600',
-    description: 'إعدادات الرسائل والإشعارات',
   },
   {
     id: 'معلومات المتجر',
@@ -65,11 +56,10 @@ const TabButton = ({
 }) => (
   <button
     onClick={onClick}
-    className={`group relative overflow-hidden rounded-2xl border transition-all duration-500 transform hover:-translate-y-1 hover:scale-105 ${
-      isActive
-        ? 'bg-white shadow-2xl border-gray-200/50 scale-105'
-        : 'bg-white/60 backdrop-blur-sm border-gray-200/30 hover:bg-white/80 hover:shadow-xl'
-    }`}
+    className={`group relative overflow-hidden rounded-2xl border transition-all duration-500 transform hover:-translate-y-1 hover:scale-105 ${isActive
+      ? 'bg-white shadow-2xl border-gray-200/50 scale-105'
+      : 'bg-white/60 backdrop-blur-sm border-gray-200/30 hover:bg-white/80 hover:shadow-xl'
+      }`}
     style={{
       animationDelay: `${delay}ms`,
       animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
@@ -99,9 +89,8 @@ const TabButton = ({
 
       {/* Arrow Indicator */}
       <div
-        className={`mt-4 flex items-center justify-center transition-all duration-300 ${
-          isActive ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0'
-        }`}
+        className={`mt-4 flex items-center justify-center transition-all duration-300 ${isActive ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0'
+          }`}
       >
         <ChevronRight className="w-5 h-5 text-gray-400" />
       </div>
@@ -202,10 +191,6 @@ export default function StoreSettings({
       <ContentCard delay={400}>
         {activeTab === 'الربط' && (
           <div className="space-y-8">
-            {/* Usage Counter */}
-            <div className="mb-8">
-              <UsageCounter />
-            </div>
 
             {/* Header Section */}
             <div className="text-center space-y-4 pb-8 border-b border-gray-200/50">
@@ -237,7 +222,7 @@ export default function StoreSettings({
                     <Zap className="w-6 h-6 text-emerald-600" />
                     منصة سلة
                   </h3>
-                   <SallaIntegrationTab storeUid={storeUid} />
+                  <SallaIntegrationTab storeUid={storeUid} />
                 </div>
               </div>
 
@@ -263,38 +248,7 @@ export default function StoreSettings({
           </div>
         )}
 
-        {activeTab === 'الرسائل' && (
-          <div className="space-y-8">
-            {/* Header Section */}
-            <div className="text-center space-y-4 pb-8 border-b border-gray-200/50">
-              <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-green-600 rounded-3xl flex items-center justify-center mx-auto shadow-2xl hover:rotate-12 hover:scale-110 transition-all duration-500 group">
-                <MessageSquare className="w-10 h-10 text-white group-hover:scale-110 transition-transform duration-300" />
-              </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
-                ✉️ إعدادات الرسائل
-              </h2>
-              <p className="text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                تخصيص رسائل التقييم والإشعارات لتحسين التواصل مع عملائك
-              </p>
-            </div>
 
-            {/* Message Settings Content */}
-            <div
-              className="group relative bg-gradient-to-br from-white to-emerald-50/30 rounded-2xl border border-gray-200/50 p-8 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1 overflow-hidden"
-              style={{
-                animationDelay: '500ms',
-                animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                opacity: 0,
-                transform: 'translateY(30px)',
-              }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative z-10">
-                <MessageSettings />
-              </div>
-            </div>
-          </div>
-        )}
 
         {activeTab === 'معلومات المتجر' && (
           <div className="space-y-8">

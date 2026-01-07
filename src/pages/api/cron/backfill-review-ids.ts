@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { dbAdmin } from "@/lib/firebaseAdmin";
 import { log } from "@/lib/logger";
+import { RepositoryFactory } from "@/server/repositories";
+import { handleApiError, UnauthorizedError } from "@/server/core";
 
 /**
  * Cron job to backfill sallaReviewId for reviews that were saved from webhooks
@@ -21,25 +22,22 @@ export default async function handler(
   // Verify cron authorization
   const authHeader = req.headers.authorization;
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: "Unauthorized" });
+    throw new UnauthorizedError("Invalid cron authorization");
   }
 
   try {
-    const db = dbAdmin();
-    
+    const reviewRepo = RepositoryFactory.getReviewRepository();
+    const ownerRepo = RepositoryFactory.getOwnerRepository();
+
     log("info", "backfill-review-ids started", { scope: "cron" });
 
-    // Query reviews that need Salla review ID
-    const reviewsToBackfill = await db
-      .collection("reviews")
-      .where("needsSallaId", "==", true)
-      .limit(50) // Process 50 reviews per run to avoid timeout
-      .get();
+    // Query reviews that need Salla review ID using repository
+    const reviewsToBackfill = await reviewRepo.findNeedingSallaId(50);
 
-    if (reviewsToBackfill.empty) {
+    if (reviewsToBackfill.length === 0) {
       log("info", "No reviews to backfill", { scope: "cron" });
-      return res.status(200).json({ 
-        success: true, 
+      return res.status(200).json({
+        success: true,
         processed: 0,
         message: "No reviews to backfill"
       });
@@ -53,34 +51,24 @@ export default async function handler(
     };
 
     // Process each review
-    for (const reviewDoc of reviewsToBackfill.docs) {
+    for (const review of reviewsToBackfill) {
       results.processed++;
-      const review = reviewDoc.data();
-      
+
       try {
-        // Get store access token from owners collection
+        // Get store access token using repository
         const storeUid = review.storeUid;
-        const ownerDoc = await db
-          .collection("owners")
-          .doc(storeUid)
-          .get();
+        const accessToken = await ownerRepo.getAccessToken(storeUid);
 
-        if (!ownerDoc.exists) {
-          throw new Error(`Store ${storeUid} not found in owners`);
-        }
-
-        const ownerData = ownerDoc.data();
-        if (!ownerData?.oauth?.access_token) {
+        if (!accessToken) {
           throw new Error(`No access token for store ${storeUid}`);
         }
 
         // Fetch ALL reviews from Salla API (no product filter support)
-        // Salla API doesn't support filtering by products[] parameter
         const apiUrl = `https://api.salla.dev/admin/v2/reviews?per_page=100`;
-        
+
         const sallaResponse = await fetch(apiUrl, {
           headers: {
-            Authorization: `Bearer ${ownerData.oauth.access_token}`,
+            Authorization: `Bearer ${accessToken}`,
             Accept: "application/json"
           }
         });
@@ -90,13 +78,13 @@ export default async function handler(
         }
 
         const sallaData = await sallaResponse.json() as {
-          data?: Array<{ 
-            id: number | string; 
+          data?: Array<{
+            id: number | string;
             order_id: number | string | null;
             type?: string;
           }>;
         };
-        
+
         // Find matching review by orderId (filter client-side)
         // Only match product reviews (type: 'rating'), not testimonials
         const matchingReview = sallaData.data?.find((r) => {
@@ -105,28 +93,21 @@ export default async function handler(
         });
 
         if (matchingReview) {
-          // Update review with Salla review ID
-          await db
-            .collection("reviews")
-            .doc(reviewDoc.id)
-            .update({
-              sallaReviewId: String(matchingReview.id),
-              needsSallaId: false,
-              backfilledAt: new Date().toISOString()
-            });
+          // Update review with Salla review ID using repository
+          await reviewRepo.updateSallaId(review.reviewId, String(matchingReview.id));
 
           results.updated++;
-          
-          log("info", `Backfilled review ${reviewDoc.id} with sallaReviewId ${matchingReview.id}`, { 
+
+          log("info", `Backfilled review ${review.reviewId} with sallaReviewId ${matchingReview.id}`, {
             scope: "cron",
-            reviewId: reviewDoc.id,
+            reviewId: review.reviewId,
             sallaReviewId: matchingReview.id
           });
         } else {
           // Review not found yet (still indexing), leave flag for next run
-          log("info", `Review not found in Salla API yet: ${reviewDoc.id}, order ${review.orderId}`, {
+          log("info", `Review not found in Salla API yet: ${review.reviewId}, order ${review.orderId}`, {
             scope: "cron",
-            reviewId: reviewDoc.id,
+            reviewId: review.reviewId,
             orderId: review.orderId
           });
         }
@@ -135,19 +116,19 @@ export default async function handler(
         results.failed++;
         const errorMessage = error instanceof Error ? error.message : String(error);
         results.errors.push({
-          reviewId: reviewDoc.id,
+          reviewId: review.reviewId,
           error: errorMessage
         });
 
-        log("error", `Failed to backfill review ${reviewDoc.id}`, {
+        log("error", `Failed to backfill review ${review.reviewId}`, {
           scope: "cron",
-          reviewId: reviewDoc.id,
+          reviewId: review.reviewId,
           error: errorMessage
         });
       }
     }
 
-    log("info", "backfill-review-ids completed", { 
+    log("info", "backfill-review-ids completed", {
       scope: "cron",
       ...results
     });
@@ -158,15 +139,6 @@ export default async function handler(
     });
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    log("error", "backfill-review-ids failed", {
-      scope: "cron",
-      error: errorMessage
-    });
-
-    return res.status(500).json({
-      success: false,
-      error: errorMessage
-    });
+    handleApiError(res, error);
   }
 }

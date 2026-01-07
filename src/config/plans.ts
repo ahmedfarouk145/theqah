@@ -45,45 +45,42 @@ export const PLANS: Record<PlanId, PlanDef> = {
   },
   PAID_MONTHLY: {
     id: "PAID_MONTHLY",
-    name: "الخيار المرن (شهري)",
-    nameEn: "Flexible Plan (Monthly)",
+    name: "Unlimited Growth Plan",
+    nameEn: "Unlimited Growth Plan",
     priceSar: 21,
     priceBeforeDiscount: 30,
-    reviewsPerMonth: 1000,
+    reviewsPerMonth: -1, // Unlimited
     billingCycle: 'monthly',
     savingsPercent: 30,
     features: [
-      "✅ نظام \"مشتري موثق\" كامل (توثيق + ويدجت + لوحة تحكم)",
-      "✅ حتى 1,000 مراجعة شهرياً",
-      "✅ شارة \"مُشتري موثّق\" بجانب كل تقييم",
-      "✅ اعتماد التقييمات قبل نشرها من لوحة التحكم",
-      "✅ فلترة ذكية للألفاظ غير اللائقة تلقائياً",
-      "✅ جمع تقييمات حقيقية من عملائك بعد كل عملية شراء",
-      "✅ ويدجت احترافي قابل للتضمين في صفحات المنتجات",
-      "✅ تقارير تحليلية لقياس رضا العملاء",
-      "💎 خصم 30% (بدلاً من 30 ريال)",
-      "🔒 ضمان السعر: خصمك يستمر معك طالما اشتراكك ساري",
+      "✅ Unlimited verified reviews",
+      "✅ 24 Hour Automated AI protection",
+      "✅ Instant Verified Buyer badge",
+      "✅ Comprehensive customer dashboard",
+      "✅ Instant activation",
+      "💎 30% Off (was 30 SAR)",
     ],
   },
   PAID_ANNUAL: {
     id: "PAID_ANNUAL",
-    name: "الخيار الأذكى (سنوي)",
-    nameEn: "Smart Plan (Annual)",
+    name: "Founders Annual Plan",
+    nameEn: "Founders Annual Plan",
     priceSar: 210,
     priceBeforeDiscount: 360,
-    reviewsPerMonth: 1000,
+    reviewsPerMonth: -1, // Unlimited
     billingCycle: 'annual',
     savingsPercent: 42,
     features: [
-      "✅ جميع مزايا الخيار الشهري",
-      "✅ حتى 1,000 مراجعة شهرياً",
-      "💰 وفّر 42% - الشهر بـ 17.5 ريال فقط!",
-      "💎 دفع سنوي: 210 ريال للسنة كاملة",
-      "🎁 وفّرت 150 ريال في السنة",
-      "🔒 ضمان السعر: خصمك يستمر معك طالما اشتراكك ساري",
-      "⚡ الخيار الأوفر والأذكى!",
+      "✅ Unlimited verified reviews",
+      "✅ 24 Hour Automated AI protection",
+      "✅ Instant Verified Buyer badge",
+      "✅ Comprehensive customer dashboard",
+      "✅ Instant activation",
+      "⭐ Priority support for early subscribers",
+      "🔒 Price locked in for founders",
+      "💰 Best value - 17.5 SAR/month!",
     ],
-    highlight: true, // الأكثر رواجًا
+    highlight: true,
   },
 };
 
@@ -102,29 +99,36 @@ export function getCycleBoundaries(date = new Date()) {
  */
 export function mapSallaPlanToInternal(planName?: string | null, billingCycle?: 'monthly' | 'annual' | null): PlanId | null {
   if (!planName) return null;
-  
+
   const normalized = String(planName).toLowerCase().trim();
-  
+
   // دعم الأسماء بالعربية والإنجليزية
   const mapping: Record<string, PlanId> = {
-    // نظام جديد (عرض الإطلاق)
+    // Trial plan
     "تجريبي": "TRIAL",
     "trial": "TRIAL",
     "free trial": "TRIAL",
     "مجاني": "TRIAL",
-    
-    // الباقة المدفوعة (حسب دورة الفوترة)
+
+    // New plan names (current branding)
+    "unlimited growth plan": "PAID_MONTHLY",
+    "unlimited growth": "PAID_MONTHLY",
+    "founders annual plan": "PAID_ANNUAL",
+    "founders annual": "PAID_ANNUAL",
+    "founders": "PAID_ANNUAL",
+
+    // Billing cycle based
     "مدفوع": billingCycle === 'annual' ? "PAID_ANNUAL" : "PAID_MONTHLY",
     "paid": billingCycle === 'annual' ? "PAID_ANNUAL" : "PAID_MONTHLY",
     "شهري": "PAID_MONTHLY",
     "monthly": "PAID_MONTHLY",
-    "الخيار المرن": "PAID_MONTHLY",
     "سنوي": "PAID_ANNUAL",
     "annual": "PAID_ANNUAL",
     "yearly": "PAID_ANNUAL",
+
+    // Legacy names (backward compatibility)
+    "الخيار المرن": "PAID_MONTHLY",
     "الخيار الأذكى": "PAID_ANNUAL",
-    
-    // أسماء قديمة (للتوافق مع النظام القديم - تحويل للباقة المدفوعة)
     "انطلاقة": "PAID_MONTHLY",
     "starter": "PAID_MONTHLY",
     "زيادة المبيعات": "PAID_MONTHLY",
@@ -132,19 +136,19 @@ export function mapSallaPlanToInternal(planName?: string | null, billingCycle?: 
     "توسع": "PAID_ANNUAL",
     "expansion": "PAID_ANNUAL",
   };
-  
+
   // البحث المباشر
   if (mapping[normalized]) {
     return mapping[normalized];
   }
-  
+
   // البحث الجزئي (في حالة وجود كلمات إضافية)
   for (const [key, planId] of Object.entries(mapping)) {
     if (normalized.includes(key) || key.includes(normalized)) {
       return planId;
     }
   }
-  
+
   // افتراضي: إذا لم يتم تحديد، استخدم الشهري
   return billingCycle === 'annual' ? "PAID_ANNUAL" : "PAID_MONTHLY";
 }

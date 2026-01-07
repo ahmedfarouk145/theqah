@@ -1,145 +1,37 @@
 // src/pages/api/salla/webhook.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { fetchStoreInfo, fetchUserInfo, getOwnerAccessToken } from "@/lib/sallaClient";
-import { canSendInvite } from "@/server/subscription/usage";
 import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
 import { trackWebhook } from "@/server/monitoring/metrics";
 import { moderateReview } from "@/server/moderation";
+import { SallaWebhookService } from "@/server/services/salla-webhook.service";
+
+// Extracted types and utilities
+import type { Dict, SallaOrder, SallaWebhookBody } from "@/server/types/salla-webhook.types";
+import {
+  lc,
+  getHeader,
+  readRawBody,
+  verifySallaRequest,
+  toDomainBase,
+  normalizeUrl,
+  encodeUrlForFirestore,
+  pickStoreUidFromSalla,
+  keyOf,
+  generateIdempotencyKey,
+} from "@/server/utils/salla-webhook.utils";
+import { fbLog } from "@/server/utils/salla-webhook.logger";
 
 export const runtime = "nodejs";
 export const config = { api: { bodyParser: false } };
 
-/* ===================== Types ===================== */
-type Dict = Record<string, unknown>;
-
-interface SallaCustomer { name?: string; email?: string; mobile?: string | number; }
-interface SallaItem { id?: string | number; product?: { id?: string | number } | null; product_id?: string | number; }
-interface SallaOrder {
-  id?: string | number; order_id?: string | number; reference_id?: string | number; number?: string | number;
-  status?: string; order_status?: string; new_status?: string; shipment_status?: string;
-  payment_status?: string;
-  customer?: SallaCustomer; items?: SallaItem[];
-  store?: { id?: string | number; name?: string; domain?: string; url?: string } | null;
-  merchant?: { id?: string | number; name?: string; domain?: string; url?: string } | null;
-}
-interface SallaWebhookBody {
-  event: string;
-  merchant?: string | number;
-  data?: SallaOrder | Dict;
-  created_at?: string;
-}
-
 /* ===================== Env ===================== */
 const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
-const APP_BASE_URL = (
-  process.env.APP_BASE_URL ||
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.NEXT_PUBLIC_BASE_URL ||
-  (process.env.NODE_ENV === "development" ? "http://localhost:3000" : "")
-).replace(/\/+$/, "");
-const WEBHOOK_LOG_DEST = (process.env.WEBHOOK_LOG_DEST || "console").trim().toLowerCase(); // console | firestore
-const ENABLE_FIRESTORE_LOGS = process.env.ENABLE_FIRESTORE_LOGS === "true"; // Better env control
 const isDevelopment = process.env.NODE_ENV === "development";
 
-/* ===================== Utils ===================== */
-const lc = (x: unknown) => String(x ?? "").toLowerCase();
-// const DONE = new Set(["paid","fulfilled","delivered","completed","complete","تم التوصيل","مكتمل","تم التنفيذ"]); // unused for now
-
-// Safe mobile number handling - convert to string and handle null/undefined
-function safeMobile(mobile: string | number | null | undefined): string | null {
-  if (!mobile) return null;
-  let cleaned = typeof mobile === 'string' ? mobile.trim() : String(mobile).trim();
-
-  // ✅ إزالة الرموز غير المرغوبة
-  cleaned = cleaned.replace(/[\s\-\(\)]/g, '');
-
-  // ✅ إزالة + في البداية
-  if (cleaned.startsWith('+')) {
-    cleaned = cleaned.substring(1);
-  }
-
-  // ✅ إصلاح التكرار: 966966 → 966
-  if (cleaned.startsWith('966966')) {
-    cleaned = cleaned.substring(3);
-  }
-
-  // ✅ إضافة 966 لو الرقم يبدأ بـ 5 (رقم سعودي محلي)
-  if (cleaned.startsWith('5') && cleaned.length === 9) {
-    cleaned = '966' + cleaned;
-  }
-
-  return cleaned || null;
-}
-
-function getHeader(req: NextApiRequest, name: string): string {
-  const v = req.headers[name.toLowerCase()];
-  return Array.isArray(v) ? (v[0] || "") : (v || "");
-}
-function readRawBody(req: NextApiRequest): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on("data", (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
-    req.on("end", () => resolve(Buffer.concat(chunks)));
-    req.on("error", reject);
-  });
-}
-function timingSafeEq(a: string, b: string) {
-  try {
-    const A = Buffer.from(a, "utf8"), B = Buffer.from(b, "utf8");
-    if (A.length !== B.length) return false;
-    return crypto.timingSafeEqual(A, B);
-  } catch { return false; }
-}
-
-/* ---------- Security (signature/token/auto) ---------- */
-function verifySignature(raw: Buffer, req: NextApiRequest): boolean {
-  const sigHeader = getHeader(req, "x-salla-signature");
-  if (!WEBHOOK_SECRET || !sigHeader) return false;
-  const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(raw).digest("hex");
-  return timingSafeEq(sigHeader, expected);
-}
-function extractProvidedToken(req: NextApiRequest): string {
-  const auth = getHeader(req, "authorization").trim();
-  if (auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
-  return getHeader(req, "x-salla-token").trim()
-    || getHeader(req, "x-webhook-token").trim()
-    || (typeof req.query.t === "string" ? req.query.t.trim() : "");
-}
-function verifyToken(req: NextApiRequest): boolean {
-  const provided = extractProvidedToken(req);
-  return !!WEBHOOK_TOKEN && !!provided && timingSafeEq(provided, WEBHOOK_TOKEN);
-}
-function verifySallaRequest(req: NextApiRequest, raw: Buffer): { ok: boolean; strategy: "signature" | "token" | "none" } {
-  const strategy = lc(getHeader(req, "x-salla-security-strategy") || "");
-  if (strategy === "signature") return { ok: verifySignature(raw, req), strategy: "signature" };
-  if (strategy === "token") return { ok: verifyToken(req), strategy: "token" };
-  if (verifySignature(raw, req)) return { ok: true, strategy: "signature" };
-  if (verifyToken(req)) return { ok: true, strategy: "token" };
-  return { ok: false, strategy: "none" };
-}
-
-/* ---------- Domain helpers ---------- */
-function toDomainBase(domain: string | null | undefined): string | null {
-  if (!domain) return null;
-  try {
-    const u = new URL(String(domain));
-    const origin = u.origin.toLowerCase();
-    const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
-    return firstSeg && firstSeg.startsWith("dev-") ? `${origin}/${firstSeg}` : origin;
-  } catch { return null; }
-}
-
-function normalizeUrl(url: string): URL | null {
-  try {
-    return new URL(url.startsWith('http') ? url : `https://${url}`);
-  } catch {
-    return null;
-  }
-}
-
+/* ===================== Domain Helpers (to be moved to service later) ===================== */
 function saveMultipleDomainFormats(
   db: FirebaseFirestore.Firestore,
   uid: string,
@@ -155,15 +47,13 @@ function saveMultipleDomainFormats(
   const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
 
   const domainsToSave = [
-    origin, // https://demostore.salla.sa
-    hostname, // demostore.salla.sa
+    origin,
+    hostname,
   ];
 
   if (firstSeg.startsWith("dev-")) {
     domainsToSave.push(`${origin}/${firstSeg}`, `${hostname}/${firstSeg}`);
   }
-
-  console.log(`[webhook] Saving multiple domain formats for ${uid}:`, domainsToSave);
 
   const promises = domainsToSave.map(domain =>
     db.collection("domains").doc(encodeUrlForFirestore(domain)).set({
@@ -180,56 +70,6 @@ function saveMultipleDomainFormats(
 
   return Promise.all(promises);
 }
-function encodeUrlForFirestore(url: string | null | undefined): string {
-  if (!url) return "";
-  return url
-    .replace(/:/g, "_COLON_")
-    .replace(/\//g, "_SLASH_")
-    .replace(/\?/g, "_QUEST_")
-    .replace(/#/g, "_HASH_")
-    .replace(/&/g, "_AMP_");
-}
-function pickStoreUidFromSalla(eventData: Dict, bodyMerchant?: string | number): string | undefined {
-  if (bodyMerchant !== undefined && bodyMerchant !== null) return `salla:${String(bodyMerchant)}`;
-  const store = eventData["store"] as Dict | undefined;
-  const merchant = eventData["merchant"] as Dict | undefined;
-  const sid = store?.["id"] ?? merchant?.["id"];
-  return sid !== undefined ? `salla:${String(sid)}` : undefined;
-}
-function extractProductIds(items?: SallaItem[]): string[] {
-  if (!Array.isArray(items)) return [];
-  const ids = new Set<string>();
-  for (const it of items) {
-    const raw = it?.product_id ?? it?.product?.id ?? it?.id;
-    if (raw !== undefined && raw !== null) ids.add(String(raw));
-  }
-  return [...ids];
-}
-
-// استخراج اسم المنتج الأساسي (أول منتج في الطلب)
-function extractMainProductName(items?: SallaItem[]): string | undefined {
-  if (!Array.isArray(items) || !items.length) return undefined;
-
-  const firstItem = items[0];
-  // جرب استخراج الاسم من عدة مصادر محتملة
-  const unknownItem = firstItem as unknown;
-  const name =
-    (unknownItem as { name?: string })?.name ||
-    (unknownItem as { product?: { name?: string } })?.product?.name ||
-    (unknownItem as { product_name?: string })?.product_name ||
-    (unknownItem as { title?: string })?.title ||
-    undefined;
-
-  return typeof name === 'string' ? name.trim() : undefined;
-}
-function validEmailOrPhone(c?: SallaCustomer) {
-  const email = c?.email?.trim();
-  const mobile = safeMobile(c?.mobile);
-  const hasEmail = !!email && email.includes("@");
-  const hasMobile = !!mobile && mobile.length > 5;
-  return { ok: hasEmail || hasMobile, email: hasEmail ? email : undefined, mobile: hasMobile ? mobile : undefined };
-}
-const keyOf = (event: string, orderId?: string, status?: string) => `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
 
 /* ===================== Firestore Ops ===================== */
 async function saveDomainAndFlags(
@@ -274,271 +114,6 @@ async function saveDomainAndFlags(
   }).catch(() => { });
 }
 
-async function upsertOrderSnapshot(
-  db: FirebaseFirestore.Firestore,
-  order: SallaOrder,
-  storeUid?: string | null
-) {
-  // Use reference_id (visible order number) for consistency with Salla API
-  const orderId = String(order.reference_id ?? order.id ?? order.order_id ?? "");
-  if (!orderId) return;
-  await db.collection("orders").doc(orderId).set({
-    id: orderId,
-    number: order.number ?? null,
-    status: lc(order.status ?? order.order_status ?? order.new_status ?? order.shipment_status ?? ""),
-    paymentStatus: lc(order.payment_status ?? ""),
-    customer: { name: order.customer?.name ?? null, email: order.customer?.email ?? null, mobile: safeMobile(order.customer?.mobile) },
-    storeUid: storeUid ?? null,
-    platform: "salla",
-    updatedAt: Date.now(),
-  }, { merge: true });
-}
-
-async function ensureInviteForOrder(
-  db: FirebaseFirestore.Firestore,
-  order: SallaOrder,
-  rawData: Dict,
-  bodyMerchant?: string | number
-) {
-  console.log(`[INVITE FLOW] Starting invite creation for order...`);
-
-  // Use reference_id (visible order number) for consistency with Salla API
-  const orderId = String(order.reference_id ?? order.id ?? order.order_id ?? "");
-  console.log(`[INVITE FLOW] 1. OrderId check: ${orderId || "MISSING"}`);
-  if (!orderId) {
-    console.log(`[INVITE FLOW] ❌ FAILED: No orderId found`);
-    return;
-  }
-
-  let customer = order.customer as SallaCustomer | undefined;
-  if (!customer?.email && !customer?.mobile) customer = (rawData["customer"] as SallaCustomer) || customer;
-  if ((!customer?.email && !customer?.mobile) && rawData["order"] && typeof rawData["order"] === "object") {
-    customer = (rawData["order"] as Dict)["customer"] as SallaCustomer || customer;
-  }
-
-  // Enhanced email and mobile extraction - try multiple sources
-  let customerEmail = customer?.email || "";
-  let customerMobile = customer?.mobile || "";
-
-  if (!customerEmail || !customerMobile) {
-    const orderData = rawData["order"] as Dict | undefined;
-
-    if (!customerEmail) {
-      customerEmail =
-        (orderData?.customer as Dict)?.email as string ||
-        (orderData?.billing_address as Dict)?.email as string ||
-        (orderData?.shipping_address as Dict)?.email as string ||
-        "";
-    }
-
-    if (!customerMobile) {
-      const mobiles = [
-        (orderData?.customer as Dict)?.mobile,
-        (orderData?.billing_address as Dict)?.mobile || (orderData?.billing_address as Dict)?.phone,
-        (orderData?.shipping_address as Dict)?.mobile || (orderData?.shipping_address as Dict)?.phone,
-        customer?.mobile
-      ];
-
-      for (const mob of mobiles) {
-        if (mob) {
-          customerMobile = typeof mob === 'string' ? mob : String(mob);
-          break;
-        }
-      }
-    }
-  }
-
-  // Normalize mobile format safely
-  const normalizedMobile = safeMobile(customerMobile) || '';
-
-  // If still no email, use mobile as fallback for SMS-only  
-  const finalCustomer = customer ? {
-    ...customer,
-    email: customerEmail.trim() || customer.email || "",
-    mobile: normalizedMobile
-  } : undefined;
-
-  console.log(`[INVITE FLOW] 2. Customer found: email=${customerEmail || "none"}, mobile=${finalCustomer?.mobile || "none"}`);
-
-  const cv = validEmailOrPhone(finalCustomer);
-  console.log(`[INVITE FLOW] 3. Customer validation: ${cv.ok ? "PASSED" : "FAILED"}`);
-  if (!cv.ok) {
-    console.log(`[INVITE FLOW] ❌ FAILED: No valid email or mobile`);
-    return;
-  }
-
-  console.log(`[INVITE FLOW] 4. Checking for existing invites...`);
-  const exists = await db.collection("review_invites").where("orderId", "==", orderId).limit(1).get();
-  console.log(`[INVITE FLOW] 5. Existing invites: ${exists.size} found`);
-  if (!exists.empty) {
-    console.log(`[INVITE FLOW] ❌ SKIP: Invite already exists for order ${orderId}`);
-    return;
-  }
-
-  // ✅ استخراج الحالة الحالية من الـ payload
-  const statusObj = order.status ?? rawData["status"];
-  const currentStatus = lc(
-    typeof statusObj === "object" && statusObj !== null && "slug" in statusObj
-      ? (statusObj.slug ?? ("name" in statusObj ? statusObj.name : "") ?? "")
-      : (statusObj ?? order.order_status ?? order.new_status ?? "")
-  );
-  console.log(`[INVITE FLOW] 5.1. Current order status: "${currentStatus}"`);
-
-  // ✅ التحقق من الحالة المحفوظة سابقاً (Status Tracking)
-  const orderTrackingRef = db.collection("order_status_tracking").doc(orderId);
-  const trackingSnap = await orderTrackingRef.get();
-  const previousStatus = trackingSnap.exists ? lc(trackingSnap.data()?.status ?? "") : "";
-
-  console.log(`[INVITE FLOW] 5.2. Previous status: "${previousStatus || "none"}", Current: "${currentStatus}"`);
-
-  // ✅ تحديث الحالة المحفوظة
-  await orderTrackingRef.set({
-    orderId,
-    status: currentStatus,
-    updatedAt: Date.now(),
-    storeUid: pickStoreUidFromSalla(rawData, bodyMerchant) || null
-  }, { merge: true });
-  console.log(`[INVITE FLOW] 5.3. Status tracking updated`);
-
-  // ✅ فحص: هل الحالة الجديدة = "تم التوصيل" أو "تم التنفيذ"؟
-  const isCompleted =
-    currentStatus === "completed" ||
-    currentStatus === "تم التنفيذ" ||
-    currentStatus === "delivered" ||
-    currentStatus === "تم التوصيل";
-
-  console.log(`[INVITE FLOW] 5.4. Is order completed? ${isCompleted}`);
-
-  if (!isCompleted) {
-    console.log(`[INVITE FLOW] ❌ SKIP: Order not completed yet (status: ${currentStatus}). Waiting for completion`);
-    return;
-  }
-
-  // ✅ فحص: هل الحالة اتغيرت فعلاً؟ (نتجاهل التكرار إلا لو الحالة كانت محفوظة قبل كده)
-  if (previousStatus && previousStatus === currentStatus) {
-    console.log(`[INVITE FLOW] ❌ SKIP: Status unchanged (${currentStatus}), invite already sent before`);
-    return;
-  }
-
-  if (previousStatus) {
-    console.log(`[INVITE FLOW] ✅ Status changed from "${previousStatus}" to "${currentStatus}"`);
-  } else {
-    console.log(`[INVITE FLOW] ✅ First time seeing order with completed status "${currentStatus}"`);
-  }
-
-  console.log(`[INVITE FLOW] ✅ Proceeding with invite...`);
-
-  let storeUid: string | null = pickStoreUidFromSalla(rawData, bodyMerchant) || null;
-  console.log(`[INVITE FLOW] 6. StoreUid from payload: ${storeUid || "none"}`);
-  if (!storeUid) {
-    const orderDoc = await db.collection("orders").doc(orderId).get().catch(() => null);
-    storeUid = (orderDoc?.data() as Dict | undefined)?.["storeUid"] as string | null ?? null;
-    console.log(`[INVITE FLOW] 7. StoreUid from orders collection: ${storeUid || "none"}`);
-  }
-
-  console.log(`[INVITE FLOW] 8. Final storeUid: ${storeUid || "MISSING"}`);
-
-  // فحص الخطة (لو عندك usage limits)
-  const planCheck = storeUid ? await canSendInvite(storeUid) : { ok: true as const };
-  console.log(`[INVITE FLOW] 9. Plan check: ${planCheck.ok ? "PASSED" : "FAILED"} - ${JSON.stringify(planCheck)}`);
-  if (!planCheck.ok) {
-    console.log(`[INVITE FLOW] ❌ FAILED: Quota exceeded - ${planCheck.reason}`);
-    await db.collection("quota_events").add({
-      at: Date.now(), storeUid, orderId, type: "invite_blocked", reason: planCheck.reason
-    }).catch(() => { });
-    return;
-  }
-
-  const productIds = extractProductIds(order.items);
-  const mainProductId = productIds[0] || orderId;
-  const mainProductName = extractMainProductName(order.items);
-  console.log(`[INVITE FLOW] 10. Product IDs extracted: ${productIds.length} items, main: ${mainProductId}`);
-  console.log(`[INVITE FLOW] 10.1. Main product name: ${mainProductName || "N/A"}`);
-
-  if (!APP_BASE_URL) {
-    console.log(`[INVITE FLOW] ❌ FAILED: APP_BASE_URL not configured`);
-    throw new Error("BASE_URL not configured");
-  }
-  console.log(`[INVITE FLOW] 11. APP_BASE_URL: ${APP_BASE_URL}`);
-
-  // ❌ DISABLED: Token creation & message sending disabled - Migrating to Salla Reviews API
-  // سلة طلبوا نقرأ التقييمات من API بتاعهم بدل ما نبعت دعوات
-  // Future: هنستخدم GET /admin/v2/reviews endpoint لقراءة تقييمات سلة
-  // هنفلتر التقييمات بناءً على تاريخ بداية الاشتراك و quota
-
-  console.log(`[INVITE FLOW] 12. ⚠️ Token creation DISABLED - Using Salla Reviews API instead`);
-  console.log(`[INVITE FLOW] 12.1. Order tracked: ${orderId} for store: ${storeUid}`);
-
-  /*
-  const tokenId = crypto.randomBytes(10).toString("hex");
-  const reviewUrl = `${APP_BASE_URL}/review/${tokenId}`;
-  
-  // ✅ إنشاء short link لتقصير الرابط
-  let publicUrl = reviewUrl;
-  try {
-    publicUrl = await createShortLink(reviewUrl, storeUid);
-    console.log(`[INVITE FLOW] 12.1. Short link created: ${publicUrl}`);
-  } catch (shortLinkErr) {
-    console.log(`[INVITE FLOW] 12.1. Short link failed, using full URL: ${shortLinkErr}`);
-    publicUrl = reviewUrl;
-  }
-  
-  console.log(`[INVITE FLOW] 12. Generated tokenId: ${tokenId}`);
-  console.log(`[INVITE FLOW] 13. Review URL (short): ${publicUrl}`);
-
-  await db.collection("review_tokens").doc(tokenId).set({
-    id: tokenId, platform: "salla", orderId, storeUid,
-    productId: mainProductId, productIds,
-    createdAt: Date.now(), usedAt: null,
-    publicUrl, targetUrl: reviewUrl, channel: "multi",
-  });
-
-  await db.collection("review_invites").doc(tokenId).set({
-    tokenId, orderId, platform: "salla", storeUid,
-    productId: mainProductId, productIds,
-    customer: { name: finalCustomer?.name ?? null, email: customerEmail || null, mobile: finalCustomer?.mobile ?? null },
-    sentAt: Date.now(), deliveredAt: null, clicks: 0, publicUrl,
-  });
-
-  // ——— إرسال فوري عبر الـ sender القديم بتاعك
-  const storeName = getStoreOrMerchantName(rawData) ?? "متجرك";
-  if (LOG_REVIEW_URLS === "1" || LOG_REVIEW_URLS === "true") {
-    console.log(`[REVIEW_LINK] orderId=${orderId} tokenId=${tokenId} url=${publicUrl}`);
-    await db.collection("webhook_firebase").add({ at: Date.now(), level: "info", scope: "review", msg: "review link", orderId, tokenId, url: publicUrl }).catch(()=>{});
-  }
-  console.log(`[INVITE FLOW] 14. Sending invitations...`);
-  try {
-    await sendBothNow({
-      inviteId: tokenId,
-      phone: finalCustomer?.mobile,
-      email: customerEmail,
-      customerName: finalCustomer?.name,
-      storeName,
-      productName: mainProductName, // ✅ اسم المنتج
-      orderNumber: String(order.number || orderId), // ✅ رقم الطلب
-      url: publicUrl,
-      perChannelTimeoutMs: 15000,
-    });
-    console.log(`[INVITE FLOW] 15. ✅ Invitations sent successfully`);
-  } catch (sendError) {
-    console.log(`[INVITE FLOW] 15. ⚠️ Send failed but token created: ${sendError}`);
-  }
-
-  if (storeUid) {
-    try {
-      await onInviteSent(storeUid);
-      console.log(`[INVITE FLOW] 16. ✅ Usage counter updated for ${storeUid}`);
-    } catch (usageError) {
-      console.log(`[INVITE FLOW] 16. ⚠️ Usage update failed: ${usageError}`);
-    }
-  }
-  
-  console.log(`[INVITE FLOW] 🎉 COMPLETED: Review token ${tokenId} created for order ${orderId}`);
-  */
-
-  console.log(`[INVITE FLOW] 🎉 COMPLETED: Order ${orderId} processed (no token/message - Salla API mode)`);
-}
-
 /* ===================== Handler ===================== */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
@@ -546,6 +121,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const webhookStartTime = Date.now();
   const raw = await readRawBody(req);
   const db = dbAdmin();
+  const sallaService = new SallaWebhookService();
 
   // (1) Security check + basic log row (C8: Auth bypass removed)
   const verification = verifySallaRequest(req, raw);
@@ -574,15 +150,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let body: SallaWebhookBody = { event: "" };
   try {
     body = JSON.parse(raw.toString("utf8") || "{}");
-
-    // TEMPORARY DEBUG - Remove after fixing
-    console.log('🔍 [SALLA DEBUG]', {
-      event: body.event,
-      merchant: body.merchant,
-      hasData: !!body.data,
-      dataKeys: body.data ? Object.keys(body.data) : Object.keys(body),
-      timestamp: new Date().toISOString()
-    });
   } catch (e) {
     await fbLog(db, {
       level: "error", scope: "parse", msg: "invalid json", event: null, idemKey: null, merchant: null, orderId: null,
@@ -619,7 +186,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // (4) Idempotency
   const sigHeader = getHeader(req, "x-salla-signature") || "";
-  const idemKey = crypto.createHash("sha256").update(sigHeader + "|").update(raw).digest("hex");
+  const idemKey = generateIdempotencyKey(sigHeader, raw);
   const idemRef = db.collection("webhooks_salla").doc(idemKey);
 
   try {
@@ -760,19 +327,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ? ((dataRaw["token"] as Dict)["scope"] as string) : "");
 
       if (storeUid && tokenFromPayload) {
-        await db.collection("owners").doc(storeUid).set({
-          uid: storeUid, provider: "salla",
-          oauth: {
-            access_token: tokenFromPayload,
-            refresh_token: refresh || null,
-            scope: scopeStr || null,
-            expires: Number.isFinite(expires) ? expires : null,
-            receivedAt: Date.now(),
-            strategy: "easy_mode",
-          },
-          updatedAt: Date.now(),
-        }, { merge: true });
-        await fbLog(db, { level: "info", scope: "oauth", msg: "owner oauth saved", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, hasRefresh: !!refresh } });
+        await sallaService.handleAppAuthorize(storeUid, tokenFromPayload, refresh || undefined, scopeStr || undefined, Number.isFinite(expires) ? expires : undefined);
+        await fbLog(db, { level: "info", scope: "oauth", msg: "owner oauth saved via service", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, hasRefresh: !!refresh } });
       }
 
       // لو base مش معروف → حاول store/info
@@ -863,70 +419,86 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // B) Subscription → set plan
     console.log(`[SALLA STEP] B) Checking subscription events for: ${event}`);
     if (event.startsWith("app.subscription.") || event.startsWith("app.trial.")) {
-      // ملاحظة: app.trial.* events قد تأتي من Salla لكن النظام يعالجها كأحداث subscription عادية
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
       const payload = dataRaw as Dict;
 
-      // استخراج اسم الباقة من payload (يدعم عدة حقول)
-      const planName =
-        String(payload["plan_name"] ?? payload["name"] ?? payload["plan"] ?? "").trim() ||
-        (typeof payload["plan"] === "object" ? String((payload["plan"] as Dict)["name"] ?? "").trim() : "");
-      const planType = String(payload["plan_type"] ?? payload["type"] ?? "").trim() || null;
+      // Handle expired/cancelled subscriptions AND trial expiry
+      if (event === "app.subscription.expired" || event === "app.subscription.cancelled" || event === "app.trial.expired") {
+        if (storeUid) {
+          await sallaService.handleSubscriptionExpired(storeUid, payload);
 
-      // استخدام دالة التعيين الجديدة
-      const { mapSallaPlanToInternal } = await import("@/config/plans");
-      const planId = mapSallaPlanToInternal(planName, planType as 'monthly' | 'annual' | null);
+          fbLog(db, {
+            level: "info",
+            scope: "subscription",
+            msg: `subscription ${event.includes('expired') ? 'expired' : 'cancelled'}`,
+            event,
+            idemKey,
+            merchant: merchantId,
+            orderId,
+            meta: { storeUid }
+          });
+        }
+      } else if (event === "app.trial.started") {
+        // Trial started - set to TRIAL plan
+        if (storeUid) {
+          const startedAtPayload =
+            payload["start_date"] ?? payload["started_at"] ?? payload["created_at"];
+          const startedAt = startedAtPayload ? new Date(String(startedAtPayload)).getTime() : Date.now();
 
-      if (storeUid && planId) {
-        // تحديث subscription في stores collection
+          await sallaService.handleTrialStarted(storeUid, startedAt, payload);
 
-        const startedAtPayload =
-          payload["start_date"] ?? payload["started_at"] ?? payload["created_at"];
-        const startedAt = startedAtPayload ? new Date(String(startedAtPayload)).getTime() : Date.now();
-
-        await db.collection("stores").doc(storeUid).set({
-          uid: storeUid,
-          subscription: {
-            planId,
-            startedAt,
-            raw: payload,
-            syncedAt: Date.now(),
-            updatedAt: Date.now()
-          },
-          updatedAt: Date.now(),
-        }, { merge: true });
-
-        // تحديث plan في نفس document (للتوافق مع النظام القديم)
-        await db.collection("stores").doc(storeUid).set({
-          plan: {
-            code: planId,
-            active: true,
-            updatedAt: Date.now()
-          }
-        }, { merge: true });
-
-        fbLog(db, {
-          level: "info",
-          scope: "subscription",
-          msg: "plan set from webhook",
-          event,
-          idemKey,
-          merchant: merchantId,
-          orderId,
-          meta: { storeUid, planName, planType, planId }
-        });
+          fbLog(db, {
+            level: "info",
+            scope: "subscription",
+            msg: "trial started",
+            event,
+            idemKey,
+            merchant: merchantId,
+            orderId,
+            meta: { storeUid }
+          });
+        }
       } else {
-        const reason = !storeUid ? "missing storeUid" : "invalid plan mapping";
-        fbLog(db, {
-          level: "warn",
-          scope: "subscription",
-          msg: `subscription event failed: ${reason}`,
-          event,
-          idemKey,
-          merchant: merchantId,
-          orderId,
-          meta: { planName, planType, planId }
-        });
+        // Handle started/renewed subscriptions (paid plans)
+        const planName =
+          String(payload["plan_name"] ?? payload["name"] ?? payload["plan"] ?? "").trim() ||
+          (typeof payload["plan"] === "object" ? String((payload["plan"] as Dict)["name"] ?? "").trim() : "");
+        const planType = String(payload["plan_type"] ?? payload["type"] ?? "").trim() || null;
+
+        const { mapSallaPlanToInternal } = await import("@/config/plans");
+        // If plan_name is empty, default to the billing cycle or TRIAL
+        const planId = planName ? mapSallaPlanToInternal(planName, planType as 'monthly' | 'annual' | null) : "TRIAL";
+
+        if (storeUid && planId) {
+          const startedAtPayload =
+            payload["start_date"] ?? payload["started_at"] ?? payload["created_at"];
+          const startedAt = startedAtPayload ? new Date(String(startedAtPayload)).getTime() : Date.now();
+
+          await sallaService.handleSubscriptionEvent(storeUid, planId, startedAt, payload);
+
+          fbLog(db, {
+            level: "info",
+            scope: "subscription",
+            msg: "plan set from webhook",
+            event,
+            idemKey,
+            merchant: merchantId,
+            orderId,
+            meta: { storeUid, planName, planType, planId }
+          });
+        } else {
+          const reason = !storeUid ? "missing storeUid" : "invalid plan mapping";
+          fbLog(db, {
+            level: "warn",
+            scope: "subscription",
+            msg: `subscription event failed: ${reason}`,
+            event,
+            idemKey,
+            merchant: merchantId,
+            orderId,
+            meta: { planName, planType, planId }
+          });
+        }
       }
     }
 
@@ -985,8 +557,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       try {
-        await upsertOrderSnapshot(db, asOrder, storeUidFromEvent);
-        fbLog(db, { level: "info", scope: "orders", msg: "order snapshot upserted", event, idemKey, merchant: merchantId, orderId, meta: { storeUidFromEvent } });
+        // Type assertion needed due to reference_id type difference (string | number vs string)
+        await sallaService.handleOrderCreated(asOrder as Parameters<typeof sallaService.handleOrderCreated>[0], storeUidFromEvent || '');
+        fbLog(db, { level: "info", scope: "orders", msg: "order snapshot upserted via service", event, idemKey, merchant: merchantId, orderId, meta: { storeUidFromEvent } });
       } catch (err) {
         console.error(`[ORDER_SNAPSHOT_ERROR] Failed to upsert order ${orderId}:`, err);
         fbLog(db, { level: "error", scope: "orders", msg: "order snapshot failed", event, idemKey, merchant: merchantId, orderId, meta: { error: (err as Error).message } });
@@ -994,79 +567,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // D) Auto-create review invites on order.updated with status tracking  
-    console.log(`[SALLA STEP] D) Checking invite events for: ${event}`);
+    // D) Order status events - invite system disabled (using Salla Reviews API)
     if (event === "order.updated" || event === "order.status.updated") {
-      // ✅ إرسال الدعوة عند تحديث الطلب - مع تتبع الحالة لتجنب التكرار
-      console.log(`[INVITE DEBUG] Order update event detected for order: ${orderId}`);
-
-      // ✅ استخراج الـ order الكامل من الـ payload
-      const fullOrder = (dataRaw["order"] as SallaOrder | undefined) || asOrder;
-
-      // Enhanced invitation creation with fallback mechanisms
-      try {
-        // Try standard invite creation first
-        await Promise.race([
-          ensureInviteForOrder(db, fullOrder, dataRaw, body.merchant),
-          new Promise<void>((_resolve, reject) => {
-            void _resolve;
-            setTimeout(() => reject(new Error('Invite creation timeout')), 20000);
-          })
-        ]);
-        fbLog(db, { level: "info", scope: "invite", msg: "invite auto-created for order", event, idemKey, merchant: merchantId, orderId });
-      } catch (primaryErr) {
-        console.error(`[INVITE_ERROR] Primary invite creation failed for order ${orderId}:`, primaryErr);
-
-        // FALLBACK: Force create review token even with missing data
-        try {
-          console.log(`[INVITE_FALLBACK] Attempting fallback invite creation for ${orderId}`);
-
-          const storeUidFallback = pickStoreUidFromSalla(dataRaw, body.merchant) || `salla:${merchantId}`;
-          const tokenId = crypto.randomBytes(10).toString("hex");
-          const fallbackBaseUrl = APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || "https://theqah.com";
-          const reviewUrl = `${fallbackBaseUrl}/review/${tokenId}`;
-
-          // Create minimal review token
-          await db.collection("review_tokens").doc(tokenId).set({
-            id: tokenId,
-            orderId,
-            storeUid: storeUidFallback,
-            url: reviewUrl,
-            customer: {
-              name: asOrder.customer?.name || "عميل",
-              email: asOrder.customer?.email || null,
-              mobile: safeMobile(asOrder.customer?.mobile),
-            },
-            productIds: extractProductIds(asOrder.items || []),
-            createdAt: Date.now(),
-            usedAt: null,
-            createdVia: "webhook_fallback",
-            eventType: event,
-            meta: { fallbackCreation: true, originalError: (primaryErr as Error).message }
-          }, { merge: true });
-
-          console.log(`[INVITE_FALLBACK] ✅ Fallback review token created: ${tokenId}`);
-          fbLog(db, { level: "info", scope: "invite", msg: "fallback invite created", event, idemKey, merchant: merchantId, orderId, meta: { tokenId, fallback: true } });
-
-        } catch (fallbackErr) {
-          console.error(`[INVITE_FALLBACK] ❌ Fallback also failed:`, fallbackErr);
-          fbLog(db, {
-            level: "error", scope: "invite", msg: "both primary and fallback invite creation failed", event, idemKey, merchant: merchantId, orderId, meta: {
-              primaryError: (primaryErr as Error).message,
-              fallbackError: (fallbackErr as Error).message
-            }
-          });
-        }
-      }
+      // Note: Invite system disabled - reading reviews directly from Salla API
+      fbLog(db, { level: "debug", scope: "order", msg: "order status updated", event, idemKey, merchant: merchantId, orderId });
     } else if (event === "order.cancelled" || event === "order.refunded") {
       const oid = orderId;
       if (oid) {
-        const q = await db.collection("review_tokens").where("orderId", "==", oid).get();
-        if (!q.empty) {
-          const reason = event === "order.cancelled" ? "order_cancelled" : "order_refunded";
-          const batch = db.batch(); q.docs.forEach((d) => batch.update(d.ref, { voidedAt: Date.now(), voidReason: reason }));
-          await batch.commit();
-          fbLog(db, { level: "info", scope: "invite", msg: "tokens voided", event, idemKey, merchant: merchantId, orderId: oid, meta: { count: q.docs.length, reason } });
+        const reason = event === "order.cancelled" ? "order_cancelled" : "order_refunded";
+        const count = await sallaService.handleOrderCancelled(oid, reason);
+        if (count > 0) {
+          fbLog(db, { level: "info", scope: "invite", msg: "tokens voided via service", event, idemKey, merchant: merchantId, orderId: oid, meta: { count, reason } });
         }
       }
     } else if (event === "review.added") {
@@ -1284,7 +795,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         event, orderId, merchantId,
         hasSecret: !!WEBHOOK_SECRET,
         hasToken: !!WEBHOOK_TOKEN,
-        hasAppBaseUrl: !!APP_BASE_URL,
         nodeEnv: process.env.NODE_ENV,
         host: req.headers.host
       });
@@ -1351,48 +861,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-/* ===================== Logging helper (after handler for hoist clarity) ===================== */
-type LogLevel = "debug" | "info" | "warn" | "error";
-async function fbLog(
-  db: FirebaseFirestore.Firestore,
-  entry: {
-    level: LogLevel;
-    scope: string;
-    msg: string;
-    event?: string | null;
-    idemKey?: string | null;
-    merchant?: string | number | null;
-    orderId?: string | null;
-    meta?: Dict;
-  }
-) {
-  const payload = {
-    at: Date.now(),
-    level: entry.level,
-    scope: entry.scope,
-    msg: entry.msg,
-    event: entry.event ?? null,
-    idemKey: entry.idemKey ?? null,
-    merchant: entry.merchant ?? null,
-    orderId: entry.orderId ?? null,
-    meta: entry.meta ?? null,
-  };
-
-  // Always log to console first (non-blocking)
-  const lineObj = { event: payload.event, merchant: payload.merchant, orderId: payload.orderId, idemKey: payload.idemKey };
-  const line = `[${entry.level.toUpperCase()}][${entry.scope}] ${entry.msg} :: ${JSON.stringify(lineObj)}`;
-  if (entry.level === "error" || entry.level === "warn") console.error(line); else console.log(line);
-
-  // Only attempt Firestore logging if explicitly enabled AND not critical path
-  if ((WEBHOOK_LOG_DEST === "firestore" || ENABLE_FIRESTORE_LOGS) && entry.level !== "debug") {
-    // Fire-and-forget with shorter timeout
-    db.collection("webhook_firebase").add(payload)
-      .catch(err => {
-        console.error("[WEBHOOK_LOG][WRITE_FAIL]", err);
-      });
-  }
-}
-
+/* ===================== Helper Functions ===================== */
 // Track webhook completion at the end of handler
 function trackWebhookCompletion(event: string, storeUid: string | undefined, success: boolean, duration: number, error?: string) {
   trackWebhook({
