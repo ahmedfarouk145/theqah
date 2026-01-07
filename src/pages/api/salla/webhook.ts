@@ -212,16 +212,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await fbLog(db, { level: "info", scope: "handler", msg: "processing start", event, idemKey, merchant: merchantId, orderId });
 
-    // Early debug logging
-    console.log(`[SALLA PROCESSING] Starting - Event: ${event}, OrderId: ${orderId}` + (merchantId ? `, MerchantId: ${merchantId}` : ''));
-    console.log(`[SALLA PROCESSING] Data keys: ${Object.keys(dataRaw as Record<string, unknown>).join(', ')}`);
-    console.log(`[SALLA PROCESSING] Customer exists: ${!!(dataRaw as Record<string, unknown>).customer}`);
-    console.log(`[SALLA PROCESSING] Items exist: ${!!(dataRaw as Record<string, unknown>).items}`);
-
     // Auto-save domain for ANY incoming event if payload includes store.domain or merchant.domain
     try {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant);
-      console.log(`[AUTO-DOMAIN] Full payload inspection:`, JSON.stringify(dataRaw, null, 2));
 
       const payloadDomainGeneric =
         (typeof (dataRaw["store"] as Dict | undefined)?.["domain"] === "string" ? ((dataRaw["store"] as Dict)["domain"] as string) : undefined) ??
@@ -231,11 +224,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         (typeof dataRaw["url"] === "string" ? (dataRaw["url"] as string) : undefined);
 
       const baseGeneric = toDomainBase(payloadDomainGeneric);
-      console.log(`[AUTO-DOMAIN] Event: ${event}, StoreUid: ${storeUidFromEvent}, Domain: ${payloadDomainGeneric}, Base: ${baseGeneric}`);
 
       // FORCE SAVE if we have storeUidFromEvent but no domain - try to fetch it
       if (storeUidFromEvent && !baseGeneric && merchantId) {
-        console.log(`[AUTO-DOMAIN] No domain in payload, attempting to fetch store info for merchant ${merchantId}`);
         try {
           const storeInfoUrl = `https://api.salla.dev/admin/v2/store`;
           const response = await fetch(storeInfoUrl, {
@@ -249,40 +240,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const storeInfo = await response.json();
             const fetchedDomain = storeInfo?.data?.domain || storeInfo?.domain;
             if (fetchedDomain) {
-              console.log(`[AUTO-DOMAIN] Fetched domain from API: ${fetchedDomain}`);
               await saveDomainAndFlags(db, storeUidFromEvent, merchantId, fetchedDomain, event);
               await saveMultipleDomainFormats(db, storeUidFromEvent, fetchedDomain);
               await fbLog(db, { level: "info", scope: "domain", msg: "fetched and saved domain from store API", event, idemKey, merchant: merchantId, orderId, meta: { domain: fetchedDomain, storeUid: storeUidFromEvent } });
               return; // Exit early after successful fetch
             }
           }
-        } catch (fetchErr) {
-          console.log(`[AUTO-DOMAIN] Failed to fetch store info: ${fetchErr}`);
+        } catch {
+          // Silent fail - domain fetch is optional
         }
       }
 
       if (storeUidFromEvent && baseGeneric) {
         const keyGeneric = encodeUrlForFirestore(baseGeneric);
         const existsGeneric = await db.collection("domains").doc(keyGeneric).get().then(d => d.exists).catch(() => false);
-        console.log(`[AUTO-DOMAIN] Domain key "${keyGeneric}" exists: ${existsGeneric}`);
         if (!existsGeneric) {
-          console.log(`[AUTO-DOMAIN] Saving new domain for ${storeUidFromEvent}: ${baseGeneric}`);
           await saveDomainAndFlags(db, storeUidFromEvent, merchantId, baseGeneric, event);
           await saveMultipleDomainFormats(db, storeUidFromEvent, payloadDomainGeneric);
           await fbLog(db, { level: "info", scope: "domain", msg: "auto-saved domain from event payload", event, idemKey, merchant: merchantId, orderId, meta: { base: baseGeneric, storeUid: storeUidFromEvent } });
-        } else {
-          console.log(`[AUTO-DOMAIN] Domain already exists, skipping save`);
         }
-      } else {
-        console.log(`[AUTO-DOMAIN] Skipping - missing storeUid (${!!storeUidFromEvent}) or base (${!!baseGeneric})`);
-        console.log(`[AUTO-DOMAIN] Available keys in payload:`, Object.keys(dataRaw as Record<string, unknown>));
       }
     } catch (e) {
       await fbLog(db, { level: "warn", scope: "domain", msg: "auto-save domain failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
     }
 
     // A) authorize/installed/updated → flags/domain + oauth + store/info + userinfo + password email
-    console.log(`[SALLA STEP] A) Checking install/auth events for: ${event}`);
     if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
 
@@ -305,11 +287,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       let base = toDomainBase(domainInPayload);
 
       if (storeUid) {
-        console.log(`[DOMAIN SAVE] Saving domain for ${storeUid}: base="${base}", original="${domainInPayload}"`);
         await saveDomainAndFlags(db, storeUid, merchantId, base, event);
-        // Also save multiple domain formats for better resolution
         await saveMultipleDomainFormats(db, storeUid, domainInPayload);
-        console.log(`[DOMAIN SAVE] Domain saving completed for ${storeUid}`);
       }
 
       // خزّن OAuth لو متاح
@@ -417,7 +396,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // B) Subscription → set plan
-    console.log(`[SALLA STEP] B) Checking subscription events for: ${event}`);
+    // B) Subscription → set plan
     if (event.startsWith("app.subscription.") || event.startsWith("app.trial.")) {
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
       const payload = dataRaw as Dict;
@@ -503,20 +482,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // C) Order/Shipment snapshot + Custom updated_order event
-    console.log(`[SALLA STEP] C) Checking order/shipment events for: ${event}`);
+    // C) Order/Shipment snapshot + Custom updated_order event
     if (event.startsWith("order.") || event.startsWith("shipment.") || event === "updated_order") {
       const storeUidFromEvent = pickStoreUidFromSalla(dataRaw, body.merchant) || null;
 
       // Special handling for updated_order event
       if (event === "updated_order") {
-        console.log(`[UPDATED_ORDER] Processing order state change for ${orderId}`);
-
         // Extract previous and current states if available
         const dataRecord = dataRaw as Record<string, unknown>;
         const previousState = (dataRecord?.previous_status as string) || (dataRecord?.old_status as string);
         const currentState = asOrder.status || asOrder.order_status || (dataRecord?.new_status as string);
-
-        console.log(`[UPDATED_ORDER] State change: ${previousState || 'unknown'} → ${currentState || 'unknown'}`);
 
         // Log the state change
         await fbLog(db, {
@@ -550,7 +525,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               rawDataKeys: Object.keys(dataRaw as Record<string, unknown>)
             }
           });
-          console.log(`[UPDATED_ORDER] State change recorded for order ${orderId}`);
         } catch (historyErr) {
           console.error(`[UPDATED_ORDER] Failed to record state change:`, historyErr);
         }
@@ -658,7 +632,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 reviewStatus = "pending_review";
                 moderationFlags = modResult.flags || [];
                 needsManualReview = true;
-                console.log(`[MODERATION] Review flagged: ${docId}, reason: ${modResult.reason}, flags: ${moderationFlags.join(', ')}`);
               }
             } catch (modError) {
               console.error(`[MODERATION] Error checking review ${docId}:`, modError);
@@ -715,8 +688,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const appUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${req.headers.host}`;
           const jobUrl = `${appUrl}/api/jobs/fetch-review-id`;
 
-          console.log(`[BACKGROUND_JOB] Triggering job for review ${docId} at ${jobUrl}`);
-
           // Note: We don't await this so webhook responds immediately
           // The background job runs independently with its own retry logic
           fetch(jobUrl, {
@@ -743,7 +714,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // E) processed + known/unhandled logs
-    console.log(`[SALLA STEP] E) Final processing for: ${event}`);
     const orderIdFin = orderId ?? "none";
     const statusFin = lc(asOrder.status ?? asOrder.order_status ?? asOrder.new_status ?? asOrder.shipment_status ?? "");
     Promise.race([
@@ -850,8 +820,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         storeUid,
         priority: event.includes("order") ? "high" : "normal",
       });
-
-      console.log(`[WEBHOOK] Enqueued for retry: ${event} (orderId: ${orderId})`);
     } catch (retryErr) {
       console.error(`[WEBHOOK] Failed to enqueue retry:`, retryErr);
     }
