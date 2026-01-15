@@ -1,70 +1,27 @@
 // src/pages/api/reviews/index.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { dbAdmin } from '@/lib/firebaseAdmin';
 import { requireUser } from '@/server/auth/requireUser';
+import { ExportService } from '@/server/services/export.service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
 
   try {
     const { uid } = await requireUser(req);
-    const db = dbAdmin();
+    const statusFilter = req.query.status as string | undefined;
 
-    // First, lookup the user's linked store to get the storeUid
-    const userDoc = await db.collection('users').doc(uid).get();
-    const userData = userDoc.data();
+    const exportService = new ExportService();
+    const result = await exportService.getReviewsList(uid, statusFilter);
 
-    // Try to get storeUid from user data or from stores collection
-    let storeUid = userData?.storeUid;
-
-    if (!storeUid) {
-      // Fallback: Check if there's a store with this user as owner
-      const storeSnap = await db.collection('stores')
-        .where('ownerUid', '==', uid)
-        .limit(1)
-        .get();
-
-      if (!storeSnap.empty) {
-        const storeData = storeSnap.docs[0].data();
-        storeUid = storeData.uid || storeData.storeUid || storeSnap.docs[0].id;
-      }
-    }
-
-    if (!storeUid) {
-      console.log('[reviews/index] No store found for user:', uid);
+    if (!result.storeUid) {
       return res.status(200).json({ reviews: [], message: 'No store linked' });
     }
 
-    // Get status filter from query params
-    const statusFilter = req.query.status as string | undefined;
-
-    let query = db
-      .collection('reviews')
-      .where('storeUid', '==', storeUid)
-      .orderBy('createdAt', 'desc')
-      .limit(200);
-
-    // Add status filter if provided
-    if (statusFilter && ['pending', 'pending_review', 'approved', 'rejected', 'published'].includes(statusFilter)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      query = query.where('status', '==', statusFilter) as any;
-    }
-
-
-    const snap = await query.get();
-
-    const reviews = snap.docs.map((d) => {
-      const r = d.data();
-      return {
-        id: d.id,
-        ...r,
-      };
-    });
-
-    return res.status(200).json({ reviews });
+    return res.status(200).json({ reviews: result.reviews });
   } catch (e) {
     console.error('reviews/index error', e);
     return res.status(401).json({ message: 'Unauthorized' });
   }
 }
-

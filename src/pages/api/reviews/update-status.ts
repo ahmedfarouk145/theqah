@@ -1,7 +1,7 @@
 // src/pages/api/reviews/update-status.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { dbAdmin } from "@/lib/firebaseAdmin";
 import { getAuth } from "firebase-admin/auth";
+import { ReviewService } from "@/server/services/review.service";
 
 type RequestBody = {
   reviewId: string;
@@ -40,45 +40,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "invalid_status" });
     }
 
-    const db = dbAdmin();
-    const reviewRef = db.collection("reviews").doc(reviewId);
-    const reviewSnap = await reviewRef.get();
+    const reviewService = new ReviewService();
+    const result = await reviewService.updateReviewStatus(reviewId, storeUid, status);
 
-    if (!reviewSnap.exists) {
-      return res.status(404).json({ error: "review_not_found" });
+    if (!result.ok) {
+      const statusCode = result.error === 'review_not_found' ? 404 :
+        result.error === 'forbidden' ? 403 : 500;
+      return res.status(statusCode).json({ error: result.error });
     }
 
-    const reviewData = reviewSnap.data();
-
-    // Verify the review belongs to this store
-    if (reviewData?.storeUid !== storeUid) {
-      return res.status(403).json({ error: "forbidden" });
-    }
-
-    // Update the review status
-    const now = Date.now();
-    const updates: Record<string, unknown> = {
-      status,
-      updatedAt: now,
-    };
-
-    if (status === "approved") {
-      updates.published = true;
-      updates.publishedAt = now;
-    } else {
-      updates.published = false;
-      updates.publishedAt = null;
-    }
-
-    await reviewRef.set(updates, { merge: true });
-
-    console.log(`[update-status] Review ${reviewId} status updated to ${status} by store ${storeUid}`);
-
-    return res.status(200).json({
-      ok: true,
-      reviewId,
-      status,
-    });
+    return res.status(200).json(result);
   } catch (error) {
     console.error("[update-status] Error:", error);
     return res.status(500).json({ error: "internal_error" });

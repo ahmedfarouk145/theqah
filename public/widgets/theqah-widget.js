@@ -89,9 +89,8 @@
         setCached(host, storeData);
         return storeData;
       })
-      .catch(e => {
+      .catch(() => {
         clearTimeout(timeoutId);
-        console.warn('Store resolve failed:', e.message);
         return null;
       })
       .finally(() => { G.resolvePromise = null; });
@@ -181,8 +180,7 @@
       });
       if (!response.ok) return { hasVerified: false, reviews: [] };
       return await response.json();
-    } catch (e) {
-      console.warn('Check verified failed:', e.message);
+    } catch {
       return { hasVerified: false, reviews: [] };
     }
   }
@@ -193,7 +191,7 @@
     
     // Convert verified IDs to strings for comparison
     const verifiedIdStrings = verifiedIds.map(id => String(id));
-    console.log('[Theqah] Looking for reviews with IDs:', verifiedIdStrings);
+
     
     // Salla modern theme uses salla-comment-item custom elements
     // with internal divs having id="s-comments-item-[REVIEW_ID]"
@@ -216,9 +214,6 @@
     
     selectors.forEach(selector => {
       const reviewElements = document.querySelectorAll(selector);
-      if (reviewElements.length > 0) {
-        console.log(`[Theqah] Found ${reviewElements.length} elements with selector: ${selector}`);
-      }
       
       reviewElements.forEach(el => {
         // Extract review ID from multiple possible sources
@@ -269,22 +264,9 @@
           }
         }
         
-        // Debug: Log element info if no ID found
-        if (!reviewId && selector === 'salla-comment-item') {
-          console.log('[Theqah] DEBUG: salla-comment-item found but no ID extracted:', {
-            tagName: el.tagName,
-            id: el.id,
-            className: el.className,
-            attributes: Array.from(el.attributes).map(a => `${a.name}="${a.value}"`).join(', '),
-            innerHTML: el.innerHTML?.substring(0, 200),
-            hasShadowRoot: !!el.shadowRoot
-          });
-        }
+
         
-        if (reviewId) {
-          foundCount++;
-          console.log(`[Theqah] Found review element with ID: ${reviewId}, matches: ${verifiedIdStrings.includes(String(reviewId))}`);
-        }
+
         
         if (!reviewId || !verifiedIdStrings.includes(String(reviewId))) return;
         if (el.querySelector('.theqah-verified-logo')) return;
@@ -302,12 +284,9 @@
           el.querySelector('[class*="rating"]') ||                // Any rating class
           el.firstElementChild;
         
-        if (!insertPoint) {
-          console.log('[Theqah] No insert point found for review:', reviewId);
-          return;
-        }
+        if (!insertPoint) return;
         
-        console.log('[Theqah] Adding logo to review:', reviewId, 'at:', insertPoint.className || insertPoint.tagName);
+
         
         // Create clickable logo with link to theqah homepage
         const logoLink = document.createElement('a');
@@ -331,7 +310,7 @@
         insertPoint.style.gap = '8px';
         insertPoint.appendChild(logoLink);
         
-        console.log('[Theqah] Added verified badge to review:', reviewId);
+
       });
     });
   }
@@ -455,10 +434,7 @@
     // Smart Heuristics: find best placement based on position setting
     const placement = findBestPlacement(position);
     
-    if (!placement) {
-      console.log('[Theqah] No suitable placement found for certificate');
-      return;
-    }
+    if (!placement) return;
     
     if (placement.type === 'floating') {
       // Floating badge in corner
@@ -471,14 +447,14 @@
         animation: theqah-slide-in 0.3s ease-out;
       `;
       document.body.appendChild(certificate);
-      console.log('[Theqah] Certificate badge inserted as floating');
+
     } else if (placement.element) {
       if (placement.position === 'before') {
         placement.element.parentNode.insertBefore(certificate, placement.element);
       } else {
         placement.element.parentNode.insertBefore(certificate, placement.element.nextSibling);
       }
-      console.log('[Theqah] Certificate badge inserted:', placement.position, 'reviews');
+
     }
   }
 
@@ -556,13 +532,13 @@
     
     // Always insert the certificate badge for subscribed stores
     insertCertificateBadge(store, lang, theme, certificatePosition);
-    console.log('[Theqah] Certificate badge inserted for store:', store);
+
     
     if (checkResult.hasVerified) {
       // Has verified reviews - add logos to Salla reviews
       const verifiedIds = checkResult.reviews.map(r => r.sallaReviewId);
       addLogosToSallaReviews(verifiedIds);
-      console.log('[Theqah] Added logos to verified reviews:', verifiedIds.length);
+
     }
 
     hostEl.setAttribute("data-state", "done");
@@ -690,7 +666,6 @@
 
     // تنظيف placeholder - تجاهل أي store ID يحتوي على placeholder
     if (store && (store.includes('{') || /STORE_ID/i.test(store) || store === 'salla:' || !store.includes(':'))) {
-      console.log('[Theqah] Detected placeholder store:', store, '- attempting auto-resolve');
       store = '';
     }
 
@@ -707,11 +682,10 @@
         if (storeData) {
           store = storeData.storeUid;
           certificatePosition = storeData.certificatePosition || 'auto';
-          console.log('[Theqah] Store resolved:', store, 'position:', certificatePosition);
+
         }
       }
-      catch (err) { 
-        console.warn('[Theqah] Store resolution failed:', err.message);
+      catch { 
         store = null;
       }
     }
@@ -735,9 +709,9 @@
   // تشغيل آمن
   const safeLaunch = () => {
     try {
-      safeMount().catch(e => console.warn('Widget mount failed:', e.message));
-    } catch (e) {
-      console.warn('Widget initialization failed:', e.message);
+      safeMount().catch(() => {});
+    } catch {
+      // Silent fail
     } finally {
       window.__THEQAH_LOADING__ = false;
     }
@@ -777,8 +751,8 @@
         obs.disconnect();
         window.__THEQAH_OBS__ = false;
       }, 30000);
-    } catch (e) {
-      console.warn('MutationObserver failed:', e);
+    } catch {
+      // Silent fail
     }
   }
 })();

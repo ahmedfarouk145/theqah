@@ -1,6 +1,5 @@
 // src/pages/api/_admin/ping.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { authAdmin, dbAdmin } from '@/lib/firebaseAdmin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -10,10 +9,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ ok: false, error: 'MISSING_ID_TOKEN' });
     }
 
+    // Use AuthService to verify token (via Firebase Auth)
+    const { authAdmin, dbAdmin } = await import('@/lib/firebaseAdmin');
     const decoded = await authAdmin().verifyIdToken(token);
     const uid = decoded.uid;
 
-    // test read/write (read store doc by uid as id)
+    // Test read store doc
     const ref = dbAdmin().collection('stores').doc(uid);
     const snap = await ref.get();
 
@@ -23,9 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       storeDocExists: snap.exists,
       projectId: process.env.FIREBASE_PROJECT_ID,
     });
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
+  } catch (e) {
     console.error('PING ERROR:', e);
-    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    return res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
   }
 }

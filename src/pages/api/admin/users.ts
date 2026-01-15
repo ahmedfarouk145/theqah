@@ -1,50 +1,34 @@
 // src/pages/api/admin/users.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireAdmin } from '@/server/auth/requireAdmin';
-import { authAdmin, dbAdmin } from '@/lib/firebaseAdmin';
+import { AdminService } from '@/server/services/admin.service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    await requireAdmin(req);
-    const db = dbAdmin();
+    try {
+        await requireAdmin(req);
+        const adminService = new AdminService();
 
-    if (req.method === 'GET') {
-      const { q = '', limit = '50' } = req.query;
-      const lim = Math.min(Number(limit) || 50, 200);
+        if (req.method === 'GET') {
+            const { q = '', limit = '50' } = req.query;
+            const users = await adminService.listUsers(
+                typeof q === 'string' ? q : '',
+                Number(limit) || 50
+            );
+            return res.status(200).json({ users });
+        }
 
-      // لو عندك users collection
-      let qRef = db.collection('users').limit(lim);
+        if (req.method === 'POST') {
+            const { uid, makeAdmin } = req.body || {};
+            if (!uid || typeof makeAdmin !== 'boolean') {
+                return res.status(400).json({ message: 'uid/makeAdmin required' });
+            }
+            await adminService.setUserAdminClaim(uid, makeAdmin);
+            return res.status(200).json({ ok: true });
+        }
 
-      if (typeof q === 'string' && q.trim()) {
-        // فلترة بسيطة على emailLower (يفضّل تخزينه أثناء التسجيل)
-        const qLower = q.toLowerCase();
-        qRef = db
-          .collection('users')
-          .where('emailLower', '>=', qLower)
-          .where('emailLower', '<=', qLower + '\uf8ff')
-          .limit(lim);
-      }
-
-      const snap = await qRef.get();
-      const users = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      return res.status(200).json({ users });
+        return res.status(405).json({ message: 'Method not allowed' });
+    } catch (e) {
+        console.error('Admin users API error:', e);
+        return res.status(403).json({ message: 'forbidden' });
     }
-
-    if (req.method === 'POST') {
-      const { uid, makeAdmin } = req.body || {};
-      if (!uid || typeof makeAdmin !== 'boolean') {
-        return res.status(400).json({ message: 'uid/makeAdmin required' });
-      }
-
-      const auth = authAdmin();
-      await auth.setCustomUserClaims(uid, { admin: makeAdmin });
-      return res.status(200).json({ ok: true });
-    }
-
-    return res.status(405).json({ message: 'Method not allowed' });
-  } catch (e) {
-    // استخدام المتغير يُسكت تحذير no-unused-vars ويحتفظ بالأثر للتشخيص
-    console.error('Admin users API error:', e);
-    return res.status(403).json({ message: 'forbidden' });
-  }
 }

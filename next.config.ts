@@ -43,11 +43,24 @@ const nextConfig = {
   // ======= Compression =======
   // Enable gzip compression for API responses and pages (L4)
   compress: true,
-  
+
   // ======= Performance Budgets =======
   // Enforce bundle size limits to prevent performance regression
   experimental: {
-    optimizePackageImports: ['lucide-react', 'recharts', '@radix-ui/react-dialog'],
+    optimizePackageImports: [
+      'lucide-react',
+      'recharts',
+      'framer-motion',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-select',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-progress',
+      '@radix-ui/react-switch',
+      '@radix-ui/react-label',
+      '@radix-ui/react-slot',
+      'date-fns',
+      'sonner',
+    ],
   },
   // Bundle analysis warnings
   webpack: (config: any, { isServer }: { isServer: boolean }) => {
@@ -68,10 +81,10 @@ const nextConfig = {
     }
     return config;
   },
-  
+
   // Exclude functions directory from Next.js compilation
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'].map(ext => `page.${ext}`).concat(['tsx', 'ts', 'jsx', 'js']),
-  
+
   // Ignore functions directory during build
   eslint: {
     ignoreDuringBuilds: false,
@@ -94,7 +107,7 @@ const nextConfig = {
         pathname: '/v0/b/theqah-d3ee0.firebasestorage.app/o/**',
       },
       {
-        protocol: 'https', 
+        protocol: 'https',
         hostname: 'ucarecdn.com',
         pathname: '/**',
       },
@@ -128,7 +141,7 @@ const nextConfig = {
       },
       // حماية من XSS
       {
-        key: "X-XSS-Protection", 
+        key: "X-XSS-Protection",
         value: "1; mode=block",
       },
       // إخفاء معلومات الخادم

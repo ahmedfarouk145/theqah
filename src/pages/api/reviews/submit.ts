@@ -66,9 +66,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(201).json({
       ok: true,
-      id: result.data.reviewId,
-      published: result.data.published,
-      moderation: result.data.moderation,
+      id: result.data!.reviewId,
+      published: result.data!.published,
+      moderation: result.data!.moderation,
     });
   } catch (e: unknown) {
     console.error("reviews/submit error:", e);

@@ -1,19 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  BarChart as ReBarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Area,
-  AreaChart,
-} from 'recharts';
+import dynamic from 'next/dynamic';
 import { auth } from '@/lib/firebase';
 import axios from '@/lib/axiosInstance';
 import {
@@ -31,6 +19,51 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+// Dynamically import recharts components to reduce initial bundle
+const ResponsiveContainer = dynamic(
+  () => import('recharts').then(mod => mod.ResponsiveContainer),
+  { ssr: false }
+);
+const AreaChart = dynamic(
+  () => import('recharts').then(mod => mod.AreaChart),
+  { ssr: false }
+);
+const Area = dynamic(
+  () => import('recharts').then(mod => mod.Area),
+  { ssr: false }
+);
+const ReBarChart = dynamic(
+  () => import('recharts').then(mod => mod.BarChart),
+  { ssr: false }
+);
+const Bar = dynamic(
+  () => import('recharts').then(mod => mod.Bar),
+  { ssr: false }
+);
+const PieChart = dynamic(
+  () => import('recharts').then(mod => mod.PieChart),
+  { ssr: false }
+);
+const Pie = dynamic(
+  () => import('recharts').then(mod => mod.Pie),
+  { ssr: false }
+);
+const Cell = dynamic(
+  () => import('recharts').then(mod => mod.Cell),
+  { ssr: false }
+);
+const XAxis = dynamic(
+  () => import('recharts').then(mod => mod.XAxis),
+  { ssr: false }
+);
+const YAxis = dynamic(
+  () => import('recharts').then(mod => mod.YAxis),
+  { ssr: false }
+);
+const Tooltip = dynamic(
+  () => import('recharts').then(mod => mod.Tooltip),
+  { ssr: false }
+);
 type AnalyticsData = {
   totalOrders: number;
   totalReviews: number;
@@ -62,7 +95,7 @@ const StatCard = ({
   gradient?: string;
 }) => (
   <div
-    className={`group relative bg-white rounded-2xl border border-gray-200/50 p-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer overflow-hidden`}
+    className={`group relative bg-white rounded-2xl border border-gray-200/50 p-4 sm:p-6 md:p-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer overflow-hidden`}
     style={{
       animationDelay: `${delay}ms`,
       animation: 'fadeInUp 0.5s ease-out forwards',
@@ -74,13 +107,13 @@ const StatCard = ({
     <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-white/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
     <div className="relative z-10">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div
-          className={`relative w-16 h-16 ${gradient || bgColor} rounded-2xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-500 group-hover:rotate-12 group-hover:scale-110 transform-gpu`}
+          className={`relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 ${gradient || bgColor} rounded-xl sm:rounded-2xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-500 group-hover:rotate-12 group-hover:scale-110 transform-gpu`}
         >
           {/* Icon Glow Effect */}
           <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl" />
-          <Icon className={`w-8 h-8 ${color} relative z-10 group-hover:scale-110 transition-transform duration-300`} />
+          <Icon className={`w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 ${color} relative z-10 group-hover:scale-110 transition-transform duration-300`} />
 
           {/* Pulsing Ring */}
           <div className="absolute inset-0 rounded-2xl border-2 border-white/30 group-hover:scale-125 group-hover:opacity-0 transition-all duration-500" />
@@ -98,7 +131,7 @@ const StatCard = ({
         <h3 className="text-sm font-semibold text-gray-800 group-hover:text-gray-900 transition-colors uppercase tracking-wider">
           {title}
         </h3>
-        <p className={`text-4xl font-bold text-gray-900 group-hover:scale-110 transition-all duration-500 origin-right transform-gpu`}>
+        <p className={`text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 group-hover:scale-110 transition-all duration-500 origin-right transform-gpu`}>
           {value}
         </p>
         {subtitle && <p className="text-sm text-gray-700 group-hover:text-gray-800 transition-colors font-medium">{subtitle}</p>}
@@ -122,7 +155,7 @@ const ChartCard = ({
   subtitle?: string;
 }) => (
   <div
-    className="relative bg-white rounded-3xl border border-gray-200/50 p-8 shadow-2xl hover:shadow-3xl transition-all duration-700 transform hover:-translate-y-2 hover:scale-[1.02] overflow-hidden backdrop-blur-sm group"
+    className="relative bg-white rounded-2xl md:rounded-3xl border border-gray-200/50 p-4 sm:p-6 md:p-8 shadow-2xl hover:shadow-3xl transition-all duration-700 transform hover:-translate-y-2 hover:scale-[1.01] md:hover:scale-[1.02] overflow-hidden backdrop-blur-sm group"
     style={{
       animationDelay: `${delay}ms`,
       animation: 'fadeInUp 0.5s ease-out forwards',
@@ -139,19 +172,19 @@ const ChartCard = ({
     <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-gradient-to-tr from-pink-400/10 to-orange-600/10 rounded-full blur-2xl group-hover:scale-125 transition-all duration-1000 delay-300" />
 
     <div className="relative z-10">
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6 md:mb-8">
         {Icon && (
-          <div className="relative w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-500 group-hover:rotate-6 group-hover:scale-110 transform-gpu">
+          <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-500 group-hover:rotate-6 group-hover:scale-110 transform-gpu">
             {/* Icon Glow */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl" />
-            <Icon className="w-7 h-7 text-white relative z-10 group-hover:scale-110 transition-transform duration-300" />
+            <Icon className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-white relative z-10 group-hover:scale-110 transition-transform duration-300" />
 
             {/* Pulsing Ring */}
             <div className="absolute inset-0 rounded-2xl border-2 border-white/30 group-hover:scale-125 group-hover:opacity-0 transition-all duration-500" />
           </div>
         )}
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-gray-900 group-hover:text-gray-800 transition-colors">{title}</h2>
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 group-hover:text-gray-800 transition-colors">{title}</h2>
           {subtitle && <p className="text-sm text-gray-800 mt-1">{subtitle}</p>}
         </div>
       </div>
@@ -193,13 +226,12 @@ const MetricCard = ({
         <p className={`text-2xl font-bold text-gray-900 group-hover:scale-105 transition-transform duration-300 origin-left`}>{value}</p>
       </div>
       <div
-        className={`w-12 h-12 bg-gradient-to-br ${
-          color.includes('emerald')
-            ? 'from-emerald-400 to-emerald-600'
-            : color.includes('blue')
+        className={`w-12 h-12 bg-gradient-to-br ${color.includes('emerald')
+          ? 'from-emerald-400 to-emerald-600'
+          : color.includes('blue')
             ? 'from-blue-400 to-blue-600'
             : 'from-purple-400 to-purple-600'
-        } rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:rotate-12 group-hover:scale-110`}
+          } rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:rotate-12 group-hover:scale-110`}
       >
         <Icon className="w-6 h-6 text-white" />
       </div>
@@ -281,7 +313,7 @@ export default function DashboardAnalytics() {
         if (!cancelled) setData(res.data);
       } catch {
         // Silent fallback to fetch API
-        try{
+        try {
           // 2) fetch fallback + نفس الهيدر
           const absolute =
             typeof window !== 'undefined'
@@ -316,31 +348,31 @@ export default function DashboardAnalytics() {
     let cancelled = false;
 
     async function getAI() {
-      setAiLoading(true); 
+      setAiLoading(true);
       setAiError(null);
-      
+
       try {
         // ✅ إضافة timeout للـ fetch
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 ثانية
-        
+
         const idToken = await auth.currentUser?.getIdToken().catch(() => undefined);
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
           ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         };
-        
+
         const r = await fetch('/api/ai/insights', {
           method: 'POST',
           headers,
           body: JSON.stringify({ data }),
           signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         const j = await r.json();
-        
+
         if (!cancelled) {
           if (j.ok && j.text) {
             setAiSummary(j.text);
@@ -361,9 +393,9 @@ export default function DashboardAnalytics() {
         if (!cancelled) setAiLoading(false);
       }
     }
-    
+
     getAI();
-    
+
     return () => { cancelled = true; };
   }, [data]);
 
@@ -373,7 +405,7 @@ export default function DashboardAnalytics() {
         <div className="text-center space-y-4">
           {/* Simple Loading Spinner */}
           <div className="w-12 h-12 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
-          
+
           <div className="space-y-2">
             <p className="text-xl font-semibold text-gray-900">جاري تحميل الإحصائيات</p>
             <p className="text-sm text-gray-600">تحليل البيانات...</p>
@@ -409,10 +441,10 @@ export default function DashboardAnalytics() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 p-8 space-y-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8 md:space-y-12">
       {/* AI Insights Card */}
       <div className="max-w-2xl mx-auto mb-10 w-full">
-        <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200/40 rounded-2xl p-6 shadow-xl flex flex-col gap-2 items-center animate-fadeIn">
+        <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200/40 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col gap-2 items-center animate-fadeIn">
           <div className="flex items-center gap-3 mb-2">
             <Sparkles className="text-blue-500 w-6 h-6 animate-pulse" />
             <h2 className="text-lg font-bold text-blue-800">توصيات الذكاء الاصطناعي</h2>
@@ -428,29 +460,29 @@ export default function DashboardAnalytics() {
         </div>
       </div>
       {/* Animated Header */}
-      <div className="text-center space-y-6 mb-16">
+      <div className="text-center space-y-4 sm:space-y-6 mb-8 sm:mb-12 md:mb-16">
         <div
-          className="inline-flex items-center gap-4 px-8 py-4 bg-white/80 backdrop-blur-sm rounded-full shadow-2xl border border-gray-200/50 hover:scale-105 transition-all duration-500"
+          className="inline-flex items-center gap-2 sm:gap-4 px-4 sm:px-6 md:px-8 py-3 sm:py-4 bg-white/80 backdrop-blur-sm rounded-full shadow-2xl border border-gray-200/50 hover:scale-105 transition-all duration-500"
           style={{
             animation: 'fadeInUp 0.5s ease-out forwards',
             opacity: 0,
             transform: 'translateY(-50px)',
           }}
         >
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-            <Sparkles className="w-6 h-6 text-white animate-pulse" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white animate-pulse" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
             لوحة التحكم التحليلية المتقدمة
           </h1>
         </div>
-        <p className="text-gray-800 max-w-3xl mx-auto text-lg leading-relaxed">
+        <p className="text-gray-800 max-w-3xl mx-auto text-sm sm:text-base md:text-lg leading-relaxed px-4">
           تتبع أداء متجرك وتحليل بيانات العملاء والطلبات بتقنيات متقدمة وواجهة تفاعلية ثلاثية الأبعاد
         </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
         <StatCard
           title="إجمالي الطلبات"
           value={data.totalOrders.toLocaleString()}
@@ -498,12 +530,12 @@ export default function DashboardAnalytics() {
       </div>
 
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8 lg:gap-10">
         {/* Orders AreaChart */}
         <ChartCard title="تحليل الطلبات الشهرية" subtitle="نمو وتطور المبيعات عبر الزمن" delay={400} icon={Eye}>
-          <div className="h-96 group-hover:scale-[1.02] transition-transform duration-700 transform-gpu">
+          <div className="h-64 sm:h-80 md:h-96 group-hover:scale-[1.01] md:group-hover:scale-[1.02] transition-transform duration-700 transform-gpu">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.ordersChart} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <AreaChart data={data.ordersChart} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
                 <defs>
                   <linearGradient id="orderAreaGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8} />
@@ -518,7 +550,7 @@ export default function DashboardAnalytics() {
                     </feMerge>
                   </filter>
                 </defs>
-                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 500 }} />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#6b7280', fontWeight: 500 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 500 }} />
                 <Tooltip
                   contentStyle={{
@@ -537,48 +569,48 @@ export default function DashboardAnalytics() {
 
         {/* Reviews Pie */}
         <ChartCard title="توزيع التقييمات التفاعلي" subtitle="نسب الرضا والتحسينات المطلوبة" delay={500} icon={Eye}>
-          <div className="h-96 flex items-center justify-center">
-            <div className="relative group-hover:scale-105 transition-transform duration-700 transform-gpu" style={{ width: 350, height: 350 }}>
-                <PieChart width={350} height={350}>
-                  <defs>
-                    <linearGradient id="positiveGradient" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#10b981" />
-                      <stop offset="50%" stopColor="#059669" />
-                      <stop offset="100%" stopColor="#047857" />
-                    </linearGradient>
-                    <linearGradient id="negativeGradient" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#ef4444" />
-                      <stop offset="50%" stopColor="#dc2626" />
-                      <stop offset="100%" stopColor="#b91c1c" />
-                    </linearGradient>
-                    <filter id="pieGlow">
-                      <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-                      <feMerge>
-                        <feMergeNode in="coloredBlur" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
-                  </defs>
-                  <Pie data={pieData} cx={175} cy={175} innerRadius={80} outerRadius={140} paddingAngle={8} dataKey="value" className="drop-shadow-2xl" filter="url(#pieGlow)">
-                    {pieData.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={index === 0 ? 'url(#positiveGradient)' : 'url(#negativeGradient)'}
-                        className="hover:opacity-80 transition-all duration-300 cursor-pointer"
-                        style={{ filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.1))' }}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                      border: 'none',
-                      borderRadius: '16px',
-                      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                      backdropFilter: 'blur(10px)',
-                    }}
-                  />
-                </PieChart>
+          <div className="h-64 sm:h-80 md:h-96 flex items-center justify-center">
+            <div className="relative group-hover:scale-105 transition-transform duration-700 transform-gpu w-[250px] h-[250px] sm:w-[280px] sm:h-[280px] md:w-[350px] md:h-[350px]">
+              <PieChart width={350} height={350}>
+                <defs>
+                  <linearGradient id="positiveGradient" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#10b981" />
+                    <stop offset="50%" stopColor="#059669" />
+                    <stop offset="100%" stopColor="#047857" />
+                  </linearGradient>
+                  <linearGradient id="negativeGradient" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#ef4444" />
+                    <stop offset="50%" stopColor="#dc2626" />
+                    <stop offset="100%" stopColor="#b91c1c" />
+                  </linearGradient>
+                  <filter id="pieGlow">
+                    <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                    <feMerge>
+                      <feMergeNode in="coloredBlur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                <Pie data={pieData} cx={175} cy={175} innerRadius={80} outerRadius={140} paddingAngle={8} dataKey="value" className="drop-shadow-2xl" filter="url(#pieGlow)">
+                  {pieData.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={index === 0 ? 'url(#positiveGradient)' : 'url(#negativeGradient)'}
+                      className="hover:opacity-80 transition-all duration-300 cursor-pointer"
+                      style={{ filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.1))' }}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    border: 'none',
+                    borderRadius: '16px',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                    backdropFilter: 'blur(10px)',
+                  }}
+                />
+              </PieChart>
 
               {/* Center badge */}
               <div className="absolute inset-0 flex items-center justify-center">
@@ -694,9 +726,8 @@ export default function DashboardAnalytics() {
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`w-5 h-5 transition-all duration-300 ${
-                            i < Math.round(metrics?.satisfactionScore || 0) ? 'text-yellow-400 fill-current hover:scale-110' : 'text-gray-300'
-                          }`}
+                          className={`w-5 h-5 transition-all duration-300 ${i < Math.round(metrics?.satisfactionScore || 0) ? 'text-yellow-400 fill-current hover:scale-110' : 'text-gray-300'
+                            }`}
                           style={{ animationDelay: `${i * 100}ms` }}
                         />
                       ))}
@@ -712,86 +743,86 @@ export default function DashboardAnalytics() {
         </div>
       </div>
 
-     {/* Additional Insights */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-  {/* Best Month */}
-  <div
-    className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-    style={{
-      animationDelay: '900ms',
-      animation: 'fadeInUp 0.5s ease-out forwards',
-      opacity: 0,
-      transform: 'translateY(30px)',
-    }}
-  >
-    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
-    <div className="relative z-10">
-      <Award className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
-      <p className="text-sm opacity-90 mb-1 text-gray-900">أفضل شهر</p>
-      <p className="text-xl font-bold text-gray-900">{metrics?.bestMonth || '—'}</p>
-    </div>
-  </div>
+      {/* Additional Insights */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Best Month */}
+        <div
+          className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
+          style={{
+            animationDelay: '900ms',
+            animation: 'fadeInUp 0.5s ease-out forwards',
+            opacity: 0,
+            transform: 'translateY(30px)',
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
+          <div className="relative z-10">
+            <Award className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
+            <p className="text-sm opacity-90 mb-1 text-gray-900">أفضل شهر</p>
+            <p className="text-xl font-bold text-gray-900">{metrics?.bestMonth || '—'}</p>
+          </div>
+        </div>
 
-  {/* Expected Growth */}
-  <div
-    className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-    style={{
-      animationDelay: '1000ms',
-      animation: 'fadeInUp 0.5s ease-out forwards',
-      opacity: 0,
-      transform: 'translateY(30px)',
-    }}
-  >
-    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
-    <div className="relative z-10">
-      <TrendingUp className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
-      <p className="text-sm opacity-90 mb-1 text-gray-900">نمو متوقع</p>
-      <p className="text-xl font-bold text-gray-900">
-        {metrics?.ordersGrowth
-          ? `${metrics.ordersGrowth > 0 ? '+' : ''}${(metrics.ordersGrowth * 1.2).toFixed(1)}%`
-          : '+0.0%'}
-      </p>
-    </div>
-  </div>
+        {/* Expected Growth */}
+        <div
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
+          style={{
+            animationDelay: '1000ms',
+            animation: 'fadeInUp 0.5s ease-out forwards',
+            opacity: 0,
+            transform: 'translateY(30px)',
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
+          <div className="relative z-10">
+            <TrendingUp className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
+            <p className="text-sm opacity-90 mb-1 text-gray-900">نمو متوقع</p>
+            <p className="text-xl font-bold text-gray-900">
+              {metrics?.ordersGrowth
+                ? `${metrics.ordersGrowth > 0 ? '+' : ''}${(metrics.ordersGrowth * 1.2).toFixed(1)}%`
+                : '+0.0%'}
+            </p>
+          </div>
+        </div>
 
-  {/* Loyalty */}
-  <div
-    className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-    style={{
-      animationDelay: '1100ms',
-      animation: 'fadeInUp 0.5s ease-out forwards',
-      opacity: 0,
-      transform: 'translateY(30px)',
-    }}
-  >
-    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
-    <div className="relative z-10">
-      <Heart className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
-      <p className="text-sm opacity-90 mb-1 text-gray-900">ولاء العملاء</p>
-      <p className="text-xl font-bold text-gray-900">
-        {metrics?.loyaltyRate != null ? metrics.loyaltyRate.toFixed(1) : '0.0'}%
-      </p>
-    </div>
-  </div>
+        {/* Loyalty */}
+        <div
+          className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
+          style={{
+            animationDelay: '1100ms',
+            animation: 'fadeInUp 0.5s ease-out forwards',
+            opacity: 0,
+            transform: 'translateY(30px)',
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
+          <div className="relative z-10">
+            <Heart className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
+            <p className="text-sm opacity-90 mb-1 text-gray-900">ولاء العملاء</p>
+            <p className="text-xl font-bold text-gray-900">
+              {metrics?.loyaltyRate != null ? metrics.loyaltyRate.toFixed(1) : '0.0'}%
+            </p>
+          </div>
+        </div>
 
-  {/* Overall Rating */}
-  <div
-    className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
-    style={{
-      animationDelay: '1200ms',
-      animation: 'fadeInUp 0.5s ease-out forwards',
-      opacity: 0,
-      transform: 'translateY(30px)',
-    }}
-  >
-    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
-    <div className="relative z-10">
-      <Sparkles className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
-      <p className="text-sm opacity-90 mb-1 text-gray-900">تقييم عام</p>
-      <p className="text-xl font-bold text-gray-900">{metrics?.overallRating || 'غير متاح'}</p>
-    </div>
-  </div>
-</div>
+        {/* Overall Rating */}
+        <div
+          className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-6 shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 group overflow-hidden"
+          style={{
+            animationDelay: '1200ms',
+            animation: 'fadeInUp 0.5s ease-out forwards',
+            opacity: 0,
+            transform: 'translateY(30px)',
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent group-hover:from-white/20 transition-all duration-500" />
+          <div className="relative z-10">
+            <Sparkles className="w-8 h-8 mb-3 text-white group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
+            <p className="text-sm opacity-90 mb-1 text-gray-900">تقييم عام</p>
+            <p className="text-xl font-bold text-gray-900">{metrics?.overallRating || 'غير متاح'}</p>
+          </div>
+        </div>
+      </div>
 
       <style jsx>{`
         @keyframes slideInUp {

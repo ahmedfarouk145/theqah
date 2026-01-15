@@ -1,7 +1,7 @@
+// src/pages/api/store/settings.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { verifyStore, type AuthedRequest } from "@/utils/verifyStore";
+import { StoreService } from "@/server/services/store.service";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -14,61 +14,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { storeId } = req as AuthedRequest;
   if (!storeId) return res.status(400).json({ message: "Missing storeId" });
 
-  const storeRef = doc(db, "stores", storeId);
+  const storeService = new StoreService();
 
   try {
     if (req.method === "GET") {
-      const snapshot = await getDoc(storeRef);
-      if (!snapshot.exists()) return res.status(200).json({ settings: {} });
-
-      const data = snapshot.data();
-      return res.status(200).json({
-        settings: data?.settings || {},
-      });
+      const settings = await storeService.getSettings(storeId);
+      return res.status(200).json({ settings });
     }
 
     if (req.method === "POST") {
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const body = (req.body ?? {}) as any;
-      // نتوقع { settings: { salla: { reviewTemplate: "..." } } }
       if (typeof body !== "object") return res.status(400).json({ message: "Invalid payload" });
 
-      await setDoc(
-        storeRef,
-        { settings: body.settings ?? {} },
-        { merge: true }
-      );
+      await storeService.updateSettings(storeId, body.settings ?? {});
       return res.status(200).json({ ok: true });
     }
 
-    // PATCH: تحديث إعداد واحد مباشرة
     if (req.method === "PATCH") {
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const body = (req.body ?? {}) as any;
       if (typeof body !== "object") return res.status(400).json({ message: "Invalid payload" });
 
-      // دعم تحديث certificatePosition وأي إعدادات أخرى
-      const updates: Record<string, unknown> = {};
+      const updates: string[] = [];
 
       if (body.certificatePosition) {
         const validPositions = ["auto", "before-reviews", "after-reviews", "footer", "floating"];
         if (!validPositions.includes(body.certificatePosition)) {
           return res.status(400).json({ message: "Invalid certificatePosition value" });
         }
-        updates["settings.certificatePosition"] = body.certificatePosition;
+        await storeService.updateSetting(storeId, "certificatePosition", body.certificatePosition);
+        updates.push("certificatePosition");
       }
 
-      // يمكن إضافة المزيد من الإعدادات هنا
       if (body.widgetTheme) {
-        updates["settings.widgetTheme"] = body.widgetTheme;
+        await storeService.updateSetting(storeId, "widgetTheme", body.widgetTheme);
+        updates.push("widgetTheme");
       }
 
-      if (Object.keys(updates).length === 0) {
+      if (updates.length === 0) {
         return res.status(400).json({ message: "No valid settings to update" });
       }
 
-      await setDoc(storeRef, updates, { merge: true });
-      return res.status(200).json({ ok: true, updated: Object.keys(updates) });
+      return res.status(200).json({ ok: true, updated: updates });
     }
 
     res.setHeader("Allow", ["GET", "POST", "PATCH"]);
@@ -78,4 +66,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ message: "Internal Server Error" });
   }
 }
-

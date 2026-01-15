@@ -3,9 +3,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import formidable, { type Fields, type Files, type File } from 'formidable';
 import fs from 'fs/promises';
 import { parse as parseCsv } from 'csv-parse/sync';
-import { addDoc, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { verifyStore, type AuthedRequest } from '@/utils/verifyStore';
+import { OrderService } from '@/server/services/order.service';
 
 export const config = { api: { bodyParser: false } };
 
@@ -19,7 +18,10 @@ type OrderRecord = {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // ✅ verifyStore now takes only (req) and throws on failure
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
   try {
     await verifyStore(req);
   } catch (e) {
@@ -27,14 +29,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(err.status ?? 401).json({ message: err.message || 'Unauthorized' });
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
   const form = new formidable.IncomingForm();
 
   try {
-    // ✅ formidable v3 Promise API: parse(req) → [fields, files]
     const [, files]: [Fields, Files] = await form.parse(req);
 
     const csvFile = files.csv as File | File[] | undefined;
@@ -54,45 +51,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { storeId } = req as AuthedRequest;
 
-    let inserted = 0;
-    let skipped = 0;
+    const orderService = new OrderService();
+    const result = await orderService.importFromCsv(storeId ?? '', records);
 
-    for (const raw of records) {
-      const name = String(raw.name ?? '').trim();
-      const phone = String(raw.phone ?? '').trim();
-      const email = raw.email ? String(raw.email).trim() : undefined;
-      const orderId = String(raw.orderId ?? '').trim();
-      const productId = String(raw.productId ?? '').trim();
-      const storeName = String(raw.storeName ?? '').trim();
-
-      if (!name || !phone || !orderId || !productId || !storeName) {
-        skipped++;
-        continue;
-      }
-
-      await addDoc(collection(db, 'orders'), {
-        name,
-        phone,
-        email: email || undefined,
-        orderId,
-        productId,
-        storeName,
-        storeId: storeId ?? null,
-        sent: false,
-        createdAt: new Date().toISOString(),
-      });
-
-      inserted++;
-    }
-
-    // best-effort cleanup
-    try { await fs.unlink(filePath); } catch {}
+    // Cleanup temp file
+    try { await fs.unlink(filePath); } catch { }
 
     return res.status(200).json({
       message: 'Orders imported successfully',
-      inserted,
-      skipped,
-      total: records.length,
+      ...result,
     });
   } catch (e) {
     console.error('Import error:', e);

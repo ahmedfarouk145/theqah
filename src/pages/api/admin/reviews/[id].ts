@@ -1,11 +1,8 @@
+// src/pages/api/admin/reviews/[id].ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { dbAdmin } from '@/lib/firebaseAdmin';
 import { verifyAdmin } from '@/utils/verifyAdmin';
+import { AdminService } from '@/server/services/admin.service';
 import { mapReview } from '@/utils/mapReview';
-
-function sanitizeText(s: string) {
-  return s.replace(/<\s*script.*?>.*?<\s*\/\s*script\s*>/gi, '').trim();
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -17,147 +14,62 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const reviewId = id.trim();
 
-    const db = dbAdmin();
-    const reviewRef = db.collection('reviews').doc(reviewId);
-    const snap = await reviewRef.get();
-    if (!snap.exists) return res.status(404).json({ message: 'التقييم غير موجود', error: 'Not Found' });
-    const d = snap.data() || {};
+    const adminService = new AdminService();
+    const result = await adminService.getReviewWithStore(reviewId);
 
-    // lookup storeName (استعمل denormalized أولاً)
-    let storeName = 'غير محدد';
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (d && typeof d === 'object' && (d as any).storeName) {
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      storeName = (d as any).storeName;
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } else if ((d as any)?.storeUid) {
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const uid = (d as any).storeUid as string;
-      let sDoc = await db.collection('stores').doc(uid).get();
-      if (!sDoc.exists) {
-        const qs = await db.collection('stores').where('uid', '==', uid).limit(1).get();
-        sDoc = qs.docs[0];
-      }
-      const s = sDoc?.data() || {};
-      const dom =
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (s as any)?.domain?.base ||
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (s as any)?.salla?.domain ||
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (s as any)?.zid?.domain ||
-        '';
-      storeName =
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (s as any)?.merchant?.name ||
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (s as any)?.salla?.storeName ||
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (s as any)?.zid?.storeName ||
-        //eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (s as any)?.storeName ||
-        (dom ? (() => { try { return new URL(dom).hostname; } catch { return 'غير محدد'; } })() : 'غير محدد');
+    if (!result) {
+      return res.status(404).json({ message: 'التقييم غير موجود', error: 'Not Found' });
     }
+
+    const { review, storeName } = result;
 
     if (req.method === 'GET') {
       return res.status(200).json({
         id: reviewId,
         message: 'تم استرجاع التقييم بنجاح',
-        review: mapReview(reviewId, d, storeName),
+        review: mapReview(reviewId, review, storeName),
       });
     }
 
     if (req.method === 'PATCH') {
       const { published, moderatorNote, status } = req.body || {};
+
       if (published !== undefined && typeof published !== 'boolean') {
-        return res.status(400).json({ message: 'قيمة النشر يجب أن تكون true أو false', error: 'Invalid Published' });
+        return res.status(400).json({ message: 'قيمة النشر يجب أن تكون true أو false' });
       }
       if (moderatorNote !== undefined && typeof moderatorNote !== 'string') {
-        return res.status(400).json({ message: 'ملاحظة المشرف يجب أن تكون نص', error: 'Invalid Note' });
+        return res.status(400).json({ message: 'ملاحظة المشرف يجب أن تكون نص' });
       }
       if (moderatorNote && moderatorNote.length > 2000) {
-        return res.status(400).json({ message: 'ملاحظة المشرف طويلة جداً', error: 'Note Too Long' });
-      }
-      if (status !== undefined && typeof status !== 'string') {
-        return res.status(400).json({ message: 'قيمة الحالة غير صحيحة', error: 'Invalid Status' });
+        return res.status(400).json({ message: 'ملاحظة المشرف طويلة جداً' });
       }
 
-      const now = Date.now();
-      const updateData: Record<string, unknown> = { lastModified: new Date(now) };
+      await adminService.updateReview(reviewId, { published, status, moderatorNote });
 
-      if (published !== undefined) {
-        updateData.published = published;
-        updateData.status = published
-          ? 'published'
-          //eslint-disable-next-line @typescript-eslint/no-explicit-any
-          : ((d as any).status === 'published' ? 'hidden' : (d as any).status || 'pending');
-        if (published) updateData.publishedAt = now;
-      }
-      if (status !== undefined) {
-        updateData.status = String(status);
-        if (String(status) === 'published') {
-          updateData.published = true;
-          updateData.publishedAt = now;
-        }
-        if (String(status) === 'hidden') {
-          updateData.published = false;
-        }
-      }
-      if (moderatorNote !== undefined) updateData.moderatorNote = sanitizeText(moderatorNote);
-
-      await reviewRef.update(updateData);
-
-      try {
-        await db.collection('admin_audit_logs').add({
-          action: 'updateReview',
-          reviewId,
-          changes: updateData,
-          createdAt: new Date(),
-        });
-      } catch (e) {
-        console.error('Audit log failed', e);
-      }
-
-      const updated = (await reviewRef.get()).data() || {};
+      const updated = await adminService.getReviewWithStore(reviewId);
       return res.status(200).json({
         id: reviewId,
-        message:
-          published !== undefined
-            ? (published ? 'تم نشر التقييم بنجاح' : 'تم إخفاء التقييم بنجاح')
-            : 'تم تحديث التقييم بنجاح',
-        review: mapReview(reviewId, updated, storeName),
+        message: published !== undefined ? (published ? 'تم نشر التقييم بنجاح' : 'تم إخفاء التقييم بنجاح') : 'تم تحديث التقييم بنجاح',
+        review: mapReview(reviewId, updated?.review || {}, storeName),
       });
     }
 
     if (req.method === 'DELETE') {
       const { confirm, reason } = req.body || {};
       if (confirm !== true || !reason || typeof reason !== 'string' || !reason.trim()) {
-        return res.status(400).json({ message: 'تأكيد الحذف وسبب مطلوبان', error: 'Confirmation Required' });
+        return res.status(400).json({ message: 'تأكيد الحذف وسبب مطلوبان' });
       }
 
-      await reviewRef.delete();
-
-      try {
-        await db.collection('admin_audit_logs').add({
-          action: 'deleteReview',
-          reviewId,
-          reason: sanitizeText(reason),
-          createdAt: new Date(),
-        });
-      } catch (e) {
-        console.error('Audit log failed', e);
-      }
-
+      await adminService.deleteReview(reviewId, reason);
       return res.status(200).json({ id: reviewId, message: 'تم حذف التقييم بنجاح' });
     }
 
-    return res.status(405).json({ message: 'الطريقة غير مدعومة', error: 'Method Not Allowed' });
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
+    return res.status(405).json({ message: 'الطريقة غير مدعومة' });
+  } catch (error) {
     console.error('Review API error:', error);
-    const msg = error?.message || '';
-    if (msg.startsWith('unauthenticated')) return res.status(401).json({ message: 'غير مصرح', error: 'Unauthorized' });
-    if (msg.startsWith('permission-denied')) return res.status(403).json({ message: 'ليس لديك صلاحية', error: 'Forbidden' });
-    return res.status(500).json({ message: 'خطأ داخلي في الخادم', error: 'Internal Server Error' });
+    const msg = (error as Error).message || '';
+    if (msg.startsWith('unauthenticated')) return res.status(401).json({ message: 'غير مصرح' });
+    if (msg.startsWith('permission-denied')) return res.status(403).json({ message: 'ليس لديك صلاحية' });
+    return res.status(500).json({ message: 'خطأ داخلي في الخادم' });
   }
 }

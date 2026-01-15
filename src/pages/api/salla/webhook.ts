@@ -4,7 +4,6 @@ import { dbAdmin } from "@/lib/firebaseAdmin";
 import { fetchStoreInfo, fetchUserInfo, getOwnerAccessToken } from "@/lib/sallaClient";
 import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
 import { trackWebhook } from "@/server/monitoring/metrics";
-import { moderateReview } from "@/server/moderation";
 import { SallaWebhookService } from "@/server/services/salla-webhook.service";
 
 // Extracted types and utilities
@@ -15,7 +14,6 @@ import {
   readRawBody,
   verifySallaRequest,
   toDomainBase,
-  normalizeUrl,
   encodeUrlForFirestore,
   pickStoreUidFromSalla,
   keyOf,
@@ -31,88 +29,10 @@ const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
 const isDevelopment = process.env.NODE_ENV === "development";
 
-/* ===================== Domain Helpers (to be moved to service later) ===================== */
-function saveMultipleDomainFormats(
-  db: FirebaseFirestore.Firestore,
-  uid: string,
-  originalDomain: string | null | undefined
-) {
-  if (!originalDomain) return Promise.resolve();
+/* ===================== Domain functions moved to SallaWebhookService ===================== */
+// saveDomainAndFlags → sallaService.saveDomainWithFlags()
+// saveMultipleDomainFormats → sallaService.saveDomainVariations()
 
-  const u = normalizeUrl(originalDomain);
-  if (!u) return Promise.resolve();
-
-  const hostname = u.host.toLowerCase();
-  const origin = u.origin.toLowerCase();
-  const firstSeg = u.pathname.split("/").filter(Boolean)[0] || "";
-
-  const domainsToSave = [
-    origin,
-    hostname,
-  ];
-
-  if (firstSeg.startsWith("dev-")) {
-    domainsToSave.push(`${origin}/${firstSeg}`, `${hostname}/${firstSeg}`);
-  }
-
-  const promises = domainsToSave.map(domain =>
-    db.collection("domains").doc(encodeUrlForFirestore(domain)).set({
-      base: domain,
-      key: encodeUrlForFirestore(domain),
-      uid,
-      storeUid: uid,
-      provider: "salla",
-      updatedAt: Date.now(),
-    }, { merge: true }).catch(err =>
-      console.warn(`[webhook] Failed to save domain ${domain}:`, err)
-    )
-  );
-
-  return Promise.all(promises);
-}
-
-/* ===================== Firestore Ops ===================== */
-async function saveDomainAndFlags(
-  db: FirebaseFirestore.Firestore,
-  uid: string,
-  merchantId: string | number | null,
-  base: string | null | undefined,
-  event: string
-) {
-  const now = Date.now();
-  const storeDoc: Dict = {
-    uid,
-    provider: "salla",
-    updatedAt: now,
-    salla: {
-      uid,
-      storeId:
-        typeof merchantId === "number" ? merchantId :
-          typeof merchantId === "string" ? merchantId :
-            null,
-      connected: true,
-      installed: true,
-      ...(base ? { domain: base } : {}),
-    },
-    ...(base ? { domain: { base, key: encodeUrlForFirestore(base), updatedAt: now } } : {}),
-  };
-
-  // نظّف أي undefined
-  Object.keys(storeDoc).forEach((k) => (storeDoc as Dict)[k] === undefined && delete (storeDoc as Dict)[k]);
-
-  await db.collection("stores").doc(uid).set(storeDoc, { merge: true });
-
-  if (base) {
-    const key = encodeUrlForFirestore(base);
-    await db.collection("domains").doc(key).set({
-      base, key, uid, storeUid: uid, provider: "salla", updatedAt: now,
-    }, { merge: true });
-  }
-
-  await db.collection("salla_app_events").add({
-    at: now, event, type: "domain_flags_saved", uid, base: base ?? null,
-  }).catch(() => { });
-}
 
 /* ===================== Handler ===================== */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -240,9 +160,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const storeInfo = await response.json();
             const fetchedDomain = storeInfo?.data?.domain || storeInfo?.domain;
             if (fetchedDomain) {
-              await saveDomainAndFlags(db, storeUidFromEvent, merchantId, fetchedDomain, event);
-              await saveMultipleDomainFormats(db, storeUidFromEvent, fetchedDomain);
-              await fbLog(db, { level: "info", scope: "domain", msg: "fetched and saved domain from store API", event, idemKey, merchant: merchantId, orderId, meta: { domain: fetchedDomain, storeUid: storeUidFromEvent } });
+              await sallaService.saveDomainWithFlags(storeUidFromEvent, merchantId, fetchedDomain, event);
+              await sallaService.saveDomainVariations(storeUidFromEvent, fetchedDomain);
+              await fbLog(db, { level: "info", scope: "domain", msg: "fetched and saved domain via service", event, idemKey, merchant: merchantId, orderId, meta: { domain: fetchedDomain, storeUid: storeUidFromEvent } });
               return; // Exit early after successful fetch
             }
           }
@@ -255,9 +175,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const keyGeneric = encodeUrlForFirestore(baseGeneric);
         const existsGeneric = await db.collection("domains").doc(keyGeneric).get().then(d => d.exists).catch(() => false);
         if (!existsGeneric) {
-          await saveDomainAndFlags(db, storeUidFromEvent, merchantId, baseGeneric, event);
-          await saveMultipleDomainFormats(db, storeUidFromEvent, payloadDomainGeneric);
-          await fbLog(db, { level: "info", scope: "domain", msg: "auto-saved domain from event payload", event, idemKey, merchant: merchantId, orderId, meta: { base: baseGeneric, storeUid: storeUidFromEvent } });
+          await sallaService.saveDomainWithFlags(storeUidFromEvent, merchantId, baseGeneric, event);
+          await sallaService.saveDomainVariations(storeUidFromEvent, payloadDomainGeneric);
+          await fbLog(db, { level: "info", scope: "domain", msg: "auto-saved domain via service", event, idemKey, merchant: merchantId, orderId, meta: { base: baseGeneric, storeUid: storeUidFromEvent } });
         }
       }
     } catch (e) {
@@ -287,8 +207,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       let base = toDomainBase(domainInPayload);
 
       if (storeUid) {
-        await saveDomainAndFlags(db, storeUid, merchantId, base, event);
-        await saveMultipleDomainFormats(db, storeUid, domainInPayload);
+        await sallaService.saveDomainWithFlags(storeUid, merchantId, base, event);
+        await sallaService.saveDomainVariations(storeUid, domainInPayload);
       }
 
       // خزّن OAuth لو متاح
@@ -320,10 +240,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const resolvedBase = toDomainBase(d);
             if (resolvedBase) {
               base = resolvedBase;
-              await saveDomainAndFlags(db, storeUid, merchantId, base, event);
-              // Also save multiple domain formats
-              await saveMultipleDomainFormats(db, storeUid, d);
-              await fbLog(db, { level: "info", scope: "domain", msg: " multiple domain formats saved from store/info", event, idemKey, merchant: merchantId, orderId, meta: { base } });
+              await sallaService.saveDomainWithFlags(storeUid, merchantId, base, event);
+              await sallaService.saveDomainVariations(storeUid, d);
+              await fbLog(db, { level: "info", scope: "domain", msg: "domain saved via service", event, idemKey, merchant: merchantId, orderId, meta: { base } });
             } else {
               await fbLog(db, { level: "warn", scope: "domain", msg: "store/info returned no usable domain", event, idemKey, merchant: merchantId, orderId, meta: { rawDomain: d } });
             }
@@ -555,160 +474,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
     } else if (event === "review.added") {
-      // Save review immediately from webhook (don't wait for Salla API indexing)
+      // Handle review.added via service (includes moderation + background job)
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
       if (storeUid && dataRaw && typeof dataRaw === 'object') {
         try {
-          const reviewData = dataRaw as Record<string, unknown>;
-          const reviewType = String(reviewData.type || "");
-          const product = reviewData.product as Record<string, unknown> | undefined;
-          const order = reviewData.order as Record<string, unknown> | undefined;
-          const customer = reviewData.customer as Record<string, unknown> | undefined;
-          const productId = product?.id;
-
-          // Use internal 'id' for orderId to match Salla API response (which returns internal IDs in order_id field)
-          // Use 'reference_id' for display purposes as orderNumber
-          const sallaOrderId = String(order?.id || order?.order_id || "");
-          const sallaReferenceId = String(order?.reference_id || "");
-
-          // Primary ID for matching with API must be the internal one
-          const orderId = sallaOrderId || sallaReferenceId;
-
-
-          // Skip testimonials (store reviews) - we only track product reviews
-          if (reviewType === "testimonial" || !product) {
-            fbLog(db, { level: "info", scope: "review", msg: "skipping testimonial review", event, idemKey, merchant: merchantId });
-            return res.status(200).json({ ok: true, processed: true });
-          }
-
-          if (!productId || !orderId) {
-            fbLog(db, { level: "warn", scope: "review", msg: "missing product or order id", event, idemKey, merchant: merchantId, meta: { type: reviewType, hasProduct: !!product, hasOrder: !!order } });
-            return res.status(200).json({ ok: true, processed: true });
-          }
-
-          // Check if already exists (using orderId + productId)
-          const existingQuery = await db.collection("reviews")
-            .where("storeUid", "==", storeUid)
-            .where("orderId", "==", String(orderId))
-            .where("productId", "==", String(productId))
-            .limit(1)
-            .get();
-
-          if (!existingQuery.empty) {
-            fbLog(db, { level: "info", scope: "review", msg: "review already exists", event, idemKey, merchant: merchantId, meta: { orderId, productId } });
-            return res.status(200).json({ ok: true, processed: true });
-          }
-
           // Get store subscription info for verification
           const storeSnap = await db.collection("stores").doc(storeUid).get();
           const storeData = storeSnap.data();
           const subscription = storeData?.subscription || {};
           const subscriptionStart = subscription.startedAt || 0;
 
-          const orderDate = order?.date as Record<string, unknown> | undefined;
-          const reviewDate = orderDate?.date && typeof orderDate.date === 'string'
-            ? new Date(orderDate.date).getTime()
-            : Date.now();
-          const isVerified = subscriptionStart > 0 && reviewDate >= subscriptionStart;
-
-          // Create doc ID using order + product (we'll update with sallaReviewId later if needed)
-          const docId = `salla_${merchantId}_order_${orderId}_product_${productId}`;
-
-          // ✅ Content moderation check
-          const reviewText = String(reviewData.content || "");
-          let reviewStatus = "approved";
-          let moderationFlags: string[] = [];
-          let needsManualReview = false;
-
-          if (reviewText.trim()) {
-            try {
-              const modResult = await moderateReview({
-                text: reviewText,
-                stars: Number(reviewData.rating || 0),
-                costSaving: true // Use cost-saving mode for webhook (high volume)
-              });
-
-              if (!modResult.ok) {
-                reviewStatus = "pending_review";
-                moderationFlags = modResult.flags || [];
-                needsManualReview = true;
-              }
-            } catch (modError) {
-              console.error(`[MODERATION] Error checking review ${docId}:`, modError);
-              // Continue without moderation if it fails
-            }
-          }
-
-          // Save review with moderation-aware status
-          const reviewDoc = {
-            reviewId: docId,
-            storeUid,
-            orderId: String(orderId),
-            orderNumber: sallaReferenceId || String(orderId), // Visible order number for UI
-            productId: String(productId),
-            source: "salla_native",
-
-            productName: String(product?.name || ""),
-
-            stars: Number(reviewData.rating || 0),
-            text: reviewText,
-
-            author: {
-              displayName: String(customer?.name || "عميل سلة"),
-              email: String(customer?.email || ""),
-              mobile: String(customer?.mobile || ""),
-            },
-
-            status: reviewStatus,
-            trustedBuyer: false,
-            verified: isVerified,
-            publishedAt: reviewDate,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-
-            // Moderation info
-            ...(needsManualReview && {
-              moderation: {
-                flagged: true,
-                flags: moderationFlags,
-                checkedAt: Date.now(),
-              }
-            }),
-
-            // sallaReviewId will be added by background job later
-            needsSallaId: true, // Flag for background processing
+          // Build payload for service
+          const reviewData = dataRaw as Record<string, unknown>;
+          const payload = {
+            type: reviewData.type as string | undefined,
+            content: reviewData.content as string | undefined,
+            rating: reviewData.rating as number | undefined,
+            product: reviewData.product as { id?: string | number; name?: string } | undefined,
+            order: reviewData.order as { id?: string | number; order_id?: string | number; reference_id?: string; date?: { date?: string } } | undefined,
+            customer: reviewData.customer as { name?: string; email?: string; mobile?: string } | undefined,
           };
 
-          await db.collection("reviews").doc(docId).set(reviewDoc);
+          const result = await sallaService.handleReviewAdded(
+            storeUid,
+            String(merchantId),
+            payload,
+            subscriptionStart,
+            {
+              appUrl: process.env.NEXT_PUBLIC_APP_URL || `https://${req.headers.host}`,
+              cronSecret: process.env.CRON_SECRET || '',
+            }
+          );
 
-          fbLog(db, { level: "info", scope: "review", msg: "review saved from webhook", event, idemKey, merchant: merchantId, meta: { orderId, productId, verified: isVerified, status: reviewStatus, flagged: needsManualReview } });
+          if (result.saved) {
+            await fbLog(db, {
+              level: "info",
+              scope: "review",
+              msg: "review saved via service",
+              event,
+              idemKey,
+              merchant: merchantId,
+              orderId,
+              meta: { docId: result.docId, status: result.status, flagged: result.flagged }
+            });
+          } else {
+            await fbLog(db, {
+              level: "info",
+              scope: "review",
+              msg: `review skipped: ${result.skipped}`,
+              event,
+              idemKey,
+              merchant: merchantId,
+              orderId
+            });
+          }
 
-
-          // Trigger background job to fetch sallaReviewId (fire-and-forget)
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${req.headers.host}`;
-          const jobUrl = `${appUrl}/api/jobs/fetch-review-id`;
-
-          // Note: We don't await this so webhook responds immediately
-          // The background job runs independently with its own retry logic
-          fetch(jobUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.CRON_SECRET}`,
-            },
-            body: JSON.stringify({
-              reviewDocId: docId,
-              merchantId,
-              orderId: String(orderId),
-            }),
-          }).catch((err) => {
-            console.error('[BACKGROUND_JOB] Failed to trigger:', err);
-            // Non-blocking: job will be picked up by hourly cron backup
-          });
-
+          return res.status(200).json({ ok: true, processed: true });
         } catch (syncErr) {
           const errMsg = syncErr instanceof Error ? syncErr.message : String(syncErr);
-          fbLog(db, { level: "error", scope: "review", msg: "review save exception", event, idemKey, merchant: merchantId, meta: { error: errMsg } });
+          await fbLog(db, { level: "error", scope: "review", msg: "review save exception", event, idemKey, merchant: merchantId, meta: { error: errMsg } });
         }
       }
     }
