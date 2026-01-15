@@ -1,8 +1,8 @@
 /**
  * Widget Minification Script
  * 
- * Minifies theqah-widget.js and theqah-stars.js for production
- * Target: <20KB minified (currently ~40KB)
+ * Minifies theqah-widget.js for production
+ * Target: <20KB minified
  * 
  * Usage: node scripts/minify-widgets.js
  */
@@ -19,10 +19,6 @@ const FILES_TO_MINIFY = [
     input: 'theqah-widget.js',
     output: 'theqah-widget.min.js',
   },
-  {
-    input: 'theqah-stars.js',
-    output: 'theqah-stars.min.js',
-  },
 ];
 
 const TERSER_OPTIONS = {
@@ -34,7 +30,7 @@ const TERSER_OPTIONS = {
   },
   mangle: {
     toplevel: false, // Don't mangle top-level names (for global API)
-    reserved: ['TheQahWidget', 'TheQahStars', 'TheQahLoadingSkeleton', 'TheQahOffline'], // Preserve public APIs
+    reserved: ['TheQahWidget', 'TheQahLoadingSkeleton', 'TheQahOffline'], // Preserve public APIs
   },
   format: {
     comments: /^!/, // Keep comments starting with !
