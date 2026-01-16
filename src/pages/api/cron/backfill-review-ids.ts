@@ -63,8 +63,11 @@ export default async function handler(
           throw new Error(`No access token for store ${storeUid}`);
         }
 
-        // Fetch ALL reviews from Salla API (no product filter support)
-        const apiUrl = `https://api.salla.dev/admin/v2/reviews?per_page=100`;
+        // Use products filter for efficiency (fetches only reviews for this product)
+        const productId = review.productId || '';
+        const apiUrl = productId
+          ? `https://api.salla.dev/admin/v2/reviews?products=${productId}&per_page=50`
+          : `https://api.salla.dev/admin/v2/reviews?per_page=100`;
 
         const sallaResponse = await fetch(apiUrl, {
           headers: {
@@ -81,15 +84,20 @@ export default async function handler(
           data?: Array<{
             id: number | string;
             order_id: number | string | null;
+            product?: { id?: number | string };
+            rating?: number;
             type?: string;
           }>;
         };
 
-        // Find matching review by orderId (filter client-side)
+        // Find matching review by orderId + productId + rating for accuracy
         // Only match product reviews (type: 'rating'), not testimonials
         const matchingReview = sallaData.data?.find((r) => {
           const isProductReview = !r.type || r.type === 'rating';
-          return isProductReview && String(r.order_id) === String(review.orderId);
+          const orderMatches = String(r.order_id) === String(review.orderId);
+          const productMatches = !productId || String(r.product?.id) === String(productId);
+          const ratingMatches = !review.stars || r.rating === review.stars;
+          return isProductReview && orderMatches && productMatches && ratingMatches;
         });
 
         if (matchingReview) {
