@@ -537,6 +537,8 @@
     if (checkResult.hasVerified) {
       // Has verified reviews - add logos to Salla reviews
       const verifiedIds = checkResult.reviews.map(r => r.sallaReviewId);
+      // Cache for MutationObserver to re-add after Salla re-renders
+      G.verifiedIds = verifiedIds;
       addLogosToSallaReviews(verifiedIds);
 
     }
@@ -723,20 +725,52 @@
     setTimeout(safeLaunch, 100);
   }
 
-  // دعم SPA
+  // دعم SPA + detect Salla review list changes (sorting/pagination)
   if (!window.__THEQAH_OBS__ && typeof MutationObserver !== 'undefined') {
     window.__THEQAH_OBS__ = true;
+    
+    const reAddLogos = debounce(() => {
+      // Use globally cached verified IDs
+      if (G.verifiedIds && G.verifiedIds.length > 0) {
+        addLogosToSallaReviews(G.verifiedIds);
+      }
+    }, 300);
+    
     const deb = debounce(() => safeMount(), 1000);
+    
     const obs = new MutationObserver((mutations) => {
-      const hasRelevantChanges = mutations.some(m => 
-        Array.from(m.addedNodes).some(n => 
-          n.nodeType === 1 && (
-            n.classList?.contains('theqah-reviews') || 
-            n.querySelector?.('.theqah-reviews')
-          )
-        )
-      );
+      let hasRelevantChanges = false;
+      let hasSallaReviewChanges = false;
+      
+      for (const m of mutations) {
+        // Check for theqah-reviews container
+        for (const n of m.addedNodes) {
+          if (n.nodeType === 1) {
+            if (n.classList?.contains('theqah-reviews') || n.querySelector?.('.theqah-reviews')) {
+              hasRelevantChanges = true;
+            }
+            // Detect Salla review elements being added (after sort/pagination)
+            if (
+              n.tagName?.toLowerCase() === 'salla-comment-item' ||
+              n.classList?.contains('s-comments-item') ||
+              n.id?.startsWith('s-comments-item-') ||
+              n.querySelector?.('salla-comment-item') ||
+              n.querySelector?.('[id^="s-comments-item-"]')
+            ) {
+              hasSallaReviewChanges = true;
+            }
+          }
+        }
+        
+        // Also check if reviews container children changed (Salla may replace inner content)
+        if (m.target?.tagName?.toLowerCase() === 'salla-products-comments' ||
+            m.target?.classList?.contains('s-comments-list')) {
+          hasSallaReviewChanges = true;
+        }
+      }
+      
       if (hasRelevantChanges) deb();
+      if (hasSallaReviewChanges) reAddLogos();
     });
     
     try {
@@ -747,10 +781,20 @@
         characterData: false
       });
       
+      // Keep observer active longer for dynamic pages
       setTimeout(() => {
         obs.disconnect();
         window.__THEQAH_OBS__ = false;
-      }, 30000);
+      }, 120000); // Extended to 2 minutes
+    } catch {
+      // Silent fail
+    }
+    
+    // Also listen for Salla custom events
+    try {
+      document.addEventListener('salla::comments::loaded', () => reAddLogos());
+      document.addEventListener('salla::comments::sorted', () => reAddLogos());
+      document.addEventListener('salla::comments::paginated', () => reAddLogos());
     } catch {
       // Silent fail
     }

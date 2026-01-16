@@ -87,17 +87,27 @@ export default async function handler(
             product?: { id?: number | string };
             rating?: number;
             type?: string;
+            content?: string | null;
           }>;
         };
 
-        // Find matching review by orderId + productId + rating for accuracy
+        // Normalize text for comparison (trim, lowercase)
+        const normalizeText = (text: string | null | undefined): string =>
+          (text || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+        const reviewText = normalizeText(review.text);
+
+        // Find matching review by orderId + rating + content
         // Only match product reviews (type: 'rating'), not testimonials
+        // Note: product filtering is done via URL param, Salla doesn't return product.id in list
         const matchingReview = sallaData.data?.find((r) => {
           const isProductReview = !r.type || r.type === 'rating';
           const orderMatches = String(r.order_id) === String(review.orderId);
-          const productMatches = !productId || String(r.product?.id) === String(productId);
           const ratingMatches = !review.stars || r.rating === review.stars;
-          return isProductReview && orderMatches && productMatches && ratingMatches;
+          // Content matching for extra accuracy (when text is available)
+          const contentMatches = !reviewText || !r.content ||
+            normalizeText(r.content) === reviewText;
+          return isProductReview && orderMatches && ratingMatches && contentMatches;
         });
 
         if (matchingReview) {
