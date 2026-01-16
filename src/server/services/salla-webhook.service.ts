@@ -106,10 +106,19 @@ export class SallaWebhookService {
         const orderId = String(order.reference_id ?? order.id ?? order.order_id ?? '');
         if (!orderId) return;
 
+        // Salla may return status as object {id, name, customized} or string
+        const extractStatus = (status: unknown): string => {
+            if (typeof status === 'string') return status.toLowerCase();
+            if (status && typeof status === 'object' && 'name' in status) {
+                return String((status as { name?: unknown }).name ?? '').toLowerCase();
+            }
+            return '';
+        };
+
         await this.orderRepo.upsertSnapshot(orderId, {
             number: order.number || null,
-            status: (order.status ?? order.order_status ?? '').toLowerCase(),
-            paymentStatus: (order.payment_status ?? '').toLowerCase(),
+            status: extractStatus(order.status ?? order.order_status),
+            paymentStatus: extractStatus(order.payment_status),
             customer: {
                 name: order.customer?.name || null,
                 email: order.customer?.email || null,

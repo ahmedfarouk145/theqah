@@ -27,7 +27,6 @@ export default async function handler(
 
   try {
     const reviewRepo = RepositoryFactory.getReviewRepository();
-    const ownerRepo = RepositoryFactory.getOwnerRepository();
 
     log("info", "backfill-review-ids started", { scope: "cron" });
 
@@ -55,12 +54,13 @@ export default async function handler(
       results.processed++;
 
       try {
-        // Get store access token using repository
+        // Get store access token with auto-refresh if needed
         const storeUid = review.storeUid;
-        const accessToken = await ownerRepo.getAccessToken(storeUid);
+        const { sallaTokenService } = await import('@/server/services/salla-token.service');
+        const accessToken = await sallaTokenService.getValidAccessToken(storeUid);
 
         if (!accessToken) {
-          throw new Error(`No access token for store ${storeUid}`);
+          throw new Error(`No valid access token for store ${storeUid}`);
         }
 
         // Use products filter for efficiency (fetches only reviews for this product)
