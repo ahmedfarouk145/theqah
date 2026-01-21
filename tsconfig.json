@@ -29,6 +29,9 @@
       "@/*": [
         "./src/*"
       ],
+      "@/server/*": [
+        "./src/backend/server/*"
+      ],
       "@backend/*": [
         "./src/backend/*"
       ],

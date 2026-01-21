@@ -147,27 +147,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // FORCE SAVE if we have storeUidFromEvent but no domain - try to fetch it
       if (storeUidFromEvent && !baseGeneric && merchantId) {
-        try {
-          const storeInfoUrl = `https://api.salla.dev/admin/v2/store`;
-          const response = await fetch(storeInfoUrl, {
-            headers: {
-              'Authorization': 'Bearer ' + (process.env.SALLA_APP_TOKEN || 'dummy'),
-              'Content-Type': 'application/json'
-            }
+        // C3 FIX: Skip API call if SALLA_APP_TOKEN is not configured (instead of using 'dummy')
+        const sallaAppToken = process.env.SALLA_APP_TOKEN?.trim();
+        if (!sallaAppToken) {
+          await fbLog(db, { 
+            level: "warn", 
+            scope: "domain", 
+            msg: "SALLA_APP_TOKEN not configured - skipping store info fetch", 
+            event, idemKey, merchant: merchantId, orderId 
           });
+        } else {
+          try {
+            const storeInfoUrl = `https://api.salla.dev/admin/v2/store`;
+            const response = await fetch(storeInfoUrl, {
+              headers: {
+                'Authorization': `Bearer ${sallaAppToken}`,
+                'Content-Type': 'application/json'
+              }
+            });
 
-          if (response.ok) {
-            const storeInfo = await response.json();
-            const fetchedDomain = storeInfo?.data?.domain || storeInfo?.domain;
-            if (fetchedDomain) {
-              await sallaService.saveDomainWithFlags(storeUidFromEvent, merchantId, fetchedDomain, event);
-              await sallaService.saveDomainVariations(storeUidFromEvent, fetchedDomain);
-              await fbLog(db, { level: "info", scope: "domain", msg: "fetched and saved domain via service", event, idemKey, merchant: merchantId, orderId, meta: { domain: fetchedDomain, storeUid: storeUidFromEvent } });
-              return; // Exit early after successful fetch
+            if (response.ok) {
+              const storeInfo = await response.json();
+              const fetchedDomain = storeInfo?.data?.domain || storeInfo?.domain;
+              if (fetchedDomain) {
+                await sallaService.saveDomainWithFlags(storeUidFromEvent, merchantId, fetchedDomain, event);
+                await sallaService.saveDomainVariations(storeUidFromEvent, fetchedDomain);
+                await fbLog(db, { level: "info", scope: "domain", msg: "fetched and saved domain via service", event, idemKey, merchant: merchantId, orderId, meta: { domain: fetchedDomain, storeUid: storeUidFromEvent } });
+                return; // Exit early after successful fetch
+              }
             }
+          } catch {
+            // Silent fail - domain fetch is optional
           }
-        } catch {
-          // Silent fail - domain fetch is optional
         }
       }
 

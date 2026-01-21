@@ -18,6 +18,9 @@ export type { VerifiedReviewResult, StoreResolveResult } from './verification.se
 export { SallaWebhookService } from './salla-webhook.service';
 export type { SallaOrder, SallaReviewPayload } from './salla-webhook.service';
 
+export { SallaTokenService, sallaTokenService } from './salla-token.service';
+export type { TokenRefreshResult } from './salla-token.service';
+
 // Platform services
 export { AdminService } from './admin.service';
 export type { PlatformStats } from './admin.service';

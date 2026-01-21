@@ -1,392 +1,219 @@
 # Architecture Overview
 
+> **Last Updated:** January 21, 2026  
+> **Version:** 2.0 (Salla + Zid Integration)
+
+---
+
 ## System Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Frontend (Next.js)                              │
+│                              Frontend (Next.js 15.5.4)                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                               │
-│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐      │
-│  │  Public Reviews  │    │  Dashboard Page  │    │  Review Submit   │      │
-│  │   (Approved)     │    │  ┌────────────┐  │    │      Form        │      │
-│  │                  │    │  │ Analytics  │  │    │                  │      │
-│  │  GET /api/public │    │  │  Orders    │  │    │  POST /submit    │      │
-│  │  reviews         │    │  │  Reviews   │  │    │                  │      │
-│  └─────────┬────────┘    │  │  Settings  │  │    └─────────┬────────┘      │
-│            │             │  │  Support   │  │              │                │
-│            │             │  └────────────┘  │              │                │
-│            │             │  ┌────────────┐  │              │                │
-│            │             │  │ PENDING    │◄─┤ Feature      │                │
-│            │             │  │ REVIEWS    │  │ Flag         │                │
-│            │             │  │ (V2)       │  │ DASHBOARD_V2 │                │
-│            │             │  └────────────┘  │              │                │
-│            │             └────────┬─────────┘              │                │
-└────────────┼──────────────────────┼────────────────────────┼────────────────┘
+│                                                                              │
+│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐       │
+│  │  Landing Page    │    │  Dashboard       │    │  Review Submit   │       │
+│  │  /index.tsx      │    │  /dashboard.tsx  │    │  /review/[token] │       │
+│  └─────────┬────────┘    └────────┬─────────┘    └─────────┬────────┘       │
+│            │                      │                        │                 │
+└────────────┼──────────────────────┼────────────────────────┼─────────────────┘
              │                      │                        │
-             │                      │                        │
-        ┌────▼──────────────────────▼────────────────────────▼────┐
-        │                    API Routes                            │
-        ├──────────────────────────────────────────────────────────┤
-        │                                                           │
-        │  GET /api/reviews?status=approved    (Public)            │
-        │  GET /api/reviews?status=pending     (Auth Required)     │
-        │  POST /api/reviews/submit            (Creates Pending)   │
-        │  POST /api/reviews/update-status     (Auth Required)     │
-        │                                                           │
-        └────────────────────┬──────────────────────┬──────────────┘
-                             │                      │
-                             │                      │
-        ┌────────────────────▼──────────────────────▼──────────────┐
-        │                  Firestore Database                       │
-        ├──────────────────────────────────────────────────────────┤
-        │                                                           │
-        │  reviews/{id}                                             │
-        │  ├─ status: 'pending' | 'approved' | 'rejected'          │
-        │  ├─ published: boolean                                   │
-        │  ├─ stars, text, images, createdAt                       │
-        │  └─ storeUid, productId, moderation                      │
-        │                                                           │
-        │  outbox_jobs/{id}                                         │
-        │  ├─ type: 'merchant_review_approval_needed'              │
-        │  ├─ status: 'pending' | 'leased' | 'ok' | 'fail'        │
-        │  ├─ channels: ['email']                                  │
-        │  └─ payload: { merchantEmail, reviewId, ... }           │
-        │                                                           │
-        │  short_links/{code}                                       │
-        │  ├─ targetUrl: string                                    │
-        │  ├─ hits: number                                         │
-        │  ├─ ownerStoreId: string                                 │
-        │  └─ createdAt, lastHitAt                                 │
-        │                                                           │
-        └────────────────────┬──────────────────────┬──────────────┘
-                             │                      │
-                             │                      │
-        ┌────────────────────▼──────────┐  ┌────────▼──────────────┐
-        │  Firestore Triggers           │  │  Outbox Worker        │
-        │  (Server-side)                │  │  (Background Process) │
-        ├───────────────────────────────┤  ├───────────────────────┤
-        │                               │  │                       │
-        │  onCreate(review)             │  │  1. Lease jobs        │
-        │    ├─ if status=pending       │  │  2. Process channels  │
-        │    └─ enqueue notification    │  │     ├─ Send email     │
-        │                               │  │     └─ Send SMS       │
-        └───────────────┬───────────────┘  │  3. Mark complete     │
-                        │                  │  4. Requeue on fail   │
-                        │                  │                       │
-                        └──────────────────┴───────────────────────┘
-                                           │
-                                           ▼
-                                  ┌────────────────┐
-                                  │ Email Service  │
-                                  │  (SendGrid)    │
-                                  └────────────────┘
+             ▼                      ▼                        ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          API Routes (86+ Endpoints)                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  /api/salla/          /api/reviews/         /api/admin/        /api/public/ │
+│  ├─ webhook.ts        ├─ submit.ts          ├─ 27 endpoints    ├─ reviews   │
+│  ├─ status.ts         ├─ list.ts            ├─ monitoring      ├─ widget    │
+│  └─ verify.ts         ├─ update-status.ts   └─ management      └─ embed     │
+│                       ├─ export-csv.ts                                       │
+│  /zid/api/            └─ export-pdf.ts       /api/cron/                      │
+│  ├─ webhook.ts                               ├─ webhook-retry.ts             │
+│  ├─ callback.ts                              └─ backfill-review-ids.ts       │
+│  ├─ start.ts                                                                 │
+│  └─ refresh.ts                                                               │
+│                                                                              │
+└────────────────────────────────────────────────────────────────────────────-─┘
+             │
+             ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Server Layer (19 Services)                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                         Core Services                                │    │
+│  │  ReviewService (743 LOC)    │  SallaWebhookService (408 LOC)        │    │
+│  │  StoreService (14KB)        │  AdminService (21KB)                  │    │
+│  │  OrderService (8KB)         │  AuthService (7KB)                    │    │
+│  │  SMSService (7.5KB)         │  RegistrationService (9KB)            │    │
+│  │  SupportService (11KB)      │  DomainResolverService (9KB)          │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                         Repositories (10)                            │    │
+│  │  ReviewRepository │ StoreRepository │ OrderRepository │ TokenRepo   │    │
+│  │  DomainRepository │ OwnerRepository │ AuditLogRepository │ BaseRepo │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                         Infrastructure                               │    │
+│  │  Messaging (12)  │  Moderation (4)  │  Monitoring (5)  │  Queue (3) │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Firebase (Firestore + Auth)                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Collections:                                                                │
+│  ├─ stores          # Store profiles & settings                             │
+│  ├─ reviews         # Customer reviews (status-based access)                │
+│  ├─ orders          # Order snapshots from Salla/Zid                        │
+│  ├─ review_tokens   # Secure review submission tokens                       │
+│  ├─ review_invites  # SMS/Email invitation tracking                         │
+│  ├─ salla_tokens    # Salla OAuth tokens                                    │
+│  ├─ zid_tokens      # Zid OAuth tokens                                      │
+│  ├─ short_links     # URL shortener for review links                        │
+│  ├─ outbox_jobs     # Background job queue                                  │
+│  ├─ metrics         # Monitoring data                                       │
+│  └─ feedback        # User feedback                                         │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Review Approval Flow
+---
+
+## Project Structure
 
 ```
-Customer                 System                  Merchant                Database
-   │                       │                         │                       │
-   │                       │                         │                       │
-   ├─ Submit Review ──────►│                         │                       │
-   │                       │                         │                       │
-   │                       ├─ Create Review ────────►│                       │
-   │                       │   status: 'pending'     │                       │
-   │                       │   published: false      │                       │
-   │                       │                         │                       │
-   │                       ├─ Trigger onCreate ──────┤                       │
-   │                       │                         │                       │
-   │                       ├─ Enqueue Job ──────────►│                       │
-   │                       │   type: approval_needed │                       │
-   │                       │                         │                       │
-   │                       │                         │                       │
-   │                  [Outbox Worker]                │                       │
-   │                       │                         │                       │
-   │                       ├─ Process Job           │                       │
-   │                       │                         │                       │
-   │                       ├─ Send Email ────────────►                       │
-   │                       │   "Review needs         │                       │
-   │                       │    approval"            │                       │
-   │                       │                         │                       │
-   │                       │                         │                       │
-   │                       │          Merchant Opens Dashboard               │
-   │                       │                         │                       │
-   │                       │                    ┌────┴─────┐                 │
-   │                       │                    │ DASHBOARD│                 │
-   │                       │                    │   V2     │                 │
-   │                       │                    │ (Pending │                 │
-   │                       │                    │ Reviews) │                 │
-   │                       │                    └────┬─────┘                 │
-   │                       │                         │                       │
-   │                       │              Click "Approve"                    │
-   │                       │                         │                       │
-   │                       │◄────POST /update-status─┤                       │
-   │                       │   { status: 'approved' }│                       │
-   │                       │                         │                       │
-   │                       ├─ Update Review ────────►│                       │
-   │                       │   status: 'approved'    │                       │
-   │                       │   published: true       │                       │
-   │                       │   publishedAt: now      │                       │
-   │                       │                         │                       │
-   │◄──Review Visible──────┤                         │                       │
-   │   (Public Page)       │                         │                       │
-   │                       │                         │                       │
+theqah/
+├── src/
+│   ├── pages/                    # Next.js Pages Router
+│   │   ├── api/                  # 86+ API endpoints
+│   │   │   ├── admin/            # 27 admin endpoints
+│   │   │   ├── salla/            # Salla OAuth & webhooks
+│   │   │   ├── reviews/          # Review CRUD (8 endpoints)
+│   │   │   ├── orders/           # Order management
+│   │   │   ├── cron/             # Scheduled jobs
+│   │   │   ├── public/           # Public widget APIs
+│   │   │   └── webhooks/         # Webhook handlers
+│   │   ├── dashboard/            # Merchant dashboard
+│   │   └── *.tsx                 # Public pages (15+)
+│   │
+│   ├── server/                   # Server-side logic
+│   │   ├── services/             # 19 business services
+│   │   ├── repositories/         # 10 data repositories
+│   │   ├── messaging/            # SMS, Email (12 files)
+│   │   ├── moderation/           # AI content moderation (4)
+│   │   ├── monitoring/           # Metrics & logging (5)
+│   │   ├── queue/                # Background jobs (3)
+│   │   ├── core/                 # Shared types & errors (6)
+│   │   └── auth/                 # Authentication (3)
+│   │
+│   ├── frontend/                 # Client-side code
+│   │   ├── components/           # 34 UI components
+│   │   ├── contexts/             # React contexts (2)
+│   │   ├── hooks/                # Custom hooks (1)
+│   │   └── features/             # Feature flags (2)
+│   │
+│   ├── lib/                      # Core libraries
+│   │   ├── firebase.ts           # Client Firebase SDK
+│   │   ├── firebaseAdmin.ts      # Admin SDK
+│   │   ├── sallaClient.ts        # Salla API client
+│   │   ├── oursms.ts             # SMS provider
+│   │   └── logger.ts             # Logging utility
+│   │
+│   └── components/               # Shared UI components
+│       ├── ui/                   # Base UI (11 components)
+│       ├── dashboard/            # Dashboard components (7)
+│       └── admin/                # Admin components (9)
+│
+├── zid/                          # 🆕 ZID E-COMMERCE (separate integration)
+│   ├── api/                      # 6 API endpoints
+│   │   ├── webhook.ts            # Order webhooks (188 LOC)
+│   │   ├── callback.ts           # OAuth callback
+│   │   ├── start.ts              # OAuth initiation
+│   │   ├── refresh.ts            # Token refresh
+│   │   ├── status.ts             # Connection status
+│   │   └── disconnect.ts         # Store disconnect
+│   ├── lib/                      # 5 library files
+│   │   ├── auth.ts               # Token management
+│   │   ├── tokens.ts             # Token storage
+│   │   └── webhooks.ts           # Webhook verification
+│   └── server/                   # State management
+│
+├── tools/                        # Testing & debugging (11 files)
+│   ├── salla-webhook-tester.js   # Webhook simulation
+│   ├── test-review-sending.js    # Review flow testing
+│   └── loadtest/k6/              # Load tests (3 scripts)
+│
+├── scripts/                      # Maintenance scripts (10 files)
+│   ├── fix-review-order-ids.js   # Data repair
+│   ├── export-reviews.mjs        # Data export
+│   └── minify-widgets.js         # Build widgets
+│
+├── functions/                    # Firebase Cloud Functions
+├── public/widgets/               # Embeddable widget scripts
+└── docs/                         # Documentation (16 files)
 ```
 
-## Short Link Flow
+---
 
-```
-User                     System                  Database
- │                         │                         │
- │                         │                         │
- ├─ Create Short Link ────►│                         │
- │   (Server/API)          │                         │
- │                         │                         │
- │                         ├─ Generate Code ────────►│
- │                         │   abc12345              │
- │                         │                         │
- │                         ├─ Store Link ───────────►│
- │                         │   targetUrl             │
- │                         │   ownerStoreId          │
- │                         │   hits: 0               │
- │                         │                         │
- │◄── /r/abc12345 ─────────┤                         │
- │                         │                         │
- │                         │                         │
- │                         │                         │
- │  Customer Visits Link   │                         │
- │                         │                         │
- ├─ GET /r/abc12345 ───────►                         │
- │                         │                         │
- │                         ├─ Lookup Code ──────────►│
- │                         │                         │
- │                         │◄─ Return Target ────────┤
- │                         │   targetUrl             │
- │                         │                         │
- │                         ├─ Increment Hits ───────►│
- │                         │   hits: hits + 1        │
- │                         │   lastHitAt: now        │
- │                         │                         │
- │◄── 302 Redirect ────────┤                         │
- │    Location: targetUrl  │                         │
- │                         │                         │
-```
+## E-Commerce Platform Integrations
 
-## Feature Flag System
+### Salla Integration
+- **Location:** `src/pages/api/salla/`
+- **Webhook Handler:** 669 lines
+- **Events:** app.authorize, subscription.*, order.*, review.added
 
-```
-┌────────────────────────────────────────────────────┐
-│              Feature Flag System                   │
-├────────────────────────────────────────────────────┤
-│                                                    │
-│  Flag Definition:                                  │
-│  ┌──────────────────────────────────────────────┐ │
-│  │ const FLAGS = {                              │ │
-│  │   DASHBOARD_V2: false  // Default OFF        │ │
-│  │ }                                            │ │
-│  └──────────────────────────────────────────────┘ │
-│                                                    │
-│  Override Sources (Priority):                      │
-│  ┌──────────────────────────────────────────────┐ │
-│  │ 1. Environment Variable                      │ │
-│  │    NEXT_PUBLIC_FLAG_DASHBOARD_V2=true        │ │
-│  │                                              │ │
-│  │ 2. Remote Config (Future)                    │ │
-│  │    Firestore: config/flags/DASHBOARD_V2      │ │
-│  │                                              │ │
-│  │ 3. Default Value                             │ │
-│  │    From FLAGS constant                       │ │
-│  └──────────────────────────────────────────────┘ │
-│                                                    │
-│  Usage:                                            │
-│  ┌──────────────────────────────────────────────┐ │
-│  │ const enabled = useFlag('DASHBOARD_V2');     │ │
-│  │                                              │ │
-│  │ if (enabled) {                               │ │
-│  │   return <NewFeature />;                     │ │
-│  │ }                                            │ │
-│  └──────────────────────────────────────────────┘ │
-│                                                    │
-└────────────────────────────────────────────────────┘
-```
+### Zid Integration  
+- **Location:** `/zid/` (standalone)
+- **Webhook Handler:** 188 lines
+- **Events:** order.delivered, order.cancelled
+
+---
 
 ## Security Model
 
+### Rate Limiting
 ```
-┌─────────────────────────────────────────────────────────┐
-│                  Firestore Security Rules                │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  reviews/{id}                                            │
-│  ├─ Public Read:  status == 'approved'                  │
-│  ├─ Merchant Read: storeUid == auth.uid                 │
-│  ├─ Admin Read:   token.admin == true                   │
-│  └─ Write:        Admin/Server only                     │
-│                                                          │
-│  short_links/{code}                                      │
-│  ├─ Read:  Admin/Server only                            │
-│  └─ Write: Admin/Server only                            │
-│                                                          │
-│  outbox_jobs/{id}                                        │
-│  ├─ Read:  Admin/Server only                            │
-│  └─ Write: Admin/Server only                            │
-│                                                          │
-│  API Authentication                                      │
-│  ├─ /api/reviews?status=pending                         │
-│  │   └─ Requires: Firebase Auth Token                   │
-│  │                                                       │
-│  ├─ /api/reviews/update-status                          │
-│  │   └─ Requires: Firebase Auth Token                   │
-│  │                + Store Ownership Verification         │
-│  │                                                       │
-│  └─ /api/reviews/submit                                 │
-│      └─ Public (Rate limited by outbox)                 │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
+Middleware: 20 requests/60 seconds per IP
+Public APIs: Configurable via RateLimitPresets
+⚠️ Currently in-memory (needs Redis for production scaling)
 ```
 
-## Deployment Architecture
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                    Production Deployment                  │
-├──────────────────────────────────────────────────────────┤
-│                                                           │
-│  ┌───────────────────────────────────────────────────┐   │
-│  │                Next.js Frontend                    │   │
-│  │        (Vercel / Your Hosting Platform)           │   │
-│  │                                                    │   │
-│  │  Environment Variables:                            │   │
-│  │  ├─ NEXT_PUBLIC_FLAG_DASHBOARD_V2=false (default) │   │
-│  │  ├─ NEXT_PUBLIC_FIREBASE_CONFIG                   │   │
-│  │  └─ NEXT_PUBLIC_BASE_URL                          │   │
-│  └────────────────────┬──────────────────────────────┘   │
-│                       │                                   │
-│                       │                                   │
-│  ┌────────────────────▼──────────────────────────────┐   │
-│  │              Firebase Backend                      │   │
-│  │                                                    │   │
-│  │  ┌──────────────────────────────────────────────┐ │   │
-│  │  │ Firestore Database                           │ │   │
-│  │  │  ├─ reviews                                  │ │   │
-│  │  │  ├─ short_links                              │ │   │
-│  │  │  ├─ outbox_jobs                              │ │   │
-│  │  │  └─ stores                                   │ │   │
-│  │  └──────────────────────────────────────────────┘ │   │
-│  │                                                    │   │
-│  │  ┌──────────────────────────────────────────────┐ │   │
-│  │  │ Security Rules (Deployed)                    │ │   │
-│  │  │  firebase deploy --only firestore:rules      │ │   │
-│  │  └──────────────────────────────────────────────┘ │   │
-│  │                                                    │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                           │
-│  ┌───────────────────────────────────────────────────┐   │
-│  │           Outbox Worker Process                    │   │
-│  │      (Separate Process/Container)                 │   │
-│  │                                                    │   │
-│  │  node src/worker/outbox-worker.ts                 │   │
-│  │                                                    │   │
-│  │  ├─ Polls outbox_jobs every N seconds            │   │
-│  │  ├─ Sends email notifications                     │   │
-│  │  ├─ Handles retries with backoff                  │   │
-│  │  └─ Moves failed jobs to DLQ                      │   │
-│  └───────────────────────────────────────────────────┘   │
-│                                                           │
-└──────────────────────────────────────────────────────────┘
-```
-
-## Testing Infrastructure
-
-```
-┌────────────────────────────────────────────────────────┐
-│                  Testing Layers                         │
-├────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  Unit Tests (Future)                             │  │
-│  │  - Review trigger logic                          │  │
-│  │  - Status validation                             │  │
-│  │  - Short link generation                         │  │
-│  └──────────────────────────────────────────────────┘  │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  Load Tests (k6)                                 │  │
-│  │  ├─ tools/loadtest/k6/redirect-test.js          │  │
-│  │  │   └─ Short link performance                  │  │
-│  │  ├─ tools/loadtest/k6/review-create-test.js     │  │
-│  │  │   └─ Review submission load                  │  │
-│  │  └─ tools/loadtest/k6/outbox-jobs-test.js       │  │
-│  │      └─ Job processing capacity                 │  │
-│  └──────────────────────────────────────────────────┘  │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  E2E Tests (Playwright)                          │  │
-│  │  ├─ tests/e2e/review-approval.spec.ts           │  │
-│  │  │   └─ Complete approval workflow              │  │
-│  │  └─ tests/e2e/shortlink-redirect.spec.ts        │  │
-│  │      └─ Redirect verification                   │  │
-│  └──────────────────────────────────────────────────┘  │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  Quality Checks                                  │  │
-│  │  ├─ npm run lint                                 │  │
-│  │  ├─ npm run build                                │  │
-│  │  └─ node tools/verify-installation.js           │  │
-│  └──────────────────────────────────────────────────┘  │
-│                                                         │
-└────────────────────────────────────────────────────────┘
-```
+### Firestore Rules
+| Collection | Public Read | Write Access |
+|------------|-------------|--------------|
+| reviews | approved only | Admin/Server |
+| stores | No | Owner/Admin |
+| orders | No | Owner/Admin |
+| tokens | No | Admin only |
 
 ---
 
 ## Key Design Decisions
 
-### 1. Feature Flags
-**Decision:** All new UI features behind runtime flags
-**Reason:** Safe gradual rollout, instant rollback capability
-**Trade-off:** Slightly more complex code, but worth the safety
-
-### 2. Outbox Pattern
-**Decision:** Use outbox queue for notifications
-**Reason:** Reliable delivery, retry logic, decoupled processing
-**Trade-off:** Requires worker process, but provides resilience
-
-### 3. Status-Based Security
-**Decision:** Filter reviews by status in Firestore rules
-**Reason:** Database-level security, prevents data leaks
-**Trade-off:** Cannot use some Firestore features, but maximizes security
-
-### 4. Backward Compatibility
-**Decision:** Keep all existing APIs unchanged
-**Reason:** Zero-risk deployment, no migration needed
-**Trade-off:** Some code duplication, but ensures stability
+| Decision | Rationale |
+|----------|-----------|
+| Repository Pattern | Consistent data access, testability |
+| Service Layer | Business logic separation |
+| Outbox Pattern | Reliable async notifications |
+| Feature Flags | Safe gradual rollout |
+| Dual Platform | Salla + Zid market coverage |
 
 ---
 
-## Performance Considerations
+## Dependencies
 
-### Database Queries
-- Reviews filtered at database level for efficiency
-- Indexes required for status-based queries
-- Pagination supported via existing patterns
-
-### Short Links
-- Direct document lookup by ID (O(1))
-- Hit counter updated asynchronously
-- No impact on redirect speed
-
-### Notifications
-- Processed asynchronously via worker
-- Rate limiting prevents spam
-- Retry logic with exponential backoff
-
-### Feature Flags
-- Evaluated once at component mount
-- Environment variable caching
-- Minimal performance impact
-
----
-
-This architecture provides a robust, scalable foundation for the new features while maintaining security and backward compatibility.
+| Category | Key Packages |
+|----------|--------------|
+| Framework | Next.js 15.5.4, React 19.1.0 |
+| Database | Firebase 12.3.0, Firebase Admin 13.4.0 |
+| UI | Radix UI, Framer Motion, TailwindCSS |
+| Integrations | SendGrid, OpenAI, OurSMS |
+| Testing | Vitest, Playwright, k6 |
