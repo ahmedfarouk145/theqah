@@ -26,11 +26,28 @@ export class VerificationService {
 
     /**
      * Get verified reviews for widget display
+     * Only returns reviews if store exists and is installed/active
      */
     async getVerifiedReviews(
         storeId: string,
         productId?: string
     ): Promise<VerifiedReviewResult> {
+        // IMPORTANT: First check if store exists and is valid
+        const store = await this.storeRepo.findById(storeId);
+
+        // Don't show certificate if:
+        // 1. Store doesn't exist in database
+        // 2. Store is not connected/installed (app was uninstalled)
+        if (!store) {
+            return { hasVerified: false, reviews: [], count: 0 };
+        }
+
+        // Check if store has Salla connected flag
+        const isConnected = store.salla?.connected !== false && store.salla?.installed !== false;
+        if (!isConnected) {
+            return { hasVerified: false, reviews: [], count: 0 };
+        }
+
         const reviews = await this.reviewRepo.findVerifiedByStore(storeId, productId);
 
         return {
