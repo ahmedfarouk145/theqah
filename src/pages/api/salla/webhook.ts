@@ -1,7 +1,7 @@
 // src/pages/api/salla/webhook.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
-import { fetchStoreInfo, fetchUserInfo, getOwnerAccessToken } from "@/lib/sallaClient";
+import { fetchStoreInfo, fetchUserInfo, fetchMerchantInfo, getOwnerAccessToken } from "@/lib/sallaClient";
 import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
 import { trackWebhook } from "@/server/monitoring/metrics";
 import { SallaWebhookService } from "@/server/services/salla-webhook.service";
@@ -270,12 +270,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      // userinfo + حفظ + إيميل تعيين كلمة المرور + تحسين الدومين لو أمكن
+      // userinfo + merchantinfo (parallel) + حفظ + إيميل تعيين كلمة المرور + تحسين الدومين لو أمكن
       if (storeUid) {
         const token = tokenFromPayload || (await getOwnerAccessToken(db, storeUid)) || "";
         if (token) {
           try {
-            const uinfo = await fetchUserInfo(token);
+            // Fetch userinfo and merchant info in parallel (no extra latency!)
+            const [uinfo, merchantData] = await Promise.all([
+              fetchUserInfo(token),
+              fetchMerchantInfo(token).catch((e) => {
+                // Log error but don't fail - merchant API is optional
+                fbLog(db, { level: "warn", scope: "merchant", msg: "merchant fetch failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
+                return null;
+              }),
+            ]);
 
             await db.collection("stores").doc(storeUid).set({
               uid: storeUid, provider: "salla",
@@ -292,18 +300,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               (typeof u.domain === "string" ? u.domain as string : undefined) ??
               (typeof u.url === "string" ? u.url as string : undefined); */
 
+            // Extract email from multiple sources (priority order)
             const infoEmail =
               (typeof u.email === "string" ? u.email as string : undefined) ??
               (typeof u.merchant === "object" && typeof (u.merchant as Dict).email === "string" ? (u.merchant as Dict).email as string : undefined) ??
               (typeof u.user === "object" && typeof (u.user as Dict).email === "string" ? (u.user as Dict).email as string : undefined);
 
+            // NEW: Get email from merchant API (highest priority)
+            const merchantEmail = merchantData?.data?.email;
+
             const storeName =
               (typeof u.merchant === "object" && typeof (u.merchant as Dict).name === "string" ? (u.merchant as Dict).name as string : undefined) ??
               (typeof u.store === "object" && typeof (u.store as Dict).name === "string" ? (u.store as Dict).name as string : undefined) ??
+              (merchantData?.data?.name) ?? // Fallback to merchant API name
               "متجرك";
 
             const payloadEmail = typeof (dataRaw as Dict)["email"] === "string" ? ((dataRaw as Dict)["email"] as string) : undefined;
-            const targetEmail = infoEmail || payloadEmail;
+
+            // Priority: Merchant API > UserInfo > Payload
+            const targetEmail = merchantEmail || infoEmail || payloadEmail;
 
             if (targetEmail) {
               const r = await sendPasswordSetupEmail({ email: targetEmail, storeUid, storeName });
@@ -316,10 +331,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   console.error('[Webhook] Failed to update order stats:', err);
                 });
               } else {
-                await fbLog(db, { level: "info", scope: "password_email", msg: "sent ok", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail } });
+                await fbLog(db, { level: "info", scope: "password_email", msg: "sent ok", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail, source: merchantEmail ? "merchant_api" : infoEmail ? "userinfo" : "payload" } });
               }
             } else {
-              await fbLog(db, { level: "debug", scope: "password_email", msg: "no email found in userinfo/payload", event, idemKey, merchant: merchantId, orderId });
+              await fbLog(db, { level: "debug", scope: "password_email", msg: "no email found in merchant/userinfo/payload", event, idemKey, merchant: merchantId, orderId });
             }
           } catch (e) {
             await fbLog(db, { level: "warn", scope: "userinfo", msg: "userinfo fetch failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });

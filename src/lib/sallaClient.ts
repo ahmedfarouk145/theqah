@@ -60,6 +60,32 @@ export async function fetchUserInfo(accessToken: string): Promise<UserInfoRespon
   return (await resp.json()) as UserInfoResponse;
 }
 
+/** /admin/v2/merchant — احصل على بيانات التاجر (merchant) من Salla */
+export interface MerchantInfoResponse {
+  status?: number;
+  success?: boolean;
+  data?: {
+    id?: number;
+    name?: string;
+    email?: string; // ← This is what we need!
+    mobile?: string;
+    domain?: string;
+    avatar?: string;
+  };
+}
+
+export async function fetchMerchantInfo(accessToken: string): Promise<MerchantInfoResponse> {
+  const resp = await fetch("https://api.salla.dev/admin/v2/merchant", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json"
+    },
+  });
+  if (!resp.ok) throw new Error(`merchant ${resp.status}`);
+  return (await resp.json()) as MerchantInfoResponse;
+}
+
 /** احصل على access_token من owners/{storeUid} لو موجود */
 export async function getOwnerAccessToken(
   db: FirebaseFirestore.Firestore,
