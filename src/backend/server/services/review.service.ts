@@ -419,6 +419,8 @@ export class ReviewService {
 
     /**
      * List reviews with filters (for dashboard list.ts)
+     * M12: Added search parameter (client-side filtering for Firestore)
+     * M13: Added date range filtering (startDate, endDate)
      */
     async listWithFilters(
         storeUid: string,
@@ -426,26 +428,46 @@ export class ReviewService {
             limit?: number;
             cursor?: string;
             status?: string;
+            search?: string;
+            startDate?: number;
+            endDate?: number;
+            stars?: number;
+            productId?: string;
         }
     ): Promise<{
         reviews: NormalizedReview[];
         pagination: { hasMore: boolean; nextCursor: string | null; limit: number };
     }> {
-        const { limit = 50, cursor, status } = options;
+        const { limit = 50, cursor, status, search, startDate, endDate, stars, productId } = options;
         const { dbAdmin } = await import('@/lib/firebaseAdmin');
         const db = dbAdmin();
+
+        // Note: Firestore doesn't support full-text search, so we fetch more and filter client-side
+        const fetchLimit = search ? Math.min(limit * 3, 200) : limit + 1;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let query: any = db
             .collection('reviews')
             .where('storeUid', '==', storeUid)
             .orderBy('createdAt', 'desc')
-            .limit(limit + 1);
+            .limit(fetchLimit);
 
+        // Status filter
         if (status && ['pending', 'pending_review', 'approved', 'rejected', 'published'].includes(status)) {
             query = query.where('status', '==', status);
         }
 
+        // Stars filter
+        if (stars && stars >= 1 && stars <= 5) {
+            query = query.where('stars', '==', stars);
+        }
+
+        // Product filter
+        if (productId) {
+            query = query.where('productId', '==', productId);
+        }
+
+        // Cursor for pagination
         if (cursor) {
             const cursorDoc = await db.collection('reviews').doc(cursor).get();
             if (cursorDoc.exists) {
@@ -454,19 +476,53 @@ export class ReviewService {
         }
 
         const snap = await query.get();
-        const hasMore = snap.docs.length > limit;
-        const docs = hasMore ? snap.docs.slice(0, limit) : snap.docs;
 
-        const reviews: NormalizedReview[] = docs.map((d: FirebaseFirestore.DocumentSnapshot) => {
+        // Map and filter results
+        let reviews: NormalizedReview[] = snap.docs.map((d: FirebaseFirestore.DocumentSnapshot) => {
             const raw = d.data() as Record<string, unknown>;
-            return this.normalizeReview(d.id, raw);
+            return this.normalizeReviewWithExtras(d.id, raw);
         });
 
-        const nextCursor = hasMore && docs.length > 0 ? docs[docs.length - 1].id : null;
+        // M13: Date range filtering (client-side since Firestore already ordered by createdAt)
+        if (startDate) {
+            reviews = reviews.filter(r => r.createdAt >= startDate);
+        }
+        if (endDate) {
+            reviews = reviews.filter(r => r.createdAt <= endDate);
+        }
+
+        // M12: Search filtering (client-side - searches in customer name, text, product name)
+        if (search && search.trim()) {
+            const searchLower = search.trim().toLowerCase();
+            reviews = reviews.filter(r => {
+                const textMatch = r.text?.toLowerCase().includes(searchLower);
+                const commentMatch = r.comment?.toLowerCase().includes(searchLower);
+                const authorMatch = r.authorName?.toLowerCase().includes(searchLower);
+                const productMatch = r.productName?.toLowerCase().includes(searchLower);
+                return textMatch || commentMatch || authorMatch || productMatch;
+            });
+        }
+
+        // Apply final limit after filtering
+        const hasMore = reviews.length > limit;
+        const finalReviews = hasMore ? reviews.slice(0, limit) : reviews;
+        const nextCursor = hasMore && finalReviews.length > 0 ? finalReviews[finalReviews.length - 1].id : null;
 
         return {
-            reviews,
+            reviews: finalReviews,
             pagination: { hasMore, nextCursor, limit },
+        };
+    }
+
+    // Extended normalize to include extra fields for search
+    private normalizeReviewWithExtras(docId: string, raw: Record<string, unknown>): NormalizedReview & { authorName?: string; productName?: string } {
+        const base = this.normalizeReview(docId, raw);
+        return {
+            ...base,
+            authorName: (raw['author'] as { displayName?: string; name?: string })?.displayName ||
+                (raw['author'] as { displayName?: string; name?: string })?.name ||
+                raw['authorName'] as string || '',
+            productName: raw['productName'] as string || '',
         };
     }
 
@@ -710,6 +766,9 @@ export interface NormalizedReview {
     createdAt: number;
     buyerVerified?: boolean;
     status?: 'pending' | 'published' | 'rejected' | 'pending_review' | 'approved';
+    // M12: Added for search support
+    authorName?: string;
+    productName?: string;
 }
 
 export interface ModerationResult {

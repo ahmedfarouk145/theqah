@@ -1,6 +1,7 @@
 // src/pages/faq.tsx
 'use client';
 
+import { useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import NavbarLanding from '@/components/NavbarLanding';
@@ -108,6 +109,11 @@ const faqItems = [
 ];
 
 export default function FAQPage() {
+  // Fix scroll position issue
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <>
       <NavbarLanding />

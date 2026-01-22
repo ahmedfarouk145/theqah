@@ -63,7 +63,7 @@ export default function SignupPage() {
         <div className="text-center space-y-4">
           <Image src="/logo.png" alt="شعار مشتري موثّق" width={60} height={60} className="mx-auto" priority />
           <h1 className="text-2xl font-bold text-[#004225]">✨ أنشئ حسابك في مشتري موثّق</h1>
-          <p className="text-sm text-gray-600">سجّل خلال دقيقة، ثم اختر ربط زد أو سلّة</p>
+          <p className="text-sm text-gray-600">سجّل خلال دقيقة، ثم اختر ربط سلّة</p>
         </div>
 
         {/* Form */}

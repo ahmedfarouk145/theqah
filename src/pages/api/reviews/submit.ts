@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { ReviewService, type SubmitReviewInput } from "@/server/services/review.service";
+import { rateLimitPublic, RateLimitPresets } from "@/server/rate-limit-public";
+import { handleApiError } from "@/server/core/error-handler";
 
 type ReviewBody = {
   orderId?: string;
@@ -20,6 +22,14 @@ const isImagesArray = (v: unknown): v is string[] =>
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
+
+  // C6: Rate limit write endpoint - 20 requests per 5 minutes per IP
+  const limited = await rateLimitPublic(req, res, {
+    ...RateLimitPresets.WRITE_STRICT,
+    identifier: "reviews-submit",
+    message: "Too many review submissions. Please wait a few minutes.",
+  });
+  if (limited) return;
 
   try {
     const body: ReviewBody =
@@ -71,7 +81,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       moderation: result.data!.moderation,
     });
   } catch (e: unknown) {
-    console.error("reviews/submit error:", e);
-    return res.status(500).json({ error: "internal_error" });
+    // C5: Centralized error handling
+    handleApiError(res, e);
   }
 }
+

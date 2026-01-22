@@ -232,10 +232,35 @@ export default function LandingPage() {
                 },
                 {
                   num: '4',
-                  emoji: '✅',
+                  emoji: (
+                    <div className="relative w-12 h-12">
+                      <Image
+                        src="/logo.png"
+                        alt="شعار مشتري موثّق"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                  ),
                   title: 'شارة الثقة تظهر',
                   desc: 'تظهر "شارة التوثيق" تلقائياً بجانب التقييمات الصادقة ليعرف زوارك أنها من مشترين حقيقيين.',
                   color: 'bg-orange-500'
+                },
+                {
+                  num: '5',
+                  emoji: (
+                    <div className="relative w-12 h-12">
+                      <Image
+                        src="/logo.png"
+                        alt="شهادة توثيق التقييمات"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                  ),
+                  title: 'شهادة توثيق التقييمات',
+                  desc: 'يعرض الويدجت "شهادة توثيق" رسمية للتقييمات، مما يعزز مصداقية متجرك ويزيد ثقة العملاء.',
+                  color: 'bg-teal-500'
                 },
               ].map((step, i) => (
                 <div

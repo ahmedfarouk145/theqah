@@ -27,7 +27,12 @@ export const config = { api: { bodyParser: false } };
 /* ===================== Env ===================== */
 const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
-const isDevelopment = process.env.NODE_ENV === "development";
+
+// C7: Safer signature bypass - requires explicit opt-in AND non-production
+// Production always validates signatures, regardless of any env vars
+const SKIP_SIGNATURE_CHECK =
+  process.env.SKIP_WEBHOOK_SIGNATURE === "true" &&
+  process.env.NODE_ENV !== "production";
 
 /* ===================== Domain functions moved to SallaWebhookService ===================== */
 // saveDomainAndFlags → sallaService.saveDomainWithFlags()
@@ -150,11 +155,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // C3 FIX: Skip API call if SALLA_APP_TOKEN is not configured (instead of using 'dummy')
         const sallaAppToken = process.env.SALLA_APP_TOKEN?.trim();
         if (!sallaAppToken) {
-          await fbLog(db, { 
-            level: "warn", 
-            scope: "domain", 
-            msg: "SALLA_APP_TOKEN not configured - skipping store info fetch", 
-            event, idemKey, merchant: merchantId, orderId 
+          await fbLog(db, {
+            level: "warn",
+            scope: "domain",
+            msg: "SALLA_APP_TOKEN not configured - skipping store info fetch",
+            event, idemKey, merchant: merchantId, orderId
           });
         } else {
           try {
@@ -594,8 +599,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error(`[SALLA WEBHOOK ERROR] Error: ${err}`);
     if (stack) console.error(`[SALLA WEBHOOK ERROR] Stack: ${stack}`);
 
-    // Development debugging
-    if (isDevelopment) {
+    // Development debugging (only in non-production)
+    if (process.env.NODE_ENV !== "production") {
       console.error(`[SALLA DEBUG] Full error context:`, {
         event, orderId, merchantId,
         hasSecret: !!WEBHOOK_SECRET,

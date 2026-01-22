@@ -9,8 +9,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const adminService = new AdminService();
 
     if (req.method === 'GET') {
-      const items = await adminService.listAlerts();
-      return res.status(200).json({ items });
+      const { limit = '100', cursor } = req.query;
+      const result = await adminService.listAlerts(
+        Number(limit) || 100,
+        typeof cursor === 'string' ? cursor : undefined
+      );
+      return res.status(200).json(result);
     }
 
     if (req.method === 'POST') {

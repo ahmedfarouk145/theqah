@@ -75,18 +75,18 @@ async function logSmsAttempt(
       service: 'oursms',
       createdAt: new Date().toISOString()
     };
-    
+
     // Log to sms_logs collection
     await db.collection("sms_logs").add(logData);
-    
+
     // Update stats
     const statsRef = db.collection("sms_stats").doc("summary");
     await db.runTransaction(async (transaction) => {
       const statsDoc = await transaction.get(statsRef);
       const currentStats = (statsDoc.exists ? statsDoc.data() : {}) || {};
-      
+
       const messageCount = Array.isArray(to) ? to.length : 1;
-      
+
       transaction.set(statsRef, {
         totalAttempts: (currentStats?.totalAttempts || 0) + 1,
         totalMessages: (currentStats?.totalMessages || 0) + messageCount,
@@ -99,7 +99,7 @@ async function logSmsAttempt(
         updatedAt: Date.now()
       }, { merge: true });
     });
-    
+
   } catch (logError) {
     console.error("[OURSMS] Failed to log SMS attempt:", logError);
   }
@@ -118,29 +118,29 @@ export function buildInviteSMS(storeName: string | null | undefined, link: strin
 // ---------- تطبيع رقم الهاتف ----------
 function normalizePhone(raw: string, def?: "SA" | "EG"): string {
   const digits = String(raw).replace(/[^\d+]/g, "");
-  
+
   // ✅ لو الرقم يبدأ بـ +، إرجعه كما هو
   if (digits.startsWith("+")) return digits;
-  
+
   // ✅ لو الرقم يبدأ بـ 00، حوّله لـ +
   if (digits.startsWith("00")) return `+${digits.slice(2)}`;
-  
+
   // ✅ لو الرقم يبدأ بـ 966 (كود السعودية)، أضف + بس
   if (digits.startsWith("966")) return `+${digits}`;
-  
+
   // ✅ لو الرقم يبدأ بـ 20 (كود مصر)، أضف + بس
   if (digits.startsWith("20")) return `+${digits}`;
-  
+
   // ✅ لو الرقم يبدأ بـ 0 (رقم محلي)
   if (digits.startsWith("0")) {
     if (def === "SA") return `+966${digits.slice(1)}`;
     if (def === "EG") return `+20${digits.slice(1)}`;
   }
-  
+
   // ✅ لو الرقم مافيهوش كود الدولة، أضف كود البلد الافتراضي
   if (def === "SA") return `+966${digits}`;
   if (def === "EG") return `+20${digits}`;
-  
+
   return digits;
 }
 
@@ -160,100 +160,100 @@ async function fetchWithTimeout(input: RequestInfo, init: RequestInit & { timeou
 // ---------- الإرسال عبر OurSMS ----------
 export async function sendSMSViaOursms(params: SendSMSParams) {
   const { to, text } = params; // Extract for logging
-  
+
   try {
     const API_KEY = env("OURSMS_API_KEY");
     if (!API_KEY) throw new Error("OURSMS_API_KEY is missing");
 
-  const BASE = env("OURSMS_BASE_URL", "https://api.oursms.com");
-  const SENDER = env("OURSMS_SENDER");
+    const BASE = env("OURSMS_BASE_URL", "https://api.oursms.com");
+    const SENDER = env("OURSMS_SENDER");
 
-  const {
-    to,
-    text,
-    customId = null, // Used in API response
-    priority = 1,
-    delayMinutes = 0,
-    validityMinutes = 0,
-    msgClass = "transactional",
-    requestDlr = true,
-  } = params;
+    const {
+      to,
+      text,
+      customId = null, // Used in API response
+      priority = 1,
+      delayMinutes = 0,
+      validityMinutes = 0,
+      msgClass = "transactional",
+      requestDlr = true,
+    } = params;
 
-  const dests = Array.isArray(to) ? to : [to];
-  const url = `${BASE.replace(/\/+$/, "")}/msgs/sms`;
+    const dests = Array.isArray(to) ? to : [to];
+    const url = `${BASE.replace(/\/+$/, "")}/msgs/sms`;
 
-  const body = {
-    src: SENDER || "oursms",
-    dests,
-    body: text,
-    priority,
-    delay: delayMinutes,
-    validity: validityMinutes,
-    maxParts: 0,
-    dlr: requestDlr ? 1 : 0,
-    prevDups: 0,
-    msgClass: msgClass || undefined,
-  };
+    const body = {
+      src: SENDER || "oursms",
+      dests,
+      body: text,
+      priority,
+      delay: delayMinutes,
+      validity: validityMinutes,
+      maxParts: 0,
+      dlr: requestDlr ? 1 : 0,
+      prevDups: 0,
+      msgClass: msgClass || undefined,
+    };
 
-  const res = await fetchWithTimeout(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-    timeoutMs: 20000,
-  });
+    const res = await fetchWithTimeout(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      timeoutMs: 20000,
+    });
 
-  if (!res.ok) {
-    const textErr = await res.text().catch(() => "");
-    throw new Error(`oursms_http_${res.status}${textErr ? `: ${textErr}` : ""}`);
-  }
+    if (!res.ok) {
+      const textErr = await res.text().catch(() => "");
+      throw new Error(`oursms_http_${res.status}${textErr ? `: ${textErr}` : ""}`);
+    }
 
-  const json = (await res.json().catch(() => ({}))) as Partial<OursmsSendResult>;
+    const json = (await res.json().catch(() => ({}))) as Partial<OursmsSendResult>;
 
-  const result = {
-    jobId: String(json.jobId || ""),
-    customId: customId ?? (json.customId ?? null) as string | null,
-    total: Number(json.total ?? 0),
-    rejected: Number(json.rejected ?? 0),
-    accepted: Number(json.accepted ?? 0),
-    duplicates: Number(json.duplicates ?? 0),
-    cost: Number(json.cost ?? 0),
-    acceptedMsgs: json.acceptedMsgs ?? null,
-    rejectedMsgs: json.rejectedMsgs ?? null,
-    statusCode: (json.statusCode ?? null) as number | null,
-    statusDesc: (json.statusDesc ?? null) as string | null,
-    message: (json.message ?? null) as string | null,
-  } as OursmsSendResult;
+    const result = {
+      jobId: String(json.jobId || ""),
+      customId: customId ?? (json.customId ?? null) as string | null,
+      total: Number(json.total ?? 0),
+      rejected: Number(json.rejected ?? 0),
+      accepted: Number(json.accepted ?? 0),
+      duplicates: Number(json.duplicates ?? 0),
+      cost: Number(json.cost ?? 0),
+      acceptedMsgs: json.acceptedMsgs ?? null,
+      rejectedMsgs: json.rejectedMsgs ?? null,
+      statusCode: (json.statusCode ?? null) as number | null,
+      statusDesc: (json.statusDesc ?? null) as string | null,
+      message: (json.message ?? null) as string | null,
+    } as OursmsSendResult;
 
-  console.log(`[OURSMS] ✅ SMS sent successfully - Job ID: ${result.jobId}, Accepted: ${result.accepted}/${result.total}, Cost: ${result.cost}`);
+    console.log(`[OURSMS] ✅ SMS sent successfully - Job ID: ${result.jobId}, Accepted: ${result.accepted}/${result.total}, Cost: ${result.cost}`);
 
-  // Log success
-  await logSmsAttempt(to, text, true, result.jobId, undefined, {
-    total: result.total,
-    accepted: result.accepted,
-    rejected: result.rejected,
-    cost: result.cost
-  });
+    // Log success
+    await logSmsAttempt(to, text, true, result.jobId, undefined, {
+      total: result.total,
+      accepted: result.accepted,
+      rejected: result.rejected,
+      cost: result.cost
+    });
 
-  return {
-    ok: true as const,
-    result,
-  };
-  
+    return {
+      ok: true as const,
+      result,
+    };
+
   } catch (error: unknown) {
     const errorMessage = (error as Error)?.message || String(error);
-    
+
     console.error(`[OURSMS] ❌ Failed to send SMS:`, {
       error: errorMessage,
       to: Array.isArray(to) ? to : [to],
       textLength: text.length
     });
-    
+
     // Log failure
     await logSmsAttempt(to, text, false, null, errorMessage);
-    
+
     throw error; // Re-throw for caller handling
   }
 }
@@ -306,23 +306,50 @@ export async function sendSms(
   const delayMinutes = opts?.delayMinutes ?? 0;
   const validityMinutes = opts?.validityMinutes ?? 0;
 
-  try {
-    const res = await sendSMSViaOursms({
-      to: dests,
-      text,
-      msgClass,
-      requestDlr,
-      priority,
-      delayMinutes,
-      validityMinutes,
-    });
+  // H9: Retry logic with exponential backoff
+  const maxRetries = 3;
+  let lastError: string | null = null;
 
-    const id = res.result?.jobId ? String(res.result.jobId) : null;
-    return { ok: !!res?.ok, id, error: null };
-  } catch (e) {
-    const errMsg = e instanceof Error ? e.message : String(e);
-    return { ok: false, id: null, error: errMsg };
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await sendSMSViaOursms({
+        to: dests,
+        text,
+        msgClass,
+        requestDlr,
+        priority,
+        delayMinutes,
+        validityMinutes,
+      });
+
+      const id = res.result?.jobId ? String(res.result.jobId) : null;
+      return { ok: !!res?.ok, id, error: null };
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      lastError = errMsg;
+
+      // Check if error is retryable
+      const isRetryable = [
+        "timeout",
+        "ETIMEDOUT",
+        "ECONNRESET",
+        "ENOTFOUND",
+        "oursms_http_5", // 5xx errors
+        "ESOCKETTIMEDOUT",
+      ].some((pattern) => errMsg.includes(pattern));
+
+      if (!isRetryable || attempt >= maxRetries) {
+        break;
+      }
+
+      // Exponential backoff with jitter
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+      const jitter = Math.random() * delay * 0.3;
+      await new Promise((resolve) => setTimeout(resolve, delay + jitter));
+    }
   }
+
+  return { ok: false, id: null, error: lastError };
 }
 
 export default sendSms;

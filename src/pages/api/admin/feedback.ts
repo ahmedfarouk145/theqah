@@ -15,8 +15,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
-      const feedbacks = await adminService.listFeedback();
-      return res.status(200).json({ feedbacks });
+      const { limit = '100', cursor } = req.query;
+      const result = await adminService.listFeedback(
+        Number(limit) || 100,
+        typeof cursor === 'string' ? cursor : undefined
+      );
+      return res.status(200).json(result);
     } catch (error) {
       console.error('Error fetching feedback:', error);
       return res.status(500).json({ error: 'Failed to fetch feedback' });

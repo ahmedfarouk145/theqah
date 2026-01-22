@@ -131,11 +131,22 @@ export class AdminService {
     /**
      * List alerts
      */
-    async listAlerts(limit = 100): Promise<AdminAlert[]> {
+    async listAlerts(limit = 100, cursor?: string): Promise<{ alerts: AdminAlert[]; nextCursor: string | null }> {
         const { dbAdmin } = await import('@/lib/firebaseAdmin');
         const db = dbAdmin();
-        const snap = await db.collection('admin_alerts').orderBy('createdAt', 'desc').limit(limit).get();
-        return snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminAlert));
+        const limitNum = Math.min(limit, 100);
+        let q = db.collection('admin_alerts').orderBy('createdAt', 'desc').limit(limitNum + 1);
+
+        if (cursor) {
+            const doc = await db.collection('admin_alerts').doc(cursor).get();
+            if (doc.exists) q = q.startAfter(doc);
+        }
+
+        const snap = await q.get();
+        const alerts = snap.docs.slice(0, limitNum).map(d => ({ id: d.id, ...d.data() } as AdminAlert));
+        const nextCursor = snap.docs.length > limitNum ? snap.docs[limitNum - 1].id : null;
+
+        return { alerts, nextCursor };
     }
 
     /**
@@ -150,22 +161,41 @@ export class AdminService {
             createdAt: Date.now(),
             createdBy: alert.createdBy || null,
         });
+
+        // Audit log
+        await this.auditRepo.log('create_alert', 'system', ref.id, {
+            userId: alert.createdBy || 'system',
+            changes: { message: alert.message, level: alert.level }
+        });
+
         return ref.id;
     }
 
     /**
      * List feedback
      */
-    async listFeedback(limit = 100): Promise<unknown[]> {
+    async listFeedback(limit = 100, cursor?: string): Promise<{ feedback: unknown[]; nextCursor: string | null }> {
         const { getDb } = await import('@/server/firebase-admin');
         const db = getDb();
-        const snap = await db.collection('feedback').orderBy('createdAt', 'desc').limit(limit).get();
-        return snap.docs.map(doc => ({
+        const limitNum = Math.min(limit, 100);
+        let q = db.collection('feedback').orderBy('createdAt', 'desc').limit(limitNum + 1);
+
+        if (cursor) {
+            const doc = await db.collection('feedback').doc(cursor).get();
+            if (doc.exists) q = q.startAfter(doc);
+        }
+
+        const snap = await q.get();
+        const docs = snap.docs.slice(0, limitNum);
+        const feedback = docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
             createdAt: doc.data().createdAt?.toDate(),
             resolvedAt: doc.data().resolvedAt?.toDate(),
         }));
+
+        const nextCursor = snap.docs.length > limitNum ? snap.docs[limitNum - 1].id : null;
+        return { feedback, nextCursor };
     }
 
     /**
@@ -178,6 +208,10 @@ export class AdminService {
         if (status === 'resolved') updateData.resolvedAt = new Date();
         if (notes) updateData.notes = notes;
         await db.collection('feedback').doc(feedbackId).update(updateData);
+
+        await this.auditRepo.log('update_feedback', 'feedback', feedbackId, {
+            changes: { status, notes }
+        });
     }
 
     /**
@@ -187,35 +221,55 @@ export class AdminService {
         const { getDb } = await import('@/server/firebase-admin');
         const db = getDb();
         await db.collection('feedback').doc(feedbackId).delete();
+        await this.auditRepo.log('delete_feedback', 'feedback', feedbackId, {});
     }
 
     /**
      * List users
      */
-    async listUsers(search?: string, limit = 50): Promise<unknown[]> {
+    async listUsers(search?: string, limit = 50, cursor?: string): Promise<{ users: unknown[]; nextCursor: string | null }> {
         const { dbAdmin } = await import('@/lib/firebaseAdmin');
         const db = dbAdmin();
         const lim = Math.min(limit, 200);
 
-        let query = db.collection('users').limit(lim);
+        let query: FirebaseFirestore.Query = db.collection('users');
         if (search && search.trim()) {
             const qLower = search.toLowerCase();
-            query = db.collection('users')
+            query = query
                 .where('emailLower', '>=', qLower)
-                .where('emailLower', '<=', qLower + '\uf8ff')
-                .limit(lim);
+                .where('emailLower', '<=', qLower + '\uf8ff');
+        } else {
+            // Only order by email if no search, or simply default order if not searching
+            // If searching, we rely on the range filter which implicitly orders
+            query = query.orderBy('emailLower');
+        }
+
+        query = query.limit(lim + 1);
+
+        if (cursor) {
+            const doc = await db.collection('users').doc(cursor).get();
+            if (doc.exists) query = query.startAfter(doc);
         }
 
         const snap = await query.get();
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const docs = snap.docs.slice(0, lim);
+        const users = docs.map(d => ({ id: d.id, ...d.data() }));
+        const nextCursor = snap.docs.length > lim ? snap.docs[lim - 1].id : null;
+
+        return { users, nextCursor };
     }
 
     /**
      * Set user admin claim
      */
-    async setUserAdminClaim(uid: string, isAdmin: boolean): Promise<void> {
+    async setUserAdminClaim(uid: string, isAdmin: boolean, adminUid?: string): Promise<void> {
         const { authAdmin } = await import('@/lib/firebaseAdmin');
         await authAdmin().setCustomUserClaims(uid, { admin: isAdmin });
+
+        await this.auditRepo.log('set_admin_claim', 'user', uid, {
+            userId: adminUid || 'system',
+            changes: { isAdmin }
+        });
     }
 
     /**

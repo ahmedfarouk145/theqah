@@ -5,16 +5,6 @@ import { ShoppingBag, Zap, ArrowRight, CheckCircle } from "lucide-react";
 export default function ConnectIndex() {
   const platforms = [
     {
-      name: "منصة زد",
-      id: "zid",
-      href: "/connect/zid",
-      color: "from-blue-500 to-blue-600",
-      bgColor: "from-blue-50 to-blue-100/50",
-      icon: Zap,
-      description: "منصة التجارة الإلكترونية الرائدة في المملكة",
-      features: ["ربط تلقائي", "إشعارات فورية", "تقارير شاملة"]
-    },
-    {
       name: "منصة سلة",
       id: "salla",
       href: "/connect/salla",
@@ -35,15 +25,15 @@ export default function ConnectIndex() {
           <div className="text-center mb-12 animate-fade-in">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">اختَر منصتك للبدء</h1>
             <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
-              اربط متجرك مع مشتري موثق لإرسال روابط التقييمات تلقائيًا بعد كل عملية شراء ناجحة
+              اربط متجرك مع مشتري موثق لتوثيق التقييمات تلقائياً
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="flex justify-center gap-8">
             {platforms.map((platform, index) => (
               <div
                 key={platform.id}
-                className="animate-slide-up"
+                className="animate-slide-up w-full max-w-md"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <Link

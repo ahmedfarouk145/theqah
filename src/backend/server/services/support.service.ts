@@ -270,32 +270,25 @@ export class SupportService {
         url?: string;
         timestamp: Date;
     }) {
-        const nodemailer = await import('nodemailer');
         const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'farwqahmd118@gmail.com';
-        const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-
-        if (!SENDGRID_API_KEY) {
-            console.warn('SendGrid API key not configured, skipping email');
-            return;
-        }
 
         const typeEmoji: Record<string, string> = { bug: '🐛', feature: '💡', question: '❓', other: '💬' };
         const typeLabel: Record<string, string> = { bug: 'Bug Report', feature: 'Feature Request', question: 'Question', other: 'Other' };
 
-        const transporter = nodemailer.createTransport({
-            host: 'smtp.sendgrid.net',
-            port: 587,
-            auth: { user: 'apikey', pass: SENDGRID_API_KEY },
-        });
-
         const emailHtml = this.buildFeedbackEmailHtml(data, typeEmoji, typeLabel);
+        const subject = `${typeEmoji[data.type]} [TheQah] ${typeLabel[data.type]}: ${data.message.substring(0, 50)}...`;
 
-        await transporter.sendMail({
-            from: process.env.SENDGRID_FROM_EMAIL || 'noreply@theqah.com',
-            to: ADMIN_EMAIL,
-            subject: `${typeEmoji[data.type]} [TheQah] ${typeLabel[data.type]}: ${data.message.substring(0, 50)}...`,
-            html: emailHtml,
-        });
+        // Use Dmail instead of SendGrid
+        try {
+            const { sendEmailDmail } = await import('@/server/messaging/email-dmail');
+            const result = await sendEmailDmail(ADMIN_EMAIL, subject, emailHtml);
+
+            if (!result.ok) {
+                console.error('Dmail failed to send feedback email:', result.error);
+            }
+        } catch (err) {
+            console.error('Failed to send feedback email via Dmail:', err);
+        }
     }
 
     private buildFeedbackEmailHtml(

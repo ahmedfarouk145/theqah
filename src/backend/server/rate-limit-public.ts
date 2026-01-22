@@ -34,6 +34,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { metrics } from "@/server/monitoring/metrics";
 
+// H7: Production-safe logging - only log in development
+const isDev = process.env.NODE_ENV !== "production";
+const devLog = (...args: unknown[]) => isDev && console.log(...args);
+
 // ============================================================================
 // Configuration
 // ============================================================================
@@ -72,20 +76,20 @@ let lastCleanup = Date.now();
 function cleanupStaleEntries() {
   const now = Date.now();
   if (now - lastCleanup < CLEANUP_INTERVAL) return;
-  
+
   lastCleanup = now;
   const keysToDelete: string[] = [];
-  
+
   rateLimitStore.forEach((entry, key) => {
     if (now > entry.resetTime) {
       keysToDelete.push(key);
     }
   });
-  
+
   keysToDelete.forEach(key => rateLimitStore.delete(key));
-  
-  if (keysToDelete.length > 0) {
-    console.log(`[RateLimit] Cleaned up ${keysToDelete.length} stale entries`);
+
+  if (keysToDelete.length > 0 && isDev) {
+    devLog(`[RateLimit] Cleaned up ${keysToDelete.length} stale entries`);
   }
 }
 
@@ -104,17 +108,17 @@ function getClientIP(req: NextApiRequest): string {
     const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
     return ip.trim();
   }
-  
+
   const realIP = req.headers["x-real-ip"];
   if (realIP && typeof realIP === "string") {
     return realIP.trim();
   }
-  
+
   const cfConnectingIP = req.headers["cf-connecting-ip"];
   if (cfConnectingIP && typeof cfConnectingIP === "string") {
     return cfConnectingIP.trim();
   }
-  
+
   // Fallback to socket address
   return req.socket.remoteAddress || "unknown";
 }
@@ -136,33 +140,33 @@ export async function rateLimitPublic(
   const startTime = Date.now();
   const clientIP = getClientIP(req);
   const now = Date.now();
-  
+
   // Cleanup stale entries periodically
   cleanupStaleEntries();
-  
+
   // Skip rate limiting for whitelisted IPs
   if (config.skipIPs?.includes(clientIP)) {
-    console.log(`[RateLimit] Skipping rate limit for whitelisted IP: ${clientIP}`);
+    devLog(`[RateLimit] Skipping rate limit for whitelisted IP: ${clientIP}`);
     return false;
   }
-  
+
   // Skip if special header is present (e.g., internal API key)
   if (config.skipHeader) {
     const headerValue = req.headers[config.skipHeader.name.toLowerCase()];
-    const headerMatch = Array.isArray(headerValue) 
+    const headerMatch = Array.isArray(headerValue)
       ? headerValue[0] === config.skipHeader.value
       : headerValue === config.skipHeader.value;
-      
+
     if (headerMatch) {
-      console.log(`[RateLimit] Skipping rate limit for authenticated request`);
+      devLog(`[RateLimit] Skipping rate limit for authenticated request`);
       return false;
     }
   }
-  
+
   // Generate unique key for this IP + endpoint
   const key = `${config.identifier}:${clientIP}`;
   const entry = rateLimitStore.get(key);
-  
+
   // No existing entry - first request in window
   if (!entry) {
     rateLimitStore.set(key, {
@@ -170,7 +174,7 @@ export async function rateLimitPublic(
       resetTime: now + config.windowMs,
       firstRequest: now
     });
-    
+
     // Track allowed request
     await trackRateLimitEvent({
       identifier: config.identifier,
@@ -180,10 +184,10 @@ export async function rateLimitPublic(
       limit: config.maxRequests,
       duration: Date.now() - startTime
     });
-    
+
     return false; // Allow request
   }
-  
+
   // Entry exists but window has expired - reset
   if (now > entry.resetTime) {
     rateLimitStore.set(key, {
@@ -191,7 +195,7 @@ export async function rateLimitPublic(
       resetTime: now + config.windowMs,
       firstRequest: now
     });
-    
+
     await trackRateLimitEvent({
       identifier: config.identifier,
       ip: clientIP,
@@ -200,23 +204,23 @@ export async function rateLimitPublic(
       limit: config.maxRequests,
       duration: Date.now() - startTime
     });
-    
+
     return false; // Allow request
   }
-  
+
   // Entry exists and window is still active
   entry.count++;
-  
+
   // Check if limit exceeded
   if (entry.count > config.maxRequests) {
     const retryAfter = Math.ceil((entry.resetTime - now) / 1000); // seconds
-    
+
     // Set rate limit headers
     res.setHeader("X-RateLimit-Limit", config.maxRequests.toString());
     res.setHeader("X-RateLimit-Remaining", "0");
     res.setHeader("X-RateLimit-Reset", entry.resetTime.toString());
     res.setHeader("Retry-After", retryAfter.toString());
-    
+
     // Track blocked request
     await trackRateLimitEvent({
       identifier: config.identifier,
@@ -226,7 +230,7 @@ export async function rateLimitPublic(
       limit: config.maxRequests,
       duration: Date.now() - startTime
     });
-    
+
     // Send 429 response
     res.status(429).json({
       error: "rate_limit_exceeded",
@@ -235,18 +239,19 @@ export async function rateLimitPublic(
       limit: config.maxRequests,
       windowMs: config.windowMs
     });
-    
-    console.log(`[RateLimit] BLOCKED ${clientIP} on ${config.identifier} (${entry.count}/${config.maxRequests})`);
-    
+
+    // Only log blocks in dev, always track in metrics
+    devLog(`[RateLimit] BLOCKED ${clientIP} on ${config.identifier} (${entry.count}/${config.maxRequests})`);
+
     return true; // Request blocked
   }
-  
+
   // Still within limit - set informational headers
   const remaining = config.maxRequests - entry.count;
   res.setHeader("X-RateLimit-Limit", config.maxRequests.toString());
   res.setHeader("X-RateLimit-Remaining", remaining.toString());
   res.setHeader("X-RateLimit-Reset", entry.resetTime.toString());
-  
+
   await trackRateLimitEvent({
     identifier: config.identifier,
     ip: clientIP,
@@ -255,7 +260,7 @@ export async function rateLimitPublic(
     limit: config.maxRequests,
     duration: Date.now() - startTime
   });
-  
+
   return false; // Allow request
 }
 
@@ -292,7 +297,7 @@ async function trackRateLimitEvent(data: RateLimitEventData): Promise<void> {
     });
   } catch (error) {
     // Don't fail request if tracking fails
-    console.error("[RateLimit] Failed to track event:", error);
+    if (isDev) console.error("[RateLimit] Failed to track event:", error);
   }
 }
 
@@ -302,7 +307,7 @@ async function trackRateLimitEvent(data: RateLimitEventData): Promise<void> {
  */
 function anonymizeIP(ip: string): string {
   if (ip === "unknown") return "unknown";
-  
+
   // IPv4
   if (ip.includes(".")) {
     const parts = ip.split(".");
@@ -310,7 +315,7 @@ function anonymizeIP(ip: string): string {
       return `${parts[0]}.${parts[1]}.${parts[2]}.0`;
     }
   }
-  
+
   // IPv6 - anonymize last 4 groups
   if (ip.includes(":")) {
     const parts = ip.split(":");
@@ -318,7 +323,7 @@ function anonymizeIP(ip: string): string {
       return parts.slice(0, 4).join(":") + "::";
     }
   }
-  
+
   return ip;
 }
 
@@ -335,19 +340,19 @@ export const RateLimitPresets = {
     maxRequests: 60,
     windowMs: 15 * 60 * 1000,
   },
-  
+
   /** Moderate limit for public APIs - 100 requests per 15 minutes */
   PUBLIC_MODERATE: {
     maxRequests: 100,
     windowMs: 15 * 60 * 1000,
   },
-  
+
   /** Generous limit for authenticated APIs - 300 requests per 15 minutes */
   AUTHENTICATED: {
     maxRequests: 300,
     windowMs: 15 * 60 * 1000,
   },
-  
+
   /** Very strict for write operations - 20 requests per 5 minutes */
   WRITE_STRICT: {
     maxRequests: 20,
