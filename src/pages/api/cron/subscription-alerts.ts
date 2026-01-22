@@ -10,8 +10,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 const CRON_SECRET = process.env.CRON_SECRET;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Only allow POST from cron
-  if (req.method !== 'POST') {
+  // Allow GET (Vercel cron) and POST
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 

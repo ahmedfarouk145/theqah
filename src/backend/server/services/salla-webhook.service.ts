@@ -347,7 +347,8 @@ export class SallaWebhookService {
             storeUpdate.domain = { base: domain, key, updatedAt: now };
         }
 
-        await this.storeRepo.update(storeUid, storeUpdate);
+        // Use set with merge so it works for new stores too
+        await this.storeRepo.set(storeUid, storeUpdate);
 
         // Save domain mapping if present
         if (domain) {

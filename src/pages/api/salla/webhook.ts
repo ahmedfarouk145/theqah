@@ -204,6 +204,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
 
+      // DEBUG: Log full payload structure to understand what Salla sends
+      await fbLog(db, {
+        level: "debug",
+        scope: "payload_debug",
+        msg: "full payload keys for authorize/install",
+        event,
+        idemKey,
+        merchant: merchantId,
+        orderId,
+        meta: {
+          topLevelKeys: Object.keys(body),
+          dataKeys: Object.keys(dataRaw),
+          hasOwner: !!dataRaw['owner'],
+          hasMerchant: !!dataRaw['merchant'],
+          hasStore: !!dataRaw['store'],
+          hasUser: !!dataRaw['user'],
+          ownerEmail: (dataRaw['owner'] as Dict)?.['email'] ?? null,
+          merchantEmail: (dataRaw['merchant'] as Dict)?.['email'] ?? null,
+          storeEmail: (dataRaw['store'] as Dict)?.['email'] ?? null,
+          userEmail: (dataRaw['user'] as Dict)?.['email'] ?? null,
+          bodyEmail: ((body as unknown) as Dict)?.['email'] ?? null,
+        }
+      });
+
+      // Try to extract email from multiple possible locations in the payload
+      const payloadEmail =
+        (typeof (dataRaw['owner'] as Dict)?.['email'] === 'string' ? (dataRaw['owner'] as Dict)['email'] as string : undefined) ??
+        (typeof (dataRaw['merchant'] as Dict)?.['email'] === 'string' ? (dataRaw['merchant'] as Dict)['email'] as string : undefined) ??
+        (typeof (dataRaw['user'] as Dict)?.['email'] === 'string' ? (dataRaw['user'] as Dict)['email'] as string : undefined) ??
+        (typeof (dataRaw['store'] as Dict)?.['email'] === 'string' ? (dataRaw['store'] as Dict)['email'] as string : undefined) ??
+        (typeof dataRaw['email'] === 'string' ? dataRaw['email'] as string : undefined) ??
+        (typeof ((body as unknown) as Dict)['email'] === 'string' ? ((body as unknown) as Dict)['email'] as string : undefined);
+
+      // Extract store name from payload
+      const storeNameFromPayload =
+        (typeof (dataRaw['store'] as Dict)?.['name'] === 'string' ? (dataRaw['store'] as Dict)['name'] as string : undefined) ??
+        (typeof (dataRaw['merchant'] as Dict)?.['name'] === 'string' ? (dataRaw['merchant'] as Dict)['name'] as string : undefined) ??
+        (typeof dataRaw['name'] === 'string' ? dataRaw['name'] as string : undefined);
+
       // access_token من البودي (إن وُجد)
       const tokenFromPayload =
         (typeof (dataRaw["access_token"]) === "string" && (dataRaw["access_token"] as string).trim())
@@ -225,6 +264,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (storeUid) {
         await sallaService.saveDomainWithFlags(storeUid, merchantId, base, event);
         await sallaService.saveDomainVariations(storeUid, domainInPayload);
+
+        // Save store owner info if available from payload
+        if (payloadEmail || storeNameFromPayload) {
+          await db.collection("stores").doc(storeUid).set({
+            meta: {
+              ownerEmail: payloadEmail ?? null,
+              storeName: storeNameFromPayload ?? null,
+              payloadExtractedAt: Date.now(),
+            }
+          }, { merge: true });
+          await fbLog(db, {
+            level: "info",
+            scope: "payload_extract",
+            msg: "extracted owner info from payload",
+            event, idemKey, merchant: merchantId, orderId,
+            meta: { email: payloadEmail, storeName: storeNameFromPayload }
+          });
+        }
       }
 
       // خزّن OAuth لو متاح
