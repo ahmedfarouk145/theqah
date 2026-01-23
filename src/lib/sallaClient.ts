@@ -8,6 +8,7 @@ export interface StoreInfoResponse {
   data?: {
     id?: number;
     name?: string;
+    email?: string; // ← Merchant email from store/info
     type?: string;
     status?: string;
     plan?: string;

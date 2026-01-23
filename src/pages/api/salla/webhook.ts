@@ -1,7 +1,7 @@
 // src/pages/api/salla/webhook.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
-import { fetchStoreInfo, fetchUserInfo, fetchMerchantInfo, getOwnerAccessToken } from "@/lib/sallaClient";
+import { fetchStoreInfo, fetchUserInfo, getOwnerAccessToken } from "@/lib/sallaClient";
 import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
 import { trackWebhook } from "@/server/monitoring/metrics";
 import { SallaWebhookService } from "@/server/services/salla-webhook.service";
@@ -298,18 +298,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           (typeof (dataRaw["token"] as Dict | undefined)?.["scope"] === "string"
             ? ((dataRaw["token"] as Dict)["scope"] as string) : "");
 
+
       if (storeUid && tokenFromPayload) {
         await sallaService.handleAppAuthorize(storeUid, tokenFromPayload, refresh || undefined, scopeStr || undefined, Number.isFinite(expires) ? expires : undefined);
         await fbLog(db, { level: "info", scope: "oauth", msg: "owner oauth saved via service", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, hasRefresh: !!refresh } });
       }
 
       // لو base مش معروف → حاول store/info
+      // Also capture storeInfoResult for email extraction later
+      let storeInfoResult: Awaited<ReturnType<typeof fetchStoreInfo>> | null = null;
+
       if (storeUid && !base) {
         const token = tokenFromPayload || (await getOwnerAccessToken(db, storeUid)) || "";
         if (token) {
           try {
-            const info = await fetchStoreInfo(token);
-            const d = info?.data?.domain && typeof info.data.domain === "string" ? info.data.domain : null;
+            storeInfoResult = await fetchStoreInfo(token);
+            const d = storeInfoResult?.data?.domain && typeof storeInfoResult.data.domain === "string" ? storeInfoResult.data.domain : null;
             const resolvedBase = toDomainBase(d);
             if (resolvedBase) {
               base = resolvedBase;
@@ -327,17 +331,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      // userinfo + merchantinfo (parallel) + حفظ + إيميل تعيين كلمة المرور + تحسين الدومين لو أمكن
+      // userinfo + storeinfo (parallel) + حفظ + إيميل تعيين كلمة المرور
       if (storeUid) {
         const token = tokenFromPayload || (await getOwnerAccessToken(db, storeUid)) || "";
         if (token) {
           try {
-            // Fetch userinfo and merchant info in parallel (no extra latency!)
-            const [uinfo, merchantData] = await Promise.all([
+            // Fetch userinfo and store info in parallel (store/info contains email)
+            const [uinfo, storeInfo] = await Promise.all([
               fetchUserInfo(token),
-              fetchMerchantInfo(token).catch((e) => {
-                // Log error but don't fail - merchant API is optional
-                fbLog(db, { level: "warn", scope: "merchant", msg: "merchant fetch failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
+              // Reuse storeInfoResult if we already fetched it, otherwise fetch now
+              storeInfoResult ?? fetchStoreInfo(token).catch((e) => {
+                fbLog(db, { level: "warn", scope: "store_info", msg: "store info fetch failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
                 return null;
               }),
             ]);
@@ -350,12 +354,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             await fbLog(db, { level: "info", scope: "userinfo", msg: "userinfo saved", event, idemKey, merchant: merchantId, orderId, meta: { storeUid } });
 
             const u = uinfo as Dict;
-            // Domain extraction from userinfo (not currently used but available for future)
-            /* const domainFromInfo =
-              (typeof u.merchant === "object" && typeof (u.merchant as Dict)?.domain === "string" ? (u.merchant as Dict).domain as string : undefined) ??
-              (typeof u.store === "object" && typeof (u.store as Dict)?.domain === "string" ? (u.store as Dict).domain as string : undefined) ??
-              (typeof u.domain === "string" ? u.domain as string : undefined) ??
-              (typeof u.url === "string" ? u.url as string : undefined); */
 
             // Extract email from multiple sources (priority order)
             const infoEmail =
@@ -363,19 +361,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               (typeof u.merchant === "object" && typeof (u.merchant as Dict).email === "string" ? (u.merchant as Dict).email as string : undefined) ??
               (typeof u.user === "object" && typeof (u.user as Dict).email === "string" ? (u.user as Dict).email as string : undefined);
 
-            // NEW: Get email from merchant API (highest priority)
-            const merchantEmail = merchantData?.data?.email;
+            // Get email from store/info API (highest priority - this actually works!)
+            const storeInfoEmail = storeInfo?.data?.email;
 
             const storeName =
               (typeof u.merchant === "object" && typeof (u.merchant as Dict).name === "string" ? (u.merchant as Dict).name as string : undefined) ??
               (typeof u.store === "object" && typeof (u.store as Dict).name === "string" ? (u.store as Dict).name as string : undefined) ??
-              (merchantData?.data?.name) ?? // Fallback to merchant API name
+              (storeInfo?.data?.name) ?? // Fallback to store/info name
               "متجرك";
 
             const payloadEmail = typeof (dataRaw as Dict)["email"] === "string" ? ((dataRaw as Dict)["email"] as string) : undefined;
 
-            // Priority: Merchant API > UserInfo > Payload
-            const targetEmail = merchantEmail || infoEmail || payloadEmail;
+            // Priority: Store Info > UserInfo > Payload
+            const targetEmail = storeInfoEmail || infoEmail || payloadEmail;
 
             if (targetEmail) {
               const r = await sendPasswordSetupEmail({ email: targetEmail, storeUid, storeName });
@@ -388,16 +386,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   console.error('[Webhook] Failed to update order stats:', err);
                 });
               } else {
-                await fbLog(db, { level: "info", scope: "password_email", msg: "sent ok", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail, source: merchantEmail ? "merchant_api" : infoEmail ? "userinfo" : "payload" } });
+                await fbLog(db, { level: "info", scope: "password_email", msg: "sent ok", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail, source: storeInfoEmail ? "store_info" : infoEmail ? "userinfo" : "payload" } });
               }
             } else {
-              await fbLog(db, { level: "debug", scope: "password_email", msg: "no email found in merchant/userinfo/payload", event, idemKey, merchant: merchantId, orderId });
+              await fbLog(db, { level: "debug", scope: "password_email", msg: "no email found in store_info/userinfo/payload", event, idemKey, merchant: merchantId, orderId });
             }
           } catch (e) {
             await fbLog(db, { level: "warn", scope: "userinfo", msg: "userinfo fetch failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
           }
         } else {
           await fbLog(db, { level: "warn", scope: "userinfo", msg: "no token available to fetch userinfo", event, idemKey, merchant: merchantId, orderId });
+
         }
       }
     }
