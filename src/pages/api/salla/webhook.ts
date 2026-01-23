@@ -375,24 +375,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // Priority: Store Info > UserInfo > Payload
             const targetEmail = storeInfoEmail || infoEmail || payloadEmail;
 
+            // Log what email sources we found
+            await fbLog(db, {
+              level: "debug", scope: "email_extraction", msg: "email sources", event, idemKey, merchant: merchantId, orderId, meta: {
+                storeInfoEmail: storeInfoEmail || null,
+                infoEmail: infoEmail || null,
+                payloadEmail: payloadEmail || null,
+                targetEmail: targetEmail || null,
+                storeName
+              }
+            });
+
             if (targetEmail) {
-              const r = await sendPasswordSetupEmail({ email: targetEmail, storeUid, storeName });
-              if (!r.ok) {
-                await fbLog(db, { level: "warn", scope: "password_email", msg: "send failed", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail, error: r.error } });
-                await db.collection("webhook_errors").add({
-                  at: Date.now(), scope: "password_email", event,
-                  error: r.error, email: targetEmail, storeUid
-                }).catch((err) => {
-                  console.error('[Webhook] Failed to update order stats:', err);
-                });
-              } else {
-                await fbLog(db, { level: "info", scope: "password_email", msg: "sent ok", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail, source: storeInfoEmail ? "store_info" : infoEmail ? "userinfo" : "payload" } });
+              try {
+                const r = await sendPasswordSetupEmail({ email: targetEmail, storeUid, storeName });
+                if (!r.ok) {
+                  await fbLog(db, { level: "warn", scope: "password_email", msg: "send failed", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail, error: r.error } });
+                  await db.collection("webhook_errors").add({
+                    at: Date.now(), scope: "password_email", event,
+                    error: r.error, email: targetEmail, storeUid
+                  }).catch((err) => {
+                    console.error('[Webhook] Failed to update order stats:', err);
+                  });
+                } else {
+                  await fbLog(db, { level: "info", scope: "password_email", msg: "sent ok", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail, source: storeInfoEmail ? "store_info" : infoEmail ? "userinfo" : "payload" } });
+                }
+              } catch (emailErr) {
+                await fbLog(db, { level: "error", scope: "password_email", msg: "exception during send", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail, err: emailErr instanceof Error ? emailErr.message : String(emailErr) } });
               }
             } else {
               await fbLog(db, { level: "debug", scope: "password_email", msg: "no email found in store_info/userinfo/payload", event, idemKey, merchant: merchantId, orderId });
             }
           } catch (e) {
-            await fbLog(db, { level: "warn", scope: "userinfo", msg: "userinfo fetch failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e) } });
+            await fbLog(db, { level: "warn", scope: "userinfo", msg: "fetch or processing failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack?.substring(0, 200) : undefined } });
           }
         } else {
           await fbLog(db, { level: "warn", scope: "userinfo", msg: "no token available to fetch userinfo", event, idemKey, merchant: merchantId, orderId });
