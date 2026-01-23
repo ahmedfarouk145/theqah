@@ -22,7 +22,7 @@ function appBase(): string {
   return base.replace(/\/+$/, "");
 }
 
-/** يرسل إيميل “تعيين/إعادة تعيين كلمة المرور” باستخدام Firebase Auth */
+/** يرسل إيميل "تعيين/إعادة تعيين كلمة المرور" باستخدام Firebase Auth */
 export async function sendPasswordSetupEmail({
   email,
   storeUid,
@@ -38,6 +38,39 @@ export async function sendPasswordSetupEmail({
   const continueUrl = `${base}/auth/welcome?store=${encodeURIComponent(storeUid)}`;
 
   const auth = getAuth();
+
+  // Check if user exists, create if not
+  let userExists = false;
+  try {
+    await auth.getUserByEmail(email);
+    userExists = true;
+  } catch (err: unknown) {
+    // User doesn't exist - this is expected for new merchants
+    const firebaseErr = err as { code?: string };
+    if (firebaseErr.code === "auth/user-not-found") {
+      // Create the user
+      try {
+        await auth.createUser({
+          email,
+          emailVerified: false,
+          disabled: false,
+          displayName: storeName || undefined,
+        });
+        userExists = true;
+      } catch (createErr) {
+        const createErrTyped = createErr as { message?: string };
+        return { ok: false, error: `create_user_failed: ${createErrTyped.message || String(createErr)}` };
+      }
+    } else {
+      return { ok: false, error: `get_user_failed: ${firebaseErr.code || String(err)}` };
+    }
+  }
+
+  if (!userExists) {
+    return { ok: false, error: "user_not_created" };
+  }
+
+  // Generate password reset link
   const resetLink = await auth.generatePasswordResetLink(email, {
     url: continueUrl,
     handleCodeInApp: false,
