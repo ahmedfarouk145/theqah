@@ -111,7 +111,7 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
               <Link href="/signup">
                 <button className="group bg-green-700 text-white px-8 sm:px-10 py-3.5 sm:py-4 rounded-full text-lg font-bold shadow-lg shadow-green-500/20 hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-                  ابدأ الآن مجاناً
+                  ابدأ الآن
                   <span className="inline-block mr-2 group-hover:translate-x-1 transition-transform">←</span>
                 </button>
               </Link>
@@ -285,7 +285,7 @@ export default function LandingPage() {
             <div className="text-center mt-10 sm:mt-12">
               <Link href="/signup">
                 <button className="bg-green-700 text-white px-10 py-4 rounded-full text-lg font-bold shadow-lg hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-                  جرّب مجاناً الآن
+                  جرّب الآن
                 </button>
               </Link>
             </div>
@@ -326,7 +326,7 @@ export default function LandingPage() {
             <p className="text-gray-600 mb-8 text-lg">انضم إلى آلاف المتاجر التي حسّنت ثقة عملائها مع مشتري موثّق</p>
             <Link href="/signup">
               <button className="bg-green-700 text-white px-10 sm:px-12 py-4 rounded-full text-lg font-bold shadow-lg hover:bg-green-800 hover:shadow-xl hover:scale-105 active:scale-100 transition-all duration-300">
-                ابدأ مجاناً الآن
+                ابدأ الآن
               </button>
             </Link>
           </div>
