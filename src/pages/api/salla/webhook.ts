@@ -355,6 +355,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             const u = uinfo as Dict;
 
+            // AUTO-DETECT CUSTOM DOMAINS: Check url field in merchant/store objects
+            // This captures custom domains like pointstylishes.com
+            try {
+              const merchantUrl = typeof u.merchant === "object" && typeof (u.merchant as Dict).url === "string"
+                ? (u.merchant as Dict).url as string : undefined;
+              const storeUrl = typeof u.store === "object" && typeof (u.store as Dict).url === "string"
+                ? (u.store as Dict).url as string : undefined;
+              const topLevelUrl = typeof u.url === "string" ? u.url as string : undefined;
+
+              // Get all potential custom domain URLs
+              const potentialUrls = [merchantUrl, storeUrl, topLevelUrl].filter(Boolean) as string[];
+
+              for (const url of potentialUrls) {
+                // Extract hostname from URL
+                const cleanUrl = url.replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase();
+                // Only save if it's NOT a salla domain (those are handled elsewhere)
+                if (cleanUrl && !cleanUrl.includes('salla.sa') && !cleanUrl.includes('salla.dev')) {
+                  await sallaService.saveCustomDomain(storeUid, cleanUrl);
+                  await fbLog(db, {
+                    level: "info", scope: "custom_domain", msg: "auto-saved custom domain",
+                    event, idemKey, merchant: merchantId, orderId,
+                    meta: { storeUid, customDomain: cleanUrl, source: merchantUrl === url ? 'merchant.url' : storeUrl === url ? 'store.url' : 'url' }
+                  });
+                }
+              }
+            } catch (cdErr) {
+              await fbLog(db, { level: "warn", scope: "custom_domain", msg: "custom domain extraction failed", event, idemKey, merchant: merchantId, orderId, meta: { err: cdErr instanceof Error ? cdErr.message : String(cdErr) } });
+            }
+
+
             // Extract email from multiple sources (priority order)
             const infoEmail =
               (typeof u.email === "string" ? u.email as string : undefined) ??

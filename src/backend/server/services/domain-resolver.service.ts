@@ -141,14 +141,28 @@ export class DomainResolverService {
         host: string
     ): Promise<FirebaseFirestore.DocumentSnapshot | null> {
         try {
-            const encodedBase = this.encodeUrlForFirestore(base);
-            let domainDoc = await db.collection('domains').doc(encodedBase).get();
+            // Try multiple key formats since they may vary
+            const keysToTry = [
+                this.encodeUrlForFirestore(base),  // URL-encoded format
+                base,  // Raw base
+                host.replace(/\./g, '_').toLowerCase(),  // Underscore format (pointstylishes_com)
+                `www_${host.replace(/^www\./, '').replace(/\./g, '_').toLowerCase()}`,  // www variant
+                host.replace(/^www\./, '').replace(/\./g, '_').toLowerCase(),  // Non-www variant
+            ].filter((k, i, arr) => k && arr.indexOf(k) === i);
 
-            if (!domainDoc.exists) {
-                try { domainDoc = await db.collection('domains').doc(base).get(); } catch { /* */ }
+            let domainDoc: FirebaseFirestore.DocumentSnapshot | null = null;
+
+            for (const key of keysToTry) {
+                try {
+                    const doc = await db.collection('domains').doc(key).get();
+                    if (doc.exists) {
+                        domainDoc = doc;
+                        break;
+                    }
+                } catch { /* continue */ }
             }
 
-            if (domainDoc.exists) {
+            if (domainDoc?.exists) {
                 const d = domainDoc.data() as { storeUid?: string; uid?: string } | undefined;
                 const fromUid = d?.storeUid || d?.uid;
                 if (fromUid) {

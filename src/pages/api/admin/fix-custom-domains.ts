@@ -1,5 +1,5 @@
 // src/pages/api/admin/fix-custom-domains.ts
-// One-time script to add missing custom domain mappings for existing stores
+// Add custom domain mappings - can be called with body or uses defaults
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { dbAdmin } from '@/lib/firebaseAdmin';
 
@@ -20,22 +20,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const db = dbAdmin();
     const domainsCollection = db.collection('domains');
 
-    // Known custom domain mappings to add
-    const customDomainMappings: Array<{ customDomain: string; storeUid: string }> = [
-        { customDomain: 'pointstylishes.com', storeUid: 'salla:1900960657' },
-        // Add more as needed
-    ];
+    // Accept custom domains from request body OR use defaults
+    // Body format: { mappings: [{ customDomain: "example.com", storeUid: "salla:123" }] }
+    const bodyMappings = req.body?.mappings as Array<{ customDomain: string; storeUid: string }> | undefined;
+
+    const customDomainMappings: Array<{ customDomain: string; storeUid: string }> = bodyMappings?.length
+        ? bodyMappings
+        : [
+            { customDomain: 'pointstylishes.com', storeUid: 'salla:1900960657' },
+            // Add more defaults as needed
+        ];
 
     const results: Array<{ domain: string; storeUid: string; status: string }> = [];
 
     for (const mapping of customDomainMappings) {
         const { customDomain, storeUid } = mapping;
 
+        if (!customDomain || !storeUid) {
+            results.push({ domain: customDomain || 'missing', storeUid: storeUid || 'missing', status: 'skipped: invalid' });
+            continue;
+        }
+
         // Clean the domain
         const cleanDomain = customDomain
             .replace(/^https?:\/\//, '')
             .replace(/\/$/, '')
             .toLowerCase();
+
+        // Skip Salla domains
+        if (cleanDomain.includes('salla.sa') || cleanDomain.includes('salla.dev')) {
+            results.push({ domain: customDomain, storeUid, status: 'skipped: salla domain' });
+            continue;
+        }
 
         // Generate variations
         const variations = [cleanDomain];
@@ -77,3 +93,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         results
     });
 }
+
