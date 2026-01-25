@@ -371,6 +371,17 @@ export class SallaWebhookService {
     }
 
     /**
+     * Save a custom domain (non-Salla domain) for a store
+     * This is for stores that have their own domain like pointstylishes.com
+     */
+    async saveCustomDomain(storeUid: string, customDomain: string | null | undefined): Promise<void> {
+        if (!customDomain) return;
+
+        await this.domainRepo.saveCustomDomain(customDomain, storeUid);
+    }
+
+
+    /**
      * Helper to encode URL for Firestore document ID
      */
     private encodeUrl(url: string): string {

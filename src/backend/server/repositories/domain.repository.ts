@@ -101,11 +101,65 @@ export class DomainRepository extends BaseRepository<Domain> {
             variations.add(`www.${base}`);
         }
 
+        // Handle salla.sa subdirectory format (salla.sa/username)
+        if (base.includes('salla.sa/')) {
+            const path = base.split('salla.sa/')[1];
+            if (path) {
+                variations.add(`salla.sa/${path}`);
+                variations.add(`www.salla.sa/${path}`);
+            }
+        }
+
         // With/without salla.sa suffix
         if (base.endsWith('.salla.sa')) {
             variations.add(base.replace('.salla.sa', ''));
         }
 
         return Array.from(variations);
+    }
+
+    /**
+     * Save a custom domain mapping for a store
+     * Used when a store has a custom domain (e.g., pointstylishes.com)
+     */
+    async saveCustomDomain(
+        customDomain: string,
+        storeUid: string,
+        provider: string = 'salla'
+    ): Promise<void> {
+        if (!customDomain) return;
+
+        const cleanDomain = customDomain
+            .replace(/^https?:\/\//, '')
+            .replace(/\/$/, '')
+            .toLowerCase();
+
+        // Skip Salla domains (handled by saveDomainVariations)
+        if (cleanDomain.includes('salla.sa') || cleanDomain.includes('salla.dev')) {
+            return;
+        }
+
+        const variations = [cleanDomain];
+        if (cleanDomain.startsWith('www.')) {
+            variations.push(cleanDomain.substring(4));
+        } else {
+            variations.push(`www.${cleanDomain}`);
+        }
+
+        const batch = this.db.batch();
+        for (const dom of variations) {
+            const key = DomainRepository.encodeUrl(dom);
+            batch.set(this.collection.doc(key), {
+                base: dom,
+                key,
+                uid: storeUid,
+                storeUid,
+                provider,
+                isCustomDomain: true,
+                updatedAt: Date.now(),
+            }, { merge: true });
+        }
+
+        await batch.commit();
     }
 }
