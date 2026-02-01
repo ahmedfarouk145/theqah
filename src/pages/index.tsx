@@ -348,10 +348,10 @@ export default function LandingPage() {
             </nav>
 
             <div className="flex justify-center gap-5">
-              <a href="https://www.qudwa.org.sa" target="_blank" rel="noopener noreferrer" className="opacity-80 hover:opacity-100 transition">
+              <a href="https://www.qudwa.org.sa" target="_blank" rel="noopener noreferrer" title="جمعية قدوة" className="opacity-80 hover:opacity-100 transition">
                 <Image src="/qudwa-logo.png" alt="جمعية قدوة" width={55} height={55} loading="lazy" />
               </a>
-              <a href="https://eauthenticate.saudibusiness.gov.sa/certificate-details/0000203970" target="_blank" rel="noopener noreferrer" className="opacity-80 hover:opacity-100 transition">
+              <a href="https://eauthenticate.saudibusiness.gov.sa/certificate-details/0000203970" target="_blank" rel="noopener noreferrer" title="التحقق الإلكتروني" className="opacity-80 hover:opacity-100 transition">
                 <Image src="/eauth-logo.png" alt="التحقق الإلكتروني" width={38} height={38} style={{ width: 'auto', height: 38 }} loading="lazy" />
               </a>
             </div>
