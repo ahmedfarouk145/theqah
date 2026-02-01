@@ -134,8 +134,9 @@ export class DomainRepository extends BaseRepository<Domain> {
             .replace(/\/$/, '')
             .toLowerCase();
 
-        // Skip Salla domains (handled by saveDomainVariations)
-        if (cleanDomain.includes('salla.sa') || cleanDomain.includes('salla.dev')) {
+        // Skip platform-specific domains (handled by saveDomainVariations)
+        if (cleanDomain.includes('salla.sa') || cleanDomain.includes('salla.dev') ||
+            cleanDomain.includes('zid.store') || cleanDomain.includes('zid.sa')) {
             return;
         }
 

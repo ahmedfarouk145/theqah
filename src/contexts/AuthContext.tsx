@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
 
 type StoreState = {
   storeUid: string | null;
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setStore({
                 storeUid: aliasOf,
                 storeName: s.storeName ?? r.storeName ?? nameAlias ?? null,
-                platform: r.platform ?? "salla",
+                platform: r.provider ?? r.platform ?? "salla",
               });
               setLoading(false);
               return;
@@ -60,14 +60,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setStore({
             storeUid: u.uid,
             storeName: nameAlias,
-            platform: a.platform ?? "salla",
+            platform: a.provider ?? a.platform ?? "salla",
           });
           setLoading(false);
           return;
         }
 
-        // 2) fallback: ربما تم حفظ المتجر مباشرة على stores/salla:{id} فقط
-        // في الحالة دي لا نعرف الـ id هنا؛ سيتم تمريره عبر URL بعد onboarding.
+        // 2) NEW: Search for store by email if no alias exists
+        // Prioritize Salla/Zid connected stores
+        const userEmail = u.email;
+        if (userEmail) {
+          // First try: Find stores where userinfo.data.context.email matches
+          const storesRef = collection(db, "stores");
+
+          // Query for stores with matching email in userinfo
+          const emailQuery = query(
+            storesRef,
+            where("meta.userinfo.data.context.email", "==", userEmail),
+            orderBy("updatedAt", "desc"),
+            limit(1)
+          );
+
+          let foundStore = false;
+          try {
+            const emailSnap = await getDocs(emailQuery);
+            if (!emailSnap.empty) {
+              const storeDoc = emailSnap.docs[0];
+              //eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const storeData = storeDoc.data() as any;
+              const storeName = storeData.meta?.userinfo?.data?.merchant?.name ??
+                storeData.storeName ??
+                storeData.salla?.storeName ?? null;
+              setStore({
+                storeUid: storeDoc.id,
+                storeName,
+                platform: storeData.provider ?? "salla",
+              });
+              foundStore = true;
+            }
+          } catch {
+            // Query might fail if index doesn't exist, try alternative
+          }
+
+          // Second try: Find stores where email field matches
+          if (!foundStore) {
+            try {
+              const simpleEmailQuery = query(
+                storesRef,
+                where("email", "==", userEmail),
+                where("salla.connected", "==", true),
+                limit(1)
+              );
+              const simpleSnap = await getDocs(simpleEmailQuery);
+              if (!simpleSnap.empty) {
+                const storeDoc = simpleSnap.docs[0];
+                //eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const storeData = storeDoc.data() as any;
+                setStore({
+                  storeUid: storeDoc.id,
+                  storeName: storeData.storeName ?? storeData.salla?.storeName ?? null,
+                  platform: storeData.provider ?? "salla",
+                });
+                foundStore = true;
+              }
+            } catch {
+              // Index might not exist
+            }
+          }
+
+          if (foundStore) {
+            setLoading(false);
+            return;
+          }
+        }
+
+        // 3) fallback: no store found
         setStore({ storeUid: null, storeName: null, platform: null });
       } catch {
         setStore({ storeUid: null, storeName: null, platform: null });
@@ -83,3 +150,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useAuth() { return useContext(Ctx); }
+

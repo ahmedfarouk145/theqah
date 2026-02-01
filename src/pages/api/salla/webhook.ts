@@ -28,12 +28,6 @@ export const config = { api: { bodyParser: false } };
 const WEBHOOK_SECRET = (process.env.SALLA_WEBHOOK_SECRET || "").trim();
 const WEBHOOK_TOKEN = (process.env.SALLA_WEBHOOK_TOKEN || "").trim();
 
-// C7: Safer signature bypass - requires explicit opt-in AND non-production
-// Production always validates signatures, regardless of any env vars
-const SKIP_SIGNATURE_CHECK =
-  process.env.SKIP_WEBHOOK_SIGNATURE === "true" &&
-  process.env.NODE_ENV !== "production";
-
 /* ===================== Domain functions moved to SallaWebhookService ===================== */
 // saveDomainAndFlags → sallaService.saveDomainWithFlags()
 // saveMultipleDomainFormats → sallaService.saveDomainVariations()

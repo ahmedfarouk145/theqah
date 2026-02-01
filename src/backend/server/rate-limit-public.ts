@@ -3,15 +3,16 @@
  * ====================================================
  * 
  * Purpose: Protect public API endpoints from abuse and DDoS attacks
- * Strategy: Memory-based sliding window with IP tracking
+ * Strategy: Redis-based (Vercel KV/Upstash) with memory fallback
  * 
  * Features:
+ * - Distributed rate limiting using Redis (works across serverless instances)
+ * - Fallback to in-memory for local dev without Redis
  * - Configurable limits per endpoint
  * - IP-based tracking with X-Forwarded-For support
  * - 429 responses with Retry-After headers
  * - Whitelist support for internal services
  * - Monitoring integration with metrics
- * - Automatic cleanup of stale entries
  * 
  * Usage:
  * ```typescript
@@ -57,17 +58,44 @@ interface RateLimitConfig {
   skipHeader?: { name: string; value: string };
 }
 
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-  firstRequest: number;
+// ============================================================================
+// Redis Store (Vercel KV / Upstash)
+// ============================================================================
+
+// Lazy-load kv to avoid import errors if not configured
+let kvClient: { incr: (key: string) => Promise<number>; expire: (key: string, seconds: number) => Promise<unknown>; get: (key: string) => Promise<number | null> } | null = null;
+let kvInitialized = false;
+
+async function getKV() {
+  if (kvInitialized) return kvClient;
+  kvInitialized = true;
+
+  // Check if Vercel KV is configured
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    try {
+      const { kv } = await import("@vercel/kv");
+      kvClient = kv;
+      devLog("[RateLimit] Using Vercel KV for distributed rate limiting");
+    } catch (e) {
+      devLog("[RateLimit] Vercel KV import failed, falling back to memory:", e);
+    }
+  } else {
+    devLog("[RateLimit] KV not configured, using in-memory fallback");
+  }
+
+  return kvClient;
 }
 
 // ============================================================================
-// In-Memory Store (Production should use Redis)
+// Fallback In-Memory Store (for local dev without Redis)
 // ============================================================================
 
-const rateLimitStore = new Map<string, RateLimitEntry>();
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+}
+
+const memoryStore = new Map<string, RateLimitEntry>();
 
 // Cleanup stale entries every 5 minutes
 const CLEANUP_INTERVAL = 5 * 60 * 1000;
@@ -80,13 +108,13 @@ function cleanupStaleEntries() {
   lastCleanup = now;
   const keysToDelete: string[] = [];
 
-  rateLimitStore.forEach((entry, key) => {
+  memoryStore.forEach((entry, key) => {
     if (now > entry.resetTime) {
       keysToDelete.push(key);
     }
   });
 
-  keysToDelete.forEach(key => rateLimitStore.delete(key));
+  keysToDelete.forEach(key => memoryStore.delete(key));
 
   if (keysToDelete.length > 0 && isDev) {
     devLog(`[RateLimit] Cleaned up ${keysToDelete.length} stale entries`);
@@ -129,6 +157,8 @@ function getClientIP(req: NextApiRequest): string {
 
 /**
  * Check if request should be rate limited
+ * Uses Vercel KV/Upstash Redis for distributed rate limiting in production
+ * Falls back to in-memory for local development
  * Returns true if request is rate limited (response already sent)
  * Returns false if request should proceed
  */
@@ -140,9 +170,7 @@ export async function rateLimitPublic(
   const startTime = Date.now();
   const clientIP = getClientIP(req);
   const now = Date.now();
-
-  // Cleanup stale entries periodically
-  cleanupStaleEntries();
+  const windowSec = Math.ceil(config.windowMs / 1000);
 
   // Skip rate limiting for whitelisted IPs
   if (config.skipIPs?.includes(clientIP)) {
@@ -164,61 +192,50 @@ export async function rateLimitPublic(
   }
 
   // Generate unique key for this IP + endpoint
-  const key = `${config.identifier}:${clientIP}`;
-  const entry = rateLimitStore.get(key);
+  const key = `ratelimit:${config.identifier}:${clientIP}`;
 
-  // No existing entry - first request in window
-  if (!entry) {
-    rateLimitStore.set(key, {
-      count: 1,
-      resetTime: now + config.windowMs,
-      firstRequest: now
-    });
+  let count: number;
+  let resetTime: number;
 
-    // Track allowed request
-    await trackRateLimitEvent({
-      identifier: config.identifier,
-      ip: clientIP,
-      allowed: true,
-      count: 1,
-      limit: config.maxRequests,
-      duration: Date.now() - startTime
-    });
+  // Try to use KV (Redis), fall back to memory
+  const kv = await getKV();
 
-    return false; // Allow request
+  if (kv) {
+    // ========== Redis-based rate limiting ==========
+    try {
+      count = await kv.incr(key);
+
+      // If this is the first request, set expiry
+      if (count === 1) {
+        await kv.expire(key, windowSec);
+      }
+
+      // Calculate reset time (approximate - based on TTL)
+      resetTime = now + config.windowMs;
+
+    } catch (e) {
+      // Redis error - fall through to memory
+      devLog("[RateLimit] KV error, falling back to memory:", e);
+      const result = memoryRateLimit(key, config, now);
+      count = result.count;
+      resetTime = result.resetTime;
+    }
+  } else {
+    // ========== In-memory fallback ==========
+    cleanupStaleEntries();
+    const result = memoryRateLimit(key, config, now);
+    count = result.count;
+    resetTime = result.resetTime;
   }
-
-  // Entry exists but window has expired - reset
-  if (now > entry.resetTime) {
-    rateLimitStore.set(key, {
-      count: 1,
-      resetTime: now + config.windowMs,
-      firstRequest: now
-    });
-
-    await trackRateLimitEvent({
-      identifier: config.identifier,
-      ip: clientIP,
-      allowed: true,
-      count: 1,
-      limit: config.maxRequests,
-      duration: Date.now() - startTime
-    });
-
-    return false; // Allow request
-  }
-
-  // Entry exists and window is still active
-  entry.count++;
 
   // Check if limit exceeded
-  if (entry.count > config.maxRequests) {
-    const retryAfter = Math.ceil((entry.resetTime - now) / 1000); // seconds
+  if (count > config.maxRequests) {
+    const retryAfter = Math.ceil((resetTime - now) / 1000);
 
     // Set rate limit headers
     res.setHeader("X-RateLimit-Limit", config.maxRequests.toString());
     res.setHeader("X-RateLimit-Remaining", "0");
-    res.setHeader("X-RateLimit-Reset", entry.resetTime.toString());
+    res.setHeader("X-RateLimit-Reset", resetTime.toString());
     res.setHeader("Retry-After", retryAfter.toString());
 
     // Track blocked request
@@ -226,7 +243,7 @@ export async function rateLimitPublic(
       identifier: config.identifier,
       ip: clientIP,
       allowed: false,
-      count: entry.count,
+      count,
       limit: config.maxRequests,
       duration: Date.now() - startTime
     });
@@ -240,28 +257,45 @@ export async function rateLimitPublic(
       windowMs: config.windowMs
     });
 
-    // Only log blocks in dev, always track in metrics
-    devLog(`[RateLimit] BLOCKED ${clientIP} on ${config.identifier} (${entry.count}/${config.maxRequests})`);
+    devLog(`[RateLimit] BLOCKED ${clientIP} on ${config.identifier} (${count}/${config.maxRequests})`);
 
     return true; // Request blocked
   }
 
   // Still within limit - set informational headers
-  const remaining = config.maxRequests - entry.count;
+  const remaining = config.maxRequests - count;
   res.setHeader("X-RateLimit-Limit", config.maxRequests.toString());
   res.setHeader("X-RateLimit-Remaining", remaining.toString());
-  res.setHeader("X-RateLimit-Reset", entry.resetTime.toString());
+  res.setHeader("X-RateLimit-Reset", resetTime.toString());
 
   await trackRateLimitEvent({
     identifier: config.identifier,
     ip: clientIP,
     allowed: true,
-    count: entry.count,
+    count,
     limit: config.maxRequests,
     duration: Date.now() - startTime
   });
 
   return false; // Allow request
+}
+
+/**
+ * In-memory rate limiting (fallback)
+ */
+function memoryRateLimit(key: string, config: RateLimitConfig, now: number): { count: number; resetTime: number } {
+  const entry = memoryStore.get(key);
+
+  if (!entry || now > entry.resetTime) {
+    // First request or window expired
+    const newEntry = { count: 1, resetTime: now + config.windowMs };
+    memoryStore.set(key, newEntry);
+    return newEntry;
+  }
+
+  // Increment count
+  entry.count++;
+  return entry;
 }
 
 // ============================================================================
@@ -361,34 +395,35 @@ export const RateLimitPresets = {
 };
 
 // ============================================================================
-// Utility Functions
+// Utility Functions (Memory store only - for debugging)
 // ============================================================================
 
 /**
- * Get current rate limit status for an IP
- * Useful for debugging and monitoring
+ * Get current rate limit status for an IP (memory store only)
+ * NOTE: This only works with the in-memory fallback, not Redis
  */
 export function getRateLimitStatus(identifier: string, ip: string): RateLimitEntry | null {
-  const key = `${identifier}:${ip}`;
-  return rateLimitStore.get(key) || null;
+  const key = `ratelimit:${identifier}:${ip}`;
+  return memoryStore.get(key) || null;
 }
 
 /**
- * Reset rate limit for an IP
- * Useful for admin operations
+ * Reset rate limit for an IP (memory store only)
+ * NOTE: This only works with the in-memory fallback, not Redis
  */
 export function resetRateLimit(identifier: string, ip: string): boolean {
-  const key = `${identifier}:${ip}`;
-  return rateLimitStore.delete(key);
+  const key = `ratelimit:${identifier}:${ip}`;
+  return memoryStore.delete(key);
 }
 
 /**
- * Get total number of tracked IPs
- * Useful for monitoring memory usage
+ * Get stats about the memory store
+ * NOTE: This only reflects the in-memory fallback, not Redis
  */
 export function getRateLimitStats(): { totalKeys: number; storeSize: number } {
   return {
-    totalKeys: rateLimitStore.size,
-    storeSize: rateLimitStore.size // Approximate
+    totalKeys: memoryStore.size,
+    storeSize: memoryStore.size
   };
 }
+

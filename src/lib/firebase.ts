@@ -8,6 +8,7 @@ import {
 } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -22,7 +23,17 @@ const auth: Auth = getAuth(app);
 const db: Firestore = getFirestore(app);
 const storage: FirebaseStorage = getStorage(app);
 
-// حاولة حفظ الجلسة محلياً
-setPersistence(auth, browserLocalPersistence).catch(() => {});
+// Initialize App Check for Firestore security (browser only)
+let appCheck: AppCheck | undefined;
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+  appCheck = initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
 
-export { app, auth, db, storage };
+// حاولة حفظ الجلسة محلياً
+setPersistence(auth, browserLocalPersistence).catch(() => { });
+
+export { app, auth, db, storage, appCheck };
+

@@ -41,14 +41,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // AUTO-MAP CUSTOM DOMAIN: If we found the store by storeId but not by domain,
     // save the domain mapping for future requests (fire-and-forget)
     if (host && result.storeUid && storeId) {
-      // Only auto-map if it's a custom domain (not salla.sa)
       const cleanHost = host.replace(/^www\./, '');
-      if (!cleanHost.includes('salla.sa') && !cleanHost.includes('salla.dev')) {
+      // Detect platform from storeUid prefix
+      const platform = result.storeUid.startsWith('zid:') ? 'zid' : 'salla';
+
+      // Only auto-map if it's a custom domain (not salla.sa or zid.store)
+      const isNotPlatformDomain = !cleanHost.includes('salla.sa') &&
+        !cleanHost.includes('salla.dev') &&
+        !cleanHost.includes('zid.store') &&
+        !cleanHost.includes('zid.sa');
+
+      if (isNotPlatformDomain) {
         // Fire-and-forget: don't slow down the response
         try {
           const domainRepo = RepositoryFactory.getDomainRepository();
-          domainRepo.saveCustomDomain(cleanHost, result.storeUid, 'salla').then(() => {
-            console.log(`[resolve] Auto-mapped custom domain: ${cleanHost} -> ${result.storeUid}`);
+          domainRepo.saveCustomDomain(cleanHost, result.storeUid, platform).then(() => {
+            console.log(`[resolve] Auto-mapped custom domain: ${cleanHost} -> ${result.storeUid} (${platform})`);
           }).catch((err) => {
             console.warn('[resolve] Auto-map failed:', err);
           });

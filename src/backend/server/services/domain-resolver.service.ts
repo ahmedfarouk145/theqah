@@ -74,18 +74,29 @@ export class DomainResolverService {
 
             for (const variation of domainVariations) {
                 // Try salla.domain
-                const directSnap = await db.collection('stores')
+                const sallaSnap = await db.collection('stores')
                     .where('salla.domain', '==', variation)
                     .where('salla.connected', '==', true)
                     .where('salla.installed', '==', true)
                     .limit(1).get();
 
-                if (!directSnap.empty) {
-                    doc = directSnap.docs[0];
+                if (!sallaSnap.empty) {
+                    doc = sallaSnap.docs[0];
                     break;
                 }
 
-                // Try domain.base
+                // Try zid.domain
+                const zidSnap = await db.collection('stores')
+                    .where('zid.domain', '==', variation)
+                    .where('zid.connected', '==', true)
+                    .limit(1).get();
+
+                if (!zidSnap.empty) {
+                    doc = zidSnap.docs[0];
+                    break;
+                }
+
+                // Try domain.base (generic)
                 const snapNew = await db.collection('stores')
                     .where('domain.base', '==', variation)
                     .limit(1).get();
@@ -123,8 +134,12 @@ export class DomainResolverService {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data = doc.data() as any;
-        const resolvedUid = data.storeUid || data.uid || data.salla?.uid ||
-            (data.salla?.storeId ? `salla:${data.salla.storeId}` : undefined);
+        // Support both Salla and Zid store formats
+        const resolvedUid = data.storeUid || data.uid ||
+            data.salla?.uid ||
+            (data.salla?.storeId ? `salla:${data.salla.storeId}` : undefined) ||
+            data.zid?.uid ||
+            (data.zid?.storeId ? `zid:${data.zid.storeId}` : undefined);
 
         if (!resolvedUid) return null;
 
@@ -213,13 +228,22 @@ export class DomainResolverService {
         ].filter((v, i, arr) => v && arr.indexOf(v) === i);
 
         for (const v of variations) {
-            const snapVar = await db.collection('stores')
+            // Try Salla stores
+            const sallaSnap = await db.collection('stores')
                 .where('salla.domain', '==', v)
                 .where('salla.connected', '==', true)
                 .where('salla.installed', '==', true)
                 .limit(1).get();
-            if (!snapVar.empty) return snapVar.docs[0];
+            if (!sallaSnap.empty) return sallaSnap.docs[0];
 
+            // Try Zid stores
+            const zidSnap = await db.collection('stores')
+                .where('zid.domain', '==', v)
+                .where('zid.connected', '==', true)
+                .limit(1).get();
+            if (!zidSnap.empty) return zidSnap.docs[0];
+
+            // Try generic domain.base
             const snapVarNew = await db.collection('stores')
                 .where('domain.base', '==', v).limit(1).get();
             if (!snapVarNew.empty) return snapVarNew.docs[0];
@@ -231,26 +255,43 @@ export class DomainResolverService {
         db: FirebaseFirestore.Firestore,
         storeId: string
     ): Promise<FirebaseFirestore.DocumentSnapshot | null> {
-        const snapNum = await db.collection('stores')
+        // Try Salla storeId (number)
+        const sallaNumSnap = await db.collection('stores')
             .where('salla.storeId', '==', Number(storeId))
             .where('salla.connected', '==', true)
             .where('salla.installed', '==', true)
             .limit(1).get();
-        if (!snapNum.empty) return snapNum.docs[0];
+        if (!sallaNumSnap.empty) return sallaNumSnap.docs[0];
 
-        const snapStr = await db.collection('stores')
+        // Try Salla storeId (string)
+        const sallaStrSnap = await db.collection('stores')
             .where('salla.storeId', '==', storeId)
             .where('salla.connected', '==', true)
             .where('salla.installed', '==', true)
             .limit(1).get();
-        if (!snapStr.empty) return snapStr.docs[0];
+        if (!sallaStrSnap.empty) return sallaStrSnap.docs[0];
 
-        const snapUid = await db.collection('stores')
+        // Try Zid storeId
+        const zidSnap = await db.collection('stores')
+            .where('zid.storeId', '==', storeId)
+            .where('zid.connected', '==', true)
+            .limit(1).get();
+        if (!zidSnap.empty) return zidSnap.docs[0];
+
+        // Try by uid with salla: prefix
+        const sallaUidSnap = await db.collection('stores')
             .where('uid', '==', `salla:${storeId}`)
             .where('salla.connected', '==', true)
             .where('salla.installed', '==', true)
             .limit(1).get();
-        if (!snapUid.empty) return snapUid.docs[0];
+        if (!sallaUidSnap.empty) return sallaUidSnap.docs[0];
+
+        // Try by uid with zid: prefix
+        const zidUidSnap = await db.collection('stores')
+            .where('uid', '==', `zid:${storeId}`)
+            .where('zid.connected', '==', true)
+            .limit(1).get();
+        if (!zidUidSnap.empty) return zidUidSnap.docs[0];
 
         return null;
     }

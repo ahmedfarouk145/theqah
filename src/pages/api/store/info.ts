@@ -24,9 +24,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 1) Priority: uid in query
     let idToRead: string | null = uidParam || null;
 
+    // Get user for auth and potential email fallback
+    const user = await verify(req);
+
     // 2) Otherwise use user's uid
     if (!idToRead) {
-      const user = await verify(req);
       if (!user) return res.status(401).json({ ok: false, error: "UNAUTHENTICATED" });
       idToRead = user.uid;
     }
@@ -34,7 +36,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (!idToRead) return res.status(400).json({ ok: false, error: "Missing uid" });
 
     const storeService = new StoreService();
-    const storeInfo = await storeService.getStoreInfo(idToRead);
+    let storeInfo = await storeService.getStoreInfo(idToRead);
+
+    // 3) Fallback: if store not found by UID, try to find by email
+    if (!storeInfo && user?.email) {
+      const storeByEmail = await storeService.findStoreByEmail(user.email);
+      if (storeByEmail) {
+        storeInfo = await storeService.getStoreInfo(storeByEmail.id);
+      }
+    }
 
     if (!storeInfo) {
       return res.status(404).json({ ok: false, error: "Store not found" });
@@ -45,3 +55,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(500).json({ ok: false, error: e instanceof Error ? e.message : String(e) });
   }
 }
+

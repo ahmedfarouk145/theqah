@@ -77,12 +77,12 @@ export default function LandingPage() {
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-green-900">
               ابنِ الثقة..
               <br />
-              <span className="text-green-700">وضاعف مبيعات متجرك</span>
+              <span className="text-green-700">وضاعف مبيعاتك</span>
             </h1>
 
             {/* Subtitle */}
             <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto">
-              أتمتة كاملة لجمع التقييمات وعرضها كشهادة ثقة تدفع العميل للشراء فوراً.
+              مع أول منصة سعودية تضمن مصداقية التقييم بربطه بـ (مشتري حقيقي)؛ عبر أتمتة كاملة لجمع التقييمات وعرضها كشهادة ثقة تدفع العميل للشراء فوراً.
             </p>
 
             {/* Rating Widget */}

@@ -12,24 +12,25 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     <ThemeProvider>
       <AuthProvider>
         <Head>
-          <title>theqah</title>
+          <title>مشتري موثّق</title>
 
-          {/* Standard favicon */}
-          <link rel="icon" href="/favicon.ico" />
+          {/* Standard favicon -> using logo.png as requested */}
+          <link rel="icon" href="/logo.png" />
+          <link rel="shortcut icon" href="/logo.png" />
 
           {/* PNG favicons */}
-          <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-          <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+          <link rel="icon" type="image/png" sizes="32x32" href="/logo.png" />
+          <link rel="icon" type="image/png" sizes="16x16" href="/logo.png" />
 
           {/* Apple iOS Touch Icon */}
-          <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+          <link rel="apple-touch-icon" href="/logo.png" />
 
           {/* Android & PWA manifest */}
           <link rel="manifest" href="/site.webmanifest" />
           <meta name="theme-color" content="#ffffff" />
 
           {/* Optional: description for SEO */}
-          <meta name="description" content="theqah - Your website description here" />
+          <meta name="description" content="مشتري موثّق - منصة توثيق التقييمات الآلية" />
         </Head>
         <Component {...pageProps} />
         <SpeedInsights />

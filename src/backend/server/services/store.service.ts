@@ -220,6 +220,65 @@ export class StoreService {
         return this.storeRepo.findBySallaId(sallaStoreId);
     }
 
+    /**
+     * Find store by email - searches in userinfo and email fields
+     * Prioritizes Salla/Zid connected stores
+     */
+    async findStoreByEmail(email: string): Promise<{ id: string; data: Record<string, unknown> } | null> {
+        const { dbAdmin } = await import('@/lib/firebaseAdmin');
+        const db = dbAdmin();
+
+        // First try: Find stores where userinfo.data.context.email matches
+        try {
+            const emailQuery = db.collection('stores')
+                .where('meta.userinfo.data.context.email', '==', email)
+                .orderBy('updatedAt', 'desc')
+                .limit(1);
+
+            const snap = await emailQuery.get();
+            if (!snap.empty) {
+                const doc = snap.docs[0];
+                return { id: doc.id, data: doc.data() };
+            }
+        } catch {
+            // Index might not exist, try alternative
+        }
+
+        // Second try: Find stores where email field matches AND salla.connected is true
+        try {
+            const simpleEmailQuery = db.collection('stores')
+                .where('email', '==', email)
+                .where('salla.connected', '==', true)
+                .limit(1);
+
+            const snap = await simpleEmailQuery.get();
+            if (!snap.empty) {
+                const doc = snap.docs[0];
+                return { id: doc.id, data: doc.data() };
+            }
+        } catch {
+            // Index might not exist
+        }
+
+        // Third try: Find stores where email field matches AND zid.connected is true
+        try {
+            const zidEmailQuery = db.collection('stores')
+                .where('email', '==', email)
+                .where('zid.connected', '==', true)
+                .limit(1);
+
+            const snap = await zidEmailQuery.get();
+            if (!snap.empty) {
+                const doc = snap.docs[0];
+                return { id: doc.id, data: doc.data() };
+            }
+        } catch {
+            // Index might not exist
+        }
+
+        return null;
+    }
+
     // Helper methods
     private toTs(v: unknown): number {
         if (typeof v === 'number') return v;
