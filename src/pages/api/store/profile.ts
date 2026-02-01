@@ -26,16 +26,18 @@ async function findStoreByEmail(email: string): Promise<{ id: string; data: Reco
     // First try: Find stores where userinfo.data.context.email matches
     try {
         console.log('[STORE_PROFILE] Query 1: meta.userinfo.data.context.email ==', email);
+        // Try simpler query without orderBy first
         const emailQuery = db.collection('stores')
             .where('meta.userinfo.data.context.email', '==', email)
-            .orderBy('updatedAt', 'desc')
-            .limit(1);
+            .limit(5);
 
         const snap = await emailQuery.get();
         console.log('[STORE_PROFILE] Query 1 result: empty=', snap.empty, 'size=', snap.size);
         if (!snap.empty) {
+            // Log all found docs
+            snap.docs.forEach(d => console.log('[STORE_PROFILE] Query 1 found doc:', d.id));
             const doc = snap.docs[0];
-            console.log('[STORE_PROFILE] Query 1 found store:', doc.id);
+            console.log('[STORE_PROFILE] Query 1 returning store:', doc.id);
             return { id: doc.id, data: doc.data() };
         }
     } catch (err) {
