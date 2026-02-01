@@ -21,55 +21,69 @@ async function verify(req: NextApiRequest) {
  */
 async function findStoreByEmail(email: string): Promise<{ id: string; data: Record<string, unknown> } | null> {
     const db = dbAdmin();
+    console.log('[STORE_PROFILE] findStoreByEmail called with:', email);
 
     // First try: Find stores where userinfo.data.context.email matches
     try {
+        console.log('[STORE_PROFILE] Query 1: meta.userinfo.data.context.email ==', email);
         const emailQuery = db.collection('stores')
             .where('meta.userinfo.data.context.email', '==', email)
             .orderBy('updatedAt', 'desc')
             .limit(1);
 
         const snap = await emailQuery.get();
+        console.log('[STORE_PROFILE] Query 1 result: empty=', snap.empty, 'size=', snap.size);
         if (!snap.empty) {
             const doc = snap.docs[0];
+            console.log('[STORE_PROFILE] Query 1 found store:', doc.id);
             return { id: doc.id, data: doc.data() };
         }
-    } catch {
+    } catch (err) {
+        console.log('[STORE_PROFILE] Query 1 error:', err);
         // Index might not exist, try alternative
     }
 
     // Second try: Find stores where email field matches AND salla.connected is true
     try {
+        console.log('[STORE_PROFILE] Query 2: email ==', email, '+ salla.connected == true');
         const simpleEmailQuery = db.collection('stores')
             .where('email', '==', email)
             .where('salla.connected', '==', true)
             .limit(1);
 
         const snap = await simpleEmailQuery.get();
+        console.log('[STORE_PROFILE] Query 2 result: empty=', snap.empty, 'size=', snap.size);
         if (!snap.empty) {
             const doc = snap.docs[0];
+            console.log('[STORE_PROFILE] Query 2 found store:', doc.id);
             return { id: doc.id, data: doc.data() };
         }
-    } catch {
+    } catch (err) {
+        console.log('[STORE_PROFILE] Query 2 error:', err);
         // Index might not exist
     }
 
     // Third try: Find stores where email field matches AND zid.connected is true
     try {
+        console.log('[STORE_PROFILE] Query 3: email ==', email, '+ zid.connected == true');
         const zidEmailQuery = db.collection('stores')
             .where('email', '==', email)
             .where('zid.connected', '==', true)
             .limit(1);
 
         const snap = await zidEmailQuery.get();
+        console.log('[STORE_PROFILE] Query 3 result: empty=', snap.empty, 'size=', snap.size);
         if (!snap.empty) {
             const doc = snap.docs[0];
+            console.log('[STORE_PROFILE] Query 3 found store:', doc.id);
             return { id: doc.id, data: doc.data() };
         }
-    } catch {
+    } catch (err) {
+        console.log('[STORE_PROFILE] Query 3 error:', err);
         // Index might not exist
     }
 
+    console.log('[STORE_PROFILE] No store found by email');
     return null;
 }
 
@@ -78,10 +92,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         const user = await verify(req);
         if (!user) return res.status(401).json({ ok: false, error: "UNAUTHENTICATED" });
 
+        console.log('[STORE_PROFILE] User authenticated:', { uid: user.uid, email: user.email });
+
         const db = dbAdmin();
 
         // 1) Try direct store lookup by Firebase Auth UID
+        console.log('[STORE_PROFILE] Step 1: Looking for store by uid:', user.uid);
         const storeDoc = await db.collection('stores').doc(user.uid).get();
+        console.log('[STORE_PROFILE] Step 1 result: exists=', storeDoc.exists);
 
         if (storeDoc.exists) {
             const data = storeDoc.data() || {};
