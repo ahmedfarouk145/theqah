@@ -33,13 +33,24 @@ async function findStoreByEmail(email: string): Promise<{ id: string; data: Reco
             const data = knownStore.data() || {};
             // Log the actual structure to find where email is
             console.log('[STORE_PROFILE] DIAGNOSTIC: Top-level keys=', Object.keys(data));
-            console.log('[STORE_PROFILE] DIAGNOSTIC: data.meta keys=', data.meta ? Object.keys(data.meta) : 'no meta');
-            console.log('[STORE_PROFILE] DIAGNOSTIC: data.meta.userinfo=', JSON.stringify(data.meta?.userinfo).substring(0, 500));
-            console.log('[STORE_PROFILE] DIAGNOSTIC: data.meta.userinfo keys=', data.meta?.userinfo ? Object.keys(data.meta.userinfo) : 'no userinfo');
-            console.log('[STORE_PROFILE] DIAGNOSTIC: data.meta.userinfo.data=', data.meta?.userinfo?.data ? 'exists' : 'undefined');
-            console.log('[STORE_PROFILE] DIAGNOSTIC: data.meta.userinfo.data.context=', data.meta?.userinfo?.data?.context ? 'exists' : 'undefined');
-            const storedEmail = data?.meta?.userinfo?.data?.context?.email;
-            console.log('[STORE_PROFILE] DIAGNOSTIC: stored email at meta.userinfo.data.context.email=', storedEmail);
+
+            // Check all possible email locations
+            const userinfo = data.meta?.userinfo;
+            const userinfoData = userinfo?.data;
+            const context = userinfoData?.context;
+
+            console.log('[STORE_PROFILE] DIAGNOSTIC: userinfo keys=', userinfo ? Object.keys(userinfo) : 'undefined');
+            console.log('[STORE_PROFILE] DIAGNOSTIC: userinfo.data keys=', userinfoData ? Object.keys(userinfoData) : 'undefined');
+            console.log('[STORE_PROFILE] DIAGNOSTIC: context keys=', context ? Object.keys(context) : 'undefined');
+            console.log('[STORE_PROFILE] DIAGNOSTIC: context full=', JSON.stringify(context));
+
+            // Check if email is at data level (not context level)
+            console.log('[STORE_PROFILE] DIAGNOSTIC: userinfo.data.email=', userinfoData?.email);
+            console.log('[STORE_PROFILE] DIAGNOSTIC: userinfo.data.context.email=', context?.email);
+
+            // Also check merchant for email
+            const merchant = userinfoData?.merchant;
+            console.log('[STORE_PROFILE] DIAGNOSTIC: merchant keys=', merchant ? Object.keys(merchant) : 'undefined');
         }
 
         console.log('[STORE_PROFILE] Query 1: meta.userinfo.data.context.email ==', email);
