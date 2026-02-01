@@ -25,6 +25,16 @@ async function findStoreByEmail(email: string): Promise<{ id: string; data: Reco
 
     // First try: Find stores where userinfo.data.context.email matches
     try {
+        // DIAGNOSTIC: Try to fetch known store directly
+        console.log('[STORE_PROFILE] DIAGNOSTIC: Trying to fetch salla:1949259124 directly');
+        const knownStore = await db.collection('stores').doc('salla:1949259124').get();
+        console.log('[STORE_PROFILE] DIAGNOSTIC: salla:1949259124 exists=', knownStore.exists);
+        if (knownStore.exists) {
+            const data = knownStore.data() || {};
+            const storedEmail = data?.meta?.userinfo?.data?.context?.email;
+            console.log('[STORE_PROFILE] DIAGNOSTIC: stored email=', storedEmail, 'matches=', storedEmail === email);
+        }
+
         console.log('[STORE_PROFILE] Query 1: meta.userinfo.data.context.email ==', email);
         // Try simpler query without orderBy first
         const emailQuery = db.collection('stores')
