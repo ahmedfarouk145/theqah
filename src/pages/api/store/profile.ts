@@ -31,8 +31,13 @@ async function findStoreByEmail(email: string): Promise<{ id: string; data: Reco
         console.log('[STORE_PROFILE] DIAGNOSTIC: salla:1949259124 exists=', knownStore.exists);
         if (knownStore.exists) {
             const data = knownStore.data() || {};
+            // Log the actual structure to find where email is
+            console.log('[STORE_PROFILE] DIAGNOSTIC: Top-level keys=', Object.keys(data));
+            console.log('[STORE_PROFILE] DIAGNOSTIC: data.email=', data.email);
+            console.log('[STORE_PROFILE] DIAGNOSTIC: data.salla=', JSON.stringify(data.salla));
+            console.log('[STORE_PROFILE] DIAGNOSTIC: data.meta keys=', data.meta ? Object.keys(data.meta) : 'no meta');
             const storedEmail = data?.meta?.userinfo?.data?.context?.email;
-            console.log('[STORE_PROFILE] DIAGNOSTIC: stored email=', storedEmail, 'matches=', storedEmail === email);
+            console.log('[STORE_PROFILE] DIAGNOSTIC: stored email at meta.userinfo.data.context.email=', storedEmail);
         }
 
         console.log('[STORE_PROFILE] Query 1: meta.userinfo.data.context.email ==', email);
