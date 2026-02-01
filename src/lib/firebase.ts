@@ -23,14 +23,18 @@ const auth: Auth = getAuth(app);
 const db: Firestore = getFirestore(app);
 const storage: FirebaseStorage = getStorage(app);
 
-// Initialize App Check for Firestore security (browser only)
-let appCheck: AppCheck | undefined;
+// App Check is DISABLED temporarily - reCAPTCHA domain needs to be configured
+// To re-enable: go to https://www.google.com/recaptcha/admin and add www.theqah.com.sa
+// Then uncomment the code below
+const appCheck: AppCheck | undefined = undefined;
+/*
 if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
   appCheck = initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY),
     isTokenAutoRefreshEnabled: true,
   });
 }
+*/
 
 // حاولة حفظ الجلسة محلياً
 setPersistence(auth, browserLocalPersistence).catch(() => { });
