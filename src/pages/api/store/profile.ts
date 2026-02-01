@@ -119,15 +119,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         if (user.email) {
             const storeByEmail = await findStoreByEmail(user.email);
             if (storeByEmail) {
-                const data = storeByEmail.data;
-                const name = (data.meta as Record<string, unknown>)?.userinfo?.data?.merchant?.name ??
-                    data.storeName ??
-                    (data.salla as Record<string, unknown>)?.storeName ?? null;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const storeData = storeByEmail.data as any;
+                const meta = storeData?.meta || {};
+                const userinfo = meta?.userinfo || {};
+                const context = userinfo?.data?.merchant || {};
+                const name = context?.name ?? storeData?.storeName ?? storeData?.salla?.storeName ?? null;
                 return res.status(200).json({
                     ok: true,
-                    storeName: name as string | null,
+                    storeName: name,
                     storeUid: storeByEmail.id,
-                    platform: (data.provider as string) ?? 'salla'
+                    platform: storeData?.provider ?? 'salla'
                 });
             }
         }
