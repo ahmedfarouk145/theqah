@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         const db = dbAdmin();
 
         // 1) Try direct store lookup by Firebase Auth UID
-        let storeDoc = await db.collection('stores').doc(user.uid).get();
+        const storeDoc = await db.collection('stores').doc(user.uid).get();
 
         if (storeDoc.exists) {
             const data = storeDoc.data() || {};
