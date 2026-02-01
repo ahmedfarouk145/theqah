@@ -10,15 +10,12 @@ import {
   Store,
   Sparkles,
   ChevronRight,
-  Zap,
   FileText,
   Hash,
 } from 'lucide-react';
 
-import SallaIntegrationTab from '@/components/dashboard/settings/SallaIntegrationTab';
-
 type TabMeta = {
-  id: 'الربط' | 'معلومات المتجر';
+  id: 'معلومات المتجر';
   label: string;
   icon: LucideIcon;
   color: string;
@@ -26,13 +23,6 @@ type TabMeta = {
 };
 
 const settingsTabs: TabMeta[] = [
-  {
-    id: 'الربط',
-    label: 'الربط',
-    icon: LinkIcon,
-    color: 'from-blue-500 to-blue-600',
-    description: 'ربط المتجر مع المنصات',
-  },
   {
     id: 'معلومات المتجر',
     label: 'معلومات المتجر',
@@ -127,7 +117,7 @@ export default function StoreSettings({
   storeUid?: string;
   storeName?: string;
 }) {
-  const [activeTab, setActiveTab] = useState<TabMeta['id']>('الربط');
+  const [activeTab, setActiveTab] = useState<TabMeta['id']>('معلومات المتجر');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 p-8 space-y-12">
@@ -188,49 +178,6 @@ export default function StoreSettings({
 
       {/* Tab Content */}
       <ContentCard delay={400}>
-        {activeTab === 'الربط' && (
-          <div className="space-y-8">
-
-            {/* Header Section */}
-            <div className="text-center space-y-4 pb-8 border-b border-gray-200/50">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl flex items-center justify-center mx-auto shadow-2xl hover:rotate-12 hover:scale-110 transition-all duration-500 group">
-                <LinkIcon className="w-10 h-10 text-white group-hover:scale-110 transition-transform duration-300" />
-              </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                🔗 الربط مع المتجر
-              </h2>
-              <p className="text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                يمكنك ربط متجرك بسهولة مع المنصات الرائدة لتحسين تجربة العملاء وزيادة المبيعات
-              </p>
-            </div>
-
-            {/* Integration Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div
-                className="group relative bg-gradient-to-br from-white to-gray-50/50 rounded-2xl border border-gray-200/50 p-8 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden"
-                style={{
-                  animationDelay: '500ms',
-                  animation: 'slideInLeft 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-                  opacity: 0,
-                  transform: 'translateX(-30px)',
-                }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative z-10">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                    <Zap className="w-6 h-6 text-emerald-600" />
-                    منصة سلة
-                  </h3>
-                  <SallaIntegrationTab storeUid={storeUid} />
-                </div>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-
-
         {activeTab === 'معلومات المتجر' && (
           <div className="space-y-8">
             {/* Header Section */}
