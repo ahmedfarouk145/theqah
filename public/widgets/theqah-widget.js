@@ -1,7 +1,7 @@
 //public/widgets/theqah-widget.js
 (() => {
   const SCRIPT_VERSION = "3.0.0"; // Smart badge: message OR logos on Salla reviews
-  
+
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
   window.__THEQAH_LOADING__ = true;
@@ -36,16 +36,16 @@
   const G = (window.__THEQAH__ = window.__THEQAH__ || {});
   const TTL_MS = 10 * 60 * 1000; // 10 دقائق
 
-  function cacheKey(host){ return `theqah:storeUid:${host}`; }
-  function getCached(host){
+  function cacheKey(host) { return `theqah:storeUid:${host}`; }
+  function getCached(host) {
     try {
       const o = JSON.parse(localStorage.getItem(cacheKey(host)) || '{}');
       if (o.uid && (Date.now() - (o.t || 0) < TTL_MS)) return o.uid;
-    } catch {}
+    } catch { }
     return null;
   }
-  function setCached(host, uid){
-    try { localStorage.setItem(cacheKey(host), JSON.stringify({ uid, t: Date.now() })); } catch {}
+  function setCached(host, uid) {
+    try { localStorage.setItem(cacheKey(host), JSON.stringify({ uid, t: Date.now() })); } catch { }
   }
 
   async function resolveStore() {
@@ -54,7 +54,7 @@
     // ذاكرة + localStorage
     if (G.storeData) return G.storeData;
     const cached = getCached(host);
-    if (cached) { 
+    if (cached) {
       // For backwards compatibility, handle both old format (string) and new format (object)
       if (typeof cached === 'string') {
         G.storeData = { storeUid: cached, certificatePosition: 'auto' };
@@ -71,10 +71,10 @@
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
-    G.resolvePromise = fetch(url, { 
-        cache: 'no-store',
-        signal: controller.signal
-      })
+    G.resolvePromise = fetch(url, {
+      cache: 'no-store',
+      signal: controller.signal
+    })
       .then(r => {
         clearTimeout(timeoutId);
         return r.ok ? r.json() : null;
@@ -105,7 +105,7 @@
       const sec = fromData.closest("section, .product, .product-page, .product__details, .product-single, .product-show");
       if (sec) return sec;
     }
-    
+
     const candidates = [
       ".product-description",
       ".product__description",
@@ -120,12 +120,12 @@
       "#product",
       "main .container"
     ];
-    
+
     for (const sel of candidates) {
       const el = document.querySelector(sel);
       if (el) return el;
     }
-    
+
     return null;
   }
 
@@ -135,22 +135,22 @@
 
     const anchor = findProductAnchor();
     if (!anchor) return null;
-    
+
     host = document.createElement("div");
     host.className = "theqah-reviews";
     host.style.marginTop = "24px";
-    
+
     if (anchor && anchor.parentNode) {
       anchor.parentNode.insertBefore(host, anchor.nextSibling);
     }
-    
+
     return host;
   }
 
   // ——— Debounce ———
   function debounce(func, wait) {
     let timeoutId;
-    return function(...args) {
+    return function (...args) {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => func.apply(this, args), wait);
     };
@@ -188,11 +188,11 @@
   // ——— Add logos to Salla reviews ———
   function addLogosToSallaReviews(verifiedIds) {
     if (!verifiedIds || verifiedIds.length === 0) return;
-    
+
     // Convert verified IDs to strings for comparison
     const verifiedIdStrings = verifiedIds.map(id => String(id));
 
-    
+
     // Salla modern theme uses salla-comment-item custom elements
     // with internal divs having id="s-comments-item-[REVIEW_ID]"
     const selectors = [
@@ -208,20 +208,20 @@
       '[class*="comment"]',            // Any class containing comment
       '[class*="review"]'              // Any class containing review
     ];
-    
+
     let foundCount = 0;
     let addedCount = 0;
-    
+
     selectors.forEach(selector => {
       const reviewElements = document.querySelectorAll(selector);
-      
+
       reviewElements.forEach(el => {
         // Extract review ID from multiple possible sources
         let reviewId = null;
-        
+
         // 1. From data-review-id or data-comment-id attribute
         reviewId = el.getAttribute('data-review-id') || el.getAttribute('data-id') || el.getAttribute('data-comment-id');
-        
+
         // 2. From internal div with id="s-comments-item-[ID]"
         if (!reviewId) {
           const wrapperDiv = el.querySelector('[id^="s-comments-item-"]');
@@ -230,19 +230,19 @@
             if (idMatch) reviewId = idMatch[1];
           }
         }
-        
+
         // 3. From element's own id if it matches the pattern
         if (!reviewId && el.id) {
           const idMatch = el.id.match(/s-comments-item-(\d+)/) || el.id.match(/comment-(\d+)/) || el.id.match(/review-(\d+)/);
           if (idMatch) reviewId = idMatch[1];
         }
-        
+
         // 4. From nested element with data-review-id
         if (!reviewId) {
           reviewId = el.querySelector('[data-review-id]')?.getAttribute('data-review-id') ||
-                     el.querySelector('[data-comment-id]')?.getAttribute('data-comment-id');
+            el.querySelector('[data-comment-id]')?.getAttribute('data-comment-id');
         }
-        
+
         // 5. Try to find ID in any attribute
         if (!reviewId) {
           const attrs = el.attributes;
@@ -254,7 +254,7 @@
             }
           }
         }
-        
+
         // 6. Check shadow DOM for salla-comment-item
         if (!reviewId && el.shadowRoot) {
           const shadowDiv = el.shadowRoot.querySelector('[id^="s-comments-item-"]');
@@ -263,31 +263,31 @@
             if (idMatch) reviewId = idMatch[1];
           }
         }
-        
 
-        
 
-        
+
+
+
         if (!reviewId || !verifiedIdStrings.includes(String(reviewId))) return;
         if (el.querySelector('.theqah-verified-logo')) return;
-        
+
         // Find best insertion point for Salla modern theme
-        let insertPoint = 
+        let insertPoint =
           el.querySelector('.s-comments-item-user-info-name') ||  // User name in Salla
           el.querySelector('.s-comments-item-user-wrapper') ||    // User wrapper
           el.querySelector('[class*="user-name"]') ||             // Any user name class
           el.querySelector('[class*="user-info"]') ||             // Any user info class
           el.querySelector('[class*="author"]') ||                // Author class
-          el.querySelector('.review-header') || 
-          el.querySelector('.review-stars') || 
-          el.querySelector('.review-rating') || 
+          el.querySelector('.review-header') ||
+          el.querySelector('.review-stars') ||
+          el.querySelector('.review-rating') ||
           el.querySelector('[class*="rating"]') ||                // Any rating class
           el.firstElementChild;
-        
-        if (!insertPoint) return;
-        
 
-        
+        if (!insertPoint) return;
+
+
+
         // Create clickable logo with link to theqah homepage
         const logoLink = document.createElement('a');
         logoLink.href = 'https://theqah.com.sa?ref=widget';
@@ -295,21 +295,21 @@
         logoLink.rel = 'noopener noreferrer';
         logoLink.title = 'مشتري موثق - Verified Buyer | theqah.com.sa';
         logoLink.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none;transition:transform 0.2s ease;margin-inline-start:8px;';
-        logoLink.onmouseover = function() { this.style.transform = 'scale(1.1)'; };
-        logoLink.onmouseout = function() { this.style.transform = 'scale(1)'; };
-        
+        logoLink.onmouseover = function () { this.style.transform = 'scale(1.1)'; };
+        logoLink.onmouseout = function () { this.style.transform = 'scale(1)'; };
+
         const logo = document.createElement('img');
         logo.src = LOGO_URL;
         logo.className = 'theqah-verified-logo';
         logo.alt = 'مشتري موثق - Verified Buyer';
         logo.style.cssText = 'width:60px;height:60px;margin:0 8px;display:inline-block;vertical-align:middle;cursor:pointer;background:transparent;';
-        
+
         logoLink.appendChild(logo);
         insertPoint.style.display = 'flex';
         insertPoint.style.alignItems = 'center';
         insertPoint.style.gap = '8px';
         insertPoint.appendChild(logoLink);
-        
+
 
       });
     });
@@ -319,41 +319,41 @@
   function createCertificateBadge(lang = 'ar', theme = 'light') {
     // Check if certificate already exists
     if (document.querySelector('.theqah-certificate-badge')) return null;
-    
+
     const isArabic = lang === 'ar';
     const isDark = theme === 'dark';
-    
-    const title = isArabic 
+
+    const title = isArabic
       ? 'شهادة توثيق التقييمات'
       : 'Verified Reviews Certificate';
-    
-    const subtitle = isArabic 
+
+    const subtitle = isArabic
       ? 'جميع تقييمات هذا المتجر مدققة من مشتري موثق "طرف ثالث" لضمان المصداقية'
       : 'All store reviews are audited by Mushtari Mowthaq (Third Party) to ensure credibility';
-    
+
     // Create the certificate container
-    const container = h('div', { 
+    const container = h('div', {
       class: 'theqah-certificate-badge',
       style: `
         font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Noto Sans, Arial, sans-serif;
         direction: ${isArabic ? 'rtl' : 'ltr'};
         text-align: center;
-        background: ${isDark 
-          ? 'linear-gradient(135deg, #0f1629 0%, #1e293b 100%)' 
+        background: ${isDark
+          ? 'linear-gradient(135deg, #0f1629 0%, #1e293b 100%)'
           : 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)'};
         border: 2px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'};
         border-radius: 16px;
         padding: 24px;
         margin: 20px auto;
         max-width: 500px;
-        box-shadow: ${isDark 
-          ? '0 10px 25px -5px rgba(0, 0, 0, 0.4)' 
+        box-shadow: ${isDark
+          ? '0 10px 25px -5px rgba(0, 0, 0, 0.4)'
           : '0 10px 25px -5px rgba(34, 197, 94, 0.15)'};
         position: relative;
         overflow: hidden;
       `
     });
-    
+
     // Add decorative top border
     container.innerHTML = `
       <div style="
@@ -365,7 +365,7 @@
         background: linear-gradient(90deg, #22c55e, #16a34a, #22c55e);
       "></div>
     `;
-    
+
     // Create logo with link
     const logoLink = h('a', {
       href: 'https://theqah.com.sa?ref=certificate',
@@ -377,7 +377,7 @@
         transition: transform 0.2s ease;
       `
     });
-    
+
     const logo = h('img', {
       src: CERTIFICATE_LOGO_URL,
       alt: isArabic ? 'مشتري موثق' : 'Mushtari Mowthaq',
@@ -387,11 +387,11 @@
         background: transparent;
       `
     });
-    
+
     logoLink.appendChild(logo);
-    logoLink.onmouseover = function() { this.style.transform = 'scale(1.05)'; };
-    logoLink.onmouseout = function() { this.style.transform = 'scale(1)'; };
-    
+    logoLink.onmouseover = function () { this.style.transform = 'scale(1.05)'; };
+    logoLink.onmouseout = function () { this.style.transform = 'scale(1)'; };
+
     // Create title
     const titleEl = h('h3', {
       style: `
@@ -402,7 +402,7 @@
         line-height: 1.4;
       `
     }, title);
-    
+
     // Create subtitle
     const subtitleEl = h('p', {
       style: `
@@ -415,27 +415,36 @@
         margin-right: auto;
       `
     }, subtitle);
-    
+
     container.appendChild(logoLink);
     container.appendChild(titleEl);
     container.appendChild(subtitleEl);
-    
+
     return container;
   }
 
   // ——— إدراج شهادة التوثيق في صفحة المتجر ———
   function insertCertificateBadge(storeUid, lang, theme, position = 'auto') {
     // Check if already inserted
-    if (document.querySelector('.theqah-certificate-badge')) return;
-    
+    const existing = document.querySelector('.theqah-certificate-badge');
+    if (existing) {
+      // Fix for tabbed interfaces: If existing badge is hidden (e.g. in a hidden tab), 
+      // remove it so we can re-insert in the active location.
+      if (existing.offsetParent === null) {
+        existing.remove();
+      } else {
+        return; // Already exists and is visible
+      }
+    }
+
     const certificate = createCertificateBadge(lang, theme);
     if (!certificate) return;
-    
+
     // Smart Heuristics: find best placement based on position setting
     const placement = findBestPlacement(position);
-    
+
     if (!placement) return;
-    
+
     if (placement.type === 'floating') {
       // Floating badge in corner
       certificate.style.cssText += `
@@ -467,61 +476,73 @@
       );
       if (reviews) return { element: reviews, position: 'before' };
     }
-    
+
     if (position === 'after-reviews') {
       const reviews = document.querySelector(
         'salla-products-comments, .s-comments-list, .product-reviews, #reviews, [data-reviews]'
       );
       if (reviews) return { element: reviews, position: 'after' };
     }
-    
+
     if (position === 'footer') {
       const footer = document.querySelector('footer, .s-footer, .store-footer');
       if (footer) return { element: footer, position: 'before' };
     }
-    
+
     if (position === 'floating') {
       return { type: 'floating' };
     }
-    
+
     // Auto mode: Smart Heuristics based on page structure
     // أولوية 1: قبل قسم التقييمات مباشرة
     const reviewsSection = document.querySelector(
       'salla-products-comments, .s-comments-list, .product-reviews, .reviews-section, #reviews, [data-reviews]'
     );
-    if (reviewsSection) {
+
+    if (reviewsSection && isVisible(reviewsSection)) {
       return { element: reviewsSection, position: 'before' };
     }
-    
+
     // أولوية 2: بعد وصف المنتج
     const productDesc = document.querySelector(
       '.product-description, .product__description, .s-product-description, [data-product-description]'
     );
-    if (productDesc) {
+
+    if (productDesc && isVisible(productDesc)) {
       return { element: productDesc, position: 'after' };
     }
-    
+
     // أولوية 3: بعد معلومات المنتج
     const productInfo = document.querySelector(
       '.product-info, .product__info, .s-product-info, .product-details'
     );
-    if (productInfo) {
+
+    if (productInfo && isVisible(productInfo)) {
       return { element: productInfo, position: 'after' };
     }
-    
+
     // أولوية 4: في الفوتر
     const footer = document.querySelector('footer, .s-footer');
     if (footer) {
       return { element: footer, position: 'before' };
     }
-    
+
     // Fallback: Floating badge
+
     return { type: 'floating' };
   }
 
+  // Helper to check visibility
+  function isVisible(el) {
+    return !!(el && el.offsetParent !== null);
+  }
 
   // ——— تركيب البادج الذكي ———
   async function mountOne(hostEl, store, lang, theme, certificatePosition = 'auto') {
+    // Always insert/update the certificate badge for subscribed stores
+    // This runs on every mount/update check to handle tab switching
+    insertCertificateBadge(store, lang, theme, certificatePosition);
+
     if (hostEl.getAttribute("data-state") === "done") return;
     if (hostEl.getAttribute("data-state") === "mounting") return;
     hostEl.setAttribute("data-state", "mounting");
@@ -529,11 +550,10 @@
     // ✨ Check for verified reviews
     const productId = extractProductId();
     const checkResult = await checkVerifiedReviews(store, productId);
-    
-    // Always insert the certificate badge for subscribed stores
-    insertCertificateBadge(store, lang, theme, certificatePosition);
 
-    
+
+
+
     if (checkResult.hasVerified) {
       // Has verified reviews - add logos to Salla reviews
       const verifiedIds = checkResult.reviews.map(r => r.sallaReviewId);
@@ -544,8 +564,8 @@
     }
 
     hostEl.setAttribute("data-state", "done");
-    return;
-    
+
+
     const style = h("style", {
       html: `
         :host { all: initial; }
@@ -559,17 +579,17 @@
         }
         
         .section { 
-          background: ${theme === "dark" 
-            ? "linear-gradient(135deg, #0f1629 0%, #1e293b 100%)" 
-            : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)"};
+          background: ${theme === "dark"
+          ? "linear-gradient(135deg, #0f1629 0%, #1e293b 100%)"
+          : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)"};
           color: ${theme === "dark" ? "#f1f5f9" : "#1e293b"};
           border: 1px solid ${theme === "dark" ? "rgba(71, 85, 105, 0.3)" : "rgba(226, 232, 240, 0.8)"};
           border-radius: 16px; 
           padding: 20px 24px; 
           margin: 20px 0; 
-          box-shadow: ${theme === "dark" 
-            ? "0 10px 25px -5px rgba(0, 0, 0, 0.4)" 
-            : "0 10px 25px -5px rgba(0, 0, 0, 0.1)"};
+          box-shadow: ${theme === "dark"
+          ? "0 10px 25px -5px rgba(0, 0, 0, 0.4)"
+          : "0 10px 25px -5px rgba(0, 0, 0, 0.1)"};
           backdrop-filter: blur(12px);
           position: relative;
           overflow: hidden;
@@ -624,12 +644,12 @@
       `,
     });
 
-    const verifiedText = lang === "ar" 
-      ? "تقييمات هذا المتجر تخضع للتدقيق بواسطة مشتري موثق" 
+    const verifiedText = lang === "ar"
+      ? "تقييمات هذا المتجر تخضع للتدقيق بواسطة مشتري موثق"
       : "This store's reviews are verified by Theqah Trusted Buyer";
 
     const container = h("div", { class: "wrap" });
-    
+
     const section = h("div", { class: "section" }, [
       h("div", { class: "verified-badge" }, [
         h("img", { class: "badge-logo", src: LOGO_URL, alt: "Theqah" }),
@@ -674,10 +694,10 @@
     // محاولة auto-resolve - دائماً نحاول resolve من domain
     let storeData = null;
     let certificatePosition = 'auto';
-    
+
     if (!store) {
-      try { 
-        const resolveTimeout = new Promise((_, reject) => 
+      try {
+        const resolveTimeout = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Resolve timeout')), 5000)
         );
         storeData = await Promise.race([resolveStore(), resolveTimeout]);
@@ -687,18 +707,18 @@
 
         }
       }
-      catch { 
+      catch {
         store = null;
       }
     }
 
     const host = existingHost || ensureHostUnderProduct();
-    
+
     if (!host) {
       // Not a product page - widget skipped
       return;
     }
-    
+
     if (!store) {
       // Silent fail - store not resolved
       return;
@@ -711,7 +731,7 @@
   // تشغيل آمن
   const safeLaunch = () => {
     try {
-      safeMount().catch(() => {});
+      safeMount().catch(() => { });
     } catch {
       // Silent fail
     } finally {
@@ -728,20 +748,20 @@
   // دعم SPA + detect Salla review list changes (sorting/pagination)
   if (!window.__THEQAH_OBS__ && typeof MutationObserver !== 'undefined') {
     window.__THEQAH_OBS__ = true;
-    
+
     const reAddLogos = debounce(() => {
       // Use globally cached verified IDs
       if (G.verifiedIds && G.verifiedIds.length > 0) {
         addLogosToSallaReviews(G.verifiedIds);
       }
     }, 300);
-    
+
     const deb = debounce(() => safeMount(), 1000);
-    
+
     const obs = new MutationObserver((mutations) => {
       let hasRelevantChanges = false;
       let hasSallaReviewChanges = false;
-      
+
       for (const m of mutations) {
         // Check for theqah-reviews container
         for (const n of m.addedNodes) {
@@ -761,26 +781,26 @@
             }
           }
         }
-        
+
         // Also check if reviews container children changed (Salla may replace inner content)
         if (m.target?.tagName?.toLowerCase() === 'salla-products-comments' ||
-            m.target?.classList?.contains('s-comments-list')) {
+          m.target?.classList?.contains('s-comments-list')) {
           hasSallaReviewChanges = true;
         }
       }
-      
+
       if (hasRelevantChanges) deb();
       if (hasSallaReviewChanges) reAddLogos();
     });
-    
+
     try {
-      obs.observe(document.body, { 
-        childList: true, 
+      obs.observe(document.body, {
+        childList: true,
         subtree: true,
         attributes: false,
         characterData: false
       });
-      
+
       // Keep observer active longer for dynamic pages
       setTimeout(() => {
         obs.disconnect();
@@ -789,7 +809,7 @@
     } catch {
       // Silent fail
     }
-    
+
     // Also listen for Salla custom events
     try {
       document.addEventListener('salla::comments::loaded', () => reAddLogos());
