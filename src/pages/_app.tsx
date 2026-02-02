@@ -13,23 +13,6 @@ export default function MyApp({ Component, pageProps }: AppProps) {
       <AuthProvider>
         <Head>
           <title>مشتري موثّق</title>
-
-          {/* Standard favicon -> using logo.png as requested */}
-          <link rel="icon" href="/logo.png" />
-          <link rel="shortcut icon" href="/logo.png" />
-
-          {/* PNG favicons */}
-          <link rel="icon" type="image/png" sizes="32x32" href="/logo.png" />
-          <link rel="icon" type="image/png" sizes="16x16" href="/logo.png" />
-
-          {/* Apple iOS Touch Icon */}
-          <link rel="apple-touch-icon" href="/logo.png" />
-
-          {/* Android & PWA manifest */}
-          <link rel="manifest" href="/site.webmanifest" />
-          <meta name="theme-color" content="#ffffff" />
-
-          {/* Optional: description for SEO */}
           <meta name="description" content="مشتري موثّق - منصة توثيق التقييمات الآلية" />
         </Head>
         <Component {...pageProps} />

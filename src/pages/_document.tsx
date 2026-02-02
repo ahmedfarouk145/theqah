@@ -11,6 +11,15 @@ export default function Document() {
     return (
         <Html lang="ar" dir="rtl">
             <Head>
+                {/* Favicons */}
+                <link rel="icon" href="/logo.png" />
+                <link rel="shortcut icon" href="/logo.png" />
+                <link rel="icon" type="image/png" sizes="32x32" href="/logo.png" />
+                <link rel="icon" type="image/png" sizes="16x16" href="/logo.png" />
+                <link rel="apple-touch-icon" href="/logo.png" />
+                <link rel="manifest" href="/site.webmanifest" />
+                <meta name="theme-color" content="#ffffff" />
+
                 {/* Preconnect to Google Fonts for faster font loading */}
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

@@ -134,7 +134,7 @@ function FAQItem({ question, answer, isOpen, onClick, index }: { question: strin
       <button
         onClick={onClick}
         className="w-full flex items-center justify-between p-6 text-right focus:outline-none"
-        aria-expanded={isOpen}
+        aria-expanded={isOpen ? "true" : "false"}
       >
         <span className={`text-lg md:text-xl font-bold transition-colors ${isOpen ? 'text-green-800' : 'text-gray-800 group-hover:text-green-700'}`}>
           {question}
