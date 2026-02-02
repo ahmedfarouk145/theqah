@@ -80,7 +80,7 @@ const faqItems = [
           يمكنك إظهار أو إخفاء التقييمات واختيار المناسب منها للنشر، بما يتوافق مع استراتيجيتك التسويقية وصورة متجرك.
         </p>
         <div className="bg-green-50 border-r-4 border-green-500 p-3 rounded-lg text-sm text-green-900 font-medium">
-          نمنحك المرونة الكاملة لإدارة واجهة متجرك دون أي قيود.
+          نحن جهة توثيق فقط. خيار إظهار أو إخفاء التقييمات يعتمد كلياً على إعدادات متجرك في سلة، ولا علاقة للمنصة بذلك.
         </div>
       </div>
     ),
@@ -226,7 +226,8 @@ export default function FAQPage() {
             <Link href="/terms" className="hover:underline">الشروط والأحكام</Link>
             <Link href="/support" className="hover:underline">الدعم والمساعدة</Link>
           </div>
-          <p>© 2025 مشتري موثّق - جميع الحقوق محفوظة</p>
+          <p>© 2026 مشتري موثّق - جميع الحقوق محفوظة</p>
+          <p className="mt-1">النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية</p>
         </footer>
 
         {/* SEO: FAQ Schema */}

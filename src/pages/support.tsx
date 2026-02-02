@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import NavbarLanding from '@/components/NavbarLanding';
+import Link from 'next/link';
 import axios from 'axios';
 
 export default function SupportPage() {
@@ -118,6 +119,17 @@ export default function SupportPage() {
           ))}
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="bg-green-100 py-6 text-center text-sm text-green-900 border-t border-green-200">
+        <div className="flex justify-center gap-6 mb-2 flex-wrap">
+          <Link href="/privacy-policy" className="hover:underline">سياسة الخصوصية</Link>
+          <Link href="/terms" className="hover:underline">الشروط والأحكام</Link>
+          <Link href="/faq" className="hover:underline">الأسئلة الشائعة</Link>
+        </div>
+        <p>© 2026 مشتري موثّق - جميع الحقوق محفوظة</p>
+        <p className="mt-1">النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية</p>
+      </footer>
     </main>
   );
 }

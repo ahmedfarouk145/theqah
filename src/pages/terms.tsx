@@ -64,7 +64,8 @@ export default function TermsPage() {
 
         {/* Footer */}
         <footer className="bg-green-100 py-6 text-center text-sm text-green-900 border-t border-green-200">
-          <p>© 2025 مشتري موثق - جميع الحقوق محفوظة</p>
+          <p>© 2026 مشتري موثق - جميع الحقوق محفوظة</p>
+          <p className="mt-1">النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية</p>
         </footer>
       </main>
     </>

@@ -323,7 +323,7 @@ export default function LandingPage() {
         <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white text-center">
           <div className="max-w-2xl mx-auto">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">جاهز لزيادة مبيعاتك؟</h2>
-            <p className="text-gray-600 mb-8 text-lg">انضم إلى آلاف المتاجر التي حسّنت ثقة عملائها مع مشتري موثّق</p>
+            <p className="text-gray-600 mb-8 text-lg">انضم الى العديد من المتاجر التي حسّنت ثقة عملائها مع مشتري موثّق</p>
             <Link href="/signup">
               <button className="bg-green-700 text-white px-10 sm:px-12 py-4 rounded-full text-lg font-bold shadow-lg hover:bg-green-800 hover:shadow-xl hover:scale-105 active:scale-100 transition-all duration-300">
                 ابدأ الآن
