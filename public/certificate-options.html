@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خيارات تصميم شهادة التوثيق</title>
+    <!-- Import Cairo, Amiri, Tajawal, and Almarai Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&family=Amiri:wght@400;700&family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #ffffff;
+            margin: 0;
+            padding: 40px;
+            min-height: 100vh;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            text-shadow: 0 2px 4px rgba(255, 255, 255, 0.8);
+            background: white;
+            display: inline-block;
+            padding: 10px 30px;
+            border-radius: 50px;
+            position: relative;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .options-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 60px;
+            justify-content: center;
+            align-items: start;
+        }
+
+        .option-wrapper {
+            text-align: center;
+            width: 100%;
+        }
+
+        .option-label {
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #333;
+            background: white;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Base Certificate Styles */
+        .certificate {
+            width: 100%;
+            border-radius: 24px;
+            padding: 40px 20px;
+            text-align: center;
+            position: relative;
+            box-sizing: border-box;
+            transition: transform 0.3s ease;
+        }
+
+        .certificate:hover {
+            transform: translateY(-5px);
+        }
+
+        .cert-logo {
+            display: inline-block;
+            margin-bottom: 20px;
+            width: 180px;
+            height: 180px;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+        }
+
+        .cert-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: #10b981;
+            margin: 0 0 15px 0;
+            line-height: 1.3;
+        }
+
+        .cert-subtitle {
+            font-size: 16px;
+            color: #4b5563;
+            margin: 0;
+            line-height: 1.6;
+            font-weight: 600;
+        }
+
+        /* --- Option 1: Clean (Borderless) --- */
+        .opt-1 {
+            background: transparent;
+            border: none;
+            /* Removed border */
+        }
+
+        .opt-1 .cert-logo {
+            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.1));
+        }
+
+        .opt-1 .cert-title {
+            color: #111827;
+            /* Darker text since no border color */
+            font-family: 'Cairo', sans-serif;
+        }
+
+        /* --- Option 2: Glow (Floating) --- */
+        .opt-2 {
+            background: rgba(16, 185, 129, 0.03);
+            /* Extremely subtle tint */
+            border: none;
+            box-shadow: 0 0 50px rgba(16, 185, 129, 0.2);
+        }
+
+        .opt-2 .cert-title {
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+            font-family: 'Cairo', sans-serif;
+            font-weight: 900;
+        }
+
+        /* --- Option 3: Classic (Amiri/Divider) --- */
+        .opt-3 {
+            background: transparent;
+            border: none;
+            border-top: 4px solid #059669;
+            /* Top accent only */
+            border-bottom: 1px solid #e5e7eb;
+            border-radius: 0;
+        }
+
+        .opt-3 .cert-title {
+            font-family: 'Amiri', serif;
+            font-size: 36px;
+            color: #065f46;
+        }
+
+        .opt-3 .cert-subtitle {
+            font-family: 'Amiri', serif;
+            font-size: 18px;
+            font-style: italic;
+        }
+
+        /* --- Option 4: Minimal Stacked (Tajawal Font) --- */
+        .opt-4 {
+            background: transparent;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .opt-4 .cert-logo {
+            margin-bottom: 10px;
+        }
+
+        .opt-4 .cert-title {
+            font-family: 'Tajawal', sans-serif;
+            /* UNIQUE FONT */
+            font-weight: 800;
+            font-size: 26px;
+            color: #047857;
+            text-transform: uppercase;
+            letter-spacing: 0;
+            border-right: 4px solid #10b981;
+            padding-right: 15px;
+            margin-right: -20px;
+            /* Offset for border */
+        }
+
+        .opt-4 .cert-subtitle {
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 500;
+        }
+
+        /* --- Option 5: Badge Style (Almarai Font) --- */
+        .opt-5 {
+            background: transparent;
+            border: none;
+        }
+
+        .opt-5 .cert-logo-container {
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.1);
+        }
+
+        .opt-5 .cert-logo {
+            width: 140px;
+            height: 140px;
+            margin: 0;
+            filter: none;
+        }
+
+        .opt-5 .cert-title {
+            font-family: 'Almarai', sans-serif;
+            /* UNIQUE FONT */
+            font-weight: 800;
+            color: #15803d;
+            letter-spacing: -0.5px;
+        }
+
+        .opt-5 .cert-subtitle {
+            font-family: 'Almarai', sans-serif;
+        }
+
+        /* --- Option 6: Modern Gradient (Cairo Black) --- */
+        .opt-6 {
+            background: transparent;
+            border: none;
+        }
+
+        .opt-6 .cert-logo {
+            filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5));
+            transform: scale(1.1);
+        }
+
+        .opt-6 .cert-title {
+            font-family: 'Cairo', sans-serif;
+            font-weight: 900;
+            /* Extra Black */
+            font-size: 32px;
+            background: linear-gradient(to left, #10b981, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+        }
+
+        /* --- Option 7: Hexagon (Geometric) --- */
+        .opt-7 {
+            background: transparent;
+            border: none;
+            clip-path: polygon(10% 0, 90% 0, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0 90%, 0 10%);
+            /* Octagon-ish shape for container, or just decorative border */
+            border: 2px dashed #10b981;
+            /* Fallback if clip-path removes border */
+            /* Better approach: Use SVG background or pseudo element */
+            position: relative;
+            border: none;
+        }
+
+        .opt-7::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 2px solid #10b981;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            z-index: -1;
+            opacity: 0.1;
+            background: #10b981;
+        }
+
+        .opt-7 .cert-logo {
+            width: 130px;
+            height: 130px;
+            margin-bottom: 10px;
+        }
+
+        .opt-7 .cert-title {
+            font-family: 'Tajawal', sans-serif;
+            color: #064e3b;
+        }
+
+        /* --- Option 8: Ribbon (Banner) --- */
+        .opt-8 {
+            background: transparent;
+            border: none;
+        }
+
+        .opt-8 .cert-logo {
+            margin-bottom: 5px;
+        }
+
+        .opt-8 .cert-title-wrapper {
+            background: #10b981;
+            color: white;
+            padding: 5px 20px;
+            margin: 10px -30px 15px;
+            /* Extend slightly */
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .opt-8 .cert-title {
+            color: white;
+            font-size: 22px;
+            margin: 0;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .opt-8 .cert-subtitle {
+            font-size: 14px;
+        }
+
+        /* --- Option 9: Horizontal (Wide) --- */
+        .opt-9 {
+            text-align: right;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            border-right: 4px solid #10b981;
+            background: linear-gradient(to left, rgba(16, 185, 129, 0.05), transparent);
+        }
+
+        .opt-9 .cert-logo {
+            margin-bottom: 0;
+            width: 100px;
+            height: 100px;
+            flex-shrink: 0;
+        }
+
+        .opt-9 .text-content {
+            text-align: right;
+        }
+
+        .opt-9 .cert-title {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .opt-9 .cert-subtitle {
+            font-size: 13px;
+        }
+
+        /* --- Option 10: Neon/Cyberpunk (Experimental) --- */
+        .opt-10 {
+            background: rgba(10, 10, 20, 0.6);
+            border: 1px solid #10b981;
+            box-shadow: 0 0 15px #10b981, inset 0 0 20px rgba(16, 185, 129, 0.2);
+            clip-path: polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%);
+        }
+
+        .opt-10 .cert-logo {
+            filter: drop-shadow(0 0 10px #10b981) brightness(1.2);
+        }
+
+        .opt-10 .cert-title {
+            color: #fff;
+            text-shadow: 0 0 10px #10b981;
+            font-family: 'Cairo', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        .opt-10 .cert-subtitle {
+            color: #a7f3d0;
+        }
+
+        /* --- Option 11: Organic/Blob (Experimental) --- */
+        .opt-11 {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            box-shadow: 10px 10px 30px rgba(0, 0, 0, 0.05);
+            animation: morph 8s ease-in-out infinite;
+            padding: 50px 30px;
+        }
+
+        @keyframes morph {
+            0% {
+                border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            }
+
+            50% {
+                border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            }
+
+            100% {
+                border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+            }
+        }
+
+        .opt-11 .cert-logo {
+            transform: rotate(-5deg);
+        }
+
+        /* --- Option 12: Typography/Watermark (Experimental) --- */
+        .opt-12 {
+            background: transparent;
+            border: none;
+            overflow: hidden;
+        }
+
+        .opt-12 .cert-logo {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            opacity: 0.1;
+            z-index: 0;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            filter: grayscale(100%);
+        }
+
+        .opt-12 .cert-title {
+            position: relative;
+            z-index: 1;
+            font-size: 42px;
+            line-height: 1.1;
+            color: #064e3b;
+            text-shadow: 2px 2px 0px rgba(255, 255, 255, 0.5);
+        }
+
+        .opt-12 .cert-subtitle {
+            position: relative;
+            z-index: 1;
+            font-weight: 800;
+            color: #10b981;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>خيارات تصميم شهادة التوثيق (12 تصميم - إبداعي)</h1>
+
+    <div class="options-container">
+
+        <!-- Option 1 -->
+        <div class="option-wrapper">
+            <div class="option-label">1. نظيف (Borderless)</div>
+            <div class="certificate opt-1">
+                <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+            </div>
+        </div>
+
+        <!-- Option 2 -->
+        <div class="option-wrapper">
+            <div class="option-label">2. توهج (Glow)</div>
+            <div class="certificate opt-2">
+                <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+            </div>
+        </div>
+
+        <!-- Option 3 -->
+        <div class="option-wrapper">
+            <div class="option-label">3. كلاسيكي (Amiri)</div>
+            <div class="certificate opt-3">
+                <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+            </div>
+        </div>
+
+        <!-- Option 4 -->
+        <div class="option-wrapper">
+            <div class="option-label">4. بسيط (Minimal)</div>
+            <div class="certificate opt-4">
+                <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+            </div>
+        </div>
+
+        <!-- Option 5 -->
+        <div class="option-wrapper">
+            <div class="option-label">5. شارة (Badge)</div>
+            <div class="certificate opt-5">
+                <div class="cert-logo-container">
+                    <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                </div>
+                <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+            </div>
+        </div>
+
+        <!-- Option 6 -->
+        <div class="option-wrapper">
+            <div class="option-label">6. حديث (Gradient)</div>
+            <div class="certificate opt-6">
+                <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+            </div>
+        </div>
+
+        <!-- Option 7 -->
+        <div class="option-wrapper">
+            <div class="option-label">7. هندسي (Hexagon)</div>
+            <div class="certificate opt-7">
+                <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+            </div>
+        </div>
+
+        <!-- Option 8 -->
+        <div class="option-wrapper">
+            <div class="option-label">8. شريط (Ribbon)</div>
+            <div class="certificate opt-8">
+                <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                <div class="cert-title-wrapper">
+                    <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                </div>
+                <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+            </div>
+        </div>
+
+        <!-- Option 9 -->
+        <div class="option-wrapper">
+            <div class="option-label">9. أفقي (Horizontal)</div>
+            <div class="certificate opt-9">
+                <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                <div class="text-content">
+                    <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                    <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option 10 -->
+        <div class="option-wrapper">
+            <div class="option-label">10. نيون (Cyberpunk)</div>
+            <div class="certificate opt-10">
+                <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+            </div>
+        </div>
+
+        <!-- Option 11 -->
+        <div class="option-wrapper">
+            <div class="option-label">11. عضوي (Organic)</div>
+            <div class="certificate opt-11">
+                <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+            </div>
+        </div>
+
+        <!-- Option 12 -->
+        <div class="option-wrapper">
+            <div class="option-label">12. طباعة (Typography)</div>
+            <div class="certificate opt-12">
+                <img src="./logo.png" onerror="this.src='./widgets/logo.png'" alt="شعار" class="cert-logo">
+                <h3 class="cert-title">شهادة توثيق التقييمات</h3>
+                <p class="cert-subtitle">جميع تقييمات هذا المتجر مدققة من منصة "ثقة" لضمان المصداقية</p>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

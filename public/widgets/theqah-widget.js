@@ -320,6 +320,15 @@
     // Check if certificate already exists
     if (document.querySelector('.theqah-certificate-badge')) return null;
 
+    // Inject Cairo Font if not present
+    if (!document.getElementById('theqah-font-cairo')) {
+      const link = document.createElement('link');
+      link.id = 'theqah-font-cairo';
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap';
+      document.head.appendChild(link);
+    }
+
     const isArabic = lang === 'ar';
     const isDark = theme === 'dark';
 
@@ -327,53 +336,37 @@
       ? 'شهادة توثيق التقييمات'
       : 'Verified Reviews Certificate';
 
+    // Updated subtitle as per user request (referencing "Verified Buyer Third Party")
     const subtitle = isArabic
       ? 'جميع تقييمات هذا المتجر مدققة من مشتري موثق "طرف ثالث" لضمان المصداقية'
-      : 'All store reviews are audited by Mushtari Mowthaq (Third Party) to ensure credibility';
+      : 'All store reviews are audited by verified buyer "Third Party" to ensure credibility';
 
-    // Create the certificate container
+    // Create the certificate container (Option 6: Transparent, No Border)
     const container = h('div', {
       class: 'theqah-certificate-badge',
       style: `
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Noto Sans, Arial, sans-serif;
+        font-family: 'Cairo', system-ui, -apple-system, sans-serif;
         direction: ${isArabic ? 'rtl' : 'ltr'};
         text-align: center;
-        background: ${isDark
-          ? 'linear-gradient(135deg, #0f1629 0%, #1e293b 100%)'
-          : 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)'};
-        border: 2px solid ${isDark ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.4)'};
+        background: transparent;
+        border: none;
         border-radius: 16px;
         padding: 24px;
         margin: 20px auto;
         max-width: 500px;
-        box-shadow: ${isDark
-          ? '0 10px 25px -5px rgba(0, 0, 0, 0.4)'
-          : '0 10px 25px -5px rgba(34, 197, 94, 0.15)'};
         position: relative;
-        overflow: hidden;
+        overflow: visible;
       `
     });
 
-    // Add decorative top border
-    container.innerHTML = `
-      <div style="
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #22c55e, #16a34a, #22c55e);
-      "></div>
-    `;
-
-    // Create logo with link
+    // Create logo with link (Option 6: Large, Drop Shadow)
     const logoLink = h('a', {
       href: 'https://theqah.com.sa?ref=certificate',
       target: '_blank',
       rel: 'noopener noreferrer',
       style: `
         display: inline-block;
-        margin-bottom: 16px;
+        margin-bottom: 20px;
         transition: transform 0.2s ease;
       `
     });
@@ -382,9 +375,11 @@
       src: CERTIFICATE_LOGO_URL,
       alt: isArabic ? 'مشتري موثق' : 'Mushtari Mowthaq',
       style: `
-        width: 72px;
-        height: 72px;
+        width: 150px;
+        height: 150px;
+        object-fit: contain;
         background: transparent;
+        filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5));
       `
     });
 
@@ -392,22 +387,28 @@
     logoLink.onmouseover = function () { this.style.transform = 'scale(1.05)'; };
     logoLink.onmouseout = function () { this.style.transform = 'scale(1)'; };
 
-    // Create title
+    // Create title (Option 6: Gradient, Extra Bold)
     const titleEl = h('h3', {
       style: `
-        font-size: 20px;
-        font-weight: 700;
-        color: ${isDark ? '#22c55e' : '#15803d'};
+        font-size: 28px;
+        font-weight: 900;
         margin: 0 0 12px 0;
-        line-height: 1.4;
+        line-height: 1.3;
+        background: linear-gradient(to left, #10b981, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        color: #10b981; /* Fallback */
+        display: inline-block;
       `
     }, title);
 
     // Create subtitle
     const subtitleEl = h('p', {
       style: `
-        font-size: 14px;
-        color: ${isDark ? '#94a3b8' : '#64748b'};
+        font-size: 15px;
+        font-weight: 600;
+        color: ${isDark ? '#94a3b8' : '#4b5563'};
         margin: 0;
         line-height: 1.6;
         max-width: 400px;
