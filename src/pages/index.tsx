@@ -294,30 +294,7 @@ export default function LandingPage() {
 
 
 
-        {/* Stats Section */}
-        <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-bold text-green-900 text-center mb-10 sm:mb-12">
-              الثقة في الأرقام
-            </h2>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="text-center bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 sm:p-8 border border-green-100">
-                <div className="text-3xl sm:text-4xl md:text-5xl font-black text-green-700 mb-2">
-                  {storesCount.toLocaleString()}+
-                </div>
-                <div className="text-green-800 font-semibold">متجر يثق بنا</div>
-                <p className="text-green-600/70 text-sm mt-1">من جميع أنحاء المملكة</p>
-              </div>
-              <div className="text-center bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 sm:p-8 border border-green-100">
-                <div className="text-3xl sm:text-4xl md:text-5xl font-black text-green-700 mb-2">
-                  {reviewsCount.toLocaleString()}+
-                </div>
-                <div className="text-green-800 font-semibold">تقييم موثّق</div>
-                <p className="text-green-600/70 text-sm mt-1">تقييمات حقيقية</p>
-              </div>
-            </div>
-          </div>
-        </section>
+
 
         {/* CTA Section */}
         <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white text-center">
