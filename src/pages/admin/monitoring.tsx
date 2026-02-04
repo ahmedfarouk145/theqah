@@ -46,7 +46,7 @@ const AdminMonitoringDashboard: NextPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<"24h" | "7d" | "30d">("24h");
   const refreshInterval = 30000; // 30 seconds
-  
+
   const [summary, setSummary] = useState<MetricsSummary | null>(null);
   const [topEndpoints, setTopEndpoints] = useState<EndpointStats[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -81,7 +81,7 @@ const AdminMonitoringDashboard: NextPage = () => {
       }
 
       const data = await response.json();
-      
+
       setSummary(data.summary);
       setTopEndpoints(data.topEndpoints || []);
       setAlerts(data.alerts || []);
@@ -182,18 +182,17 @@ const AdminMonitoringDashboard: NextPage = () => {
         {/* Health Status */}
         {realtime && (
           <div
-            className={`mb-6 p-4 rounded-lg border ${
-              realtime.health.status === "healthy"
-                ? "bg-green-50 border-green-200"
-                : realtime.health.status === "warning"
+            className={`mb-6 p-4 rounded-lg border ${realtime.health.status === "healthy"
+              ? "bg-green-50 border-green-200"
+              : realtime.health.status === "warning"
                 ? "bg-yellow-50 border-yellow-200"
                 : "bg-red-50 border-red-200"
-            }`}
+              }`}
           >
             <div className="flex items-center gap-3">
               <span className="text-2xl">
-                {realtime.health.status === "healthy" ? "✅" : 
-                 realtime.health.status === "warning" ? "⚠️" : "❌"}
+                {realtime.health.status === "healthy" ? "✅" :
+                  realtime.health.status === "warning" ? "⚠️" : "❌"}
               </span>
               <div>
                 <p className="font-semibold">System Status: {realtime.health.status}</p>
@@ -210,13 +209,12 @@ const AdminMonitoringDashboard: NextPage = () => {
             {alerts.map((alert, i) => (
               <div
                 key={i}
-                className={`p-3 rounded border ${
-                  alert.type === "error"
-                    ? "bg-red-50 border-red-300"
-                    : alert.type === "warning"
+                className={`p-3 rounded border ${alert.type === "error"
+                  ? "bg-red-50 border-red-300"
+                  : alert.type === "warning"
                     ? "bg-yellow-50 border-yellow-300"
                     : "bg-blue-50 border-blue-300"
-                }`}
+                  }`}
               >
                 <p className="text-sm font-medium">{alert.message}</p>
               </div>
@@ -230,28 +228,28 @@ const AdminMonitoringDashboard: NextPage = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <p className="text-gray-600 text-sm font-medium">Total Requests</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">
-                {summary.totalRequests.toLocaleString()}
+                {(summary.totalRequests || 0).toLocaleString()}
               </p>
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
               <p className="text-gray-600 text-sm font-medium">Total Errors</p>
               <p className="text-3xl font-bold text-red-600 mt-2">
-                {summary.totalErrors.toLocaleString()}
+                {(summary.totalErrors || 0).toLocaleString()}
               </p>
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
               <p className="text-gray-600 text-sm font-medium">Error Rate</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">
-                {summary.errorRate.toFixed(2)}%
+                {(summary.errorRate || 0).toFixed(2)}%
               </p>
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
               <p className="text-gray-600 text-sm font-medium">Avg Response</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">
-                {Math.round(summary.avgResponseTime)}ms
+                {Math.round(summary.avgResponseTime || 0)}ms
               </p>
             </div>
           </div>
@@ -287,25 +285,25 @@ const AdminMonitoringDashboard: NextPage = () => {
                 {topEndpoints.map((endpoint, i) => (
                   <tr key={i} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-mono text-gray-900">
-                      {endpoint.endpoint}
+                      {endpoint.endpoint || '-'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">
-                      {endpoint.count.toLocaleString()}
+                      {(endpoint.count || 0).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <span
                         className={
-                          endpoint.errors > 0 ? "text-red-600 font-medium" : "text-gray-700"
+                          (endpoint.errors || 0) > 0 ? "text-red-600 font-medium" : "text-gray-700"
                         }
                       >
-                        {endpoint.errors}
+                        {endpoint.errors || 0}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">
-                      {Math.round(endpoint.avgDuration)}ms
+                      {Math.round(endpoint.avgDuration || 0)}ms
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">
-                      {Math.round(endpoint.p95Duration)}ms
+                      {Math.round(endpoint.p95Duration || 0)}ms
                     </td>
                   </tr>
                 ))}
@@ -327,13 +325,12 @@ const AdminMonitoringDashboard: NextPage = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span
-                        className={`text-xs px-2 py-1 rounded font-medium ${
-                          activity.severity === "error"
-                            ? "bg-red-100 text-red-800"
-                            : activity.severity === "warning"
+                        className={`text-xs px-2 py-1 rounded font-medium ${activity.severity === "error"
+                          ? "bg-red-100 text-red-800"
+                          : activity.severity === "warning"
                             ? "bg-yellow-100 text-yellow-800"
                             : "bg-green-100 text-green-800"
-                        }`}
+                          }`}
                       >
                         {activity.type}
                       </span>
