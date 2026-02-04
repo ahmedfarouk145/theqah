@@ -170,10 +170,10 @@ export default function AdminMonitoring() {
             {realtime && (
                 <div
                     className={`p-4 rounded-lg border ${realtime.health.status === 'healthy'
-                            ? 'bg-green-50 border-green-200'
-                            : realtime.health.status === 'warning'
-                                ? 'bg-yellow-50 border-yellow-200'
-                                : 'bg-red-50 border-red-200'
+                        ? 'bg-green-50 border-green-200'
+                        : realtime.health.status === 'warning'
+                            ? 'bg-yellow-50 border-yellow-200'
+                            : 'bg-red-50 border-red-200'
                         }`}
                 >
                     <div className="flex items-center gap-3">
@@ -202,10 +202,10 @@ export default function AdminMonitoring() {
                         <div
                             key={i}
                             className={`p-3 rounded border ${alert.type === 'error'
-                                    ? 'bg-red-50 border-red-300'
-                                    : alert.type === 'warning'
-                                        ? 'bg-yellow-50 border-yellow-300'
-                                        : 'bg-blue-50 border-blue-300'
+                                ? 'bg-red-50 border-red-300'
+                                : alert.type === 'warning'
+                                    ? 'bg-yellow-50 border-yellow-300'
+                                    : 'bg-blue-50 border-blue-300'
                                 }`}
                         >
                             <p className="text-sm font-medium">{alert.message}</p>
@@ -220,28 +220,28 @@ export default function AdminMonitoring() {
                     <div className="bg-gray-50 rounded-lg p-4">
                         <p className="text-gray-600 text-sm font-medium">إجمالي الطلبات</p>
                         <p className="text-2xl font-bold text-gray-900 mt-1">
-                            {summary.totalRequests.toLocaleString()}
+                            {(summary.totalRequests || 0).toLocaleString()}
                         </p>
                     </div>
 
                     <div className="bg-gray-50 rounded-lg p-4">
                         <p className="text-gray-600 text-sm font-medium">إجمالي الأخطاء</p>
                         <p className="text-2xl font-bold text-red-600 mt-1">
-                            {summary.totalErrors.toLocaleString()}
+                            {(summary.totalErrors || 0).toLocaleString()}
                         </p>
                     </div>
 
                     <div className="bg-gray-50 rounded-lg p-4">
                         <p className="text-gray-600 text-sm font-medium">معدل الأخطاء</p>
                         <p className="text-2xl font-bold text-gray-900 mt-1">
-                            {summary.errorRate.toFixed(2)}%
+                            {(summary.errorRate || 0).toFixed(2)}%
                         </p>
                     </div>
 
                     <div className="bg-gray-50 rounded-lg p-4">
                         <p className="text-gray-600 text-sm font-medium">متوسط الاستجابة</p>
                         <p className="text-2xl font-bold text-gray-900 mt-1">
-                            {Math.round(summary.avgResponseTime)}ms
+                            {Math.round(summary.avgResponseTime || 0)}ms
                         </p>
                     </div>
                 </div>
@@ -277,19 +277,19 @@ export default function AdminMonitoring() {
                                         {endpoint.endpoint}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-gray-700">
-                                        {endpoint.count.toLocaleString()}
+                                        {(endpoint.count || 0).toLocaleString()}
                                     </td>
                                     <td className="px-4 py-3 text-sm">
                                         <span
                                             className={
-                                                endpoint.errors > 0 ? 'text-red-600 font-medium' : 'text-gray-700'
+                                                (endpoint.errors || 0) > 0 ? 'text-red-600 font-medium' : 'text-gray-700'
                                             }
                                         >
-                                            {endpoint.errors}
+                                            {endpoint.errors || 0}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-gray-700">
-                                        {Math.round(endpoint.avgDuration)}ms
+                                        {Math.round(endpoint.avgDuration || 0)}ms
                                     </td>
                                 </tr>
                             ))}

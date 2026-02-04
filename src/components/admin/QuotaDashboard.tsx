@@ -178,7 +178,7 @@ export default function QuotaDashboard() {
               <Database className="h-5 w-5 text-muted-foreground" />
             </CardTitle>
             <CardDescription>
-              {status.current.reads.toLocaleString()} / {status.limits.reads.toLocaleString()} today
+              {(status.current?.reads || 0).toLocaleString()} / {(status.limits?.reads || 0).toLocaleString()} today
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -197,7 +197,7 @@ export default function QuotaDashboard() {
               <div className="flex items-center gap-2 text-sm text-orange-600">
                 <TrendingUp className="h-4 w-4" />
                 <span>
-                  Projected: {status.projection.estimatedDailyReads.toLocaleString()} reads today
+                  Projected: {(status.projection?.estimatedDailyReads || 0).toLocaleString()} reads today
                 </span>
               </div>
             )}
@@ -218,7 +218,7 @@ export default function QuotaDashboard() {
               <Database className="h-5 w-5 text-muted-foreground" />
             </CardTitle>
             <CardDescription>
-              {status.current.writes.toLocaleString()} / {status.limits.writes.toLocaleString()} today
+              {(status.current?.writes || 0).toLocaleString()} / {(status.limits?.writes || 0).toLocaleString()} today
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -237,7 +237,7 @@ export default function QuotaDashboard() {
               <div className="flex items-center gap-2 text-sm text-orange-600">
                 <TrendingUp className="h-4 w-4" />
                 <span>
-                  Projected: {status.projection.estimatedDailyWrites.toLocaleString()} writes today
+                  Projected: {(status.projection?.estimatedDailyWrites || 0).toLocaleString()} writes today
                 </span>
               </div>
             )}
@@ -270,8 +270,8 @@ export default function QuotaDashboard() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">{day.date}</span>
                     <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>Reads: {day.reads.toLocaleString()}</span>
-                      <span>Writes: {day.writes.toLocaleString()}</span>
+                      <span>Reads: {(day.reads || 0).toLocaleString()}</span>
+                      <span>Writes: {(day.writes || 0).toLocaleString()}</span>
                     </div>
                   </div>
 
@@ -332,7 +332,7 @@ export default function QuotaDashboard() {
             </div>
 
             <div className="text-xs text-muted-foreground">
-              Last updated: {new Date(status.current.timestamp).toLocaleString()}
+              Last updated: {status.current?.timestamp ? new Date(status.current.timestamp).toLocaleString() : 'N/A'}
             </div>
           </div>
         </CardContent>
@@ -343,7 +343,7 @@ export default function QuotaDashboard() {
         <Alert>
           <AlertTitle>Consider upgrading to Blaze plan</AlertTitle>
           <AlertDescription>
-            Your Firestore usage is approaching free tier limits. 
+            Your Firestore usage is approaching free tier limits.
             Upgrading to the Blaze (pay-as-you-go) plan will prevent service interruptions.
             <br />
             <a
