@@ -13,7 +13,7 @@ const FeedbackWidget = dynamic(() => import('@/components/FeedbackWidget'), {
 });
 
 export default function LandingPage() {
-  const [storesCount, setStoresCount] = useState(300);
+  const [storesCount, setStoresCount] = useState(380);
   const [reviewsCount, setReviewsCount] = useState(5000);
 
   const fetchCounts = async () => {
@@ -21,7 +21,7 @@ export default function LandingPage() {
       const response = await fetch('/api/public/stats');
       if (response.ok) {
         const data = await response.json();
-        setStoresCount((data.stores || 0) + 300);
+        setStoresCount((data.stores || 0) + 380);
         setReviewsCount((data.reviews || 0) + 5000);
       }
     } catch (error) {
