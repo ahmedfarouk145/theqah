@@ -4,7 +4,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
+
 import NavbarLanding from '@/components/NavbarLanding';
 
 const FeedbackWidget = dynamic(() => import('@/components/FeedbackWidget'), {
@@ -13,28 +13,6 @@ const FeedbackWidget = dynamic(() => import('@/components/FeedbackWidget'), {
 });
 
 export default function LandingPage() {
-  const [storesCount, setStoresCount] = useState(380);
-  const [reviewsCount, setReviewsCount] = useState(5000);
-
-  const fetchCounts = async () => {
-    try {
-      const response = await fetch('/api/public/stats');
-      if (response.ok) {
-        const data = await response.json();
-        setStoresCount((data.stores || 0) + 380);
-        setReviewsCount((data.reviews || 0) + 5000);
-      }
-    } catch (error) {
-      console.log('Failed to fetch stats:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchCounts();
-    const interval = setInterval(fetchCounts, 900000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <>
       <NavbarLanding />
@@ -68,11 +46,6 @@ export default function LandingPage() {
 
             </div>
 
-
-
-
-
-
             {/* Headline */}
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-green-900">
               ابنِ الثقة..
@@ -104,7 +77,7 @@ export default function LandingPage() {
 
             {/* Live Stats */}
             <p className="text-green-600 font-semibold text-sm sm:text-base">
-              أكثر من {storesCount.toLocaleString()} متجر و {reviewsCount.toLocaleString()} تقييم موثّق
+              اشترِ وأنت متطمن.. أكثر من 5,000 تقييم تم التحقق من صحته ومطابقته للطلب
             </p>
 
             {/* CTA Buttons */}
@@ -124,11 +97,8 @@ export default function LandingPage() {
           </div>
         </section>
 
-
         {/* لماذا مشتري موثق - Premium Cards */}
         <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
-
-
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12 sm:mb-16">
               <span className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full mb-4">
@@ -291,10 +261,6 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-
-
-
-
 
         {/* CTA Section */}
         <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white text-center">
