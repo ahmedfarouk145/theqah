@@ -185,6 +185,19 @@
     }
   }
 
+  // ——— Fetch and add logos helper ———
+  async function fetchAndAddLogos(storeUid) {
+    try {
+      const productId = extractProductId();
+      const checkResult = await checkVerifiedReviews(storeUid, productId);
+      if (checkResult.hasVerified) {
+        const verifiedIds = checkResult.reviews.map(r => r.sallaReviewId);
+        G.verifiedIds = verifiedIds;
+        addLogosToSallaReviews(verifiedIds);
+      }
+    } catch { /* silent */ }
+  }
+
   // ——— Add logos to Salla reviews ———
   function addLogosToSallaReviews(verifiedIds) {
     if (!verifiedIds || verifiedIds.length === 0) return;
@@ -544,25 +557,25 @@
     // This runs on every mount/update check to handle tab switching
     insertCertificateBadge(store, lang, theme, certificatePosition);
 
-    if (hostEl.getAttribute("data-state") === "done") return;
+    // If already mounted, still try to add logos (reviews tab might have just become visible)
+    if (hostEl.getAttribute("data-state") === "done") {
+      // Re-try logo injection even if already mounted
+      if (G.verifiedIds && G.verifiedIds.length > 0) {
+        addLogosToSallaReviews(G.verifiedIds);
+      } else if (G.storeUid) {
+        // If no verifiedIds cached yet, fetch them now
+        fetchAndAddLogos(G.storeUid);
+      }
+      return;
+    }
     if (hostEl.getAttribute("data-state") === "mounting") return;
     hostEl.setAttribute("data-state", "mounting");
 
+    // Cache storeUid for later re-checks
+    G.storeUid = store;
+
     // ✨ Check for verified reviews
-    const productId = extractProductId();
-    const checkResult = await checkVerifiedReviews(store, productId);
-
-
-
-
-    if (checkResult.hasVerified) {
-      // Has verified reviews - add logos to Salla reviews
-      const verifiedIds = checkResult.reviews.map(r => r.sallaReviewId);
-      // Cache for MutationObserver to re-add after Salla re-renders
-      G.verifiedIds = verifiedIds;
-      addLogosToSallaReviews(verifiedIds);
-
-    }
+    await fetchAndAddLogos(store);
 
     hostEl.setAttribute("data-state", "done");
 
@@ -746,7 +759,7 @@
     setTimeout(safeLaunch, 100);
   }
 
-  // دعم SPA + detect Salla review list changes (sorting/pagination)
+  // دعم SPA + detect Salla review list changes (sorting/pagination/tab switching)
   if (!window.__THEQAH_OBS__ && typeof MutationObserver !== 'undefined') {
     window.__THEQAH_OBS__ = true;
 
@@ -754,6 +767,9 @@
       // Use globally cached verified IDs
       if (G.verifiedIds && G.verifiedIds.length > 0) {
         addLogosToSallaReviews(G.verifiedIds);
+      } else if (G.storeUid) {
+        // If no cached IDs, try fetching them (first time reviews became visible)
+        fetchAndAddLogos(G.storeUid);
       }
     }, 300);
 
@@ -788,6 +804,38 @@
           m.target?.classList?.contains('s-comments-list')) {
           hasSallaReviewChanges = true;
         }
+
+        // Detect attribute changes that indicate tab switching (display, class, aria changes)
+        if (m.type === 'attributes') {
+          const target = m.target;
+          if (target?.nodeType === 1) {
+            const tagName = target.tagName?.toLowerCase();
+            const classList = target.classList;
+            // Check if a reviews-related element became visible
+            if (
+              tagName === 'salla-products-comments' ||
+              classList?.contains('s-comments-list') ||
+              classList?.contains('s-comments') ||
+              target.querySelector?.('salla-comment-item') ||
+              target.querySelector?.('[id^="s-comments-item-"]')
+            ) {
+              hasSallaReviewChanges = true;
+            }
+            // Detect tab panel visibility changes
+            if (
+              m.attributeName === 'class' ||
+              m.attributeName === 'style' ||
+              m.attributeName === 'hidden' ||
+              m.attributeName === 'aria-hidden' ||
+              m.attributeName === 'role'
+            ) {
+              // Check if this element or its children contain review elements
+              if (target.querySelector?.('salla-comment-item, .s-comments-item, [id^="s-comments-item-"]')) {
+                hasSallaReviewChanges = true;
+              }
+            }
+          }
+        }
       }
 
       if (hasRelevantChanges) deb();
@@ -798,7 +846,8 @@
       obs.observe(document.body, {
         childList: true,
         subtree: true,
-        attributes: false,
+        attributes: true,  // Watch attribute changes for tab switches
+        attributeFilter: ['class', 'style', 'hidden', 'aria-hidden', 'aria-selected'],
         characterData: false
       });
 
@@ -806,7 +855,7 @@
       setTimeout(() => {
         obs.disconnect();
         window.__THEQAH_OBS__ = false;
-      }, 120000); // Extended to 2 minutes
+      }, 300000); // Extended to 5 minutes
     } catch {
       // Silent fail
     }
@@ -816,6 +865,27 @@
       document.addEventListener('salla::comments::loaded', () => reAddLogos());
       document.addEventListener('salla::comments::sorted', () => reAddLogos());
       document.addEventListener('salla::comments::paginated', () => reAddLogos());
+    } catch {
+      // Silent fail
+    }
+
+    // Listen for clicks on tab buttons (common in Salla themes)
+    try {
+      document.addEventListener('click', (e) => {
+        const target = e.target?.closest?.('[role="tab"], .tab, .tabs__item, .nav-link, [data-tab], [data-toggle="tab"]');
+        if (!target) return;
+        const text = (target.textContent || '').trim();
+        // Check if this is a reviews/ratings tab
+        if (/تقييم|التقييمات|reviews?|ratings?|comments?/i.test(text) ||
+          target.getAttribute('data-tab')?.includes('comment') ||
+          target.getAttribute('data-tab')?.includes('review') ||
+          target.getAttribute('href')?.includes('comment') ||
+          target.getAttribute('href')?.includes('review')) {
+          // Delay to let the tab content render
+          setTimeout(() => reAddLogos(), 500);
+          setTimeout(() => reAddLogos(), 1500);
+        }
+      }, true);
     } catch {
       // Silent fail
     }

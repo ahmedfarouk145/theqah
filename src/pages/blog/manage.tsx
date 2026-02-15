@@ -1,0 +1,467 @@
+// src/pages/blog/manage.tsx
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import Head from 'next/head';
+import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import axios from '@/lib/axiosInstance';
+import { Loader2, Plus, Pencil, Trash2, Eye, EyeOff, ArrowRight, Save, X } from 'lucide-react';
+
+const TipTapEditor = dynamic(() => import('@/components/blog/TipTapEditor'), { ssr: false });
+
+const BLOG_OWNER_EMAIL = 'abuyzzn@yahoo.com';
+
+const CATEGORIES = [
+    'نصائح للتجار',
+    'أخبار المنصة',
+    'دليل الاستخدام',
+    'التجارة الإلكترونية',
+    'تقييمات وثقة',
+];
+
+interface BlogPost {
+    id: string;
+    slug: string;
+    title: string;
+    excerpt: string;
+    content: string;
+    coverImage?: string | null;
+    author: string;
+    category: string;
+    tags: string[];
+    status: 'draft' | 'published';
+    publishedAt?: unknown;
+    createdAt?: unknown;
+    viewCount: number;
+}
+
+type View = 'list' | 'edit';
+
+export default function BlogManage() {
+    const { user, loading: authLoading } = useAuth();
+    const [view, setView] = useState<View>('list');
+    const [posts, setPosts] = useState<BlogPost[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+
+    // Form state
+    const [title, setTitle] = useState('');
+    const [excerpt, setExcerpt] = useState('');
+    const [content, setContent] = useState('');
+    const [category, setCategory] = useState(CATEGORIES[0]);
+    const [tagsStr, setTagsStr] = useState('');
+    const [author, setAuthor] = useState('فريق ثقة');
+    const [coverImage, setCoverImage] = useState('');
+    const [seoTitle, setSeoTitle] = useState('');
+    const [seoDescription, setSeoDescription] = useState('');
+
+    const isOwner = user?.email?.toLowerCase() === BLOG_OWNER_EMAIL.toLowerCase();
+
+    const getToken = useCallback(async () => {
+        if (!user) return '';
+        return user.getIdToken(true);
+    }, [user]);
+
+    const fetchPosts = useCallback(async () => {
+        setLoading(true);
+        try {
+            const token = await getToken();
+            const res = await axios.get('/api/blog', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setPosts(res.data.posts || []);
+        } catch {
+            setPosts([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [getToken]);
+
+    useEffect(() => {
+        if (isOwner) fetchPosts();
+    }, [isOwner, fetchPosts]);
+
+    const resetForm = () => {
+        setTitle('');
+        setExcerpt('');
+        setContent('');
+        setCategory(CATEGORIES[0]);
+        setTagsStr('');
+        setAuthor('فريق ثقة');
+        setCoverImage('');
+        setSeoTitle('');
+        setSeoDescription('');
+        setEditingPost(null);
+    };
+
+    const startNew = () => {
+        resetForm();
+        setView('edit');
+    };
+
+    const startEdit = (post: BlogPost) => {
+        setTitle(post.title);
+        setExcerpt(post.excerpt);
+        setContent(post.content);
+        setCategory(post.category);
+        setTagsStr((post.tags || []).join('، '));
+        setAuthor(post.author);
+        setCoverImage(post.coverImage || '');
+        setSeoTitle('');
+        setSeoDescription('');
+        setEditingPost(post);
+        setView('edit');
+    };
+
+    const savePost = async (status: 'draft' | 'published') => {
+        if (!title.trim() || !content.trim()) {
+            alert('العنوان والمحتوى مطلوبان');
+            return;
+        }
+        setSaving(true);
+        try {
+            const token = await getToken();
+            const tags = tagsStr.split(/[,،]/).map((t) => t.trim()).filter(Boolean);
+            const payload = { title, excerpt, content, category, tags, author, coverImage: coverImage || null, status, seoTitle, seoDescription };
+
+            if (editingPost) {
+                await axios.put(`/api/blog/${editingPost.id}`, payload, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+            } else {
+                await axios.post('/api/blog', payload, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+            }
+
+            await fetchPosts();
+            setView('list');
+            resetForm();
+        } catch (err) {
+            alert('خطأ في الحفظ');
+            console.error(err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const deletePost = async (id: string) => {
+        if (!confirm('هل أنت متأكد من حذف هذه المقالة؟')) return;
+        try {
+            const token = await getToken();
+            await axios.delete(`/api/blog/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            await fetchPosts();
+        } catch { alert('خطأ في الحذف'); }
+    };
+
+    const togglePublish = async (post: BlogPost) => {
+        const newStatus = post.status === 'published' ? 'draft' : 'published';
+        try {
+            const token = await getToken();
+            await axios.put(`/api/blog/${post.id}`, { status: newStatus }, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            await fetchPosts();
+        } catch { alert('خطأ في تغيير الحالة'); }
+    };
+
+    // Auth Loading
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+            </div>
+        );
+    }
+
+    // Not logged in or not owner
+    if (!user || !isOwner) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir="rtl">
+                <div className="max-w-md w-full bg-white border rounded-2xl p-8 shadow-lg text-center">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <EyeOff className="h-8 w-8 text-red-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">غير مصرح</h2>
+                    <p className="text-gray-600 mb-6">هذه الصفحة متاحة فقط لصاحب المدونة.</p>
+                    <Link href="/login" className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                        تسجيل الدخول
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <Head>
+                <title>إدارة المدونة | مشتري موثّق</title>
+                <meta name="robots" content="noindex, nofollow" />
+            </Head>
+
+            <div className="min-h-screen bg-gray-50" dir="rtl">
+                {/* Header */}
+                <header className="bg-white border-b shadow-sm sticky top-0 z-30">
+                    <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Link href="/blog" className="text-gray-400 hover:text-green-700 transition">
+                                <ArrowRight className="w-5 h-5" />
+                            </Link>
+                            <h1 className="text-xl font-bold text-green-800">إدارة المدونة</h1>
+                        </div>
+                        {view === 'list' && (
+                            <button
+                                onClick={startNew}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition font-medium text-sm"
+                            >
+                                <Plus className="w-4 h-4" />
+                                مقالة جديدة
+                            </button>
+                        )}
+                    </div>
+                </header>
+
+                <div className="max-w-6xl mx-auto px-4 py-8">
+
+                    {/* LIST VIEW */}
+                    {view === 'list' && (
+                        <>
+                            {loading ? (
+                                <div className="flex justify-center py-20">
+                                    <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+                                </div>
+                            ) : posts.length === 0 ? (
+                                <div className="text-center py-20">
+                                    <div className="text-6xl mb-4">📝</div>
+                                    <p className="text-xl text-gray-500 mb-4">لا توجد مقالات بعد</p>
+                                    <button
+                                        onClick={startNew}
+                                        className="px-6 py-3 bg-green-700 text-white rounded-lg hover:bg-green-800 transition font-medium"
+                                    >
+                                        أنشئ أول مقالة
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {posts.map((post) => (
+                                        <div key={post.id} className="bg-white rounded-xl border p-4 flex items-center justify-between hover:shadow-md transition">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h3 className="font-bold text-gray-900 truncate">{post.title}</h3>
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${post.status === 'published'
+                                                        ? 'bg-green-100 text-green-700'
+                                                        : 'bg-yellow-100 text-yellow-700'}`}>
+                                                        {post.status === 'published' ? 'منشور' : 'مسودة'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-gray-500 truncate">{post.excerpt || 'بدون ملخص'}</p>
+                                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                                                    <span>{post.category}</span>
+                                                    <span>·</span>
+                                                    <span>{post.viewCount || 0} مشاهدة</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 mr-4">
+                                                <button
+                                                    onClick={() => togglePublish(post)}
+                                                    className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-500 hover:text-green-700"
+                                                    title={post.status === 'published' ? 'إلغاء النشر' : 'نشر'}
+                                                >
+                                                    {post.status === 'published' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+                                                <button
+                                                    onClick={() => startEdit(post)}
+                                                    className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-500 hover:text-blue-600"
+                                                    title="تعديل"
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => deletePost(post.id)}
+                                                    className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-500 hover:text-red-600"
+                                                    title="حذف"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                                {post.status === 'published' && (
+                                                    <Link
+                                                        href={`/blog/${post.slug}`}
+                                                        target="_blank"
+                                                        className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-500 hover:text-green-600"
+                                                        title="عرض"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </Link>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* EDIT VIEW */}
+                    {view === 'edit' && (
+                        <div className="space-y-6">
+                            {/* Back */}
+                            <button
+                                onClick={() => { setView('list'); resetForm(); }}
+                                className="flex items-center gap-2 text-gray-500 hover:text-green-700 transition text-sm"
+                            >
+                                <ArrowRight className="w-4 h-4" />
+                                العودة للقائمة
+                            </button>
+
+                            <h2 className="text-2xl font-bold text-gray-900">
+                                {editingPost ? 'تعديل المقالة' : 'مقالة جديدة'}
+                            </h2>
+
+                            {/* Title */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">العنوان *</label>
+                                <input
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
+                                    placeholder="عنوان المقالة..."
+                                />
+                            </div>
+
+                            {/* Excerpt */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">الملخص</label>
+                                <textarea
+                                    value={excerpt}
+                                    onChange={(e) => setExcerpt(e.target.value)}
+                                    rows={2}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    placeholder="ملخص قصير يظهر في قائمة المقالات..."
+                                />
+                            </div>
+
+                            {/* Content - TipTap Editor */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">المحتوى *</label>
+                                <TipTapEditor content={content} onChange={setContent} />
+                            </div>
+
+                            {/* Category + Tags row */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="blog-category" className="block text-sm font-medium text-gray-700 mb-1">التصنيف</label>
+                                    <select
+                                        id="blog-category"
+                                        title="اختيار التصنيف"
+                                        value={category}
+                                        onChange={(e) => setCategory(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
+                                    >
+                                        {CATEGORIES.map((c) => (
+                                            <option key={c} value={c}>{c}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">الوسوم (مفصولة بفاصلة)</label>
+                                    <input
+                                        type="text"
+                                        value={tagsStr}
+                                        onChange={(e) => setTagsStr(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
+                                        placeholder="متاجر، تقييمات، ثقة"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Author + Cover Image */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="blog-author" className="block text-sm font-medium text-gray-700 mb-1">اسم الكاتب</label>
+                                    <input
+                                        id="blog-author"
+                                        type="text"
+                                        value={author}
+                                        onChange={(e) => setAuthor(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
+                                        placeholder="اسم الكاتب"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">رابط صورة الغلاف</label>
+                                    <input
+                                        type="text"
+                                        value={coverImage}
+                                        onChange={(e) => setCoverImage(e.target.value)}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
+                                        placeholder="https://..."
+                                    />
+                                </div>
+                            </div>
+
+                            {/* SEO (collapsible) */}
+                            <details className="bg-gray-50 rounded-xl p-4 border">
+                                <summary className="cursor-pointer font-medium text-gray-700 text-sm">إعدادات SEO (اختياري)</summary>
+                                <div className="space-y-3 mt-4">
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">عنوان SEO</label>
+                                        <input
+                                            type="text"
+                                            value={seoTitle}
+                                            onChange={(e) => setSeoTitle(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                            placeholder="عنوان مخصص لمحركات البحث"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">وصف SEO</label>
+                                        <textarea
+                                            value={seoDescription}
+                                            onChange={(e) => setSeoDescription(e.target.value)}
+                                            rows={2}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                            placeholder="وصف مخصص لمحركات البحث"
+                                        />
+                                    </div>
+                                </div>
+                            </details>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-3 pt-4 border-t">
+                                <button
+                                    onClick={() => savePost('published')}
+                                    disabled={saving}
+                                    className="flex items-center gap-2 px-6 py-3 bg-green-700 text-white rounded-xl hover:bg-green-800 transition font-medium disabled:opacity-50"
+                                >
+                                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                                    نشر
+                                </button>
+                                <button
+                                    onClick={() => savePost('draft')}
+                                    disabled={saving}
+                                    className="flex items-center gap-2 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition font-medium disabled:opacity-50"
+                                >
+                                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    حفظ كمسودة
+                                </button>
+                                <button
+                                    onClick={() => { setView('list'); resetForm(); }}
+                                    className="flex items-center gap-2 px-6 py-3 text-gray-500 hover:text-gray-700 transition"
+                                >
+                                    <X className="w-4 h-4" />
+                                    إلغاء
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </>
+    );
+}
