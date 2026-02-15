@@ -22,7 +22,7 @@ export default async function handler(
   // Verify cron authorization
   const authHeader = req.headers.authorization;
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    throw new UnauthorizedError("Invalid cron authorization");
+    return res.status(401).json({ error: "Invalid cron authorization" });
   }
 
   try {
