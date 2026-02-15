@@ -24,7 +24,7 @@ export class OrderRepository extends BaseRepository<Order> {
     async findByStoreUid(storeUid: string): Promise<Order[]> {
         return this.query()
             .where('storeUid', '==', storeUid)
-            .orderBy('updatedAt', 'desc')
+            .orderBy('createdAt', 'desc')
             .getAll();
     }
 

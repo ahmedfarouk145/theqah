@@ -74,7 +74,7 @@ export default function PrivacyPolicyPage() {
 
       <footer className="bg-green-100 py-6 text-center text-sm text-green-900 border-t border-green-200">
         <p>© 2026 مشتري موثّق - جميع الحقوق محفوظة</p>
-        <p className="mt-1">النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية</p>
+        <a href="https://drive.google.com/file/d/1HTVS6PJeV5p9jOHFWq_8Kc_VC-gpQZVg/view?usp=drivesdk" target="_blank" rel="noopener noreferrer" className="mt-1 block hover:underline">النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية</a>
       </footer>
     </main>
   );

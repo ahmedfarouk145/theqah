@@ -292,7 +292,7 @@ export default function BlogPostPage({ post, related }: Props) {
             </main>
 
             <footer className="bg-white dark:bg-gray-900 border-t dark:border-gray-800 py-6 text-center text-sm text-gray-500" dir="rtl">
-                <p>النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية</p>
+                <a href="https://drive.google.com/file/d/1HTVS6PJeV5p9jOHFWq_8Kc_VC-gpQZVg/view?usp=drivesdk" target="_blank" rel="noopener noreferrer" className="hover:text-green-700 transition-colors">النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية</a>
                 <p className="mt-1">© {new Date().getFullYear()} مشتري موثّق. جميع الحقوق محفوظة.</p>
             </footer>
         </>

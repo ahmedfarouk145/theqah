@@ -276,7 +276,8 @@ export default function LandingPage() {
         </section>
 
         {/* Footer */}
-        <footer className="bg-white py-10 text-gray-800 border-t border-gray-200">
+        {/* Footer */}
+        <footer className="bg-white py-10 pb-28 text-gray-800 border-t border-gray-200">
           <div className="max-w-5xl mx-auto px-4 text-center space-y-6">
             <div className="flex items-center justify-center gap-3">
               <Image src="/logo.png" alt="مشتري موثّق" width={45} height={45} loading="lazy" />
@@ -301,7 +302,9 @@ export default function LandingPage() {
 
             <div className="text-xs text-gray-500 pt-4 border-t border-gray-100">
               <p>© {new Date().getFullYear()} مُشتري موثّق. جميع الحقوق محفوظة.</p>
-              <p className="mt-1">النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية</p>
+              <a href="https://drive.google.com/file/d/1HTVS6PJeV5p9jOHFWq_8Kc_VC-gpQZVg/view?usp=drivesdk" target="_blank" rel="noopener noreferrer" className="mt-1 block hover:text-green-700 transition-colors">
+                النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية
+              </a>
             </div>
           </div>
         </footer>

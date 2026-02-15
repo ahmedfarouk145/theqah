@@ -62,6 +62,7 @@ export class ReviewRepository extends BaseRepository<Review> {
         await this.update(reviewId, {
             sallaReviewId,
             needsSallaId: false,
+            verified: true,
             backfilledAt: new Date().toISOString(),
         } as Partial<Review>);
     }
