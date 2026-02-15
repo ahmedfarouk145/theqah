@@ -24,22 +24,22 @@ export default async function handler(
 
   // Debug: Log received body
   console.log('[FETCH_REVIEW_ID] Received body:', JSON.stringify(req.body));
-  
+
   const { reviewDocId, merchantId, orderId } = req.body;
 
   console.log('[FETCH_REVIEW_ID] Parsed params:', { reviewDocId, merchantId, orderId });
 
   if (!reviewDocId || !merchantId || !orderId) {
     console.error('[FETCH_REVIEW_ID] Missing params:', { reviewDocId, merchantId, orderId });
-    return res.status(400).json({ 
-      error: 'Missing required fields: reviewDocId, merchantId, orderId' 
+    return res.status(400).json({
+      error: 'Missing required fields: reviewDocId, merchantId, orderId'
     });
   }
 
   // Fire-and-forget: Return 202 immediately
-  res.status(202).json({ 
+  res.status(202).json({
     message: 'Job accepted, processing in background',
-    reviewDocId 
+    reviewDocId
   });
 
   // Continue processing in background
@@ -57,11 +57,11 @@ async function processReviewIdFetch(
   orderId: string | number
 ) {
   console.log('[PROCESS] Starting with params:', { reviewDocId, merchantId, orderId });
-  
+
   // Convert to strings for consistency
   const merchantIdStr = String(merchantId);
   const orderIdStr = String(orderId);
-  
+
   const db = getDb();
   const retryDelays = [5000, 10000, 15000]; // 5s, 10s, 15s
   let lastError: Error | null = null;
@@ -75,7 +75,7 @@ async function processReviewIdFetch(
       }
 
       console.log(`[PROCESS] Attempt ${attempt + 1}: Fetching merchant ${merchantIdStr}`);
-      
+
       // Fetch merchant's access token from owners collection
       const storeUid = `salla:${merchantIdStr}`;
       const ownerDoc = await db.collection('owners').doc(storeUid).get();
@@ -121,11 +121,12 @@ async function processReviewIdFetch(
       }
 
       console.log(`[PROCESS] Found matching review, updating Firestore doc: ${reviewDocId}`);
-      
+
       // Success! Update Firestore with sallaReviewId
       await db.collection('reviews').doc(reviewDocId).update({
         sallaReviewId: matchingReview.id,
         needsSallaId: false,
+        verified: true,
         fetchedAt: new Date().toISOString(),
         fetchAttempts: attempt + 1,
       });
@@ -137,7 +138,7 @@ async function processReviewIdFetch(
       lastError = error as Error;
       console.error(`Attempt ${attempt + 1} failed:`, error);
       console.error(`[PROCESS] Error details - reviewDocId: "${reviewDocId}", type: ${typeof reviewDocId}`);
-      
+
       // If this is the last attempt, mark as failed
       if (attempt === retryDelays.length - 1) {
         console.log(`[PROCESS] Final attempt failed, marking doc as failed: ${reviewDocId}`);
