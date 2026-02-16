@@ -26,23 +26,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         const db = getDb();
 
-        // Get access token
-        const ownerDoc = await db.collection('owners').doc(storeUid).get();
-        if (!ownerDoc.exists) {
-            return res.status(404).json({ error: `Owner not found: ${storeUid}` });
-        }
-
-        const ownerData = ownerDoc.data();
-        let accessToken = ownerData?.oauth?.access_token;
+        // Get access token using the token service (handles refresh too)
+        const { sallaTokenService } = await import('@/server/services/salla-token.service');
+        const accessToken = await sallaTokenService.getValidAccessToken(storeUid);
 
         if (!accessToken) {
-            // Try token refresh
-            const { sallaTokenService } = await import('@/server/services/salla-token.service');
-            accessToken = await sallaTokenService.getValidAccessToken(storeUid);
-        }
-
-        if (!accessToken) {
-            return res.status(500).json({ error: 'No valid access token' });
+            return res.status(500).json({ error: `No valid access token for ${storeUid}` });
         }
 
         // Fetch reviews from Salla API
