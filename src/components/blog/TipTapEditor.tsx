@@ -6,7 +6,9 @@ import StarterKit from '@tiptap/starter-kit';
 import ImageExtension from '@tiptap/extension-image';
 import LinkExtension from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
 
 interface Props {
     content: string;
@@ -14,6 +16,9 @@ interface Props {
 }
 
 export default function TipTapEditor({ content, onChange }: Props) {
+    const [uploading, setUploading] = useState(false);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+
     const editor = useEditor({
         extensions: [
             StarterKit.configure({
@@ -53,9 +58,30 @@ export default function TipTapEditor({ content, onChange }: Props) {
     if (!editor) return null;
 
     const addImage = () => {
-        const url = prompt('أدخل رابط الصورة:');
-        if (url) {
+        imageInputRef.current?.click();
+    };
+
+    const handleImageUpload = async (file: File) => {
+        if (!file.type.startsWith('image/')) {
+            alert('يرجى اختيار ملف صورة');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            alert('حجم الصورة يجب أن يكون أقل من 5 ميجابايت');
+            return;
+        }
+        setUploading(true);
+        try {
+            const ext = file.name.split('.').pop() || 'jpg';
+            const storageRef = ref(storage, `blog/content/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`);
+            await uploadBytes(storageRef, file, { contentType: file.type });
+            const url = await getDownloadURL(storageRef);
             editor.chain().focus().setImage({ src: url }).run();
+        } catch (err) {
+            console.error('Image upload error:', err);
+            alert('خطأ في رفع الصورة');
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -67,7 +93,29 @@ export default function TipTapEditor({ content, onChange }: Props) {
     };
 
     return (
-        <div className="border border-gray-300 rounded-xl overflow-hidden bg-white">
+        <div className="border border-gray-300 rounded-xl overflow-hidden bg-white relative">
+            {/* Hidden file input for image upload */}
+            <input
+                type="file"
+                ref={imageInputRef}
+                accept="image/*"
+                className="hidden"
+                aria-label="رفع صورة"
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(file);
+                    e.target.value = '';
+                }}
+            />
+
+            {/* Uploading overlay */}
+            {uploading && (
+                <div className="absolute inset-0 bg-white/70 z-20 flex items-center justify-center gap-2 rounded-xl">
+                    <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm text-green-700 font-medium">جاري رفع الصورة...</span>
+                </div>
+            )}
+
             {/* Toolbar */}
             <div className="flex flex-wrap items-center gap-1 px-3 py-2 bg-gray-50 border-b border-gray-200">
                 <ToolbarBtn
@@ -132,7 +180,7 @@ export default function TipTapEditor({ content, onChange }: Props) {
                 <ToolbarBtn active={false} onClick={addLink} title="رابط">
                     🔗
                 </ToolbarBtn>
-                <ToolbarBtn active={false} onClick={addImage} title="صورة">
+                <ToolbarBtn active={false} onClick={addImage} title="رفع صورة">
                     🖼️
                 </ToolbarBtn>
 

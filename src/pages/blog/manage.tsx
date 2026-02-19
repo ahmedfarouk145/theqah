@@ -1,13 +1,15 @@
 // src/pages/blog/manage.tsx
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import axios from '@/lib/axiosInstance';
-import { Loader2, Plus, Pencil, Trash2, Eye, EyeOff, ArrowRight, Save, X } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, Eye, EyeOff, ArrowRight, Save, X, Upload } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
 
 const TipTapEditor = dynamic(() => import('@/components/blog/TipTapEditor'), { ssr: false });
 
@@ -55,8 +57,34 @@ export default function BlogManage() {
     const [tagsStr, setTagsStr] = useState('');
     const [author, setAuthor] = useState('فريق ثقة');
     const [coverImage, setCoverImage] = useState('');
+    const [uploadingCover, setUploadingCover] = useState(false);
     const [seoTitle, setSeoTitle] = useState('');
     const [seoDescription, setSeoDescription] = useState('');
+    const coverInputRef = useRef<HTMLInputElement>(null);
+
+    const handleCoverUpload = async (file: File) => {
+        if (!file.type.startsWith('image/')) {
+            alert('يرجى اختيار ملف صورة');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            alert('حجم الصورة يجب أن يكون أقل من 5 ميجابايت');
+            return;
+        }
+        setUploadingCover(true);
+        try {
+            const ext = file.name.split('.').pop() || 'jpg';
+            const storageRef = ref(storage, `blog/covers/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`);
+            await uploadBytes(storageRef, file, { contentType: file.type });
+            const url = await getDownloadURL(storageRef);
+            setCoverImage(url);
+        } catch (err) {
+            console.error('Cover upload error:', err);
+            alert('خطأ في رفع الصورة');
+        } finally {
+            setUploadingCover(false);
+        }
+    };
 
     const isOwner = user?.email?.toLowerCase() === BLOG_OWNER_EMAIL.toLowerCase();
 
@@ -394,14 +422,66 @@ export default function BlogManage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">رابط صورة الغلاف</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">صورة الغلاف</label>
                                     <input
-                                        type="text"
-                                        value={coverImage}
-                                        onChange={(e) => setCoverImage(e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
-                                        placeholder="https://..."
+                                        type="file"
+                                        ref={coverInputRef}
+                                        accept="image/*"
+                                        className="hidden"
+                                        aria-label="رفع صورة الغلاف"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleCoverUpload(file);
+                                            e.target.value = '';
+                                        }}
                                     />
+                                    {coverImage ? (
+                                        <div className="relative group">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={coverImage}
+                                                alt="صورة الغلاف"
+                                                className="w-full h-40 object-cover rounded-xl border border-gray-300"
+                                            />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition rounded-xl flex items-center justify-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => coverInputRef.current?.click()}
+                                                    className="px-3 py-1.5 bg-white text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-100 transition"
+                                                    disabled={uploadingCover}
+                                                >
+                                                    تغيير
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCoverImage('')}
+                                                    className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition"
+                                                >
+                                                    حذف
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => coverInputRef.current?.click()}
+                                            disabled={uploadingCover}
+                                            className="w-full h-40 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-green-500 hover:text-green-600 transition cursor-pointer disabled:opacity-50"
+                                        >
+                                            {uploadingCover ? (
+                                                <>
+                                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                                    <span className="text-sm">جاري الرفع...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Upload className="w-6 h-6" />
+                                                    <span className="text-sm">اضغط لرفع صورة الغلاف</span>
+                                                    <span className="text-xs text-gray-300">JPG, PNG, WebP — حتى 5 ميجا</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 

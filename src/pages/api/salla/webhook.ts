@@ -5,6 +5,7 @@ import { fetchStoreInfo, fetchUserInfo, getOwnerAccessToken } from "@/lib/sallaC
 import { sendPasswordSetupEmail } from "@/server/auth/send-password-email";
 import { trackWebhook } from "@/server/monitoring/metrics";
 import { SallaWebhookService } from "@/server/services/salla-webhook.service";
+import { sendEmailDmail } from "@/server/messaging/email-dmail";
 
 // Extracted types and utilities
 import type { Dict, SallaOrder, SallaWebhookBody } from "@/server/types/salla-webhook.types";
@@ -172,7 +173,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 await sallaService.saveDomainWithFlags(storeUidFromEvent, merchantId, fetchedDomain, event);
                 await sallaService.saveDomainVariations(storeUidFromEvent, fetchedDomain);
                 await fbLog(db, { level: "info", scope: "domain", msg: "fetched and saved domain via service", event, idemKey, merchant: merchantId, orderId, meta: { domain: fetchedDomain, storeUid: storeUidFromEvent } });
-                return; // Exit early after successful fetch
+                // FIX: Removed premature return that was skipping OAuth/userinfo/email sending
               }
             }
           } catch {
@@ -347,7 +348,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }, { merge: true });
             await fbLog(db, { level: "info", scope: "userinfo", msg: "userinfo saved", event, idemKey, merchant: merchantId, orderId, meta: { storeUid } });
 
-            const u = uinfo as Dict;
+            const uRaw = uinfo as Dict;
+            // FIX: Salla API wraps response in { data: {...}, status, success }.
+            // Unwrap the data layer so we can access email, merchant, etc. directly.
+            const u = (typeof uRaw.data === "object" && uRaw.data !== null) ? (uRaw.data as Dict) : uRaw;
 
             // AUTO-DETECT CUSTOM DOMAINS: Check url field in merchant/store objects
             // This captures custom domains like pointstylishes.com
@@ -421,6 +425,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   }).catch((err) => {
                     console.error('[Webhook] Failed to update order stats:', err);
                   });
+                  // Alert developer about failed password email
+                  sendEmailDmail(
+                    "farwqahmd118@gmail.com",
+                    `⚠️ فشل إرسال إيميل كلمة المرور - ${storeName}`,
+                    `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.8">
+                      <h2 style="color:#dc2626">فشل إرسال إيميل تعيين كلمة المرور</h2>
+                      <p><strong>المتجر:</strong> ${storeName} (${storeUid})</p>
+                      <p><strong>الإيميل المستهدف:</strong> ${targetEmail}</p>
+                      <p><strong>السبب:</strong> ${r.error}</p>
+                      <p><strong>الحدث:</strong> ${event}</p>
+                      <p><strong>الوقت:</strong> ${new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })}</p>
+                    </div>`
+                  ).catch(() => { });
                 } else {
                   await fbLog(db, { level: "info", scope: "password_email", msg: "sent ok", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail, source: storeInfoEmail ? "store_info" : infoEmail ? "userinfo" : "payload" } });
                 }
@@ -428,7 +445,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 await fbLog(db, { level: "error", scope: "password_email", msg: "exception during send", event, idemKey, merchant: merchantId, orderId, meta: { storeUid, targetEmail, err: emailErr instanceof Error ? emailErr.message : String(emailErr) } });
               }
             } else {
-              await fbLog(db, { level: "debug", scope: "password_email", msg: "no email found in store_info/userinfo/payload", event, idemKey, merchant: merchantId, orderId });
+              await fbLog(db, { level: "warn", scope: "password_email", msg: "no email found in store_info/userinfo/payload", event, idemKey, merchant: merchantId, orderId });
+              // Alert developer — no email found for new store
+              sendEmailDmail(
+                "farwqahmd118@gmail.com",
+                `⚠️ لم يتم إيجاد إيميل للمتجر الجديد - ${storeUid}`,
+                `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.8">
+                  <h2 style="color:#f59e0b">لم يتم إيجاد إيميل لإرسال كلمة المرور</h2>
+                  <p><strong>المتجر:</strong> ${storeUid}</p>
+                  <p><strong>Merchant ID:</strong> ${merchantId}</p>
+                  <p><strong>الحدث:</strong> ${event}</p>
+                  <p><strong>storeInfoEmail:</strong> ${storeInfoEmail || 'غير موجود'}</p>
+                  <p><strong>infoEmail:</strong> ${infoEmail || 'غير موجود'}</p>
+                  <p><strong>payloadEmail:</strong> ${payloadEmail || 'غير موجود'}</p>
+                  <p><strong>الوقت:</strong> ${new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })}</p>
+                </div>`
+              ).catch(() => { });
             }
           } catch (e) {
             await fbLog(db, { level: "warn", scope: "userinfo", msg: "fetch or processing failed", event, idemKey, merchant: merchantId, orderId, meta: { err: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack?.substring(0, 200) : undefined } });
