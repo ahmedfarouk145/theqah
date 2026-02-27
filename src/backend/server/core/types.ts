@@ -31,6 +31,7 @@ export interface PaginatedResult<T> {
 export interface Review extends EntityBase {
     reviewId: string;
     storeUid: string;
+    platform?: 'salla' | 'zid' | 'manual';
     orderId: string;
     orderNumber: string;
     productId: string;
@@ -49,6 +50,7 @@ export interface Review extends EntityBase {
     publishedAt: number;
     needsSallaId: boolean;
     sallaReviewId?: string;
+    zidReviewId?: string;
     moderation?: {
         flagged: boolean;
         flags: string[];
@@ -77,6 +79,12 @@ export interface Store extends EntityBase {
     provider: string;
     salla?: {
         uid: string;
+        storeId: string;
+        connected: boolean;
+        installed: boolean;
+        domain?: string;
+    };
+    zid?: {
         storeId: string;
         connected: boolean;
         installed: boolean;

@@ -1,193 +1,113 @@
 // src/pages/api/cron/sync-zid-reviews.ts
-// Cron job to sync reviews from all connected Zid stores
-// Should be scheduled daily via Vercel cron or GitHub Actions
+// Cron job: syncs reviews from ALL connected Zid stores
+// Delegates to ZidReviewSyncService per store
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { dbAdmin } from '@/lib/firebaseAdmin';
-import { fetchZidReviews } from '@/lib/zid/client';
+import { ZidTokenService } from '@/backend/server/services/zid-token.service';
+import { ZidReviewSyncService } from '@/backend/server/services/zid-review-sync.service';
 
-const CRON_SECRET = process.env.CRON_SECRET ?? '';
-
-interface SyncResult {
-    storeUid: string;
-    synced: number;
-    skipped: number;
-    error?: string;
-}
-
-/**
- * Check if review was created after subscription started
- */
-function isVerifiedReview(
-    reviewCreatedAt: string,
-    subscriptionStartedAt: number | undefined
-): boolean {
-    if (!subscriptionStartedAt) return false;
-    const reviewTime = new Date(reviewCreatedAt).getTime();
-    return reviewTime >= subscriptionStartedAt;
-}
-
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
-    // Verify cron secret
-    const cronSecret = req.headers['x-cron-secret'] ?? req.query.secret;
-    if (cronSecret !== CRON_SECRET) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    // Verify cron authorization
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    if (req.method !== 'POST' && req.method !== 'GET') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
-
-    const db = dbAdmin();
-    const results: SyncResult[] = [];
+    console.log('[ZID_CRON] Starting Zid review sync...');
     const startTime = Date.now();
 
     try {
-        // Find all stores with active Zid connection and subscription
-        const storesSnap = await db.collection('stores')
+        const db = dbAdmin();
+
+        // Find all connected Zid stores
+        const storesSnap = await db
+            .collection('stores')
             .where('zid.connected', '==', true)
-            .where('zid.subscription.status', '==', 'active')
             .get();
 
-        console.log(`[Zid Cron] Found ${storesSnap.size} active Zid stores to sync`);
+        if (storesSnap.empty) {
+            console.log('[ZID_CRON] No connected Zid stores found');
+            return res.status(200).json({ ok: true, stores: 0, message: 'No connected stores' });
+        }
+
+        const tokenService = ZidTokenService.getInstance();
+        const syncService = new ZidReviewSyncService();
+
+        const results: Array<{ storeUid: string; synced: number; skipped: number; errors: number }> = [];
+        let totalSynced = 0;
+        let totalErrors = 0;
 
         for (const storeDoc of storesSnap.docs) {
-            const storeUid = storeDoc.id;
             const storeData = storeDoc.data();
-            const subscriptionStartedAt = storeData?.zid?.subscription?.startedAt as number | undefined;
+            const storeUid = storeDoc.id;
+            const zidStoreId = storeData.zid?.storeId;
+
+            if (!zidStoreId) {
+                console.log(`[ZID_CRON] Store ${storeUid} has no zidStoreId, skipping`);
+                continue;
+            }
 
             try {
-                // Get tokens (use zid_tokens collection based on user auth, or from store doc)
-                // For cron, we need to find the token - this assumes we have a userUid mapping
-                let managerToken: string | null = null;
-
-                // Check if tokens are stored in store document
-                if (storeData?.zid?.tokens?.authorization) {
-                    managerToken = storeData.zid.tokens.authorization;
-                } else if (storeData?.zid?.tokens?.access_token) {
-                    managerToken = storeData.zid.tokens.access_token;
-                } else {
-                    // Try to find from zid_tokens collection using store ID
-                    const zidStoreId = storeData?.zid?.storeId;
-                    if (zidStoreId) {
-                        const tokenDoc = await db.collection('zid_tokens').doc(zidStoreId).get();
-                        const tokenData = tokenDoc.data();
-                        managerToken = tokenData?.authorization ?? tokenData?.access_token ?? null;
-                    }
-                }
-
-                if (!managerToken) {
-                    results.push({ storeUid, synced: 0, skipped: 0, error: 'No access token' });
+                // Get valid tokens
+                const tokens = await tokenService.getValidTokens(zidStoreId);
+                if (!tokens) {
+                    console.warn(`[ZID_CRON] No valid tokens for store ${storeUid}, skipping`);
+                    totalErrors++;
                     continue;
                 }
 
-                // Fetch reviews from last 7 days
-                const dateFrom = new Date();
-                dateFrom.setDate(dateFrom.getDate() - 7);
+                // Sync reviews for this store
+                const result = await syncService.syncReviewsForStore(
+                    storeUid,
+                    zidStoreId,
+                    tokens,
+                    {
+                        sinceDays: 7,
+                        subscriptionStart: storeData.subscription?.startedAt,
+                    }
+                );
 
-                const reviewsResponse = await fetchZidReviews(managerToken, {
-                    status: 'approved',
-                    per_page: 100,
-                    date_from: dateFrom.toISOString().split('T')[0],
+                results.push({
+                    storeUid,
+                    synced: result.synced,
+                    skipped: result.skipped,
+                    errors: result.errors,
                 });
 
-                const zidReviews = reviewsResponse.reviews ?? reviewsResponse.data ?? [];
+                totalSynced += result.synced;
+                totalErrors += result.errors;
 
-                if (zidReviews.length === 0) {
-                    results.push({ storeUid, synced: 0, skipped: 0 });
-                    continue;
-                }
-
-                let synced = 0;
-                let skipped = 0;
-                const batch = db.batch();
-
-                for (const zidReview of zidReviews) {
-                    const reviewId = `zid_${zidReview.id}`;
-                    const reviewRef = db.collection('reviews').doc(reviewId);
-
-                    // Check if exists
-                    const existingDoc = await reviewRef.get();
-                    if (existingDoc.exists) {
-                        skipped++;
-                        continue;
-                    }
-
-                    const verified = isVerifiedReview(zidReview.created_at, subscriptionStartedAt);
-
-                    batch.set(reviewRef, {
-                        id: reviewId,
-                        zidReviewId: zidReview.id,
-                        productId: String(zidReview.product_id),
-                        productName: zidReview.product_name ?? null,
-                        rating: zidReview.rating,
-                        customerName: zidReview.customer?.name || 'عميل',
-                        customerId: zidReview.customer?.id ? String(zidReview.customer.id) : null,
-                        comment: zidReview.comment || '',
-                        source: 'zid_native',
-                        platform: 'zid',
-                        storeUid,
-                        verified,
-                        status: zidReview.status,
-                        createdAt: new Date(zidReview.created_at).getTime(),
-                        updatedAt: new Date(zidReview.updated_at).getTime(),
-                        syncedAt: Date.now(),
-                    }, { merge: true });
-
-                    synced++;
-                }
-
-                if (synced > 0) {
-                    await batch.commit();
-                }
-
-                results.push({ storeUid, synced, skipped });
-                console.log(`[Zid Cron] Store ${storeUid}: synced=${synced}, skipped=${skipped}`);
-
-            } catch (err) {
-                const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-                results.push({ storeUid, synced: 0, skipped: 0, error: errorMsg });
-                console.error(`[Zid Cron] Store ${storeUid} error:`, err);
+            } catch (storeErr) {
+                console.error(`[ZID_CRON] Error syncing store ${storeUid}:`, storeErr);
+                totalErrors++;
             }
         }
 
-        const totalSynced = results.reduce((sum, r) => sum + r.synced, 0);
-        const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);
-        const errors = results.filter(r => r.error).length;
-        const duration = Date.now() - startTime;
+        const elapsed = Date.now() - startTime;
+        console.log(`[ZID_CRON] ✅ Done in ${elapsed}ms — ${storesSnap.size} stores, ${totalSynced} reviews synced, ${totalErrors} errors`);
 
-        // Log cron run
-        await db.collection('cron_logs').add({
-            job: 'sync-zid-reviews',
-            storesProcessed: storesSnap.size,
+        // Log sync run
+        await db.collection('sync_logs').add({
+            platform: 'zid',
+            type: 'cron_review_sync',
+            stores: storesSnap.size,
             totalSynced,
-            totalSkipped,
-            errors,
-            duration,
+            totalErrors,
             results,
-            createdAt: Date.now(),
+            durationMs: elapsed,
+            timestamp: Date.now(),
         });
-
-        console.log(`[Zid Cron] Complete: ${totalSynced} synced, ${totalSkipped} skipped, ${errors} errors, ${duration}ms`);
 
         return res.status(200).json({
             ok: true,
-            storesProcessed: storesSnap.size,
+            stores: storesSnap.size,
             totalSynced,
-            totalSkipped,
-            errors,
-            duration,
-            results,
+            totalErrors,
+            durationMs: elapsed,
         });
-
     } catch (err) {
-        console.error('[Zid Cron] Fatal error:', err);
-        return res.status(500).json({
-            error: 'Cron job failed',
-            message: err instanceof Error ? err.message : 'Unknown error',
-        });
+        console.error('[ZID_CRON] Fatal error:', err);
+        return res.status(500).json({ error: 'cron_failed' });
     }
 }

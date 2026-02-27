@@ -1,38 +1,51 @@
 // src/lib/zid/client.ts
-// Zid API client for making authenticated requests
+// Zid API client — aligned with actual Zid API schema
+// Important: Zid uses DUAL tokens - access_token as X-Manager-Token, authorization as Authorization Bearer
 
 const ZID_API_URL = process.env.ZID_API_URL || 'https://api.zid.sa/v1';
 
+// ── Types matching actual Zid API response ──────────────────
+
+/** Review from Zid API — actual schema with UUID IDs */
 export interface ZidReview {
-    id: number;
-    product_id: number;
-    product_name?: string;
-    rating: number;
-    comment: string;
-    status: 'pending' | 'approved' | 'rejected' | 'published';
+    id: string;                // UUID
     customer: {
         id: number;
         name: string;
-        email?: string;
-        mobile?: string;
     };
+    product: {
+        id: string;            // UUID
+        name: string;
+        bought_this_item: boolean;
+        image: string | null;
+    };
+    status: 'pending' | 'approved' | 'rejected' | 'published';
+    is_anonymous: boolean;
+    rating: number;
+    comment: string;
+    edit_requested: boolean;
+    original_snapshot: unknown | null;
+    reply: string | null;
+    images: string[];
     created_at: string;
     updated_at: string;
 }
 
+/** Zid List Reviews API response */
 export interface ZidReviewsResponse {
-    reviews?: ZidReview[];
-    data?: ZidReview[];
-    pagination?: {
-        current_page: number;
-        total_pages: number;
-        total: number;
-        per_page: number;
-    };
-    meta?: {
-        current_page: number;
+    status: string;
+    pagination: {
+        page: number;
+        next_page: number | null;
         last_page: number;
-        total: number;
+        result_count: number;
+    };
+    reviews: ZidReview[];
+    message: {
+        type: string;
+        code: string | null;
+        name: string | null;
+        description: string | null;
     };
 }
 
@@ -58,7 +71,7 @@ export interface ZidOrder {
         mobile?: string;
     };
     items?: Array<{
-        product_id: number;
+        product_id: number | string;
         name?: string;
         quantity?: number;
         price?: number;
@@ -68,45 +81,63 @@ export interface ZidOrder {
     created_at?: string;
 }
 
+// ── Auth headers helper ─────────────────────────────────────
+
+/** Build Zid auth headers — supports both single-token and dual-token modes */
+function zidHeaders(tokens: { access_token: string; authorization?: string }): Record<string, string> {
+    const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'Accept-Language': 'ar',
+    };
+
+    if (tokens.authorization) {
+        // Dual-token mode (proper Zid auth)
+        headers['Authorization'] = `Bearer ${tokens.authorization}`;
+        headers['X-Manager-Token'] = tokens.access_token;
+    } else {
+        // Fallback: single manager token
+        headers['Authorization'] = `Bearer ${tokens.access_token}`;
+        headers['X-Manager-Token'] = tokens.access_token;
+    }
+
+    return headers;
+}
+
+// ── API Functions ───────────────────────────────────────────
+
 /**
  * Fetch product reviews from Zid API
- * Endpoint: GET /v1/managers/store/reviews/product/
- * Scope required: products.read
+ * GET /v1/managers/store/reviews/product
+ * Uses page_size (not per_page), response has next_page/last_page
  */
 export async function fetchZidReviews(
-    managerToken: string,
+    tokens: { access_token: string; authorization?: string },
     params?: {
         status?: string;
         page?: number;
-        per_page?: number;
         page_size?: number;
         date_from?: string;
         date_to?: string;
-        customer_id?: string | number;
-        sort_by?: string;
-        order_by?: 'asc' | 'desc';
+        search_term?: string;
+        order_by?: string;
+        sort_by?: 'ASC' | 'DESC';
     }
 ): Promise<ZidReviewsResponse> {
-    const url = new URL(`${ZID_API_URL}/managers/store/reviews/product/`);
+    const url = new URL(`${ZID_API_URL}/managers/store/reviews/product`);
 
     if (params) {
         if (params.status) url.searchParams.set('status', params.status);
         if (params.page) url.searchParams.set('page', String(params.page));
-        if (params.per_page) url.searchParams.set('per_page', String(params.per_page));
         if (params.page_size) url.searchParams.set('page_size', String(params.page_size));
         if (params.date_from) url.searchParams.set('date_from', params.date_from);
         if (params.date_to) url.searchParams.set('date_to', params.date_to);
-        if (params.customer_id) url.searchParams.set('customer_id', String(params.customer_id));
-        if (params.sort_by) url.searchParams.set('sort_by', params.sort_by);
+        if (params.search_term) url.searchParams.set('search_term', params.search_term);
         if (params.order_by) url.searchParams.set('order_by', params.order_by);
+        if (params.sort_by) url.searchParams.set('sort_by', params.sort_by);
     }
 
     const response = await fetch(url.toString(), {
-        headers: {
-            'Authorization': `Bearer ${managerToken}`,
-            'X-MANAGER-TOKEN': managerToken,
-            'Accept': 'application/json',
-        },
+        headers: zidHeaders(tokens),
     });
 
     if (!response.ok) {
@@ -119,21 +150,15 @@ export async function fetchZidReviews(
 
 /**
  * Get new reviews count
- * Endpoint: GET /v1/managers/store/reviews/count/{status}
+ * GET /v1/managers/store/reviews/count/{status}
  */
 export async function fetchZidReviewsCount(
-    managerToken: string,
+    tokens: { access_token: string; authorization?: string },
     status: string = 'pending'
 ): Promise<number> {
     const response = await fetch(
         `${ZID_API_URL}/managers/store/reviews/count/${status}`,
-        {
-            headers: {
-                'Authorization': `Bearer ${managerToken}`,
-                'X-MANAGER-TOKEN': managerToken,
-                'Accept': 'application/json',
-            },
-        }
+        { headers: zidHeaders(tokens) }
     );
 
     if (!response.ok) {
@@ -146,21 +171,15 @@ export async function fetchZidReviewsCount(
 
 /**
  * Fetch store/manager profile
- * Endpoint: GET /v1/managers/account/profile
+ * GET /v1/managers/account/profile
  */
 export async function fetchZidStoreInfo(
-    managerToken: string
+    tokens: { access_token: string; authorization?: string }
 ): Promise<ZidStoreInfo | null> {
     try {
         const response = await fetch(
             `${ZID_API_URL}/managers/account/profile`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${managerToken}`,
-                    'X-MANAGER-TOKEN': managerToken,
-                    'Accept': 'application/json',
-                },
-            }
+            { headers: zidHeaders(tokens) }
         );
 
         if (!response.ok) return null;
@@ -168,20 +187,20 @@ export async function fetchZidStoreInfo(
         const data = await response.json();
         return data?.store || data || null;
     } catch (err) {
-        console.error('Failed to fetch Zid store info:', err);
+        console.error('[ZID_CLIENT] Failed to fetch store info:', err);
         return null;
     }
 }
 
 /**
  * Fetch orders list
- * Endpoint: GET /v1/managers/store/orders
+ * GET /v1/managers/store/orders
  */
 export async function fetchZidOrders(
-    managerToken: string,
+    tokens: { access_token: string; authorization?: string },
     params?: {
         page?: number;
-        per_page?: number;
+        page_size?: number;
         status?: string;
         date_from?: string;
         date_to?: string;
@@ -191,18 +210,14 @@ export async function fetchZidOrders(
 
     if (params) {
         if (params.page) url.searchParams.set('page', String(params.page));
-        if (params.per_page) url.searchParams.set('per_page', String(params.per_page));
+        if (params.page_size) url.searchParams.set('page_size', String(params.page_size));
         if (params.status) url.searchParams.set('status', params.status);
         if (params.date_from) url.searchParams.set('date_from', params.date_from);
         if (params.date_to) url.searchParams.set('date_to', params.date_to);
     }
 
     const response = await fetch(url.toString(), {
-        headers: {
-            'Authorization': `Bearer ${managerToken}`,
-            'X-MANAGER-TOKEN': managerToken,
-            'Accept': 'application/json',
-        },
+        headers: zidHeaders(tokens),
     });
 
     if (!response.ok) {

@@ -21,7 +21,8 @@
     "test:e2e:ui": "playwright test --ui",
     "load:k6": "k6 run tools/loadtest/k6/redirect-test.js",
     "load:k6:reviews": "k6 run tools/loadtest/k6/review-create-test.js",
-    "load:k6:outbox": "k6 run tools/loadtest/k6/outbox-jobs-test.js"
+    "load:k6:outbox": "k6 run tools/loadtest/k6/outbox-jobs-test.js",
+    "export:reviews": "node scripts/export-reviews.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",

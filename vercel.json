@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/subscription-alerts",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/sync-zid-reviews",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

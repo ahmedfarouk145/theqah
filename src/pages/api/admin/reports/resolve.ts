@@ -1,3 +1,4 @@
+
 // src/pages/api/admin/reports/resolve.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { verifyAdmin } from '@/utils/verifyAdmin';

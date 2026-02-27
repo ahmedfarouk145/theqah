@@ -21,6 +21,16 @@ export type { SallaOrder, SallaReviewPayload } from './salla-webhook.service';
 export { SallaTokenService, sallaTokenService } from './salla-token.service';
 export type { TokenRefreshResult } from './salla-token.service';
 
+// Zid integration services
+export { ZidWebhookService } from './zid-webhook.service';
+export type { ZidOrder, ZidStoreInfo } from './zid-webhook.service';
+
+export { ZidTokenService, zidTokenService } from './zid-token.service';
+export type { ZidTokens, ZidTokenRefreshResult } from './zid-token.service';
+
+export { ZidReviewSyncService } from './zid-review-sync.service';
+export type { ZidApiReview, ReviewSyncResult } from './zid-review-sync.service';
+
 // Platform services
 export { AdminService } from './admin.service';
 export type { PlatformStats } from './admin.service';

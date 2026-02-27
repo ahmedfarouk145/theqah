@@ -1,56 +1,16 @@
 // src/pages/api/zid/webhook.ts
-// Comprehensive Zid webhook handler - handles app, subscription, and order events
-// Note: NO review invites per user request - reviews are synced from Zid API directly
+// Thin controller — delegates all business logic to ZidWebhookService
+// No review invites — reviews are synced from Zid API via cron
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
+import { ZidWebhookService } from "@/backend/server/services/zid-webhook.service";
+import type { ZidOrder } from "@/backend/server/services/zid-webhook.service";
 
 export const config = { api: { bodyParser: false } };
 
-type UnknownRecord = Record<string, unknown>;
-
-interface ZidWebhookBody {
-  event?: string;
-  data?: UnknownRecord;
-  app_id?: string | number;
-  store_id?: string | number;
-  timestamp?: number;
-}
-
-interface ZidSubscriptionData {
-  plan_id?: string | number;
-  started_at?: string | number;
-  expires_at?: string | number;
-  status?: string;
-}
-
-interface ZidOrder {
-  id?: string | number;
-  number?: string | number;
-  status?: string;
-  customer?: {
-    id?: string | number;
-    name?: string;
-    email?: string;
-    mobile?: string;
-  };
-  store?: {
-    id?: string | number;
-    name?: string;
-    domain?: string;
-  } | null;
-  items?: Array<{
-    product_id?: string | number;
-    id?: string | number;
-    name?: string;
-    quantity?: number;
-    price?: number;
-  }>;
-  total?: number;
-  currency?: string;
-  created_at?: string;
-}
+// ── helpers ──────────────────────────────────────────────────
 
 function readRawBody(req: NextApiRequest): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -62,7 +22,7 @@ function readRawBody(req: NextApiRequest): Promise<Buffer> {
 }
 
 function validSignature(raw: Buffer, secret: string, given?: string): boolean {
-  if (!secret) return true; // No secret configured = skip validation
+  if (!secret) return true;
   if (!given) return false;
   try {
     const mac = crypto.createHmac("sha256", secret).update(raw).digest("hex");
@@ -72,238 +32,7 @@ function validSignature(raw: Buffer, secret: string, given?: string): boolean {
   }
 }
 
-function extractStoreUid(data: UnknownRecord): string | null {
-  const store = data["store"] as UnknownRecord | undefined;
-  const storeId = store?.["id"] ?? data["store_id"];
-  return storeId !== undefined ? `zid:${storeId}` : null;
-}
-
-// App lifecycle event handlers
-async function handleAppAuthorized(
-  db: FirebaseFirestore.Firestore,
-  storeId: string,
-  data: UnknownRecord
-) {
-  console.log(`[ZID] App authorized for store: ${storeId}`);
-
-  await db.collection("stores").doc(`zid:${storeId}`).set(
-    {
-      zid: {
-        connected: true,
-        authorizedAt: Date.now(),
-      },
-    },
-    { merge: true }
-  );
-
-  // Log event
-  await db.collection("webhooks_log").add({
-    platform: "zid",
-    event: "app.market.application.authorized",
-    storeUid: `zid:${storeId}`,
-    data,
-    createdAt: Date.now(),
-  });
-}
-
-async function handleAppInstalled(
-  db: FirebaseFirestore.Firestore,
-  storeId: string,
-  data: UnknownRecord
-) {
-  console.log(`[ZID] App installed for store: ${storeId}`);
-
-  await db.collection("stores").doc(`zid:${storeId}`).set(
-    {
-      zid: {
-        connected: true,
-        installedAt: Date.now(),
-      },
-    },
-    { merge: true }
-  );
-
-  await db.collection("webhooks_log").add({
-    platform: "zid",
-    event: "app.market.application.install",
-    storeUid: `zid:${storeId}`,
-    data,
-    createdAt: Date.now(),
-  });
-}
-
-async function handleAppUninstalled(
-  db: FirebaseFirestore.Firestore,
-  storeId: string,
-  data: UnknownRecord
-) {
-  console.log(`[ZID] App uninstalled for store: ${storeId}`);
-
-  await db.collection("stores").doc(`zid:${storeId}`).set(
-    {
-      zid: {
-        connected: false,
-        uninstalledAt: Date.now(),
-      },
-    },
-    { merge: true }
-  );
-
-  await db.collection("webhooks_log").add({
-    platform: "zid",
-    event: "app.market.application.uninstall",
-    storeUid: `zid:${storeId}`,
-    data,
-    createdAt: Date.now(),
-  });
-}
-
-// Subscription event handlers
-async function handleSubscriptionActive(
-  db: FirebaseFirestore.Firestore,
-  storeId: string,
-  data: ZidSubscriptionData
-) {
-  console.log(`[ZID] Subscription active for store: ${storeId}`);
-
-  const startedAt = data.started_at
-    ? (typeof data.started_at === 'string' ? new Date(data.started_at).getTime() : data.started_at)
-    : Date.now();
-
-  await db.collection("stores").doc(`zid:${storeId}`).set(
-    {
-      zid: {
-        subscription: {
-          status: "active",
-          planId: data.plan_id ?? null,
-          startedAt,
-          expiresAt: data.expires_at ?? null,
-          updatedAt: Date.now(),
-        },
-      },
-    },
-    { merge: true }
-  );
-
-  await db.collection("webhooks_log").add({
-    platform: "zid",
-    event: "app.market.subscription.active",
-    storeUid: `zid:${storeId}`,
-    data,
-    createdAt: Date.now(),
-  });
-}
-
-async function handleSubscriptionSuspended(
-  db: FirebaseFirestore.Firestore,
-  storeId: string,
-  data: ZidSubscriptionData
-) {
-  console.log(`[ZID] Subscription suspended for store: ${storeId}`);
-
-  await db.collection("stores").doc(`zid:${storeId}`).set(
-    {
-      zid: {
-        subscription: {
-          status: "suspended",
-          updatedAt: Date.now(),
-        },
-      },
-    },
-    { merge: true }
-  );
-
-  await db.collection("webhooks_log").add({
-    platform: "zid",
-    event: "app.market.subscription.suspended",
-    storeUid: `zid:${storeId}`,
-    data,
-    createdAt: Date.now(),
-  });
-}
-
-async function handleSubscriptionExpired(
-  db: FirebaseFirestore.Firestore,
-  storeId: string,
-  data: ZidSubscriptionData
-) {
-  console.log(`[ZID] Subscription expired for store: ${storeId}`);
-
-  await db.collection("stores").doc(`zid:${storeId}`).set(
-    {
-      zid: {
-        subscription: {
-          status: "expired",
-          updatedAt: Date.now(),
-        },
-      },
-    },
-    { merge: true }
-  );
-
-  await db.collection("webhooks_log").add({
-    platform: "zid",
-    event: "app.market.subscription.expired",
-    storeUid: `zid:${storeId}`,
-    data,
-    createdAt: Date.now(),
-  });
-}
-
-// Order event handlers (for snapshot only - no invites)
-async function handleOrderCreated(
-  db: FirebaseFirestore.Firestore,
-  order: ZidOrder,
-  storeUid: string | null
-) {
-  const orderId = String(order.id ?? "");
-  if (!orderId) return;
-
-  console.log(`[ZID] Order created: ${orderId}`);
-
-  await db.collection("orders").doc(orderId).set({
-    id: orderId,
-    number: order.number ?? null,
-    status: order.status ?? null,
-    customer: {
-      name: order.customer?.name ?? null,
-      email: order.customer?.email ?? null,
-      mobile: order.customer?.mobile ?? null,
-    },
-    storeUid,
-    platform: "zid",
-    total: order.total ?? null,
-    currency: order.currency ?? null,
-    items: order.items?.map(item => ({
-      productId: item.product_id ?? item.id,
-      name: item.name ?? null,
-      quantity: item.quantity ?? 1,
-      price: item.price ?? null,
-    })) ?? [],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  }, { merge: true });
-}
-
-async function handleOrderStatusUpdate(
-  db: FirebaseFirestore.Firestore,
-  order: ZidOrder,
-  storeUid: string | null
-) {
-  const orderId = String(order.id ?? "");
-  if (!orderId) return;
-
-  console.log(`[ZID] Order status update: ${orderId} -> ${order.status}`);
-
-  await db.collection("orders").doc(orderId).set({
-    status: order.status ?? null,
-    storeUid,
-    platform: "zid",
-    updatedAt: Date.now(),
-  }, { merge: true });
-
-  // NOTE: No review invites - reviews are synced from Zid API directly
-}
+// ── handler ──────────────────────────────────────────────────
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -313,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const raw = await readRawBody(req);
   const db = dbAdmin();
 
-  // Validate signature if secret is configured
+  // Validate signature
   const secret = process.env.ZID_WEBHOOK_SECRET ?? "";
   const sig = (req.headers["x-zid-signature"] as string) ?? "";
   if (!validSignature(raw, secret, sig)) {
@@ -321,65 +50,86 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: "invalid_signature" });
   }
 
-  let body: ZidWebhookBody;
+  // Parse body
+  type UnknownRecord = Record<string, unknown>;
+  let body: { event?: string; data?: UnknownRecord; store_id?: string | number };
   try {
-    body = JSON.parse(raw.toString("utf8") || "{}") as ZidWebhookBody;
+    body = JSON.parse(raw.toString("utf8") || "{}");
   } catch {
     return res.status(400).json({ error: "invalid_json" });
   }
 
   const event = String(body.event || "");
   const data = (body.data ?? {}) as UnknownRecord;
-  const storeId = String(body.store_id ?? data["store_id"] ?? (data["store"] as UnknownRecord)?.["id"] ?? "");
+  const storeId = String(
+    body.store_id ?? data["store_id"] ?? (data["store"] as UnknownRecord)?.["id"] ?? ""
+  );
+  const storeUid = storeId ? `zid:${storeId}` : "";
 
   // Idempotency check
   const idemKey = crypto.createHash("sha256").update((sig || "") + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_zid").doc(idemKey);
-  const idemSnap = await idemRef.get();
-  if (idemSnap.exists) {
+  if ((await idemRef.get()).exists) {
     return res.status(200).json({ ok: true, deduped: true });
   }
   await idemRef.set({ at: Date.now(), event, storeId });
 
-  console.log(`[ZID] Webhook received: ${event} for store: ${storeId}`);
+  console.log(`[ZID] Webhook: ${event} for store: ${storeId}`);
+
+  const svc = new ZidWebhookService();
 
   try {
-    // App lifecycle events
-    if (event === "app.market.application.authorized") {
-      await handleAppAuthorized(db, storeId, data);
-    } else if (event === "app.market.application.install") {
-      await handleAppInstalled(db, storeId, data);
-    } else if (event === "app.market.application.uninstall") {
-      await handleAppUninstalled(db, storeId, data);
+    switch (event) {
+      // App lifecycle
+      case "app.market.application.authorized": {
+        // Full auto-registration is in callback.ts (OAuth flow)
+        // Webhook just marks store as connected
+        await svc.handleAppInstalled(storeUid);
+        break;
+      }
+      case "app.market.application.install":
+        await svc.handleAppInstalled(storeUid);
+        break;
+
+      case "app.market.application.uninstall":
+        await svc.handleAppUninstalled(storeUid);
+        break;
+
+      // Subscription
+      case "app.market.subscription.active":
+        await svc.handleSubscriptionActive(storeUid, data as object);
+        break;
+
+      case "app.market.subscription.suspended":
+      case "app.market.subscription.expired":
+        await svc.handleSubscriptionExpired(storeUid, data as object);
+        break;
+
+      // Orders — saved with product IDs for review polling
+      case "order.create":
+        await svc.handleOrderCreated(data as ZidOrder, storeUid);
+        break;
+
+      case "order.status.update": {
+        const orderId = String((data as ZidOrder).id ?? "");
+        const newStatus = String((data as ZidOrder).status ?? "");
+        await svc.handleOrderStatusUpdate(orderId, newStatus);
+        break;
+      }
+
+      case "order.payment_status.update": {
+        const orderId2 = String((data as ZidOrder).id ?? "");
+        const paymentStatus = String((data as Record<string, unknown>)["payment_status"] ?? "");
+        await svc.handleOrderStatusUpdate(orderId2, paymentStatus);
+        break;
+      }
+
+      default:
+        console.log(`[ZID] Unknown event: ${event}`);
     }
-    // Subscription events
-    else if (event === "app.market.subscription.active") {
-      await handleSubscriptionActive(db, storeId, data as ZidSubscriptionData);
-    } else if (event === "app.market.subscription.suspended") {
-      await handleSubscriptionSuspended(db, storeId, data as ZidSubscriptionData);
-    } else if (event === "app.market.subscription.expired") {
-      await handleSubscriptionExpired(db, storeId, data as ZidSubscriptionData);
-    }
-    // Order events (snapshot only - no invites)
-    else if (event === "order.create") {
-      const storeUid = extractStoreUid(data);
-      await handleOrderCreated(db, data as ZidOrder, storeUid);
-    } else if (event === "order.status.update") {
-      const storeUid = extractStoreUid(data);
-      await handleOrderStatusUpdate(db, data as ZidOrder, storeUid);
-    }
-    // Unknown event - log for debugging
-    else {
-      console.log(`[ZID] Unknown event: ${event}`);
-      await db.collection("webhooks_log").add({
-        platform: "zid",
-        event,
-        storeId,
-        data,
-        createdAt: Date.now(),
-        type: "unknown",
-      });
-    }
+
+    // Always log the event
+    await svc.logEvent(event, storeUid, "webhook", { storeId, raw: data });
 
     return res.status(200).json({ ok: true, event });
   } catch (err) {
