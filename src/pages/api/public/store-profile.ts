@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { rateLimitPublic, RateLimitPresets } from "@/server/rate-limit-public";
 import { ReviewService } from "@/server/services/review.service";
 import { StoreService } from "@/server/services/store.service";
-import { VerificationService } from "@/server/services";
 import { handleApiError } from "@/server/core/error-handler";
 import { ValidationError } from "@/server/core/errors";
 
@@ -34,65 +33,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const storeService = new StoreService();
         const reviewService = new ReviewService();
-        const verificationService = new VerificationService();
 
-        // Fetch store info + both verified and published reviews in parallel
-        const [storeInfo, verifiedResult, publicReviews] = await Promise.all([
+        // Fetch store info + verified reviews (status=approved, verified=true)
+        // These are the actual full Review objects with author, text, dates etc.
+        const [storeInfo, verifiedReviews] = await Promise.all([
             storeService.getStoreInfo(storeUid),
-            verificationService.getVerifiedReviews(storeUid),
-            reviewService.getPublicReviews(storeUid, { limit: 100, sort: "desc" }),
+            reviewService.getVerifiedReviews(storeUid),
         ]);
 
         if (!storeInfo) {
             return res.status(404).json({ error: "STORE_NOT_FOUND" });
         }
 
-        // Merge verified reviews + published reviews, deduplicate by id
-        const seenIds = new Set<string>();
-        type ReviewOut = {
-            id: string;
-            productId: string | null;
-            stars: number;
-            text: string;
-            publishedAt: number;
-            trustedBuyer: boolean;
-            author: { displayName: string };
-            images?: string[];
-        };
-        const allReviews: ReviewOut[] = [];
-
-        // Add verified reviews first (they are the priority)
-        for (const r of verifiedResult.reviews) {
-            const id = String(r.sallaReviewId || r.orderId || "");
-            if (!id || seenIds.has(id)) continue;
-            seenIds.add(id);
-            allReviews.push({
-                id,
-                productId: r.productId || null,
-                stars: r.stars || 5,
-                text: "",
-                publishedAt: 0,
-                trustedBuyer: true,
-                author: { displayName: "عميل موثق" },
-            });
-        }
-
-        // Add published reviews (may have more details like text)
-        for (const r of publicReviews) {
-            if (seenIds.has(r.id)) continue;
-            seenIds.add(r.id);
-            allReviews.push(r);
-        }
+        // Map full Review objects to public-safe response format
+        const reviews = verifiedReviews.map((r) => ({
+            id: r.id || r.reviewId || "",
+            productId: r.productId || null,
+            stars: r.stars || 0,
+            text: r.text || "",
+            publishedAt: r.publishedAt || r.createdAt || 0,
+            trustedBuyer: !!r.trustedBuyer || !!r.verified,
+            author: {
+                displayName: r.author?.displayName || "عميل المتجر",
+            },
+        }));
 
         // Compute stats
-        const totalReviews = allReviews.length;
+        const totalReviews = reviews.length;
         const avgStars =
             totalReviews > 0
-                ? Math.round((allReviews.reduce((sum, r) => sum + r.stars, 0) / totalReviews) * 10) / 10
+                ? Math.round((reviews.reduce((sum, r) => sum + r.stars, 0) / totalReviews) * 10) / 10
                 : 0;
 
         const distribution = [0, 0, 0, 0, 0]; // index 0 = 1-star, index 4 = 5-star
-        for (const r of allReviews) {
+        for (const r of reviews) {
             const idx = Math.max(0, Math.min(4, Math.round(r.stars) - 1));
             distribution[idx]++;
         }
@@ -108,9 +82,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             stats: {
                 totalReviews,
                 avgStars,
-                distribution, // [1-star, 2-star, 3-star, 4-star, 5-star]
+                distribution,
             },
-            reviews: allReviews,
+            reviews,
         });
     } catch (error) {
         handleApiError(res, error);
