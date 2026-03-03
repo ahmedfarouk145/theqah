@@ -20,6 +20,10 @@ import {
   keyOf,
   generateIdempotencyKey,
 } from "@/server/utils/salla-webhook.utils";
+import {
+  extractSubscriptionExpiresAt,
+  extractSubscriptionStartedAt,
+} from "@/server/utils/subscription-dates";
 import { fbLog } from "@/server/utils/salla-webhook.logger";
 
 export const runtime = "nodejs";
@@ -497,11 +501,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } else if (event === "app.trial.started") {
         // Trial started - set to TRIAL plan
         if (storeUid) {
-          const startedAtPayload =
-            payload["start_date"] ?? payload["started_at"] ?? payload["created_at"];
-          const startedAt = startedAtPayload ? new Date(String(startedAtPayload)).getTime() : Date.now();
+          const startedAt = extractSubscriptionStartedAt(payload) ?? Date.now();
+          const expiresAt = extractSubscriptionExpiresAt(payload);
 
-          await sallaService.handleTrialStarted(storeUid, startedAt, payload);
+          await sallaService.handleTrialStarted(storeUid, startedAt, expiresAt, payload);
 
           fbLog(db, {
             level: "info",
@@ -526,11 +529,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const planId = planName ? mapSallaPlanToInternal(planName, planType as 'monthly' | 'annual' | null) : "TRIAL";
 
         if (storeUid && planId) {
-          const startedAtPayload =
-            payload["start_date"] ?? payload["started_at"] ?? payload["created_at"];
-          const startedAt = startedAtPayload ? new Date(String(startedAtPayload)).getTime() : Date.now();
+          const startedAt = extractSubscriptionStartedAt(payload) ?? Date.now();
+          const expiresAt = extractSubscriptionExpiresAt(payload);
 
-          await sallaService.handleSubscriptionEvent(storeUid, planId, startedAt, payload);
+          await sallaService.handleSubscriptionEvent(storeUid, planId, startedAt, expiresAt, payload);
 
           fbLog(db, {
             level: "info",

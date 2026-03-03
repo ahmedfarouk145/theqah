@@ -56,20 +56,23 @@ export class StoreRepository extends BaseRepository<Store> {
         storeUid: string,
         planId: string,
         startedAt: number,
+        expiresAt?: number | null,
         raw?: object
     ): Promise<void> {
+        const now = Date.now();
         await this.set(storeUid, {
             subscription: {
                 planId,
                 startedAt,
-                syncedAt: Date.now(),
+                ...(typeof expiresAt === 'number' ? { expiresAt } : {}),
+                syncedAt: now,
                 raw,
-                updatedAt: Date.now(),
+                updatedAt: now,
             },
             plan: {
                 code: planId,
                 active: true,
-                updatedAt: Date.now(),
+                updatedAt: now,
             },
         } as Partial<Store>);
     }
@@ -99,19 +102,21 @@ export class StoreRepository extends BaseRepository<Store> {
      * Deactivate subscription (expired/cancelled)
      */
     async deactivateSubscription(storeUid: string, raw?: object): Promise<void> {
+        const now = Date.now();
         await this.set(storeUid, {
             subscription: {
                 planId: 'TRIAL',
-                expiredAt: Date.now(),
-                syncedAt: Date.now(),
+                expiresAt: now,
+                expiredAt: now,
+                syncedAt: now,
                 raw,
-                updatedAt: Date.now(),
+                updatedAt: now,
             },
             plan: {
                 code: 'TRIAL',
                 active: false,
-                expiredAt: Date.now(),
-                updatedAt: Date.now(),
+                expiredAt: now,
+                updatedAt: now,
             },
         } as Partial<Store>);
     }

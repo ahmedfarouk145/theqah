@@ -301,12 +301,15 @@
 
 
 
-        // Create clickable logo with link to theqah homepage
+        // Create clickable logo linking to store reviews page
         const logoLink = document.createElement('a');
-        logoLink.href = 'https://theqah.com.sa?ref=widget';
+        const _storeUid = G.storeData?.storeUid || G.storeUid || '';
+        logoLink.href = _storeUid
+          ? `${SCRIPT_ORIGIN}/store/${encodeURIComponent(_storeUid)}/reviews?ref=widget`
+          : `${SCRIPT_ORIGIN}?ref=widget`;
         logoLink.target = '_blank';
         logoLink.rel = 'noopener noreferrer';
-        logoLink.title = 'مشتري موثق - Verified Buyer | theqah.com.sa';
+        logoLink.title = 'مشتري موثق - Verified Buyer | اطلع على جميع التقييمات';
         logoLink.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none;transition:transform 0.2s ease;margin-inline-start:8px;';
         logoLink.onmouseover = function () { this.style.transform = 'scale(1.1)'; };
         logoLink.onmouseout = function () { this.style.transform = 'scale(1)'; };
@@ -372,9 +375,12 @@
       `
     });
 
-    // Create logo with link (Option 6: Large, Drop Shadow)
+    // Create logo with link to store reviews page
+    const _certStoreUid = G.storeData?.storeUid || G.storeUid || '';
     const logoLink = h('a', {
-      href: 'https://theqah.com.sa?ref=certificate',
+      href: _certStoreUid
+        ? `${SCRIPT_ORIGIN}/store/${encodeURIComponent(_certStoreUid)}/reviews?ref=certificate`
+        : `${SCRIPT_ORIGIN}?ref=certificate`,
       target: '_blank',
       rel: 'noopener noreferrer',
       style: `

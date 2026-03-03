@@ -180,9 +180,10 @@ export class StoreService {
         storeUid: string,
         planId: string,
         startedAt: number,
+        expiresAt?: number | null,
         raw?: object
     ): Promise<void> {
-        await this.storeRepo.updateSubscription(storeUid, planId, startedAt, raw);
+        await this.storeRepo.updateSubscription(storeUid, planId, startedAt, expiresAt, raw);
     }
 
     /**

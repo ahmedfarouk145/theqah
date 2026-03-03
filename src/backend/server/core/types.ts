@@ -98,6 +98,7 @@ export interface Store extends EntityBase {
     subscription?: {
         planId: string;
         startedAt?: number;
+        expiresAt?: number;
         expiredAt?: number;
         syncedAt: number;
         raw?: object;

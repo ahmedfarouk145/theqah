@@ -4,6 +4,7 @@ import { dbAdmin } from '@/lib/firebaseAdmin';
 import { fetchAppSubscriptions } from '@/lib/sallaClient';
 import { mapSallaPlanToInternal } from '@/config/plans';
 import { requireAdmin } from '@/server/auth/requireAdmin';
+import { extractSubscriptionExpiresAt, extractSubscriptionStartedAt } from '@/server/utils/subscription-dates';
 
 const TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
@@ -49,14 +50,68 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const samePlan = (cur?.planId ?? null) === nextPlanId;
     const sameSnapshot = JSON.stringify(cur?.raw ?? null) === JSON.stringify(raw ?? null);
+    const firstRecord =
+      first && typeof first === 'object'
+        ? (first as Record<string, unknown>)
+        : null;
+    const startedAt = extractSubscriptionStartedAt(firstRecord);
+    const expiresAt = extractSubscriptionExpiresAt(firstRecord);
+    const now = Date.now();
+    const isExpired = typeof expiresAt === 'number' && expiresAt <= now;
 
-    if (!samePlan || !sameSnapshot) {
-      await ref.set({ subscription: { raw, syncedAt: Date.now(), planId: nextPlanId }, updatedAt: Date.now() }, { merge: true });
+    if (!samePlan || !sameSnapshot || startedAt !== null || expiresAt !== null) {
+      const updates: Record<string, unknown> = {
+        updatedAt: now,
+        'subscription.raw': raw,
+        'subscription.syncedAt': now,
+      };
+
+      if (nextPlanId) {
+        updates['subscription.planId'] = nextPlanId;
+        updates['plan.code'] = nextPlanId;
+      }
+      if (startedAt !== null) {
+        updates['subscription.startedAt'] = startedAt;
+      }
+      if (expiresAt !== null) {
+        updates['subscription.expiresAt'] = expiresAt;
+      }
+
+      if (isExpired) {
+        updates['subscription.expiredAt'] = typeof cur?.expiredAt === 'number' ? cur.expiredAt : expiresAt;
+        updates['plan.active'] = false;
+        updates['plan.expiredAt'] = expiresAt;
+      } else if (nextPlanId) {
+        updates['plan.active'] = true;
+      }
+
+      if (snap.exists) {
+        await ref.update(updates);
+      } else {
+        await ref.set(updates, { merge: true });
+      }
     } else {
-      await ref.set({ subscription: { ...cur, syncedAt: Date.now() }, updatedAt: Date.now() }, { merge: true });
+      const heartbeatUpdate = {
+        updatedAt: now,
+        'subscription.syncedAt': now,
+      };
+      if (snap.exists) {
+        await ref.update(heartbeatUpdate);
+      } else {
+        await ref.set(heartbeatUpdate, { merge: true });
+      }
     }
 
-    return reply({ subscription: { planId: nextPlanId, raw } });
+    return reply({
+      subscription: {
+        ...cur,
+        raw,
+        planId: nextPlanId,
+        syncedAt: now,
+        ...(startedAt !== null ? { startedAt } : {}),
+        ...(expiresAt !== null ? { expiresAt } : {}),
+      },
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     await db.collection('webhook_errors').add({ at: Date.now(), scope: 'subscription_fetch', storeUid, error: msg }).catch(console.error);

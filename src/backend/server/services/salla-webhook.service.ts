@@ -80,9 +80,10 @@ export class SallaWebhookService {
         storeUid: string,
         planId: string,
         startedAt: number,
+        expiresAt?: number | null,
         rawPayload?: object
     ): Promise<void> {
-        await this.storeRepo.updateSubscription(storeUid, planId, startedAt, rawPayload);
+        await this.storeRepo.updateSubscription(storeUid, planId, startedAt, expiresAt, rawPayload);
     }
 
     /**
@@ -95,8 +96,13 @@ export class SallaWebhookService {
     /**
      * Handle trial started event
      */
-    async handleTrialStarted(storeUid: string, startedAt: number, rawPayload?: object): Promise<void> {
-        await this.storeRepo.updateSubscription(storeUid, 'TRIAL', startedAt, rawPayload);
+    async handleTrialStarted(
+        storeUid: string,
+        startedAt: number,
+        expiresAt?: number | null,
+        rawPayload?: object
+    ): Promise<void> {
+        await this.storeRepo.updateSubscription(storeUid, 'TRIAL', startedAt, expiresAt, rawPayload);
     }
 
     /**
