@@ -27,18 +27,44 @@ type ZidStoreInfo = {
   url?: string;
 };
 
-async function fetchZidStoreInfo(managerToken: string): Promise<ZidStoreInfo | null> {
+async function fetchZidStoreInfo(
+  accessToken: string,
+  managerToken: string
+): Promise<ZidStoreInfo | null> {
   try {
+    console.log('[ZID_CALLBACK] Fetching store info with tokens:', {
+      hasAccessToken: !!accessToken,
+      accessTokenLen: accessToken?.length || 0,
+      hasManagerToken: !!managerToken,
+      managerTokenLen: managerToken?.length || 0,
+    });
+
     const r = await fetch(`${ZID_API_URL}/managers/account/profile`, {
       headers: {
-        'Authorization': `Bearer ${managerToken}`,
+        'Authorization': `Bearer ${accessToken}`,
         'X-MANAGER-TOKEN': managerToken,
         'Accept': 'application/json',
       },
     });
+
+    const text = await r.text();
+    console.log('[ZID_CALLBACK] Store info response:', {
+      status: r.status,
+      statusText: r.statusText,
+      bodyPreview: text.substring(0, 500),
+    });
+
     if (!r.ok) return null;
-    const data = await r.json();
-    return data?.store || data || null;
+
+    const data = JSON.parse(text);
+    const store = data?.user?.store || data?.store || data;
+    console.log('[ZID_CALLBACK] Parsed store info:', {
+      hasData: !!data,
+      topKeys: data ? Object.keys(data) : [],
+      storeId: store?.id,
+      storeName: store?.name,
+    });
+    return store || null;
   } catch (err) {
     console.error('[ZID_CALLBACK] Failed to fetch store info:', err);
     return null;
@@ -118,6 +144,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       tokenJson = (await r.json()) as ZidTokenResponse;
 
+      console.log('[ZID_CALLBACK] Token response:', {
+        status: r.status,
+        keys: Object.keys(tokenJson),
+        hasAccessToken: !!tokenJson.access_token,
+        hasAuthorization: !!tokenJson.authorization,
+        hasRefreshToken: !!tokenJson.refresh_token,
+        tokenType: tokenJson.token_type,
+        expiresIn: tokenJson.expires_in,
+      });
+
       if (!r.ok) {
         console.error('[ZID_CALLBACK] Token exchange failed:', tokenJson);
         return res.redirect('/dashboard?zid_error=token_exchange');
@@ -127,9 +163,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.redirect('/dashboard?zid_error=token_request');
     }
 
-    // Fetch store info
-    const managerToken = tokenJson.authorization || tokenJson.access_token || '';
-    const storeInfo = managerToken ? await fetchZidStoreInfo(managerToken) : null;
+    // Fetch store info — Zid requires both Authorization (access_token) and X-MANAGER-TOKEN (authorization)
+    const accessToken = tokenJson.access_token || '';
+    const managerToken = tokenJson.authorization || '';
+    const storeInfo = (accessToken || managerToken)
+      ? await fetchZidStoreInfo(accessToken || managerToken, managerToken || accessToken)
+      : null;
     const zidStoreId = storeInfo?.id ? String(storeInfo.id) : '';
 
     if (!zidStoreId) {
