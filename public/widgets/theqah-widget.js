@@ -301,15 +301,17 @@
 
 
 
-        // Create clickable logo linking to store reviews page
+        // Create clickable logo with link to theqah homepage
+        // TODO: uncomment to link to store reviews page when ready
+        // const _storeUid = G.storeData?.storeUid || G.storeUid || '';
+        // logoLink.href = _storeUid
+        //   ? `${SCRIPT_ORIGIN}/store/${encodeURIComponent(_storeUid)}/reviews?ref=widget`
+        //   : `${SCRIPT_ORIGIN}?ref=widget`;
         const logoLink = document.createElement('a');
-        const _storeUid = G.storeData?.storeUid || G.storeUid || '';
-        logoLink.href = _storeUid
-          ? `${SCRIPT_ORIGIN}/store/${encodeURIComponent(_storeUid)}/reviews?ref=widget`
-          : `${SCRIPT_ORIGIN}?ref=widget`;
+        logoLink.href = 'https://theqah.com.sa?ref=widget';
         logoLink.target = '_blank';
         logoLink.rel = 'noopener noreferrer';
-        logoLink.title = 'مشتري موثق - Verified Buyer | اطلع على جميع التقييمات';
+        logoLink.title = 'مشتري موثق - Verified Buyer | theqah.com.sa';
         logoLink.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none;transition:transform 0.2s ease;margin-inline-start:8px;';
         logoLink.onmouseover = function () { this.style.transform = 'scale(1.1)'; };
         logoLink.onmouseout = function () { this.style.transform = 'scale(1)'; };
@@ -375,12 +377,14 @@
       `
     });
 
-    // Create logo with link to store reviews page
-    const _certStoreUid = G.storeData?.storeUid || G.storeUid || '';
+    // Create logo with link to theqah homepage
+    // TODO: uncomment to link to store reviews page when ready
+    // const _certStoreUid = G.storeData?.storeUid || G.storeUid || '';
+    // href: _certStoreUid
+    //   ? `${SCRIPT_ORIGIN}/store/${encodeURIComponent(_certStoreUid)}/reviews?ref=certificate`
+    //   : `${SCRIPT_ORIGIN}?ref=certificate`,
     const logoLink = h('a', {
-      href: _certStoreUid
-        ? `${SCRIPT_ORIGIN}/store/${encodeURIComponent(_certStoreUid)}/reviews?ref=certificate`
-        : `${SCRIPT_ORIGIN}?ref=certificate`,
+      href: 'https://theqah.com.sa?ref=certificate',
       target: '_blank',
       rel: 'noopener noreferrer',
       style: `
