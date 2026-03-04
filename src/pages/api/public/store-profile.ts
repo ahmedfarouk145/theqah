@@ -46,7 +46,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Map full Review objects to public-safe response format
-        const reviews = verifiedReviews.map((r) => ({
+        // Only show 5-star reviews
+        const reviews = verifiedReviews.filter((r) => r.stars >= 5).map((r) => ({
             id: r.id || r.reviewId || "",
             productId: r.productId || null,
             stars: r.stars || 0,
