@@ -48,14 +48,49 @@ async function fetchZidStoreInfo(managerToken: string): Promise<ZidStoreInfo | n
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { code, state } = req.query;
-    if (!code || !state || typeof code !== 'string' || typeof state !== 'string') {
-      return res.status(400).send('Missing code/state');
+
+    // ── Redirection URL flow ──────────────────────────────────────────
+    // When Zid redirects a merchant here after install, there is no `code` yet.
+    // We start the OAuth flow by redirecting to Zid's authorize endpoint.
+    if (!code || typeof code !== 'string') {
+      const AUTH_URL = process.env.ZID_AUTHORIZE_URL || 'https://oauth.zid.sa/oauth/authorize';
+      const clientId = process.env.ZID_CLIENT_ID;
+      const redirectUri = process.env.ZID_REDIRECT_URI;
+      if (!clientId || !redirectUri) {
+        return res.status(500).send('Server misconfiguration: missing ZID_CLIENT_ID or ZID_REDIRECT_URI');
+      }
+
+      const scopes: string[] = [];
+      if (process.env.ENABLE_ZID_SCOPE_EMBEDDED_APPS === 'true') scopes.push('embedded_apps');
+      if (process.env.ENABLE_ZID_SCOPE_PRODUCTS === 'true') scopes.push('products');
+
+      const authorizeUrl = new URL(AUTH_URL);
+      authorizeUrl.searchParams.set('response_type', 'code');
+      authorizeUrl.searchParams.set('client_id', clientId);
+      authorizeUrl.searchParams.set('redirect_uri', redirectUri);
+      if (scopes.length) authorizeUrl.searchParams.set('scope', scopes.join(' '));
+
+      console.log('[ZID_CALLBACK] Redirection URL hit — starting OAuth flow');
+      return res.redirect(authorizeUrl.toString());
     }
 
-    // Validate state
-    const check = await consumeZidState(state);
-    if (!check.ok) {
-      return res.redirect('/dashboard?zid_error=invalid_state');
+    // ── Callback URL flow ─────────────────────────────────────────────
+    // Zid sends the authorization code here. Exchange it for tokens.
+
+    // Try to validate state from our system (dashboard-initiated flow).
+    // If state is missing or not found, this is a Zid marketplace-initiated install — proceed without uid.
+    let uid: string | undefined;
+    if (state && typeof state === 'string') {
+      const check = await consumeZidState(state);
+      if (check.ok) {
+        uid = check.uid;
+        console.log('[ZID_CALLBACK] Dashboard-initiated flow, uid:', uid);
+      } else {
+        // State not from our system — marketplace-initiated install (Zid generates its own state)
+        console.log('[ZID_CALLBACK] Marketplace-initiated flow (state not from our system)');
+      }
+    } else {
+      console.log('[ZID_CALLBACK] No state param — marketplace-initiated flow');
     }
 
     // Validate config
@@ -121,7 +156,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     // Also save tokens by Firebase UID for backward compatibility
-    const uid = check.uid;
     if (uid) {
       const { dbAdmin } = await import('@/lib/firebaseAdmin');
       const db = dbAdmin();
