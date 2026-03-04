@@ -9,7 +9,11 @@
   // ——— تحديد السكربت والمصدر ———
   const CURRENT_SCRIPT = document.currentScript;
   const SCRIPT_ORIGIN = (() => {
-    try { return new URL(CURRENT_SCRIPT?.src || location.href).origin; }
+    try {
+      const origin = new URL(CURRENT_SCRIPT?.src || location.href).origin;
+      // Always use www subdomain to avoid CORS redirect issues
+      return origin.replace('://theqah.com.sa', '://www.theqah.com.sa');
+    }
     catch { return location.origin; }
   })();
 
