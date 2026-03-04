@@ -29,23 +29,30 @@ type ZidStoreInfo = {
 
 async function fetchZidStoreInfo(
   accessToken: string,
-  managerToken: string
+  authorizationToken: string
 ): Promise<ZidStoreInfo | null> {
   try {
     console.log('[ZID_CALLBACK] Fetching store info with tokens:', {
       hasAccessToken: !!accessToken,
       accessTokenLen: accessToken?.length || 0,
-      hasManagerToken: !!managerToken,
-      managerTokenLen: managerToken?.length || 0,
+      hasAuthorizationToken: !!authorizationToken,
+      authorizationTokenLen: authorizationToken?.length || 0,
     });
 
-    const r = await fetch(`${ZID_API_URL}/managers/account/profile`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'X-MANAGER-TOKEN': managerToken,
-        'Accept': 'application/json',
-      },
-    });
+    // Zid dual-token auth: Authorization = Bearer {authorization}, X-Manager-Token = {access_token}
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'Accept-Language': 'ar',
+    };
+    if (authorizationToken) {
+      headers['Authorization'] = `Bearer ${authorizationToken}`;
+      headers['X-Manager-Token'] = accessToken;
+    } else {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+      headers['X-Manager-Token'] = accessToken;
+    }
+
+    const r = await fetch(`${ZID_API_URL}/managers/account/profile`, { headers });
 
     const text = await r.text();
     console.log('[ZID_CALLBACK] Store info response:', {
@@ -163,11 +170,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.redirect('/dashboard?zid_error=token_request');
     }
 
-    // Fetch store info — Zid requires both Authorization (access_token) and X-MANAGER-TOKEN (authorization)
+    // Fetch store info — Zid dual-token: Authorization=Bearer {authorization}, X-Manager-Token={access_token}
     const accessToken = tokenJson.access_token || '';
-    const managerToken = tokenJson.authorization || '';
-    const storeInfo = (accessToken || managerToken)
-      ? await fetchZidStoreInfo(accessToken || managerToken, managerToken || accessToken)
+    const authorizationToken = tokenJson.authorization || '';
+    const storeInfo = (accessToken || authorizationToken)
+      ? await fetchZidStoreInfo(accessToken, authorizationToken)
       : null;
     const zidStoreId = storeInfo?.id ? String(storeInfo.id) : '';
 
