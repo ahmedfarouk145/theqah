@@ -66,11 +66,17 @@ export class DomainResolverService {
 
         if (base) {
             // Try domain variations
-            const domainVariations = [
+            const rawVariations = [
                 base,
                 `${host}${base.includes('/') ? base.substring(base.indexOf('/', 8)) : ''}`,
                 host,
             ];
+            // Include trailing-slash variants (Zid stores store domain as "https://x.zid.store/")
+            const domainVariations = [
+                ...rawVariations,
+                ...rawVariations.map(v => v.endsWith('/') ? v : `${v}/`),
+                ...rawVariations.map(v => v.endsWith('/') ? v.slice(0, -1) : v),
+            ].filter((v, i, arr) => v && arr.indexOf(v) === i);
 
             for (const variation of domainVariations) {
                 // Try salla.domain
@@ -217,7 +223,7 @@ export class DomainResolverService {
         base: string,
         host: string
     ): Promise<FirebaseFirestore.DocumentSnapshot | null> {
-        const variations = [
+        const baseVariations = [
             base,
             base.replace(/^https?:\/\//i, ''),
             base.replace(/^https?:\/\//i, '').replace(/^www\./i, ''),
@@ -225,7 +231,12 @@ export class DomainResolverService {
             `http://${host}`,
             host,
             `www.${host}`,
-        ].filter((v, i, arr) => v && arr.indexOf(v) === i);
+        ];
+        // Add trailing-slash variants (Zid stores may store domain with trailing slash)
+        const withSlash = baseVariations.map(v => v.endsWith('/') ? v : `${v}/`);
+        const withoutSlash = baseVariations.map(v => v.endsWith('/') ? v.slice(0, -1) : v);
+        const variations = [...baseVariations, ...withSlash, ...withoutSlash]
+            .filter((v, i, arr) => v && arr.indexOf(v) === i);
 
         for (const v of variations) {
             // Try Salla stores

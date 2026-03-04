@@ -19,14 +19,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const storeId = typeof req.query.storeId === 'string' ? req.query.storeId.trim() : '';
     const host = typeof req.query.host === 'string' ? req.query.host.trim().toLowerCase() : '';
 
-    if (!storeUidParam && !href && !storeId) {
-      return res.status(400).json({ error: 'MISSING_INPUT', hint: 'send storeUid or href' });
+    if (!storeUidParam && !href && !storeId && !host) {
+      return res.status(400).json({ error: 'MISSING_INPUT', hint: 'send storeUid, href, or host' });
     }
+
+    // If only host is provided (no href), construct an href from it
+    const effectiveHref = href || (host ? `https://${host}/` : '');
 
     const resolver = new DomainResolverService();
     const result = await resolver.resolveStoreUid({
       storeUid: storeUidParam || undefined,
-      href: href || undefined,
+      href: effectiveHref || undefined,
       storeId: storeId || undefined,
     });
 

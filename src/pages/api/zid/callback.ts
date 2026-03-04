@@ -68,8 +68,14 @@ async function fetchZidStoreInfo(
     console.log('[ZID_CALLBACK] Parsed store info:', {
       hasData: !!data,
       topKeys: data ? Object.keys(data) : [],
+      userKeys: data?.user ? Object.keys(data.user) : [],
+      storeKeys: store ? Object.keys(store) : [],
       storeId: store?.id,
       storeName: store?.name,
+      storeDomain: store?.domain,
+      storeUrl: store?.url,
+      storeUsername: store?.username,
+      storeEmail: store?.email || data?.user?.email,
     });
     return store || null;
   } catch (err) {
