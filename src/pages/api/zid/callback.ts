@@ -85,6 +85,15 @@ async function fetchZidStoreInfo(
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log(`[ZID_CALLBACK] ▶ Incoming ${req.method} from ${req.headers["x-forwarded-for"] || "unknown"}`);
+  console.log(`[ZID_CALLBACK] Query params:`, JSON.stringify({
+    hasCode: !!req.query.code,
+    codeLen: typeof req.query.code === "string" ? req.query.code.length : 0,
+    hasState: !!req.query.state,
+    stateLen: typeof req.query.state === "string" ? req.query.state.length : 0,
+    allKeys: Object.keys(req.query),
+  }));
+
   try {
     const { code, state } = req.query;
 

@@ -10,7 +10,9 @@ import { ZidReviewSyncService } from '@/backend/server/services/zid-review-sync.
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Verify cron authorization
     const authHeader = req.headers.authorization;
+    console.log(`[ZID_CRON] ▶ Incoming ${req.method}, auth=${authHeader ? 'present' : 'MISSING'}`);
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        console.warn(`[ZID_CRON] ❌ Unauthorized: header mismatch`);
         return res.status(401).json({ error: 'Unauthorized' });
     }
 

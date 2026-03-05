@@ -48,6 +48,11 @@ function cleanupExpired(now: number) {
 }
 
 export function middleware(req: NextRequest) {
+  // Log Zid webhook requests for debugging
+  if (req.nextUrl.pathname === "/api/zid/webhook") {
+    console.log(`[MIDDLEWARE] Zid webhook: method=${req.method}, ip=${getClientIp(req)}, ua=${req.headers.get("user-agent")?.substring(0, 60)}`);
+  }
+
   // تجاوز الـ static files والـ widgets
   if (req.nextUrl.pathname.startsWith("/widgets/") || 
       req.nextUrl.pathname.startsWith("/_next/") ||

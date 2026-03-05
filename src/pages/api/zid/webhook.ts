@@ -35,18 +35,30 @@ function validSignature(raw: Buffer, secret: string, given?: string): boolean {
 // ── handler ──────────────────────────────────────────────────
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log(`[ZID_WEBHOOK] ▶ Incoming ${req.method} from ${req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown"}`);
+  console.log(`[ZID_WEBHOOK] Headers:`, JSON.stringify({
+    "content-type": req.headers["content-type"],
+    "x-zid-signature": req.headers["x-zid-signature"] ? "present" : "missing",
+    "user-agent": req.headers["user-agent"],
+    "x-forwarded-for": req.headers["x-forwarded-for"],
+  }));
+
   if (req.method !== "POST") {
+    console.warn(`[ZID_WEBHOOK] ❌ Rejected: method=${req.method}`);
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   const raw = await readRawBody(req);
+  console.log(`[ZID_WEBHOOK] Raw body length: ${raw.length} bytes`);
+
   const db = dbAdmin();
 
   // Validate signature
   const secret = process.env.ZID_WEBHOOK_SECRET ?? "";
   const sig = (req.headers["x-zid-signature"] as string) ?? "";
+  console.log(`[ZID_WEBHOOK] Signature check: secret=${secret ? "configured" : "EMPTY"}, sig=${sig ? "present" : "missing"}`);
   if (!validSignature(raw, secret, sig)) {
-    console.warn("[ZID] Invalid webhook signature");
+    console.warn("[ZID_WEBHOOK] ❌ Invalid webhook signature");
     return res.status(401).json({ error: "invalid_signature" });
   }
 
@@ -56,8 +68,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     body = JSON.parse(raw.toString("utf8") || "{}");
   } catch {
+    console.error(`[ZID_WEBHOOK] ❌ Invalid JSON body: ${raw.toString("utf8").substring(0, 200)}`);
     return res.status(400).json({ error: "invalid_json" });
   }
+
+  console.log(`[ZID_WEBHOOK] Parsed body:`, JSON.stringify({
+    event: body.event,
+    store_id: body.store_id,
+    dataKeys: body.data ? Object.keys(body.data) : [],
+    bodyKeys: Object.keys(body),
+  }));
 
   const event = String(body.event || "");
   const data = (body.data ?? {}) as UnknownRecord;
@@ -66,15 +86,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   );
   const storeUid = storeId ? `zid:${storeId}` : "";
 
+  console.log(`[ZID_WEBHOOK] Resolved: event="${event}", storeId="${storeId}", storeUid="${storeUid}"`);
+
   // Idempotency check
   const idemKey = crypto.createHash("sha256").update((sig || "") + "|").update(raw).digest("hex");
   const idemRef = db.collection("webhooks_zid").doc(idemKey);
   if ((await idemRef.get()).exists) {
+    console.log(`[ZID_WEBHOOK] ⏭ Deduped: ${event} for store ${storeId}`);
     return res.status(200).json({ ok: true, deduped: true });
   }
   await idemRef.set({ at: Date.now(), event, storeId });
 
-  console.log(`[ZID] Webhook: ${event} for store: ${storeId}`);
+  console.log(`[ZID_WEBHOOK] ✅ Processing: ${event} for store: ${storeId}`);
 
   const svc = new ZidWebhookService();
 
@@ -131,9 +154,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Always log the event
     await svc.logEvent(event, storeUid, "webhook", { storeId, raw: data });
 
+    console.log(`[ZID_WEBHOOK] ✅ Completed: ${event} for store ${storeId}`);
     return res.status(200).json({ ok: true, event });
   } catch (err) {
-    console.error(`[ZID] Webhook error for ${event}:`, err);
+    console.error(`[ZID_WEBHOOK] ❌ Handler error for ${event}:`, err);
     return res.status(500).json({ error: "internal_error" });
   }
 }

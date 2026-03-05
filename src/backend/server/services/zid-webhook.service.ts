@@ -387,6 +387,11 @@ export class ZidWebhookService {
     ): Promise<{ registered: string[]; failed: string[] }> {
         const ZID_API_URL = process.env.ZID_API_URL || 'https://api.zid.sa/v1';
 
+        console.log(`[ZID_WEBHOOK_REG] ▶ Starting webhook registration`);
+        console.log(`[ZID_WEBHOOK_REG] Target URL: ${targetUrl}`);
+        console.log(`[ZID_WEBHOOK_REG] API URL: ${ZID_API_URL}`);
+        console.log(`[ZID_WEBHOOK_REG] Tokens: access_token=${tokens.access_token ? `${tokens.access_token.substring(0, 10)}...` : 'MISSING'}, authorization=${tokens.authorization ? `${tokens.authorization.substring(0, 10)}...` : 'MISSING'}`);
+
         const eventsToRegister = [
             'order.create',
             'order.status.update',
@@ -398,42 +403,47 @@ export class ZidWebhookService {
 
         for (const event of eventsToRegister) {
             try {
+                const reqBody = JSON.stringify({
+                    event,
+                    target_url: targetUrl,
+                    conditions: {},
+                });
+                console.log(`[ZID_WEBHOOK_REG] Registering: ${event} → ${targetUrl}`);
+
                 const response = await fetch(`${ZID_API_URL}/managers/webhooks`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${tokens.authorization}`,
                         'X-Manager-Token': tokens.access_token,
+                        'Accept': 'application/json',
                         'Accept-Language': 'en',
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        event,
-                        target_url: targetUrl,
-                        conditions: {},
-                    }),
+                    body: reqBody,
                 });
 
                 if (response.ok) {
+                    const responseBody = await response.text();
                     registered.push(event);
-                    console.log(`[ZID_WEBHOOK] ✅ Registered webhook: ${event}`);
+                    console.log(`[ZID_WEBHOOK_REG] ✅ Registered: ${event} (HTTP ${response.status}) — ${responseBody.substring(0, 200)}`);
                 } else {
                     const errorBody = await response.text();
+                    console.error(`[ZID_WEBHOOK_REG] ❌ HTTP ${response.status} for ${event}: ${errorBody}`);
                     // 409/422 = already registered — treat as success
                     if (response.status === 409 || response.status === 422) {
                         registered.push(event);
-                        console.log(`[ZID_WEBHOOK] Webhook already exists: ${event}`);
+                        console.log(`[ZID_WEBHOOK_REG] ↳ Treating as already registered (${response.status})`);
                     } else {
                         failed.push(event);
-                        console.error(`[ZID_WEBHOOK] ❌ Failed to register ${event}: HTTP ${response.status} — ${errorBody}`);
                     }
                 }
             } catch (err) {
                 failed.push(event);
-                console.error(`[ZID_WEBHOOK] ❌ Exception registering ${event}:`, err);
+                console.error(`[ZID_WEBHOOK_REG] ❌ Exception for ${event}:`, err instanceof Error ? err.message : err);
             }
         }
 
-        console.log(`[ZID_WEBHOOK] Webhook registration: ${registered.length} OK, ${failed.length} failed`);
+        console.log(`[ZID_WEBHOOK_REG] 📊 Result: ${registered.length} registered [${registered.join(', ')}], ${failed.length} failed [${failed.join(', ')}]`);
         return { registered, failed };
     }
 }

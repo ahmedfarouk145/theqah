@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "WebFetch(domain:docs.zid.sa)",
+      "WebSearch",
+      "WebFetch(domain:help-partner.zid.sa)"
+    ]
+  }
+}
