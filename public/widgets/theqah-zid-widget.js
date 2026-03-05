@@ -143,23 +143,19 @@
 
         // Zid Vitrin-specific placement order (best → worst)
         const candidates = [
-            // Priority 1: Before the product tabs — right after product info in the main column
-            { selector: '#nav-tab, .nav-tabs', position: 'before', name: 'before product tabs' },
-            // Priority 2: After the last list-group-item (price/code/payment options)
+            // Priority 1: After the last list-group-item (after خيارات الدفع)
             { selector: '.list-group .list-group-item:last-child', position: 'after', name: 'after product info items' },
-            // Priority 3: After the product info list-group itself
+            // Priority 2: After the product info list-group
             { selector: '.list-group', position: 'after', name: 'after product info list' },
-            // Priority 4: After the product title/name
-            { selector: '.product-title, .product-name, h1', position: 'after', name: 'after product title' },
-            // Priority 5: Before reviews section
-            { selector: '[class*="review"]', position: 'before', name: 'reviews section' },
-            // Priority 6: Before the tab content area
+            // Priority 3: Before the product tabs
+            { selector: '#nav-tab, .nav-tabs', position: 'before', name: 'before product tabs' },
+            // Priority 4: Before the tab content area
             { selector: '#nav-tabContent, .tab-content', position: 'before', name: 'before tab content' },
-            // Priority 7: After product description
-            { selector: '.product-description, [class*="description"]', position: 'after', name: 'product description' },
-            // Priority 8: After product details area
-            { selector: '.product-details, [class*="product-info"]', position: 'after', name: 'product details' },
-            // Priority 9: Before footer
+            // Priority 5: After product title
+            { selector: '.product-title, .product-name, h1', position: 'after', name: 'after product title' },
+            // Priority 6: Before reviews section
+            { selector: '[class*="review"]', position: 'before', name: 'reviews section' },
+            // Priority 7: Before footer
             { selector: 'footer', position: 'before', name: 'footer' },
         ];
 
@@ -199,91 +195,83 @@
             document.head.appendChild(link);
         }
 
+        // Same style as Salla certificate badge
         const container = h('div', {
             class: 'theqah-zid-certificate',
             style: `
         font-family: 'Cairo', system-ui, -apple-system, sans-serif;
         direction: rtl;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f0f9ff 100%);
-        border: 1px solid #d1fae5;
-        border-radius: 12px;
-        padding: 14px 18px;
-        margin: 16px 0;
+        text-align: center;
+        background: transparent;
+        border: none;
+        border-radius: 16px;
+        padding: 24px;
+        margin: 20px auto;
+        max-width: 500px;
         position: relative;
-        overflow: hidden;
-        transition: box-shadow 0.3s ease;
-      `
-        });
-        container.onmouseover = function () { this.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.15)'; };
-        container.onmouseout = function () { this.style.boxShadow = 'none'; };
-
-        // Accent line at top
-        const accent = h('div', {
-            style: `
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, #10b981, #3b82f6);
+        overflow: visible;
       `
         });
 
         const logoLink = h('a', {
-            href: 'https://www.theqah.com.sa?ref=zid-widget',
+            href: 'https://www.theqah.com.sa?ref=zid-certificate',
             target: '_blank',
             rel: 'noopener noreferrer',
-            style: 'display:flex;flex-shrink:0;transition:transform 0.2s ease;',
+            style: `
+        display: inline-block;
+        margin-bottom: 20px;
+        transition: transform 0.2s ease;
+      `
         });
 
         const logo = h('img', {
             src: LOGO_URL,
             alt: 'مشتري موثق',
             style: `
-        width: 56px;
-        height: 56px;
+        width: 150px;
+        height: 150px;
         object-fit: contain;
         background: transparent;
-        filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.3));
+        filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5));
       `
         });
         logoLink.appendChild(logo);
-        logoLink.onmouseover = function () { this.style.transform = 'scale(1.08)'; };
+        logoLink.onmouseover = function () { this.style.transform = 'scale(1.05)'; };
         logoLink.onmouseout = function () { this.style.transform = 'scale(1)'; };
 
-        // Text content
-        const textWrap = h('div', {
-            style: 'flex:1;min-width:0;'
-        });
-
-        const title = h('div', {
+        const title = h('h3', {
             style: `
-        font-size: 14px;
-        font-weight: 800;
-        color: #065f46;
-        margin: 0 0 2px 0;
-        line-height: 1.4;
+        font-size: 28px;
+        font-weight: 900;
+        margin: 0 0 12px 0;
+        line-height: 1.3;
+        background: linear-gradient(to left, #10b981, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        color: #10b981;
+        display: inline-block;
       `
         }, 'شهادة توثيق التقييمات');
 
-        const subtitle = h('div', {
+        const subtitle = h('p', {
             style: `
-        font-size: 12px;
-        font-weight: 500;
-        color: #6b7280;
-        line-height: 1.5;
+        font-size: 15px;
+        font-weight: 600;
+        color: #4b5563;
+        margin: 0;
+        line-height: 1.6;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
       `
-        }, 'تقييمات هذا المتجر مدققة من مشتري موثق');
+        }, 'جميع تقييمات هذا المتجر مدققة من مشتري موثق "طرف ثالث" لضمان المصداقية');
 
-        textWrap.appendChild(title);
-        textWrap.appendChild(subtitle);
-
-        container.appendChild(accent);
         container.appendChild(logoLink);
-        container.appendChild(textWrap);
+        container.appendChild(title);
+        container.appendChild(subtitle);
 
-        console.log(`${TAG} [BADGE] ✅ Badge created (compact layout)`);
+        console.log(`${TAG} [BADGE] ✅ Badge created (Salla style)`);
         return container;
     }
 
