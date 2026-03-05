@@ -403,9 +403,11 @@ export class ZidWebhookService {
 
         for (const event of eventsToRegister) {
             try {
+                // original_id is required by ZID API — use a unique identifier per event
                 const reqBody = JSON.stringify({
                     event,
                     target_url: targetUrl,
+                    original_id: `theqah_${event}`,
                     conditions: {},
                 });
                 console.log(`[ZID_WEBHOOK_REG] Registering: ${event} → ${targetUrl}`);

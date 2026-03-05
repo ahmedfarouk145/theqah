@@ -64,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Parse body
   type UnknownRecord = Record<string, unknown>;
-  let body: { event?: string; data?: UnknownRecord; store_id?: string | number };
+  let body: { event?: string; event_name?: string; data?: UnknownRecord; store_id?: string | number };
   try {
     body = JSON.parse(raw.toString("utf8") || "{}");
   } catch {
@@ -74,13 +74,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   console.log(`[ZID_WEBHOOK] Parsed body:`, JSON.stringify({
     event: body.event,
+    event_name: (body as Record<string, unknown>).event_name,
     store_id: body.store_id,
     dataKeys: body.data ? Object.keys(body.data) : [],
     bodyKeys: Object.keys(body),
   }));
 
-  const event = String(body.event || "");
-  const data = (body.data ?? {}) as UnknownRecord;
+  // Zid app webhooks use "event_name" at root level with flat payload (no "data" wrapper)
+  // Zid merchant webhooks (order.*) use "event" with nested "data"
+  const event = String(body.event || (body as Record<string, unknown>).event_name || "");
+  const data = (body.data ?? body ?? {}) as UnknownRecord;
   const storeId = String(
     body.store_id ?? data["store_id"] ?? (data["store"] as UnknownRecord)?.["id"] ?? ""
   );
@@ -120,7 +123,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Subscription
       case "app.market.subscription.active":
+      case "app.market.subscription.upgrade":
+      case "app.market.subscription.renew":
         await svc.handleSubscriptionActive(storeUid, data as object);
+        // Capture merchant_email if available (ZID sends it in flat payload)
+        if (storeUid && (data as Record<string, unknown>).merchant_email) {
+          await db.collection("stores").doc(storeUid).set(
+            { merchantEmail: String((data as Record<string, unknown>).merchant_email) },
+            { merge: true }
+          );
+        }
         break;
 
       case "app.market.subscription.suspended":
