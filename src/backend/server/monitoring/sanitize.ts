@@ -100,7 +100,10 @@ export function sanitizeMetadata(metadata: Record<string, unknown> | null | unde
   for (const [key, value] of Object.entries(metadata)) {
     const lowerKey = key.toLowerCase();
     
-    if (lowerKey.includes("email")) {
+    if (lowerKey === "to" || lowerKey.includes("recipient")) {
+      const valueStr = String(value ?? "");
+      sanitized[key] = valueStr.includes("@") ? sanitizeEmail(valueStr) : sanitizePhone(valueStr);
+    } else if (lowerKey.includes("email")) {
       sanitized[key] = sanitizeEmail(String(value));
     } else if (lowerKey.includes("phone") || lowerKey.includes("mobile") || lowerKey.includes("tel")) {
       sanitized[key] = sanitizePhone(value as string);

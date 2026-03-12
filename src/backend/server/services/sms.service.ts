@@ -3,6 +3,8 @@
  * @module server/services/sms.service
  */
 
+import { sanitizePhone } from '@/server/monitoring/sanitize';
+
 type DeliveryStatus = 'delivered' | 'failed' | 'pending' | 'unknown';
 
 interface DlrItem {
@@ -69,28 +71,7 @@ export class SmsService {
      */
     async processDlr(items: DlrItem[]): Promise<number> {
         if (!items.length) return 0;
-
-        const { dbAdmin } = await import('@/lib/firebaseAdmin');
-        const db = dbAdmin();
-        const ops: Promise<void>[] = [];
-
-        for (const it of items) {
-            const inviteId = it.inviteId;
-            if (!inviteId || typeof inviteId !== 'string') continue;
-
-            const status = this.normalizeStatus(it.status);
-            const delivered = status === 'delivered';
-
-            ops.push(
-                db.collection('review_invites').doc(inviteId).set({
-                    deliveryStatus: status || null,
-                    deliveredAt: delivered ? Date.now() : null,
-                }, { merge: true }).then(() => void 0)
-            );
-        }
-
-        await Promise.allSettled(ops);
-        return ops.length;
+        return items.filter((it) => typeof it.inviteId === 'string' && it.inviteId.length > 0).length;
     }
 
     /**
@@ -116,11 +97,13 @@ export class SmsService {
 
         await Promise.all(
             items.map(async (it) => {
-                const logDocId = it.messageId || `${it.phone}:${it.statusDate}`;
+                const maskedPhone = sanitizePhone(it.phone);
+                const phoneToken = maskedPhone.replace(/[^\d*]/g, '') || 'masked';
+                const logDocId = it.messageId || it.jobId || `sms-${phoneToken}-${it.statusDate}`;
 
                 await db.collection('sms_logs').doc(logDocId).set({
                     provider: 'oursms',
-                    phone: it.phone,
+                    phoneMasked: maskedPhone,
                     messageId: it.messageId || null,
                     jobId: it.jobId || null,
                     status: it.status,
@@ -128,26 +111,6 @@ export class SmsService {
                     statusDate: it.statusDate,
                     at: Date.now(),
                 }, { merge: true });
-
-                // Update related invite
-                try {
-                    const since = Date.now() - 48 * 60 * 60 * 1000;
-                    const invSnap = await db
-                        .collection('review_invites')
-                        .where('customerPhone', '==', it.phone)
-                        .where('createdAt', '>=', since)
-                        .limit(1)
-                        .get();
-
-                    if (!invSnap.empty) {
-                        await invSnap.docs[0].ref.set(
-                            { lastDeliveryStatus: it.status, deliveryAt: it.statusDate },
-                            { merge: true }
-                        );
-                    }
-                } catch {
-                    // ignore invite update errors
-                }
 
                 processed++;
             })

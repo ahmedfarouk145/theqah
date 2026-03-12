@@ -5,11 +5,19 @@ import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { app, db } from '@/lib/firebase';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+
+type AuthClaims = {
+  role?: string;
+  admin?: boolean;
+  roles?: { admin?: boolean };
+};
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,6 +27,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const emailValue = email.trim();
+  const isEmailValid = emailPattern.test(emailValue);
+  const canSubmit = isEmailValid && password.length > 0 && !loading;
 
   const map = (code: string) =>
     ({
@@ -35,33 +48,31 @@ export default function LoginPage() {
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+
+    if (!isEmailValid || !password) {
+      setError('يرجى إدخال بريد إلكتروني صالح وكلمة المرور.');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const cred = await signInWithEmailAndPassword(auth, emailValue, password);
 
       // 1) اقرأ الـ claims بعد فورس ريفرش
       const token = await cred.user.getIdTokenResult(true);
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const c = token.claims as any;
+      const c = token.claims as AuthClaims;
 
       // ندعم أشكال متعدّدة للـ claims: role='admin' أو admin=true أو roles.admin=true
-      let isAdmin =
-        c?.role === 'admin' ||
-        c?.admin === true ||
-        (c?.roles && c.roles.admin === true);
+      let isAdmin = c?.role === 'admin' || c?.admin === true || c?.roles?.admin === true;
 
       // 2) لو مفيش claim، افحص Firestore: roles/{uid}
       if (!isAdmin) {
         try {
           const snap = await getDoc(doc(db, 'roles', cred.user.uid));
           if (snap.exists()) {
-            //eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const data = snap.data() as any;
-            isAdmin =
-              data?.role === 'admin' ||
-              data?.admin === true ||
-              (data?.roles && data.roles.admin === true);
+            const data = snap.data() as AuthClaims;
+            isAdmin = data?.role === 'admin' || data?.admin === true || data?.roles?.admin === true;
           }
         } catch (roleError) {
           // في حالة فشل قراءة الأدوار، نكمل كمستخدم عادي
@@ -71,80 +82,110 @@ export default function LoginPage() {
       }
 
       // 3) التحويل
-      router.push(isAdmin ? '/admin/dashboard' : '/dashboard');
-      //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      console.error('Login error:', err?.code, err?.message);
-      setError(map(String(err?.code || '')));
+      await router.push(isAdmin ? '/admin/dashboard' : '/dashboard');
+    } catch (err: unknown) {
+      const authErr = err as { code?: string; message?: string };
+      console.error('Login error:', authErr?.code, authErr?.message);
+      setError(map(String(authErr?.code || '')));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-green-50 to-white px-4">
-      <form onSubmit={handleLogin} className="w-full max-w-md bg-white p-8 rounded-xl shadow-md border" noValidate>
-        <div className="text-center space-y-3 mb-6">
-          <Image src="/logo.png" alt="مشتري موثّق" width={56} height={56} className="mx-auto rounded" />
-          <h1 className="text-2xl font-extrabold text-green-900">تسجيل الدخول إلى مشتري موثّق</h1>
-          <p className="text-sm text-gray-600">مرحبًا بك، أدخل بياناتك للمتابعة</p>
+    <div dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-b from-emerald-50 via-white to-emerald-100/50 px-4 py-10">
+      <form
+        onSubmit={handleLogin}
+        className="w-full max-w-md rounded-2xl border border-emerald-100 bg-white p-8 shadow-[0_20px_60px_-35px_rgba(5,150,105,0.45)]"
+        noValidate
+      >
+        <div className="mb-7 text-center">
+          <Image src="/logo.png" alt="مشتري موثّق" width={56} height={56} className="mx-auto rounded-md" priority />
+          <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-emerald-900">تسجيل الدخول</h1>
+          <p className="mt-2 text-sm text-gray-600">أدخل بيانات حسابك للوصول إلى لوحة التحكم</p>
         </div>
 
-        {error && (
-          <div role="alert" className="mb-4 text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2 text-sm text-center">
-            {error}
-          </div>
-        )}
+        <div aria-live="assertive">
+          {error ? (
+            <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+        </div>
 
         <div className="mb-4">
-          <label className="block mb-1 text-sm font-medium text-gray-700" htmlFor="email">البريد الإلكتروني</label>
-        <input
+          <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="email">
+            البريد الإلكتروني
+          </label>
+          <input
             id="email"
             type="email"
             required
             autoComplete="email"
             inputMode="email"
             dir="ltr"
+            autoFocus
             placeholder="you@example.com"
-            className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            aria-invalid={!!error}
+            aria-invalid={Boolean(error) || (email.length > 0 && !isEmailValid)}
+            aria-describedby="login-email-help"
           />
+          <p id="login-email-help" className="mt-1 text-xs text-gray-500">
+            استخدم نفس البريد المسجل في المنصة.
+          </p>
         </div>
 
         <div className="mb-2">
-          <label className="block mb-1 text-sm font-medium text-gray-700" htmlFor="password">كلمة المرور</label>
-          <input
-            id="password"
-            type="password"
-            required
-            autoComplete="current-password"
-            dir="ltr"
-            placeholder="••••••••"
-            className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-invalid={!!error}
-          />
+          <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="password">
+            كلمة المرور
+          </label>
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              required
+              autoComplete="current-password"
+              dir="ltr"
+              placeholder="••••••••"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 pe-10 text-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-invalid={Boolean(error)}
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 end-2 flex items-center text-gray-500 hover:text-emerald-700"
+              onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
 
-        <div className="text-left text-xs mb-6">
-          <Link href="/forgot-password" className="text-green-700 hover:underline">نسيت كلمة المرور؟</Link>
+        <div className="mb-6 text-start text-xs">
+          <Link href="/forgot-password" className="text-emerald-700 hover:underline">
+            نسيت كلمة المرور؟
+          </Link>
         </div>
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition flex items-center justify-center gap-2 disabled:opacity-70"
+          disabled={!canSubmit}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
+          {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
         </button>
 
-        <div className="text-center text-sm mt-5">
-          لا تملك حساب؟ <Link href="/signup" className="text-green-700 font-medium hover:underline">أنشئ حساب جديد</Link>
-        </div>
+        <p className="mt-5 text-center text-sm text-gray-700">
+          لا تملك حسابًا؟{' '}
+          <Link href="/signup" className="font-medium text-emerald-700 hover:underline">
+            إنشاء حساب جديد
+          </Link>
+        </p>
       </form>
     </div>
   );

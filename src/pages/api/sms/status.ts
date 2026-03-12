@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { SmsService } from '@/server/services/sms.service';
 import { info, warn } from '@/lib/logger';
+import { sanitizePhone } from '@/server/monitoring/sanitize';
 
 function asString(v: unknown): string {
   if (typeof v === 'string') return v;
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const processed = await smsService.processStatusUpdates(items);
 
     items.forEach(it => {
-      info('sms.dlr', { status: it.status, phone: it.phone, messageId: it.messageId, jobId: it.jobId });
+      info('sms.dlr', { status: it.status, phoneMasked: sanitizePhone(it.phone), messageId: it.messageId, jobId: it.jobId });
     });
 
     return res.status(200).json({ ok: true, processed });

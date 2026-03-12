@@ -5,7 +5,6 @@
 
 // Core services
 export { ReviewService } from './review.service';
-export type { SubmitReviewInput, SubmitReviewResult } from './review.service';
 
 export { StoreService } from './store.service';
 

@@ -9,28 +9,13 @@ import type { Order } from '../core/types';
 export interface OrderDTO {
     id: string;
     orderId: string;
-    name: string;
-    phone: string;
-    email: string;
-    createdAt: number;
-    sent: boolean;
-}
-
-export interface CreateOrderInput {
-    orderId: string;
-    storeUid: string;
     productId: string;
-    customer?: {
-        name?: string;
-        phone?: string;
-        email?: string;
-    };
+    status: string;
+    createdAt: number;
 }
 
 export class OrderService {
     private orderRepo = RepositoryFactory.getOrderRepository();
-    private tokenRepo = RepositoryFactory.getReviewTokenRepository();
-    private storeRepo = RepositoryFactory.getStoreRepository();
 
     /**
      * Get order by ID
@@ -87,11 +72,9 @@ export class OrderService {
             return {
                 id: d.id,
                 orderId: String(x.orderId || d.id),
-                name: String(x.name || ''),
-                phone: String(x.phone || ''),
-                email: String(x.email || ''),
+                productId: String(x.productId || ''),
+                status: String(x.status || 'unknown'),
                 createdAt: Number.isFinite(created) ? created : Date.now(),
-                sent: !!x.reviewSent,
             };
         });
 
@@ -101,63 +84,6 @@ export class OrderService {
             orders,
             pagination: { hasMore, nextCursor, limit },
         };
-    }
-
-    /**
-     * Create order manually
-     */
-    async createOrder(
-        userUid: string,
-        input: CreateOrderInput
-    ): Promise<{ ok: boolean; id?: string; error?: string }> {
-        const { orderId, storeUid, productId, customer } = input;
-
-        if (!orderId || !storeUid || !productId) {
-            return { ok: false, error: 'MISSING_FIELDS' };
-        }
-
-        // Check store ownership
-        const store = await this.storeRepo.findById(storeUid);
-        if (!store) {
-            return { ok: false, error: 'STORE_NOT_FOUND' };
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const storeData = store as any;
-        const ownerUids: string[] = Array.isArray(storeData.ownerUids) ? storeData.ownerUids : [];
-        const isOwner = storeUid === userUid || ownerUids.includes(userUid);
-        if (!isOwner) {
-            return { ok: false, error: 'NOT_STORE_OWNER' };
-        }
-
-        // Create order document
-        const orderDoc = {
-            orderId: String(orderId),
-            storeUid: String(storeUid),
-            storeName: String(storeData.name || storeData.storeName || 'متجرك'),
-            productId: String(productId),
-            name: customer?.name ?? null,
-            phone: customer?.phone ?? null,
-            email: customer?.email ?? null,
-            status: 'created',
-            reviewSent: false,
-            reviewLink: null,
-            reviewTokenId: null,
-            createdAt: Date.now(),
-        };
-
-        // Save to orders collection
-        const { dbAdmin } = await import('@/lib/firebaseAdmin');
-        const db = dbAdmin();
-        const batch = db.batch();
-        const storeRef = db.collection('stores').doc(storeUid);
-        const nestedRef = storeRef.collection('orders').doc(orderId);
-        const rootRef = db.collection('orders').doc(orderId);
-        batch.set(nestedRef, orderDoc, { merge: true });
-        batch.set(rootRef, orderDoc, { merge: true });
-        await batch.commit();
-
-        return { ok: true, id: orderId };
     }
 
     /**
@@ -177,69 +103,5 @@ export class OrderService {
         await this.orderRepo.updateStatus(orderId, status, paymentStatus);
     }
 
-    /**
-     * Handle order cancellation - void tokens
-     */
-    async handleCancellation(orderId: string): Promise<number> {
-        return this.tokenRepo.voidByOrderId(orderId, 'order_cancelled');
-    }
-
-    /**
-     * Handle order refund - void tokens
-     */
-    async handleRefund(orderId: string): Promise<number> {
-        return this.tokenRepo.voidByOrderId(orderId, 'order_refunded');
-    }
-
-    /**
-     * Import orders from CSV records
-     */
-    async importFromCsv(
-        storeId: string,
-        records: Array<{
-            name: string;
-            phone: string;
-            email?: string;
-            orderId: string;
-            productId: string;
-            storeName: string;
-        }>
-    ): Promise<{ inserted: number; skipped: number; total: number }> {
-        const { dbAdmin } = await import('@/lib/firebaseAdmin');
-        const db = dbAdmin();
-
-        let inserted = 0;
-        let skipped = 0;
-
-        for (const raw of records) {
-            const name = String(raw.name ?? '').trim();
-            const phone = String(raw.phone ?? '').trim();
-            const email = raw.email ? String(raw.email).trim() : undefined;
-            const orderId = String(raw.orderId ?? '').trim();
-            const productId = String(raw.productId ?? '').trim();
-            const storeName = String(raw.storeName ?? '').trim();
-
-            if (!name || !phone || !orderId || !productId || !storeName) {
-                skipped++;
-                continue;
-            }
-
-            await db.collection('orders').add({
-                name,
-                phone,
-                email: email || null,
-                orderId,
-                productId,
-                storeName,
-                storeId: storeId ?? null,
-                sent: false,
-                createdAt: new Date().toISOString(),
-            });
-
-            inserted++;
-        }
-
-        return { inserted, skipped, total: records.length };
-    }
 }
 

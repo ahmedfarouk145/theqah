@@ -8,10 +8,14 @@
 import crypto from 'crypto';
 
 /** Zid order from webhook payload */
+/** Zid order from webhook — supports both nested (API) and flat (webhook) formats */
 export interface ZidOrder {
     id?: string | number;
     number?: string;
+    code?: string;                    // ZID webhook uses "code" as order number
+    invoice_number?: string;          // Alternative order number field
     status?: string;
+    order_status?: string;            // ZID webhook uses "order_status"
     payment_status?: string;
     customer?: {
         name?: string;
@@ -25,8 +29,17 @@ export interface ZidOrder {
         quantity?: number;
         price?: number;
     }>;
+    products?: Array<{               // ZID webhook uses "products" not "items"
+        id?: string | number;
+        product_id?: string | number;
+        name?: string;
+        quantity?: number;
+        price?: number;
+    }>;
     total?: number;
+    order_total?: number;             // ZID webhook uses "order_total"
     currency?: string;
+    currency_code?: string;           // ZID webhook uses "currency_code"
 }
 
 /** Zid store info from API */
@@ -261,40 +274,40 @@ export class ZidWebhookService {
         const { dbAdmin } = await import('@/lib/firebaseAdmin');
         const db = dbAdmin();
 
-        const productIds = (order.items || [])
+        // ZID webhook sends "products" not "items"
+        const itemsList = order.items || order.products || [];
+        const productIds = itemsList
             .map(item => String(item.product_id ?? item.id ?? ''))
             .filter(Boolean);
+
+        // ZID webhook uses different field names than the API
+        const orderNumber = order.number ?? order.code ?? order.invoice_number ?? null;
+        const orderStatus = order.status ?? order.order_status ?? null;
+        const orderTotal = order.total ?? order.order_total ?? null;
+        const currency = order.currency ?? order.currency_code ?? null;
 
         await db.collection('orders').doc(`zid_${orderId}`).set(
             {
                 id: orderId,
-                number: order.number ?? null,
-                status: order.status ?? null,
+                number: orderNumber,
+                status: orderStatus,
                 paymentStatus: order.payment_status ?? null,
-                customer: {
-                    name: order.customer?.name ?? null,
-                    email: order.customer?.email ?? null,
-                    mobile: order.customer?.mobile ?? null,
-                },
-                items: (order.items || []).map(item => ({
+                items: itemsList.map(item => ({
                     productId: String(item.product_id ?? item.id ?? ''),
-                    name: item.name ?? null,
-                    quantity: item.quantity ?? 1,
-                    price: item.price ?? null,
                 })),
-                productIds, // Flat list for easy querying during review sync
+                productIds,
                 storeUid,
                 platform: 'zid',
-                total: order.total ?? null,
-                currency: order.currency ?? null,
-                reviewChecked: false, // Flag for review sync cron
+                total: orderTotal,
+                currency,
+                reviewChecked: false,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             },
             { merge: true }
         );
 
-        console.log(`[ZID_WEBHOOK] Order created: ${orderId} (${productIds.length} products)`);
+        console.log(`[ZID_WEBHOOK] Order created: ${orderId} (${productIds.length} products) number=${orderNumber}`);
     }
 
     /**
@@ -403,11 +416,12 @@ export class ZidWebhookService {
 
         for (const event of eventsToRegister) {
             try {
-                // original_id is required by ZID API — use a unique identifier per event
+                // original_id is required by ZID API — must be the App ID or MD5 of App ID
+                const appId = process.env.ZID_CLIENT_ID || '';
                 const reqBody = JSON.stringify({
                     event,
                     target_url: targetUrl,
-                    original_id: `theqah_${event}`,
+                    original_id: appId,
                     conditions: {},
                 });
                 console.log(`[ZID_WEBHOOK_REG] Registering: ${event} → ${targetUrl}`);

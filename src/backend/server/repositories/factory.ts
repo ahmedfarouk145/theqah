@@ -7,7 +7,6 @@ import { ReviewRepository } from './review.repository';
 import { StoreRepository } from './store.repository';
 import { OrderRepository } from './order.repository';
 import { OwnerRepository } from './owner.repository';
-import { ReviewTokenRepository } from './review-token.repository';
 import { DomainRepository } from './domain.repository';
 import { AuditLogRepository } from './audit-log.repository';
 import type { BaseRepository } from './base.repository';
@@ -58,16 +57,6 @@ export class RepositoryFactory {
             this.instances.set('owner', new OwnerRepository());
         }
         return this.instances.get('owner') as OwnerRepository;
-    }
-
-    /**
-     * Get ReviewTokenRepository instance
-     */
-    static getReviewTokenRepository(): ReviewTokenRepository {
-        if (!this.instances.has('reviewToken')) {
-            this.instances.set('reviewToken', new ReviewTokenRepository());
-        }
-        return this.instances.get('reviewToken') as ReviewTokenRepository;
     }
 
     /**

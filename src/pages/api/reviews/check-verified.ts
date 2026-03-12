@@ -47,13 +47,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const result = await verificationService.getVerifiedReviews(storeId, productIdStr);
 
-    // Map to existing response format for backward compatibility
+    // Public response: use reviewId for navigation and sallaReviewId for storefront DOM matching
     return res.status(200).json({
       hasVerified: result.hasVerified,
       count: result.count,
       reviews: result.reviews.map(r => ({
+        reviewId: r.reviewId || r.id || null,
         sallaReviewId: r.sallaReviewId || null,
-        orderId: r.orderId || null,
         productId: r.productId || null,
         stars: r.stars,
         verified: r.verified

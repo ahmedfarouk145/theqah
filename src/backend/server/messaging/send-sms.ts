@@ -50,6 +50,7 @@ function env(name: string, fallback?: string) {
 
 // Import Firebase Admin for logging
 import { dbAdmin } from "@/lib/firebaseAdmin";
+import { sanitizeError, sanitizePhone } from "@/server/monitoring/sanitize";
 
 // Enhanced SMS logging function
 async function logSmsAttempt(
@@ -62,14 +63,14 @@ async function logSmsAttempt(
 ) {
   try {
     const db = dbAdmin();
+    const recipients = (Array.isArray(to) ? to : [to]).map((value) => sanitizePhone(value));
     const logData = {
-      to: Array.isArray(to) ? to : [to],
-      toCount: Array.isArray(to) ? to.length : 1,
-      text: text.substring(0, 200), // First 200 chars for privacy
+      toMasked: recipients,
+      toCount: recipients.length,
       textLength: text.length,
       success,
       jobId: jobId || null,
-      error: error || null,
+      error: error ? sanitizeError(error) : null,
       stats: stats || null,
       timestamp: Date.now(),
       service: 'oursms',
@@ -244,10 +245,11 @@ export async function sendSMSViaOursms(params: SendSMSParams) {
 
   } catch (error: unknown) {
     const errorMessage = (error as Error)?.message || String(error);
+    const maskedRecipients = (Array.isArray(to) ? to : [to]).map((value) => sanitizePhone(value));
 
     console.error(`[OURSMS] ❌ Failed to send SMS:`, {
-      error: errorMessage,
-      to: Array.isArray(to) ? to : [to],
+      error: sanitizeError(errorMessage),
+      toMasked: maskedRecipients,
       textLength: text.length
     });
 

@@ -5,7 +5,11 @@
       "Bash(node:*)",
       "WebFetch(domain:docs.zid.sa)",
       "WebSearch",
-      "WebFetch(domain:help-partner.zid.sa)"
+      "WebFetch(domain:help-partner.zid.sa)",
+      "WebFetch(domain:apidog.com)",
+      "WebFetch(domain:share.apidog.com)",
+      "Bash(npx tsc:*)",
+      "Skill(commit-commands:commit-push-pr)"
     ]
   }
 }

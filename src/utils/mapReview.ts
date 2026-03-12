@@ -4,7 +4,6 @@ export type VerifiedReason =
   | 'manual_verification'    // Manually verified by admin
   | 'auto_verified'          // Auto-verified by system rules
   | 'salla_native'           // Native Salla review (trusted)
-  | 'invited_purchase'       // From our invite system with order verification
   | null;                    // Not verified
 
 export type ReviewOut = {

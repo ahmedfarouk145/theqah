@@ -3,7 +3,7 @@ export type Channel = "sms" | "email";
 export type OutboxJobStatus = "pending" | "leased" | "ok" | "fail" | "dead";
 export interface OutboxJob {
   jobId: string;
-  inviteId: string;     // المرجع للدعوة (review_invites/{id})
+  inviteId: string;     // مرجع داخلي للكيان المرتبط بالـ job
   storeUid: string;
   channels: Channel[];  // ["sms","email"] أو واحدة منهم
   payload: Record<string, unknown>;

@@ -37,7 +37,7 @@ export class OrderRepository extends BaseRepository<Order> {
             number?: string | null;
             status: string;
             paymentStatus: string;
-            customer: { name: string | null; email: string | null; mobile: string | null };
+            customer?: { name: string | null; email: string | null; mobile: string | null };
             storeUid: string | null;
             platform: string;
         }

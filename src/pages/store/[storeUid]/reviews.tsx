@@ -1,4 +1,5 @@
 // src/pages/store/[storeUid]/reviews.tsx
+import { useEffect } from "react";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -33,23 +34,25 @@ interface StoreProfile {
 type PageProps = {
     profile: StoreProfile | null;
     error: string | null;
+    focusedReviewId: string | null;
 };
 
 /* ── Server-side data fetching ── */
 export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => {
     const storeUid = typeof ctx.params?.storeUid === "string" ? ctx.params.storeUid.trim() : "";
+    const focusedReviewId = typeof ctx.query.review === "string" ? ctx.query.review.trim() : "";
 
     if (!storeUid) {
-        return { props: { profile: null, error: "missing_store" } };
+        return { props: { profile: null, error: "missing_store", focusedReviewId: focusedReviewId || null } };
     }
 
     try {
         const base = process.env.NEXT_PUBLIC_BASE_URL?.trim() || `http://localhost:${process.env.PORT || 3000}`;
-        const url = `${base}/api/public/store-profile?storeUid=${encodeURIComponent(storeUid)}&limit=50`;
+        const url = `${base}/api/public/store-profile?storeUid=${encodeURIComponent(storeUid)}`;
         const res = await fetch(url, { headers: { "x-internal": "1" } });
 
         if (!res.ok) {
-            return { props: { profile: null, error: res.status === 404 ? "not_found" : "fetch_error" } };
+            return { props: { profile: null, error: res.status === 404 ? "not_found" : "fetch_error", focusedReviewId: focusedReviewId || null } };
         }
 
         const profile: StoreProfile = await res.json();
@@ -57,9 +60,9 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
         // Cache for 10 minutes
         ctx.res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=60");
 
-        return { props: { profile, error: null } };
+        return { props: { profile, error: null, focusedReviewId: focusedReviewId || null } };
     } catch {
-        return { props: { profile: null, error: "fetch_error" } };
+        return { props: { profile: null, error: "fetch_error", focusedReviewId: focusedReviewId || null } };
     }
 };
 
@@ -97,7 +100,7 @@ function DistributionBar({ star, count, max }: { star: number; count: number; ma
     );
 }
 
-function ReviewCard({ review }: { review: ReviewItem }) {
+function ReviewCard({ review, highlighted = false }: { review: ReviewItem; highlighted?: boolean }) {
     const date = new Date(review.publishedAt);
     const relDate = date.toLocaleDateString("ar-SA", {
         year: "numeric",
@@ -106,7 +109,14 @@ function ReviewCard({ review }: { review: ReviewItem }) {
     });
 
     return (
-        <article className="group relative bg-white/[0.04] backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/[0.07] transition-all duration-300 hover:border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/5">
+        <article
+            id={`review-${review.id}`}
+            className={`group relative rounded-2xl p-6 transition-all duration-300 scroll-mt-24 ${
+                highlighted
+                    ? "bg-emerald-500/[0.10] backdrop-blur-sm border border-emerald-400/40 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-400/15"
+                    : "bg-white/[0.04] backdrop-blur-sm border border-white/10 hover:bg-white/[0.07] hover:border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/5"
+            }`}
+        >
             {/* Header */}
             <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3">
@@ -190,7 +200,19 @@ function ErrorView({ error }: { error: string }) {
 }
 
 /* ── Main Page ── */
-export default function StoreReviewsPage({ profile, error }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function StoreReviewsPage({ profile, error, focusedReviewId }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+    useEffect(() => {
+        if (!focusedReviewId) return;
+        const target = document.getElementById(`review-${focusedReviewId}`);
+        if (!target) return;
+
+        const rafId = window.requestAnimationFrame(() => {
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+
+        return () => window.cancelAnimationFrame(rafId);
+    }, [focusedReviewId]);
+
     if (!profile || error) {
         return <ErrorView error={error || "fetch_error"} />;
     }
@@ -198,6 +220,8 @@ export default function StoreReviewsPage({ profile, error }: InferGetServerSideP
     const { store, stats, reviews } = profile;
     const storeName = store.name || "متجر";
     const maxDist = Math.max(...stats.distribution, 1);
+    const focusedReviewExists = !!focusedReviewId && reviews.some((review) => review.id === focusedReviewId);
+    const allReviewsHref = `/store/${encodeURIComponent(store.storeUid)}/reviews`;
 
     const pageTitle = `تقييمات ${storeName} | مشتري موثق`;
     const pageDesc = `اطلع على ${stats.totalReviews} تقييم موثق لمتجر ${storeName} — متوسط التقييم ${stats.avgStars} من 5 نجوم. جميع التقييمات مدققة من مشتري موثق.`;
@@ -301,6 +325,24 @@ export default function StoreReviewsPage({ profile, error }: InferGetServerSideP
                     </div>
                 </div>
 
+                {focusedReviewId && (
+                    <div className="mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-5 py-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-sm leading-7 text-emerald-50">
+                                {focusedReviewExists
+                                    ? "يتم الآن عرض التقييم المرتبط بشارة التوثيق. يمكنك الرجوع لاستعراض جميع تقييمات المتجر في أي وقت."
+                                    : "تعذر العثور على التقييم المحدد ضمن القائمة الحالية. يمكنك استعراض جميع تقييمات المتجر من الزر التالي."}
+                            </p>
+                            <a
+                                href={allReviewsHref}
+                                className="inline-flex shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/15"
+                            >
+                                عرض جميع تقييمات المتجر
+                            </a>
+                        </div>
+                    </div>
+                )}
+
                 {/* ── Reviews List ── */}
                 {reviews.length === 0 ? (
                     <div className="text-center py-16">
@@ -309,7 +351,7 @@ export default function StoreReviewsPage({ profile, error }: InferGetServerSideP
                 ) : (
                     <div className="space-y-4">
                         {reviews.map((r) => (
-                            <ReviewCard key={r.id} review={r} />
+                            <ReviewCard key={r.id} review={r} highlighted={focusedReviewId === r.id} />
                         ))}
                     </div>
                 )}

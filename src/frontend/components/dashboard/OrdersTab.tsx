@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { Upload, Plus, Download, FileText, Check, X, AlertCircle } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Download, FileText, Check, AlertCircle } from 'lucide-react';
 import axios from '@/lib/axiosInstance';
 
 import Pagination from '@/components/ui/Pagination';
@@ -11,12 +11,8 @@ type Order = {
   orderId: string;           // رقم الطلب الظاهر للمستخدم (قد يساوي id)
   productId?: string;
   productName?: string;
-  customerName?: string;
-  phone?: string;
-  email?: string;
+  status?: string;
   createdAt?: number | string;
-  inviteStatus?: 'sent' | 'not_sent' | 'failed';
-  reviewSent?: boolean;
 };
 
 export default function OrdersTab() {
@@ -24,9 +20,6 @@ export default function OrdersTab() {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState('');
-  const [csvUploading, setCsvUploading] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   // Pagination state
   const [hasMore, setHasMore] = useState(false);
@@ -75,32 +68,6 @@ export default function OrdersTab() {
     }
   };
 
-
-
-  const importCsv = async (file: File) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    setCsvUploading(true);
-    try {
-      await axios.post('/api/orders/import', fd);
-      await fetchOrders();
-    } finally {
-      setCsvUploading(false);
-    }
-  };
-
-  const addManual = async () => {
-    const orderId = prompt('رقم الطلب؟');
-    if (!orderId?.trim()) return;
-    setAdding(true);
-    try {
-      await axios.post('/api/orders/add', { orderId });
-      await fetchOrders();
-    } finally {
-      setAdding(false);
-    }
-  };
-
   // Download export with auth
   const handleExport = async (type: 'csv' | 'pdf') => {
     try {
@@ -131,27 +98,37 @@ export default function OrdersTab() {
   };
 
   const getStatusBadge = (order: Order) => {
-    const sent = order.reviewSent ?? (order.inviteStatus === 'sent');
+    const rawStatus = String(order.status || 'unknown').trim();
+    const normalizedStatus = rawStatus.toLowerCase();
 
-    if (sent) {
+    if (['paid', 'completed', 'delivered', 'shipped'].includes(normalizedStatus)) {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
           <Check className="w-3 h-3" />
-          تم الإرسال
+          {normalizedStatus === 'paid' ? 'مدفوع' :
+            normalizedStatus === 'shipped' ? 'تم الشحن' :
+              normalizedStatus === 'delivered' ? 'تم التسليم' : 'مكتمل'}
         </span>
       );
-    } else if (order.inviteStatus === 'failed') {
+    } else if (['pending', 'processing'].includes(normalizedStatus)) {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 rounded-full border border-red-200">
-          <X className="w-3 h-3" />
-          فشل
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-amber-50 text-amber-700 rounded-full border border-amber-200">
+          <AlertCircle className="w-3 h-3" />
+          {normalizedStatus === 'processing' ? 'قيد المعالجة' : 'قيد الانتظار'}
+        </span>
+      );
+    } else if (normalizedStatus === 'created') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 rounded-full border border-blue-200">
+          <FileText className="w-3 h-3" />
+          تم الإنشاء
         </span>
       );
     } else {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-50 text-gray-600 rounded-full border border-gray-200">
           <AlertCircle className="w-3 h-3" />
-          لم يُرسل
+          {rawStatus || 'غير معروف'}
         </span>
       );
     }
@@ -190,40 +167,10 @@ export default function OrdersTab() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">إدارة الطلبات</h3>
-            <p className="text-sm text-gray-600">استيراد وإدارة طلبات العملاء</p>
+            <p className="text-sm text-gray-600">عرض الطلبات المتزامنة من سلة وزد</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-100 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-              disabled={csvUploading}
-            >
-              <Upload className="w-4 h-4" />
-              {csvUploading ? 'جاري الاستيراد…' : 'استيراد CSV'}
-            </button>
-
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv,text/csv"
-              hidden
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (f) await importCsv(f);
-                if (fileRef.current) fileRef.current.value = '';
-              }}
-            />
-
-            <button
-              onClick={addManual}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:ring-4 focus:ring-gray-100 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-              disabled={adding}
-            >
-              <Plus className="w-4 h-4" />
-              {adding ? 'جاري الإضافة…' : 'إضافة طلب'}
-            </button>
-
             <div className="flex items-center gap-2 border-r border-gray-200 pr-3 mr-1">
               <button
                 onClick={() => handleExport('csv')}
@@ -257,19 +204,10 @@ export default function OrdersTab() {
                   المنتج
                 </th>
                 <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  العميل
-                </th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  الهاتف
-                </th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  الإيميل
-                </th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   التاريخ
                 </th>
                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  الحالة
+                  حالة الطلب
                 </th>
 
               </tr>
@@ -277,14 +215,14 @@ export default function OrdersTab() {
             <tbody className="divide-y divide-gray-200">
               {orders.length === 0 ? (
                 <tr>
-                  <td className="px-6 py-12 text-center text-gray-500" colSpan={7}>
+                  <td className="px-6 py-12 text-center text-gray-500" colSpan={4}>
                     <div className="flex flex-col items-center space-y-3">
                       <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                         <FileText className="w-6 h-6 text-gray-400" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">لا توجد طلبات</p>
-                        <p className="text-xs text-gray-500">ابدأ بإضافة طلبات جديدة أو استيراد ملف CSV</p>
+                        <p className="text-xs text-gray-500">ستظهر هنا الطلبات المتزامنة من سلة وزد</p>
                       </div>
                     </div>
                   </td>
@@ -306,27 +244,6 @@ export default function OrdersTab() {
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900">
                           {o.productName || o.productId || (
-                            <span className="text-gray-400 italic">غير محدد</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">
-                          {o.customerName || (
-                            <span className="text-gray-400 italic">غير محدد</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 font-mono">
-                          {o.phone || (
-                            <span className="text-gray-400 italic">غير محدد</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">
-                          {o.email || (
                             <span className="text-gray-400 italic">غير محدد</span>
                           )}
                         </div>
@@ -367,9 +284,9 @@ export default function OrdersTab() {
           <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">تم الإرسال</p>
+                <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">مرتبطة بمنتج</p>
                 <p className="text-2xl font-bold text-emerald-600">
-                  {orders.filter(o => o.reviewSent ?? (o.inviteStatus === 'sent')).length}
+                  {orders.filter(o => !!o.productId).length}
                 </p>
               </div>
               <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
@@ -381,9 +298,9 @@ export default function OrdersTab() {
           <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">في الانتظار</p>
+                <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">بحالة معروفة</p>
                 <p className="text-2xl font-bold text-amber-600">
-                  {orders.filter(o => !(o.reviewSent ?? (o.inviteStatus === 'sent'))).length}
+                  {orders.filter(o => !!o.status && o.status !== 'unknown').length}
                 </p>
               </div>
               <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center">

@@ -3,13 +3,91 @@
  * @module server/services/maintenance.service
  */
 
+import { MONITORING, RETENTION } from '@/config/constants';
+
 export class MaintenanceService {
+    private async getDb() {
+        const { getDb } = await import('@/server/firebase-admin');
+        return getDb();
+    }
+
+    private async cleanupByNumberField(
+        collectionName: string,
+        field: string,
+        cutoff: number
+    ): Promise<number> {
+        const db = await this.getDb();
+        let totalDeleted = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+            const snapshot = await db
+                .collection(collectionName)
+                .where(field, '<', cutoff)
+                .limit(500)
+                .get();
+
+            if (snapshot.empty) {
+                hasMore = false;
+                break;
+            }
+
+            const batch = db.batch();
+            snapshot.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
+                batch.delete(doc.ref);
+                totalDeleted++;
+            });
+
+            await batch.commit();
+            hasMore = snapshot.size === 500;
+        }
+
+        return totalDeleted;
+    }
+
+    /**
+     * Cleanup temporary artifacts and short-lived operational data
+     */
+    async cleanupRetentionArtifacts(): Promise<Record<string, number>> {
+        const now = Date.now();
+        const setupUsedCutoff = now - RETENTION.SETUP_TOKENS_USED_GRACE_MS;
+        const onboardingUsedCutoff = now - RETENTION.ONBOARDING_TOKENS_USED_GRACE_MS;
+        const oauthStateCutoff = now - RETENTION.OAUTH_STATE_GRACE_MS;
+        const rateLimitCutoff = now - RETENTION.RATE_LIMIT_COUNTER_GRACE_MS;
+        const processedEventsCutoff = now - RETENTION.PROCESSED_EVENTS_RETENTION_MS;
+        const widgetImpressionsCutoff = now - RETENTION.WIDGET_IMPRESSIONS_RETENTION_MS;
+        const authLogsCutoff = now - RETENTION.AUTH_LOGS_RETENTION_MS;
+        const emailLogsCutoff = now - RETENTION.EMAIL_LOGS_RETENTION_MS;
+        const smsLogsCutoff = now - RETENTION.SMS_LOGS_RETENTION_MS;
+        const registrationLogsCutoff = now - RETENTION.REGISTRATION_LOGS_RETENTION_MS;
+
+        const { cleanupOldActivity } = await import('@/server/activity-tracker');
+        const { cleanupExpiredKeys } = await import('@/server/utils/idempotency');
+
+        return {
+            setupTokensExpired: await this.cleanupByNumberField('setup_tokens', 'expiresAt', now),
+            setupTokensUsed: await this.cleanupByNumberField('setup_tokens', 'usedAt', setupUsedCutoff),
+            onboardingTokensExpired: await this.cleanupByNumberField('onboarding_tokens', 'expiresAt', now),
+            onboardingTokensUsed: await this.cleanupByNumberField('onboarding_tokens', 'usedAt', onboardingUsedCutoff),
+            zidStatesExpired: await this.cleanupByNumberField('zid_states', 'expiresAt', oauthStateCutoff),
+            rateLimitsExpired: await this.cleanupByNumberField('ratelimits', 'resetAt', rateLimitCutoff),
+            processedEventsExpired: await this.cleanupByNumberField('processed_events', 'at', processedEventsCutoff),
+            idempotencyKeysExpired: await cleanupExpiredKeys({ ttlMs: RETENTION.IDEMPOTENCY_KEYS_RETENTION_MS }),
+            userActivityExpired: (await cleanupOldActivity()).deleted,
+            widgetImpressionsExpired: await this.cleanupByNumberField('widget_impressions', 'at', widgetImpressionsCutoff),
+            authLogsExpired: await this.cleanupByNumberField('auth_logs', 'timestamp', authLogsCutoff),
+            emailLogsExpired: await this.cleanupByNumberField('email_logs', 'timestamp', emailLogsCutoff),
+            smsLogsTimestampExpired: await this.cleanupByNumberField('sms_logs', 'timestamp', smsLogsCutoff),
+            smsLogsAtExpired: await this.cleanupByNumberField('sms_logs', 'at', smsLogsCutoff),
+            registrationLogsExpired: await this.cleanupByNumberField('registration_logs', 'timestamp', registrationLogsCutoff),
+        };
+    }
+
     /**
      * Cleanup old metrics
      */
-    async cleanupMetrics(daysOld = 30): Promise<{ deletedCount: number; cutoffDate: string }> {
-        const { getDb } = await import('@/server/firebase-admin');
-        const db = getDb();
+    async cleanupMetrics(daysOld: number = 30): Promise<{ deletedCount: number; cutoffDate: string }> {
+        const db = await this.getDb();
 
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - daysOld);
@@ -51,9 +129,8 @@ export class MaintenanceService {
     /**
      * Cleanup old sync logs
      */
-    async cleanupSyncLogs(daysOld = 60): Promise<{ deletedCount: number; cutoffDate: string }> {
-        const { getDb } = await import('@/server/firebase-admin');
-        const db = getDb();
+    async cleanupSyncLogs(daysOld: number = MONITORING.LOGS_RETENTION_DAYS): Promise<{ deletedCount: number; cutoffDate: string }> {
+        const db = await this.getDb();
 
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - daysOld);

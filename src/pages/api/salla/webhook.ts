@@ -625,14 +625,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Note: Invite system disabled - reading reviews directly from Salla API
       fbLog(db, { level: "debug", scope: "order", msg: "order status updated", event, idemKey, merchant: merchantId, orderId });
     } else if (event === "order.cancelled" || event === "order.refunded") {
-      const oid = orderId;
-      if (oid) {
-        const reason = event === "order.cancelled" ? "order_cancelled" : "order_refunded";
-        const count = await sallaService.handleOrderCancelled(oid, reason);
-        if (count > 0) {
-          fbLog(db, { level: "info", scope: "invite", msg: "tokens voided via service", event, idemKey, merchant: merchantId, orderId: oid, meta: { count, reason } });
-        }
-      }
+      fbLog(db, { level: "debug", scope: "order", msg: "order cancellation received; legacy token flow removed", event, idemKey, merchant: merchantId, orderId });
     } else if (event === "review.added") {
       // Handle review.added via service (includes moderation + background job)
       const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;

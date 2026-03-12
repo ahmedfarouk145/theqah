@@ -173,6 +173,15 @@
     return urlParams.get('product_id') || urlParams.get('productId') || null;
   }
 
+  function buildStoreReviewsUrl(storeUid, reviewId, ref = 'widget') {
+    const base = `${SCRIPT_ORIGIN}/store/${encodeURIComponent(storeUid)}/reviews`;
+    const params = new URLSearchParams();
+    if (reviewId) params.set('review', reviewId);
+    if (ref) params.set('ref', ref);
+    const query = params.toString();
+    return query ? `${base}?${query}` : base;
+  }
+
   // ——— Check verified reviews ———
   async function checkVerifiedReviews(storeId, productId) {
     try {
@@ -195,19 +204,33 @@
       const productId = extractProductId();
       const checkResult = await checkVerifiedReviews(storeUid, productId);
       if (checkResult.hasVerified) {
-        const verifiedIds = checkResult.reviews.map(r => r.sallaReviewId);
-        G.verifiedIds = verifiedIds;
-        addLogosToSallaReviews(verifiedIds);
+        const verifiedReviews = (Array.isArray(checkResult.reviews) ? checkResult.reviews : [])
+          .filter(r => r && r.sallaReviewId)
+          .map(r => ({
+            reviewId: r.reviewId ? String(r.reviewId) : null,
+            sallaReviewId: String(r.sallaReviewId)
+          }));
+
+        G.verifiedReviews = verifiedReviews;
+        G.verifiedIds = verifiedReviews.map(r => r.sallaReviewId);
+        addLogosToSallaReviews(verifiedReviews, storeUid);
       }
     } catch { /* silent */ }
   }
 
   // ——— Add logos to Salla reviews ———
-  function addLogosToSallaReviews(verifiedIds) {
-    if (!verifiedIds || verifiedIds.length === 0) return;
+  function addLogosToSallaReviews(verifiedReviews, storeUidOverride) {
+    if (!Array.isArray(verifiedReviews) || verifiedReviews.length === 0) return;
+
+    const reviewLinkMap = new Map();
+    verifiedReviews.forEach((item) => {
+      if (item?.sallaReviewId) {
+        reviewLinkMap.set(String(item.sallaReviewId), item.reviewId ? String(item.reviewId) : null);
+      }
+    });
 
     // Convert verified IDs to strings for comparison
-    const verifiedIdStrings = verifiedIds.map(id => String(id));
+    const verifiedIdStrings = Array.from(reviewLinkMap.keys());
 
 
     // Salla modern theme uses salla-comment-item custom elements
@@ -234,50 +257,50 @@
 
       reviewElements.forEach(el => {
         // Extract review ID from multiple possible sources
-        let reviewId = null;
+        let domReviewId = null;
 
         // 1. From data-review-id or data-comment-id attribute
-        reviewId = el.getAttribute('data-review-id') || el.getAttribute('data-id') || el.getAttribute('data-comment-id');
+        domReviewId = el.getAttribute('data-review-id') || el.getAttribute('data-id') || el.getAttribute('data-comment-id');
 
         // 2. From internal div with id="s-comments-item-[ID]"
-        if (!reviewId) {
+        if (!domReviewId) {
           const wrapperDiv = el.querySelector('[id^="s-comments-item-"]');
           if (wrapperDiv) {
             const idMatch = wrapperDiv.id.match(/s-comments-item-(\d+)/);
-            if (idMatch) reviewId = idMatch[1];
+            if (idMatch) domReviewId = idMatch[1];
           }
         }
 
         // 3. From element's own id if it matches the pattern
-        if (!reviewId && el.id) {
+        if (!domReviewId && el.id) {
           const idMatch = el.id.match(/s-comments-item-(\d+)/) || el.id.match(/comment-(\d+)/) || el.id.match(/review-(\d+)/);
-          if (idMatch) reviewId = idMatch[1];
+          if (idMatch) domReviewId = idMatch[1];
         }
 
         // 4. From nested element with data-review-id
-        if (!reviewId) {
-          reviewId = el.querySelector('[data-review-id]')?.getAttribute('data-review-id') ||
+        if (!domReviewId) {
+          domReviewId = el.querySelector('[data-review-id]')?.getAttribute('data-review-id') ||
             el.querySelector('[data-comment-id]')?.getAttribute('data-comment-id');
         }
 
         // 5. Try to find ID in any attribute
-        if (!reviewId) {
+        if (!domReviewId) {
           const attrs = el.attributes;
           for (let i = 0; i < attrs.length; i++) {
             const match = attrs[i].value.match(/(\d{5,})/); // Look for numeric IDs with 5+ digits
             if (match) {
-              reviewId = match[1];
+              domReviewId = match[1];
               break;
             }
           }
         }
 
         // 6. Check shadow DOM for salla-comment-item
-        if (!reviewId && el.shadowRoot) {
+        if (!domReviewId && el.shadowRoot) {
           const shadowDiv = el.shadowRoot.querySelector('[id^="s-comments-item-"]');
           if (shadowDiv) {
             const idMatch = shadowDiv.id.match(/s-comments-item-(\d+)/);
-            if (idMatch) reviewId = idMatch[1];
+            if (idMatch) domReviewId = idMatch[1];
           }
         }
 
@@ -285,7 +308,7 @@
 
 
 
-        if (!reviewId || !verifiedIdStrings.includes(String(reviewId))) return;
+        if (!domReviewId || !verifiedIdStrings.includes(String(domReviewId))) return;
         if (el.querySelector('.theqah-verified-logo')) return;
 
         // Find best insertion point for Salla modern theme
@@ -305,17 +328,17 @@
 
 
 
-        // Create clickable logo with link to theqah homepage
-        // TODO: uncomment to link to store reviews page when ready
-        // const _storeUid = G.storeData?.storeUid || G.storeUid || '';
-        // logoLink.href = _storeUid
-        //   ? `${SCRIPT_ORIGIN}/store/${encodeURIComponent(_storeUid)}/reviews?ref=widget`
-        //   : `${SCRIPT_ORIGIN}?ref=widget`;
+        const publicReviewId = reviewLinkMap.get(String(domReviewId));
+        const resolvedStoreUid = storeUidOverride || G.storeData?.storeUid || G.storeUid || '';
         const logoLink = document.createElement('a');
-        logoLink.href = 'https://theqah.com.sa?ref=widget';
+        logoLink.href = resolvedStoreUid
+          ? buildStoreReviewsUrl(resolvedStoreUid, publicReviewId, 'widget')
+          : 'https://theqah.com.sa?ref=widget';
         logoLink.target = '_blank';
         logoLink.rel = 'noopener noreferrer';
-        logoLink.title = 'مشتري موثق - Verified Buyer | theqah.com.sa';
+        logoLink.title = publicReviewId
+          ? 'مشتري موثق - عرض هذا التقييم الموثق'
+          : 'مشتري موثق - عرض تقييمات المتجر';
         logoLink.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none;transition:transform 0.2s ease;margin-inline-start:8px;';
         logoLink.onmouseover = function () { this.style.transform = 'scale(1.1)'; };
         logoLink.onmouseout = function () { this.style.transform = 'scale(1)'; };
@@ -574,8 +597,8 @@
     // If already mounted, still try to add logos (reviews tab might have just become visible)
     if (hostEl.getAttribute("data-state") === "done") {
       // Re-try logo injection even if already mounted
-      if (G.verifiedIds && G.verifiedIds.length > 0) {
-        addLogosToSallaReviews(G.verifiedIds);
+      if (G.verifiedReviews && G.verifiedReviews.length > 0) {
+        addLogosToSallaReviews(G.verifiedReviews, G.storeUid);
       } else if (G.storeUid) {
         // If no verifiedIds cached yet, fetch them now
         fetchAndAddLogos(G.storeUid);
@@ -779,8 +802,8 @@
 
     const reAddLogos = debounce(() => {
       // Use globally cached verified IDs
-      if (G.verifiedIds && G.verifiedIds.length > 0) {
-        addLogosToSallaReviews(G.verifiedIds);
+      if (G.verifiedReviews && G.verifiedReviews.length > 0) {
+        addLogosToSallaReviews(G.verifiedReviews, G.storeUid);
       } else if (G.storeUid) {
         // If no cached IDs, try fetching them (first time reviews became visible)
         fetchAndAddLogos(G.storeUid);

@@ -1,5 +1,4 @@
 // src/worker/outbox-worker.ts
-import { dbAdmin } from "@/lib/firebaseAdmin";
 import { leasePendingJobs, markOk, requeue, type OutboxJob } from "@/server/queue/outbox";
 import { canSend } from "@/server/queue/rate-limit";
 import { sendSms, type SendSmsOptions } from "@/server/messaging/send-sms";
@@ -8,10 +7,6 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const WORKER_ID = `w_${Math.random().toString(36).slice(2, 8)}`;
-
-function nowMs() {
-  return Date.now();
-}
 
 /** ---------- Typed payload instead of any ---------- */
 interface SmsPayload {
@@ -50,37 +45,6 @@ function asJobPayload(v: unknown): JobPayload {
 }
 /** ----------------------------------------------- */
 
-async function record(
-  inviteId: string,
-  channel: "sms" | "email",
-  r: { ok: boolean; id?: string | null; error?: string | null }
-) {
-  const db = dbAdmin();
-  const at = nowMs();
-  await db.collection("review_invites").doc(inviteId).set(
-    {
-      [`sentChannels.${channel}`]: {
-        ok: r.ok,
-        id: r.id ?? null,
-        error: r.error ?? null,
-        at,
-      },
-      lastSentAt: at,
-    },
-    { merge: true }
-  );
-}
-
-async function incUsage(storeUid: string) {
-  const db = dbAdmin();
-  const ref = db.collection("stores").doc(storeUid);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    const used = Number(snap.data()?.usage?.invitesUsed ?? 0) + 1;
-    tx.set(ref, { usage: { invitesUsed: used } }, { merge: true });
-  });
-}
-
 async function handle(job: OutboxJob) {
   const errs: string[] = [];
   let anyOk = false;
@@ -103,10 +67,8 @@ async function handle(job: OutboxJob) {
         const r = await sendSms(to, text, opts);
 
         anyOk ||= r.ok;
-        await record(job.inviteId, "sms", r);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        await record(job.inviteId, "sms", { ok: false, error: msg });
         errs.push(`sms:${msg}`);
       }
     }
@@ -120,21 +82,14 @@ async function handle(job: OutboxJob) {
 
         const r = await sendEmail(emailTo, subject, html);
         anyOk ||= r.ok;
-        await record(job.inviteId, "email", r);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        await record(job.inviteId, "email", { ok: false, error: msg });
         errs.push(`email:${msg}`);
       }
     }
   }
 
   if (anyOk) {
-    try {
-      await incUsage(job.storeUid);
-    } catch {
-      /* ignore usage increment errors */
-    }
     await markOk(job.jobId);
   } else {
     await requeue(job, errs.join("; "));

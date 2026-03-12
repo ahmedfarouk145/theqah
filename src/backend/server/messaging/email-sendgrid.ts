@@ -1,6 +1,7 @@
 // src/server/messaging/email-sendgrid.ts
 import sgMail from '@sendgrid/mail';
 import { dbAdmin } from "@/lib/firebaseAdmin";
+import { sanitizeEmail, sanitizeError } from "@/server/monitoring/sanitize";
 
 export type EmailSendResult =
   | { ok: true; id: string | null }
@@ -33,11 +34,11 @@ async function logEmailAttempt(
   try {
     const db = dbAdmin();
     const logData = {
-      to,
-      subject,
+      toMasked: sanitizeEmail(to),
+      subjectLength: subject.length,
       success,
       messageId: messageId || null,
-      error: error || null,
+      error: error ? sanitizeError(error) : null,
       timestamp: Date.now(),
       service: 'sendgrid',
       createdAt: new Date().toISOString()
@@ -81,7 +82,7 @@ export async function sendEmailSendGrid(
     // Use verified sender email - fallback to gmail if not configured
     const from = process.env.SENDGRID_FROM || process.env.EMAIL_FROM || "zeyadmawjoud@gmail.com";
     
-    console.log(`[SENDGRID] Sending email to: ${to} from: ${from}`);
+    console.log(`[SENDGRID] Sending email to: ${sanitizeEmail(to)} from: ${from}`);
     
     const msg = {
       to,
@@ -121,9 +122,9 @@ export async function sendEmailSendGrid(
                    (error as Error)?.message || 
                    String(error);
                         
-    console.error(`[SENDGRID] ❌ Failed to send email to ${to}:`, {
-      error: errorMessage,
-      subject,
+    console.error(`[SENDGRID] ❌ Failed to send email to ${sanitizeEmail(to)}:`, {
+      error: sanitizeError(errorMessage),
+      subjectLength: subject.length,
       statusCode: (error as { code?: number; response?: { statusCode?: number } })?.code || (error as { response?: { statusCode?: number } })?.response?.statusCode
     });
     

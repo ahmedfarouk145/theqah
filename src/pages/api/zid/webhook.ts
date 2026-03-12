@@ -80,9 +80,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     bodyKeys: Object.keys(body),
   }));
 
-  // Zid app webhooks use "event_name" at root level with flat payload (no "data" wrapper)
-  // Zid merchant webhooks (order.*) use "event" with nested "data"
-  const event = String(body.event || (body as Record<string, unknown>).event_name || "");
+  // Zid has 3 webhook payload formats:
+  // 1. App webhooks (partner dashboard): flat payload with "event_name" field
+  // 2. Merchant webhooks (order.*): flat order object with NO event field — detect by presence of "order_status"/"invoice_number"
+  // 3. Generic webhooks: "event" field with nested "data"
+  const flatBody = body as Record<string, unknown>;
+  let event = String(body.event || flatBody.event_name || "");
+  if (!event && flatBody.order_status !== undefined) {
+    // Order webhook — no event field, detect by payload shape
+    event = "order.create";
+  }
   const data = (body.data ?? body ?? {}) as UnknownRecord;
   const storeId = String(
     body.store_id ?? data["store_id"] ?? (data["store"] as UnknownRecord)?.["id"] ?? ""
@@ -147,7 +154,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       case "order.status.update": {
         const orderId = String((data as ZidOrder).id ?? "");
-        const newStatus = String((data as ZidOrder).status ?? "");
+        const newStatus = String((data as ZidOrder).status ?? (data as ZidOrder).order_status ?? "");
         await svc.handleOrderStatusUpdate(orderId, newStatus);
         break;
       }

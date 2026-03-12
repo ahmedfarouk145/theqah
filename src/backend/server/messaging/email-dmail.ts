@@ -1,6 +1,7 @@
 // src/server/messaging/email-dmail.ts
 import nodemailer from "nodemailer";
 import { trackEmail } from "@/server/monitoring/metrics";
+import { sanitizeEmail, sanitizeError } from "@/server/monitoring/sanitize";
 
 export type EmailSendResult =
   | { ok: true; id: string | null }
@@ -56,7 +57,7 @@ export async function sendEmailDmail(
   });
 
   try {
-    console.log(`محاولة إرسال إيميل إلى: ${to} باستخدام SMTP: ${host}:${port}`);
+    console.log(`محاولة إرسال إيميل إلى: ${sanitizeEmail(to)} باستخدام SMTP: ${host}:${port}`);
 
     const info = await transporter.sendMail({
       from,
@@ -93,7 +94,7 @@ export async function sendEmailDmail(
   } catch (e) {
     const duration = Date.now() - startTime;
     const msg = e instanceof Error ? e.message : String(e);
-    console.error(`❌ فشل في إرسال الإيميل إلى ${to}:`, { error: msg, subject });
+    console.error(`❌ فشل في إرسال الإيميل إلى ${sanitizeEmail(to)}:`, { error: sanitizeError(msg), subjectLength: subject.length });
     
     // H8: Track email failure
     await trackEmail({

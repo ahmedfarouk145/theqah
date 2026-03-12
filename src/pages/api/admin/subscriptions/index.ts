@@ -41,16 +41,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const planId = s.subscription?.planId as PlanId | undefined;
       const invitesLimit = getInvitesLimit(planId);
 
-      // Get invites from usage or count from review_invites
+      // Legacy invite tracking was removed; only persisted usage counts remain.
       let invitesUsed = 0;
       if (s.usage?.monthKey === monthKey() && typeof s.usage?.invitesUsed === 'number') {
         invitesUsed = s.usage.invitesUsed;
-      } else {
-        const start = new Date();
-        start.setUTCDate(1);
-        start.setUTCHours(0, 0, 0, 0);
-        const snap = await db.collection('review_invites').where('storeUid', '==', storeUid).where('sentAt', '>=', start.getTime()).get();
-        invitesUsed = snap.size;
       }
 
       // Derive status

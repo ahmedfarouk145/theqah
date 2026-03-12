@@ -41,8 +41,8 @@ export interface Review extends EntityBase {
     text: string;
     author: {
         displayName: string;
-        email: string;
-        mobile: string;
+        email?: string;
+        mobile?: string;
     };
     status: string;
     trustedBuyer: boolean;
@@ -56,21 +56,6 @@ export interface Review extends EntityBase {
         flags: string[];
         checkedAt: number;
     };
-}
-
-/** ReviewToken entity */
-export interface ReviewToken extends EntityBase {
-    orderId: string;
-    storeUid: string;
-    productId: string;
-    productIds: string[];
-    platform: string;
-    usedAt: number | null;
-    expiresAt?: number;
-    voidedAt?: number;
-    voided?: boolean;
-    publicUrl?: string;
-    targetUrl?: string;
 }
 
 /** Store entity */
@@ -120,7 +105,7 @@ export interface Order extends EntityBase {
     number: string | null;
     status: string;
     paymentStatus: string;
-    customer: {
+    customer?: {
         name: string | null;
         email: string | null;
         mobile: string | null;

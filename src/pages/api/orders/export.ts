@@ -45,9 +45,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return {
                 id: doc.id,
                 orderId: data.orderId || doc.id,
-                customerName: data.customerName || data.customer?.name || '',
-                customerEmail: data.customerEmail || data.customer?.email || '',
-                customerPhone: data.customerPhone || data.customer?.phone || '',
                 status: data.status || 'unknown',
                 total: data.total || 0,
                 currency: data.currency || 'SAR',

@@ -293,9 +293,9 @@ export async function trackSMS(params: {
     type: "sms_sent",
     severity: params.success ? "info" : "warning",
     metadata: {
-      to: params.to, // Will be sanitized by sanitize.ts
+      ...params.metadata,
+      phone: params.to,
       duration: params.duration,
-      ...params.metadata
     },
     storeUid: params.storeUid,
     userId: params.userId,
@@ -321,11 +321,11 @@ export async function trackEmail(params: {
     type: "email_sent",
     severity: params.success ? "info" : "warning",
     metadata: {
-      to: params.to, // Will be sanitized by sanitize.ts
-      subject: params.subject,
+      ...params.metadata,
+      email: params.to,
+      subjectLength: params.subject.length,
       messageId: params.messageId,
       duration: params.duration,
-      ...params.metadata
     },
     storeUid: params.storeUid,
     userId: params.userId,

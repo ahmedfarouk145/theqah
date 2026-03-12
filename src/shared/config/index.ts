@@ -7,7 +7,6 @@
 export const API_ENDPOINTS = {
     // Reviews
     REVIEWS_LIST: '/api/reviews/list',
-    REVIEWS_SUBMIT: '/api/reviews/submit',
     REVIEWS_CHECK_VERIFIED: '/api/reviews/check-verified',
 
     // Store

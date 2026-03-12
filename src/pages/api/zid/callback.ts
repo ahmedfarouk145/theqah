@@ -24,7 +24,6 @@ type ZidStoreInfo = {
   email?: string;
   mobile?: string;
   domain?: string;
-  url?: string;
 };
 
 async function fetchZidStoreInfo(
@@ -64,20 +63,27 @@ async function fetchZidStoreInfo(
     if (!r.ok) return null;
 
     const data = JSON.parse(text);
-    const store = data?.user?.store || data?.store || data;
+    const user = data?.user;
+    const store = user?.store || data?.store || data;
+    // ZID profile API: email/name/mobile are on "user", store details (id, domain) on "user.store"
+    // Merge both so the caller gets all needed fields
+    const merged: ZidStoreInfo = {
+      id: store?.id ?? user?.id,
+      name: store?.name || user?.name,
+      email: store?.email || user?.email || user?.username,
+      mobile: store?.mobile || user?.mobile,
+      domain: store?.domain || store?.url,
+    };
     console.log('[ZID_CALLBACK] Parsed store info:', {
-      hasData: !!data,
-      topKeys: data ? Object.keys(data) : [],
-      userKeys: data?.user ? Object.keys(data.user) : [],
-      storeKeys: store ? Object.keys(store) : [],
+      userId: user?.id,
+      userName: user?.name,
+      userEmail: user?.email,
       storeId: store?.id,
       storeName: store?.name,
       storeDomain: store?.domain,
-      storeUrl: store?.url,
-      storeUsername: store?.username,
-      storeEmail: store?.email || data?.user?.email,
+      mergedResult: merged,
     });
-    return store || null;
+    return merged;
   } catch (err) {
     console.error('[ZID_CALLBACK] Failed to fetch store info:', err);
     return null;
@@ -206,7 +212,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         id: zidStoreId,
         name: storeInfo?.name || undefined,
         email: storeInfo?.email || undefined,
-        domain: storeInfo?.domain || storeInfo?.url || undefined,
+        domain: storeInfo?.domain || undefined,
       },
       {
         access_token: tokenJson.access_token || '',

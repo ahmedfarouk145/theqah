@@ -45,4 +45,10 @@ next-env.d.ts
 
 # local generated data exports / reports
 /exports/
+/output/
 /output/spreadsheet/
+/tools/
+
+# internal secret governance docs
+/docs/SECRET*.md
+/docs/SECRETS*.md

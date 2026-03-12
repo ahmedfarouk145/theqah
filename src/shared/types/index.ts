@@ -9,7 +9,6 @@ export type {
     PaginationOptions,
     PaginatedResult,
     Review,
-    ReviewToken,
     Store,
     Order,
     Owner,

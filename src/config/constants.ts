@@ -160,6 +160,27 @@ export const MONITORING = {
   ALERT_MAX_PER_WINDOW: 10,
 } as const;
 
+// ============= Retention Windows =============
+
+export const RETENTION = {
+  // Temporary onboarding/auth artifacts
+  SETUP_TOKENS_USED_GRACE_MS: TIME.ONE_DAY,
+  ONBOARDING_TOKENS_USED_GRACE_MS: TIME.ONE_DAY,
+  OAUTH_STATE_GRACE_MS: TIME.ONE_HOUR,
+
+  // Short-lived operational controls
+  RATE_LIMIT_COUNTER_GRACE_MS: TIME.ONE_DAY,
+  PROCESSED_EVENTS_RETENTION_MS: TIME.ONE_WEEK,
+  IDEMPOTENCY_KEYS_RETENTION_MS: TIME.ONE_DAY,
+
+  // Operational logs and telemetry
+  AUTH_LOGS_RETENTION_MS: TIME.THIRTY_DAYS,
+  EMAIL_LOGS_RETENTION_MS: TIME.THIRTY_DAYS,
+  SMS_LOGS_RETENTION_MS: TIME.THIRTY_DAYS,
+  WIDGET_IMPRESSIONS_RETENTION_MS: TIME.THIRTY_DAYS,
+  REGISTRATION_LOGS_RETENTION_MS: TIME.NINETY_DAYS,
+} as const;
+
 // ============= Email & SMS =============
 
 export const NOTIFICATION = {

@@ -51,7 +51,6 @@ export class SallaWebhookService {
     private storeRepo = RepositoryFactory.getStoreRepository();
     private orderRepo = RepositoryFactory.getOrderRepository();
     private ownerRepo = RepositoryFactory.getOwnerRepository();
-    private tokenRepo = RepositoryFactory.getReviewTokenRepository();
     private domainRepo = RepositoryFactory.getDomainRepository();
 
     /**
@@ -125,21 +124,9 @@ export class SallaWebhookService {
             number: order.number || null,
             status: extractStatus(order.status ?? order.order_status),
             paymentStatus: extractStatus(order.payment_status),
-            customer: {
-                name: order.customer?.name || null,
-                email: order.customer?.email || null,
-                mobile: order.customer?.mobile || null,
-            },
             storeUid,
             platform: 'salla',
         });
-    }
-
-    /**
-     * Handle order.cancelled/refunded - void tokens
-     */
-    async handleOrderCancelled(orderId: string, reason: string): Promise<number> {
-        return this.tokenRepo.voidByOrderId(orderId, reason);
     }
 
     /**
@@ -226,8 +213,6 @@ export class SallaWebhookService {
             text: reviewText,
             author: {
                 displayName: String(customer?.name || 'عميل سلة'),
-                email: String(customer?.email || ''),
-                mobile: String(customer?.mobile || ''),
             },
             status: reviewStatus,
             trustedBuyer: false,

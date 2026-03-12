@@ -9,29 +9,22 @@ export type VerifiedReason =
   | 'manual_verification'    // Manually verified by admin
   | 'auto_verified'          // Auto-verified by system rules
   | 'salla_native'           // Native Salla review (trusted)
-  | 'invited_purchase'       // From our invite system with order verification
   | null;                    // Not verified
 
 /**
  * Determine verification reason based on review context
  */
 export function determineVerifiedReason(context: {
-  hasToken?: boolean;
   source?: string;
   subscriptionStart?: number;
   reviewDate?: number;
   manuallyVerified?: boolean;
 }): VerifiedReason {
-  const { hasToken, source, subscriptionStart, reviewDate, manuallyVerified } = context;
+  const { source, subscriptionStart, reviewDate, manuallyVerified } = context;
 
   // Manual verification by admin takes precedence
   if (manuallyVerified) {
     return 'manual_verification';
-  }
-
-  // From our invite system with token
-  if (hasToken) {
-    return 'invited_purchase';
   }
 
   // Native Salla reviews are trusted
@@ -76,10 +69,6 @@ export function getVerifiedReasonLabel(reason: VerifiedReason, locale: 'en' | 'a
       ar: 'تقييم سلة أصلي',
       en: 'Native Salla review',
     },
-    invited_purchase: {
-      ar: 'تقييم عملية شراء موثقة',
-      en: 'Verified purchase review',
-    },
   };
 
   return labels[reason]?.[locale] || reason;
@@ -90,7 +79,6 @@ export function getVerifiedReasonLabel(reason: VerifiedReason, locale: 'en' | 'a
  */
 export function isTrustedVerification(reason: VerifiedReason): boolean {
   return reason !== null && [
-    'invited_purchase',
     'manual_verification',
     'salla_native',
   ].includes(reason);

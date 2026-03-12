@@ -145,58 +145,6 @@ export class SupportService {
     }
 
     /**
-     * Get review token info
-     */
-    async getReviewTokenInfo(token: string): Promise<{
-        success: boolean;
-        data?: {
-            tokenId: string;
-            orderId: string | null;
-            storeName: string | null;
-            customer: unknown;
-            expired: boolean;
-            voided: boolean;
-        };
-        error?: string;
-    }> {
-        if (!token) {
-            return { success: false, error: 'missing_token' };
-        }
-
-        const { dbAdmin } = await import('@/lib/firebaseAdmin');
-        const db = dbAdmin();
-
-        const snap = await db.collection('review_tokens').doc(token).get();
-        if (!snap.exists) {
-            return { success: false, error: 'not_found' };
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const t = snap.data() as any;
-
-        // Get store name
-        let storeName: string | undefined;
-        if (t?.storeUid) {
-            try {
-                const s = await db.collection('stores').doc(String(t.storeUid)).get();
-                storeName = (s.data()?.name as string) || undefined;
-            } catch { /* ignore */ }
-        }
-
-        return {
-            success: true,
-            data: {
-                tokenId: token,
-                orderId: t?.orderId ?? null,
-                storeName: storeName ?? t?.storeName ?? null,
-                customer: t?.customer ?? null,
-                expired: t?.expiresAt ? Date.now() > Number(t.expiresAt) : false,
-                voided: Boolean(t?.voidedAt),
-            },
-        };
-    }
-
-    /**
      * Get Salla verification info (debug)
      */
     async getSallaVerification(uid: string): Promise<{
