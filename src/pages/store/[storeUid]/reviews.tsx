@@ -221,6 +221,12 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
     const storeName = store.name || "متجر";
     const maxDist = Math.max(...stats.distribution, 1);
     const focusedReviewExists = !!focusedReviewId && reviews.some((review) => review.id === focusedReviewId);
+    const showingFocusedOnly = !!focusedReviewId && focusedReviewExists;
+    const visibleReviews = showingFocusedOnly
+        ? reviews.filter((review) => review.id === focusedReviewId)
+        : focusedReviewId
+            ? []
+            : reviews;
     const allReviewsHref = `/store/${encodeURIComponent(store.storeUid)}/reviews`;
 
     const pageTitle = `تقييمات ${storeName} | مشتري موثق`;
@@ -330,8 +336,8 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <p className="text-sm leading-7 text-emerald-50">
                                 {focusedReviewExists
-                                    ? "يتم الآن عرض التقييم المرتبط بشارة التوثيق. يمكنك الرجوع لاستعراض جميع تقييمات المتجر في أي وقت."
-                                    : "تعذر العثور على التقييم المحدد ضمن القائمة الحالية. يمكنك استعراض جميع تقييمات المتجر من الزر التالي."}
+                                    ? "يتم الآن عرض التقييم المحدد فقط. يمكنك استعراض جميع تقييمات المتجر من الزر التالي."
+                                    : "تعذر العثور على التقييم المحدد. تم إخفاء بقية التقييمات ويمكنك استعراض جميع تقييمات المتجر من الزر التالي."}
                             </p>
                             <a
                                 href={allReviewsHref}
@@ -344,13 +350,15 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
                 )}
 
                 {/* ── Reviews List ── */}
-                {reviews.length === 0 ? (
+                {visibleReviews.length === 0 ? (
                     <div className="text-center py-16">
-                        <p className="text-slate-400 text-lg">لا توجد تقييمات بعد</p>
+                        <p className="text-slate-400 text-lg">
+                            {focusedReviewId ? "لا يمكن عرض التقييم المطلوب حالياً" : "لا توجد تقييمات بعد"}
+                        </p>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {reviews.map((r) => (
+                        {visibleReviews.map((r) => (
                             <ReviewCard key={r.id} review={r} highlighted={focusedReviewId === r.id} />
                         ))}
                     </div>
