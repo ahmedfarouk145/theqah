@@ -235,7 +235,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
     const allReviewsHref = `/store/${encodeURIComponent(store.storeUid)}/reviews`;
 
     const pageTitle = `تقييمات ${storeName} | مشتري موثق`;
-    const pageDesc = `اطلع على ${stats.totalReviews} تقييم موثق لمتجر ${storeName} — متوسط التقييم ${stats.avgStars} من 5 نجوم. جميع التقييمات مدققة من مشتري موثق.`;
+    const pageDesc = `اطلع على ${stats.totalReviews} تقييم موثق لمتجر ${storeName}. جميع التقييمات مدققة ومتحقق منها بواسطة مشتري موثق.`;
 
     return (
         <div className={`min-h-screen transition-opacity duration-700 ${mounted ? "opacity-100" : "opacity-0"}`} dir="rtl" style={{ background: "#060b14" }}>
@@ -325,13 +325,8 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
                         )}
                         {store.domain && <span className="w-px h-4 bg-white/10" />}
 
-                        {/* Compact rating + count */}
-                        <div className="flex items-center gap-2">
-                            <Stars count={Math.round(stats.avgStars)} size={14} />
-                            <span className="text-white/80 font-bold tabular-nums">{stats.avgStars.toFixed(1)}</span>
-                            <span className="text-slate-500">·</span>
-                            <span className="text-slate-400">{stats.totalReviews} تقييم مدقق</span>
-                        </div>
+                        {/* Review count */}
+                        <span className="text-slate-400">{stats.totalReviews} تقييم مدقق</span>
                     </div>
                 </div>
 
