@@ -1,7 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { log } from "@/lib/logger";
 import { RepositoryFactory } from "@/server/repositories";
-import { handleApiError, UnauthorizedError } from "@/server/core";
+import { handleApiError } from "@/server/core";
+import { sallaTokenService } from "@/server/services/salla-token.service";
+import { sallaReviewIdLookupService } from "@/server/services/salla-review-id-lookup.service";
+
+export const config = {
+  maxDuration: 300,
+};
 
 /**
  * Cron job to backfill sallaReviewId for reviews that were saved from webhooks
@@ -49,100 +55,98 @@ export default async function handler(
       errors: [] as Array<{ reviewId: string; error: string }>
     };
 
-    // Process each review
+    const reviewsByStore = new Map<string, typeof reviewsToBackfill>();
     for (const review of reviewsToBackfill) {
-      results.processed++;
+      const existing = reviewsByStore.get(review.storeUid) ?? [];
+      existing.push(review);
+      reviewsByStore.set(review.storeUid, existing);
+    }
 
+    for (const [storeUid, storeReviews] of reviewsByStore.entries()) {
       try {
-        // Get store access token with auto-refresh if needed
-        const storeUid = review.storeUid;
-        const { sallaTokenService } = await import('@/server/services/salla-token.service');
         const accessToken = await sallaTokenService.getValidAccessToken(storeUid);
-
         if (!accessToken) {
           throw new Error(`No valid access token for store ${storeUid}`);
         }
 
-        // Use products filter for efficiency (fetches only reviews for this product)
-        const productId = review.productId || '';
-        const apiUrl = productId
-          ? `https://api.salla.dev/admin/v2/reviews?products=${productId}&per_page=50`
-          : `https://api.salla.dev/admin/v2/reviews?per_page=100`;
-
-        const sallaResponse = await fetch(apiUrl, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json"
-          }
-        });
-
-        if (!sallaResponse.ok) {
-          throw new Error(`Salla API error: ${sallaResponse.status}`);
-        }
-
-        const sallaData = await sallaResponse.json() as {
-          data?: Array<{
-            id: number | string;
-            order_id: number | string | null;
-            product?: { id?: number | string };
-            rating?: number;
-            type?: string;
-            content?: string | null;
-          }>;
-        };
-
-        // Normalize text for comparison (trim, lowercase)
-        const normalizeText = (text: string | null | undefined): string =>
-          (text || '').trim().toLowerCase().replace(/\s+/g, ' ');
-
-        const reviewText = normalizeText(review.text);
-
-        // Find matching review by orderId + rating + content
-        // Only match product reviews (type: 'rating'), not testimonials
-        // Note: product filtering is done via URL param, Salla doesn't return product.id in list
-        const matchingReview = sallaData.data?.find((r) => {
-          const isProductReview = !r.type || r.type === 'rating';
-          const orderMatches = String(r.order_id) === String(review.orderId);
-          const ratingMatches = !review.stars || r.rating === review.stars;
-          // Content matching for extra accuracy (when text is available)
-          const contentMatches = !reviewText || !r.content ||
-            normalizeText(r.content) === reviewText;
-          return isProductReview && orderMatches && ratingMatches && contentMatches;
-        });
-
-        if (matchingReview) {
-          // Update review with Salla review ID using repository
-          await reviewRepo.updateSallaId(review.reviewId, String(matchingReview.id));
-
-          results.updated++;
-
-          log("info", `Backfilled review ${review.reviewId} with sallaReviewId ${matchingReview.id}`, {
-            scope: "cron",
+        const lookupResult = await sallaReviewIdLookupService.findMatchesForStoreReviews({
+          accessToken,
+          storeUid,
+          reviews: storeReviews.map((review) => ({
             reviewId: review.reviewId,
-            sallaReviewId: matchingReview.id
-          });
-        } else {
-          // Review not found yet (still indexing), leave flag for next run
-          log("info", `Review not found in Salla API yet: ${review.reviewId}, order ${review.orderId}`, {
-            scope: "cron",
-            reviewId: review.reviewId,
-            orderId: review.orderId
-          });
-        }
-
-      } catch (error) {
-        results.failed++;
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        results.errors.push({
-          reviewId: review.reviewId,
-          error: errorMessage
+            orderId: review.orderId,
+            productId: review.productId,
+            stars: review.stars,
+            text: review.text,
+          })),
         });
 
-        log("error", `Failed to backfill review ${review.reviewId}`, {
+        log("info", `Scanned Salla reviews for ${storeUid}`, {
           scope: "cron",
-          reviewId: review.reviewId,
-          error: errorMessage
+          storeUid,
+          pagesScanned: lookupResult.pagesScanned,
+          totalPages: lookupResult.totalPages,
+          totalRemote: lookupResult.totalRemote,
+          pendingReviews: storeReviews.length,
+          matchedReviews: lookupResult.matches.size,
         });
+
+        for (const review of storeReviews) {
+          results.processed++;
+          const matchingReview = lookupResult.matches.get(review.reviewId);
+
+          if (!matchingReview) {
+            log("info", `Review not found in Salla API after pagination: ${review.reviewId}, order ${review.orderId}`, {
+              scope: "cron",
+              reviewId: review.reviewId,
+              orderId: review.orderId,
+              storeUid,
+              pagesScanned: lookupResult.pagesScanned,
+            });
+            continue;
+          }
+
+          try {
+            await reviewRepo.updateSallaId(review.reviewId, matchingReview.sallaReviewId);
+            results.updated++;
+
+            log("info", `Backfilled review ${review.reviewId} with sallaReviewId ${matchingReview.sallaReviewId}`, {
+              scope: "cron",
+              reviewId: review.reviewId,
+              sallaReviewId: matchingReview.sallaReviewId,
+              pageFound: matchingReview.pageFound,
+            });
+          } catch (error) {
+            results.failed++;
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            results.errors.push({
+              reviewId: review.reviewId,
+              error: errorMessage,
+            });
+
+            log("error", `Failed to update review ${review.reviewId} after Salla match`, {
+              scope: "cron",
+              reviewId: review.reviewId,
+              error: errorMessage,
+            });
+          }
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        for (const review of storeReviews) {
+          results.processed++;
+          results.failed++;
+          results.errors.push({
+            reviewId: review.reviewId,
+            error: errorMessage,
+          });
+
+          log("error", `Failed to backfill review ${review.reviewId}`, {
+            scope: "cron",
+            reviewId: review.reviewId,
+            error: errorMessage,
+          });
+        }
       }
     }
 

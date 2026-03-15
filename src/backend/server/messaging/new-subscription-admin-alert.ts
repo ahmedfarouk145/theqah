@@ -345,7 +345,7 @@ export async function sendNewSubscriptionAdminAlert(
       {
         updatedAt: Date.now(),
         status: 'failed' satisfies AlertStatus,
-        errors: [sanitizeError(error)],
+        errors: [sanitizeError(error as Error)],
       },
       { merge: true }
     );

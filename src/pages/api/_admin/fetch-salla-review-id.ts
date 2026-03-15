@@ -1,5 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getDb } from '@/server/firebase-admin';
+import type { Review } from '@/server/core/types';
+import { sallaTokenService } from '@/server/services/salla-token.service';
+import { sallaReviewIdLookupService } from '@/server/services/salla-review-id-lookup.service';
+
+export const config = {
+    maxDuration: 300,
+};
 
 /**
  * Admin utility: Fetch Salla review ID for a specific review and update Firestore.
@@ -19,63 +26,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { reviewDocId, storeUid, orderId } = req.body;
 
-    if (!reviewDocId || !storeUid || !orderId) {
-        return res.status(400).json({ error: 'Missing: reviewDocId, storeUid, orderId' });
+    if (!reviewDocId) {
+        return res.status(400).json({ error: 'Missing: reviewDocId' });
     }
 
     try {
         const db = getDb();
+        const reviewDoc = await db.collection('reviews').doc(reviewDocId).get();
+        const reviewData = reviewDoc.exists ? reviewDoc.data() as Partial<Review> : undefined;
+        const resolvedStoreUid = typeof reviewData?.storeUid === 'string' && reviewData.storeUid
+            ? reviewData.storeUid
+            : storeUid;
+        const resolvedOrderId = typeof reviewData?.orderId === 'string' && reviewData.orderId
+            ? reviewData.orderId
+            : orderId;
+
+        if (!resolvedStoreUid || !resolvedOrderId) {
+            return res.status(400).json({ error: 'Missing storeUid/orderId context for review lookup' });
+        }
 
         // Get access token using the token service (handles refresh too)
-        const { sallaTokenService } = await import('@/server/services/salla-token.service');
-        const accessToken = await sallaTokenService.getValidAccessToken(storeUid);
+        const accessToken = await sallaTokenService.getValidAccessToken(resolvedStoreUid);
 
         if (!accessToken) {
-            return res.status(500).json({ error: `No valid access token for ${storeUid}` });
+            return res.status(500).json({ error: `No valid access token for ${resolvedStoreUid}` });
         }
 
-        // Fetch reviews from Salla API
-        const response = await fetch(
-            `https://api.salla.dev/admin/v2/reviews?per_page=100`,
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    Accept: 'application/json',
-                },
-            }
-        );
-
-        if (!response.ok) {
-            const text = await response.text();
-            return res.status(response.status).json({ error: 'Salla API error', status: response.status, body: text });
-        }
-
-        const data = await response.json();
-        const reviews = data.data || [];
-
-        // Find matching review by orderId
-        const matching = reviews.find(
-            (r: { order_id?: string | number; type?: string }) => {
-                const isProduct = !r.type || r.type === 'rating';
-                return isProduct && String(r.order_id) === String(orderId);
-            }
-        );
+        const matching = await sallaReviewIdLookupService.findMatchForReview({
+            accessToken,
+            storeUid: resolvedStoreUid,
+            review: {
+                reviewId: reviewDocId,
+                orderId: String(resolvedOrderId),
+                productId: reviewData?.productId,
+                stars: reviewData?.stars,
+                text: reviewData?.text,
+            },
+        });
 
         if (!matching) {
             return res.status(404).json({
-                error: 'Review not found in Salla API',
-                totalReviews: reviews.length,
-                searchedOrderId: orderId,
-                availableOrderIds: reviews.slice(0, 10).map((r: { order_id?: string | number; id?: string | number }) => ({
-                    orderId: r.order_id,
-                    reviewId: r.id,
-                })),
+                error: 'Review not found in Salla API after pagination',
+                searchedOrderId: resolvedOrderId,
+                storeUid: resolvedStoreUid,
             });
         }
 
         // Update Firestore
         await db.collection('reviews').doc(reviewDocId).update({
-            sallaReviewId: String(matching.id),
+            sallaReviewId: matching.sallaReviewId,
             needsSallaId: false,
             verified: true,
             backfilledAt: new Date().toISOString(),
@@ -83,8 +82,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(200).json({
             success: true,
-            sallaReviewId: matching.id,
+            sallaReviewId: matching.sallaReviewId,
             reviewDocId,
+            pageFound: matching.pageFound,
             updated: { verified: true, needsSallaId: false },
         });
 

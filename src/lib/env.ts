@@ -25,6 +25,7 @@ const server = z.object({
   DMAIL_USER: z.string().optional(),
   DMAIL_PASS: z.string().optional(),
   ADMIN_EMAIL: z.string().email().optional(),
+  NEW_SUBSCRIPTION_ALERT_EMAILS: z.string().optional(),
 
   // Salla Integration (Optional)
   SALLA_CLIENT_ID: z.string().optional(),

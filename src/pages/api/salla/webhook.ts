@@ -529,10 +529,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const planId = planName ? mapSallaPlanToInternal(planName, planType as 'monthly' | 'annual' | null) : "TRIAL";
 
         if (storeUid && planId) {
+          const previousStoreSnap = await db.collection("stores").doc(storeUid).get().catch(() => null);
+          const previousStore = previousStoreSnap?.data() as Dict | undefined;
+          const previousSubscription = previousStore?.["subscription"] as Dict | undefined;
+          const previousPlan = previousStore?.["plan"] as Dict | undefined;
+          const previousPlanId =
+            (typeof previousSubscription?.["planId"] === "string" ? previousSubscription["planId"] as string : undefined) ??
+            (typeof previousPlan?.["code"] === "string" ? previousPlan["code"] as string : undefined) ??
+            null;
+          const previousPlanActive =
+            typeof previousPlan?.["active"] === "boolean" ? previousPlan["active"] as boolean : null;
           const startedAt = extractSubscriptionStartedAt(payload) ?? Date.now();
           const expiresAt = extractSubscriptionExpiresAt(payload);
 
           await sallaService.handleSubscriptionEvent(storeUid, planId, startedAt, expiresAt, payload);
+
+          let subscriptionAlertMeta: Dict = {
+            sent: false,
+            skipped: "not_attempted",
+            recipients: 0,
+          };
+
+          try {
+            const { sendNewSubscriptionAdminAlert } = await import("@/server/messaging/new-subscription-admin-alert");
+            const alertResult = await sendNewSubscriptionAdminAlert({
+              storeUid,
+              provider: "salla",
+              planId,
+              startedAt,
+              expiresAt,
+              previousPlanId,
+              previousPlanActive,
+              merchantId,
+            });
+
+            subscriptionAlertMeta = {
+              sent: alertResult.sent,
+              skipped: alertResult.skipped ?? null,
+              recipients: alertResult.recipientCount ?? 0,
+              alertId: alertResult.alertId ?? null,
+            };
+          } catch (alertError) {
+            subscriptionAlertMeta = {
+              sent: false,
+              skipped: "exception",
+              recipients: 0,
+              error: alertError instanceof Error ? alertError.message : String(alertError),
+            };
+          }
 
           fbLog(db, {
             level: "info",
@@ -542,7 +586,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             idemKey,
             merchant: merchantId,
             orderId,
-            meta: { storeUid, planName, planType, planId }
+            meta: { storeUid, planName, planType, planId, previousPlanId, previousPlanActive, subscriptionAlert: subscriptionAlertMeta }
           });
         } else {
           const reason = !storeUid ? "missing storeUid" : "invalid plan mapping";

@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getDb } from '@/server/firebase-admin';
+import type { Review } from '@/server/core/types';
+import { sallaTokenService } from '@/server/services/salla-token.service';
+import { sallaReviewIdLookupService } from '@/server/services/salla-review-id-lookup.service';
 
 // Allow longer execution time for retries (Pro plan: 300s, Hobby: 10s)
 export const config = {
@@ -29,10 +32,10 @@ export default async function handler(
 
   console.log('[FETCH_REVIEW_ID] Parsed params:', { reviewDocId, merchantId, orderId });
 
-  if (!reviewDocId || !merchantId || !orderId) {
+  if (!reviewDocId) {
     console.error('[FETCH_REVIEW_ID] Missing params:', { reviewDocId, merchantId, orderId });
     return res.status(400).json({
-      error: 'Missing required fields: reviewDocId, merchantId, orderId'
+      error: 'Missing required field: reviewDocId'
     });
   }
 
@@ -59,8 +62,8 @@ async function processReviewIdFetch(
   console.log('[PROCESS] Starting with params:', { reviewDocId, merchantId, orderId });
 
   // Convert to strings for consistency
-  const merchantIdStr = String(merchantId);
-  const orderIdStr = String(orderId);
+  const merchantIdStr = merchantId ? String(merchantId) : '';
+  const orderIdStr = orderId ? String(orderId) : '';
 
   const db = getDb();
   const retryDelays = [5000, 10000, 15000]; // 5s, 10s, 15s
@@ -74,61 +77,58 @@ async function processReviewIdFetch(
         console.log(`Retry attempt ${attempt + 1} for review ${reviewDocId}`);
       }
 
-      console.log(`[PROCESS] Attempt ${attempt + 1}: Fetching merchant ${merchantIdStr}`);
-
-      // Fetch merchant's access token from owners collection
-      const storeUid = `salla:${merchantIdStr}`;
-      const ownerDoc = await db.collection('owners').doc(storeUid).get();
-      if (!ownerDoc.exists) {
-        throw new Error(`Store ${storeUid} not found in owners`);
+      const reviewDoc = await db.collection('reviews').doc(reviewDocId).get();
+      if (!reviewDoc.exists) {
+        throw new Error(`Review ${reviewDocId} not found`);
       }
 
-      const ownerData = ownerDoc.data();
-      const accessToken = ownerData?.oauth?.access_token;
+      const reviewData = reviewDoc.data() as Partial<Review> | undefined;
+      const storeUid = typeof reviewData?.storeUid === 'string' && reviewData.storeUid
+        ? reviewData.storeUid
+        : (merchantIdStr ? `salla:${merchantIdStr}` : '');
+      const resolvedOrderId = typeof reviewData?.orderId === 'string' && reviewData.orderId
+        ? reviewData.orderId
+        : orderIdStr;
+
+      if (!storeUid || !resolvedOrderId) {
+        throw new Error(`Missing review lookup context for ${reviewDocId}`);
+      }
+
+      console.log(`[PROCESS] Attempt ${attempt + 1}: Fetching store ${storeUid}`);
+
+      const accessToken = await sallaTokenService.getValidAccessToken(storeUid);
       if (!accessToken) {
         throw new Error(`No access token for store ${storeUid}`);
       }
 
-      // Fetch reviews from Salla API
-      const response = await fetch(
-        'https://api.salla.dev/admin/v2/reviews?per_page=100',
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Salla API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const reviews = data.data || [];
-
-      // Find review by order_id (string comparison)
-      // Only match product reviews (type: 'rating'), not testimonials
-      const matchingReview = reviews.find(
-        (r: { order_id: string; type?: string }) => {
-          const isProductReview = !r.type || r.type === 'rating';
-          return isProductReview && String(r.order_id) === orderIdStr;
-        }
-      );
+      const matchingReview = await sallaReviewIdLookupService.findMatchForReview({
+        accessToken,
+        storeUid,
+        review: {
+          reviewId: reviewDocId,
+          orderId: resolvedOrderId,
+          productId: reviewData?.productId,
+          stars: reviewData?.stars,
+          text: reviewData?.text,
+        },
+      });
 
       if (!matchingReview) {
-        throw new Error(`Review not found for order ${orderIdStr} (may not be indexed yet)`);
+        throw new Error(`Review not found for order ${resolvedOrderId} after pagination`);
       }
 
       console.log(`[PROCESS] Found matching review, updating Firestore doc: ${reviewDocId}`);
 
       // Success! Update Firestore with sallaReviewId
       await db.collection('reviews').doc(reviewDocId).update({
-        sallaReviewId: matchingReview.id,
+        sallaReviewId: matchingReview.sallaReviewId,
         needsSallaId: false,
         verified: true,
+        backfilledAt: new Date().toISOString(),
         fetchedAt: new Date().toISOString(),
         fetchAttempts: attempt + 1,
+        fetchFailed: false,
+        fetchError: null,
       });
 
       console.log(`✅ Successfully fetched review ID for ${reviewDocId} on attempt ${attempt + 1}`);
