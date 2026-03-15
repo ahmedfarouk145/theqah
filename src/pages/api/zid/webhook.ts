@@ -88,7 +88,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let event = String(body.event || flatBody.event_name || "");
   if (!event && flatBody.order_status !== undefined) {
     // Order webhook — no event field, detect by payload shape
-    event = "order.create";
+    // Distinguish: payment_status_change → payment update, otherwise → order create
+    if (flatBody.payment_status_change !== undefined) {
+      event = "order.payment_status.update";
+    } else {
+      event = "order.create";
+    }
   }
   const data = (body.data ?? body ?? {}) as UnknownRecord;
   const storeId = String(
