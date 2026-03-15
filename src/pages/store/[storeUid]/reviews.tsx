@@ -73,7 +73,7 @@ function Stars({ count, size = 18 }: { count: number; size?: number }) {
     return (
         <span className="inline-flex gap-0.5" aria-label={`${s} من 5 نجوم`}>
             {[1, 2, 3, 4, 5].map((i) => (
-                <svg key={i} width={size} height={size} viewBox="0 0 24 24" fill={i <= s ? "#facc15" : "#1e293b"} stroke="none">
+                <svg key={i} width={size} height={size} viewBox="0 0 24 24" fill={i <= s ? "#f59e0b" : "#e2e8f0"} stroke="none">
                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
             ))}
@@ -89,48 +89,48 @@ function ReviewCard({ review, highlighted = false, index = 0 }: { review: Review
         day: "numeric",
     });
 
-    // Color palette for avatars based on index
     const avatarColors = [
-        "from-emerald-400/40 to-teal-600/40",
-        "from-sky-400/40 to-indigo-600/40",
-        "from-amber-400/40 to-orange-600/40",
-        "from-rose-400/40 to-pink-600/40",
-        "from-violet-400/40 to-purple-600/40",
+        "from-emerald-500 to-teal-600",
+        "from-sky-500 to-blue-600",
+        "from-amber-500 to-orange-600",
+        "from-rose-500 to-pink-600",
+        "from-violet-500 to-purple-600",
+        "from-cyan-500 to-teal-600",
     ];
     const avatarGrad = avatarColors[index % avatarColors.length];
 
     return (
         <article
             id={`review-${review.id}`}
-            style={{ animationDelay: `${Math.min(index * 80, 600)}ms` }}
-            className={`review-card-enter group relative rounded-2xl transition-all duration-300 scroll-mt-24 ${
+            style={{ animationDelay: `${Math.min(index * 70, 500)}ms` }}
+            className={`review-card-enter group relative transition-all duration-300 scroll-mt-24 ${
                 highlighted
-                    ? "bg-emerald-500/[0.08] border border-emerald-400/30 shadow-[0_0_40px_-12px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/10"
-                    : "bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.12] hover:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.5)]"
+                    ? "bg-emerald-50 border-2 border-emerald-200 shadow-lg shadow-emerald-100/50 rounded-2xl"
+                    : "border-b border-gray-100 last:border-b-0"
             }`}
         >
-            <div className="p-6 sm:p-7">
+            <div className={highlighted ? "p-6" : "py-6"}>
                 {/* Header row */}
-                <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-center gap-3.5">
                         {/* Avatar */}
-                        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${avatarGrad} flex items-center justify-center text-white/90 text-sm font-bold shrink-0 shadow-lg shadow-black/20`}>
+                        <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarGrad} flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-md`}>
                             {(review.author.displayName || "ع")[0]}
                         </div>
                         <div>
-                            <p className="font-semibold text-white/90 text-[15px] leading-tight">
+                            <p className="font-semibold text-[#0e1e1a] text-[15px] leading-tight">
                                 {review.author.displayName || "عميل المتجر"}
                             </p>
-                            <div className="flex items-center gap-2.5 mt-1.5">
+                            <div className="flex items-center gap-2.5 mt-1">
                                 <Stars count={review.stars} size={13} />
-                                <span className="w-px h-3 bg-white/10" />
-                                <time className="text-[12px] text-slate-500">{relDate}</time>
+                                <span className="text-[12px] text-gray-400">·</span>
+                                <time className="text-[12px] text-gray-400">{relDate}</time>
                             </div>
                         </div>
                     </div>
 
                     {review.trustedBuyer && (
-                        <span className="inline-flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400/90 border border-emerald-500/15 font-medium shrink-0">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 font-semibold shrink-0">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="20 6 9 17 4 12" />
                             </svg>
@@ -141,15 +141,15 @@ function ReviewCard({ review, highlighted = false, index = 0 }: { review: Review
 
                 {/* Review text */}
                 {review.text && (
-                    <p className="text-slate-300/90 text-[14px] leading-[1.9] whitespace-pre-wrap pr-[3.625rem]">{review.text}</p>
+                    <p className="text-gray-600 text-[14px] leading-[1.95] whitespace-pre-wrap pr-[3.375rem]">{review.text}</p>
                 )}
 
                 {/* Images */}
                 {review.images && review.images.length > 0 && (
-                    <div className="mt-5 flex gap-2.5 flex-wrap pr-[3.625rem]">
+                    <div className="mt-4 flex gap-2.5 flex-wrap pr-[3.375rem]">
                         {review.images.slice(0, 4).map((url) => (
-                            <div key={url} className="relative w-[72px] h-[72px] rounded-xl overflow-hidden border border-white/[0.08] shadow-lg shadow-black/20 group/img">
-                                <Image src={url} alt="" fill sizes="72px" className="object-cover transition-transform duration-500 group-hover/img:scale-110" unoptimized />
+                            <div key={url} className="relative w-[68px] h-[68px] rounded-xl overflow-hidden border border-gray-200 shadow-sm group/img">
+                                <Image src={url} alt="" fill sizes="68px" className="object-cover transition-transform duration-500 group-hover/img:scale-110" unoptimized />
                             </div>
                         ))}
                     </div>
@@ -169,7 +169,7 @@ function ErrorView({ error }: { error: string }) {
                 : "حدث خطأ أثناء تحميل البيانات";
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-6" dir="rtl" style={{ background: "#060b14", fontFamily: "'Tajawal', sans-serif" }}>
+        <div className="min-h-screen bg-white flex items-center justify-center p-6" dir="rtl" style={{ fontFamily: "'Tajawal', sans-serif" }}>
             <Head>
                 <title>مشتري موثق | خطأ</title>
                 <meta name="robots" content="noindex, nofollow" />
@@ -180,17 +180,17 @@ function ErrorView({ error }: { error: string }) {
                 />
             </Head>
             <div className="text-center max-w-md">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-500/[0.08] border border-red-500/15 mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-50 border border-red-100 mb-6">
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="15" y1="9" x2="9" y2="15" />
                         <line x1="9" y1="9" x2="15" y2="15" />
                     </svg>
                 </div>
-                <h1 className="text-xl font-bold text-white mb-3">{msg}</h1>
+                <h1 className="text-xl font-bold text-gray-900 mb-3">{msg}</h1>
                 <a
                     href="https://theqah.com.sa"
-                    className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-lg bg-emerald-500/[0.08] text-emerald-400 border border-emerald-500/15 hover:bg-emerald-500/[0.14] transition-colors text-sm font-medium"
+                    className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors text-sm font-semibold"
                 >
                     الذهاب إلى مشتري موثق
                 </a>
@@ -232,13 +232,12 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
         : focusedReviewId
             ? []
             : reviews;
-    const allReviewsHref = `/store/${encodeURIComponent(store.storeUid)}/reviews`;
 
     const pageTitle = `تقييمات ${storeName} | مشتري موثق`;
     const pageDesc = `اطلع على ${stats.totalReviews} تقييم موثق لمتجر ${storeName}. جميع التقييمات مدققة ومتحقق منها بواسطة مشتري موثق.`;
 
     return (
-        <div className={`min-h-screen transition-opacity duration-700 ${mounted ? "opacity-100" : "opacity-0"}`} dir="rtl" style={{ background: "#060b14" }}>
+        <div className={`min-h-screen bg-white transition-opacity duration-500 ${mounted ? "opacity-100" : "opacity-0"}`} dir="rtl">
             <Head>
                 <title>{pageTitle}</title>
                 <meta name="description" content={pageDesc} />
@@ -254,121 +253,98 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
                 <style>{`
                     * { font-family: 'Tajawal', sans-serif; }
                     @keyframes reviewCardEnter {
-                        from { opacity: 0; transform: translateY(16px); }
+                        from { opacity: 0; transform: translateY(14px); }
                         to { opacity: 1; transform: translateY(0); }
                     }
                     .review-card-enter {
-                        animation: reviewCardEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+                        animation: reviewCardEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
                     }
                     @keyframes headerReveal {
-                        from { opacity: 0; transform: translateY(-12px); }
+                        from { opacity: 0; transform: translateY(-10px); }
                         to { opacity: 1; transform: translateY(0); }
                     }
                     .header-reveal {
-                        animation: headerReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
-                    }
-                    @keyframes pulseGlow {
-                        0%, 100% { opacity: 0.4; }
-                        50% { opacity: 0.7; }
+                        animation: headerReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
                     }
                 `}</style>
             </Head>
 
-            {/* ── Ambient background ── */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-                {/* Top-right emerald glow */}
-                <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full blur-[160px]" style={{ background: "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)" }} />
-                {/* Bottom-left blue glow */}
-                <div className="absolute -bottom-48 -left-48 w-[600px] h-[600px] rounded-full blur-[180px]" style={{ background: "radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)" }} />
-                {/* Subtle noise overlay */}
-                <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")" }} />
-            </div>
+            {/* ── Subtle top accent ── */}
+            <div className="h-1 bg-gradient-to-l from-emerald-400 via-teal-500 to-emerald-600" />
 
             {/* ── Header ── */}
-            <header className="relative header-reveal">
-                <div className="max-w-3xl mx-auto px-6 pt-10 pb-6">
+            <header className="relative header-reveal border-b border-gray-100">
+                <div className="max-w-2xl mx-auto px-6 pt-8 pb-7">
                     {/* Theqah branding */}
                     <a
                         href="https://theqah.com.sa"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-3 mb-10 group"
+                        className="inline-flex items-center gap-2.5 mb-8 group"
                     >
                         <Image
                             src="/widgets/logo.png"
                             alt="مشتري موثق"
-                            width={44}
-                            height={44}
-                            className="drop-shadow-[0_0_16px_rgba(16,185,129,0.3)] group-hover:scale-105 transition-transform duration-300"
+                            width={36}
+                            height={36}
+                            className="group-hover:scale-105 transition-transform duration-300"
                         />
-                        <span className="text-[17px] font-bold bg-gradient-to-l from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                        <span className="text-[15px] font-bold text-emerald-700">
                             مشتري موثق
                         </span>
                     </a>
 
                     {/* Store name */}
-                    <h1 className="text-[2rem] sm:text-[2.5rem] font-[900] text-white leading-[1.2] tracking-tight mb-4">
+                    <h1 className="text-[1.75rem] sm:text-[2.1rem] font-[900] text-[#0e1e1a] leading-[1.25] tracking-tight mb-3">
                         تقييمات {storeName}
                     </h1>
 
-                    {/* Meta row: domain + stats */}
-                    <div className="flex flex-wrap items-center gap-3 text-sm">
+                    {/* Meta row */}
+                    <div className="flex flex-wrap items-center gap-2.5 text-sm">
                         {store.domain && (
-                            <a
-                                href={`https://${store.domain}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-slate-400 hover:text-emerald-400 transition-colors duration-200"
-                            >
-                                {store.domain} ↗
-                            </a>
+                            <>
+                                <a
+                                    href={`https://${store.domain}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-gray-400 hover:text-emerald-600 transition-colors duration-200"
+                                >
+                                    {store.domain} ↗
+                                </a>
+                                <span className="text-gray-200">|</span>
+                            </>
                         )}
-                        {store.domain && <span className="w-px h-4 bg-white/10" />}
-
-                        {/* Review count */}
-                        <span className="text-slate-400">{stats.totalReviews} تقييم مدقق</span>
+                        <span className="text-gray-500">{stats.totalReviews} تقييم مدقق</span>
                     </div>
-                </div>
-
-                {/* Separator line */}
-                <div className="max-w-3xl mx-auto px-6">
-                    <div className="h-px bg-gradient-to-l from-transparent via-white/[0.08] to-transparent" />
                 </div>
             </header>
 
-            <main className="relative max-w-3xl mx-auto px-6 pt-8 pb-20">
+            <main className="relative max-w-2xl mx-auto px-6 pt-2 pb-20">
+                {/* Focused review notice (text only, no button) */}
                 {focusedReviewId && (
-                    <div className="mb-6 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.06] px-5 py-4 backdrop-blur-sm">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <p className="text-sm leading-7 text-emerald-100/80">
-                                {focusedReviewExists
-                                    ? "يتم الآن عرض التقييم المحدد فقط. يمكنك استعراض جميع تقييمات المتجر من الزر التالي."
-                                    : "تعذر العثور على التقييم المحدد. تم إخفاء بقية التقييمات ويمكنك استعراض جميع تقييمات المتجر من الزر التالي."}
-                            </p>
-                            <a
-                                href={allReviewsHref}
-                                className="inline-flex shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-white/[0.1] hover:border-white/15"
-                            >
-                                عرض جميع تقييمات المتجر
-                            </a>
-                        </div>
+                    <div className="my-5 rounded-xl bg-amber-50 border border-amber-200 px-5 py-3.5">
+                        <p className="text-sm leading-7 text-amber-800">
+                            {focusedReviewExists
+                                ? "يتم الآن عرض التقييم المحدد فقط."
+                                : "تعذر العثور على التقييم المحدد."}
+                        </p>
                     </div>
                 )}
 
                 {/* ── Reviews List ── */}
                 {visibleReviews.length === 0 ? (
                     <div className="text-center py-24">
-                        <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-slate-500">
+                        <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-300">
                                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                         </div>
-                        <p className="text-slate-400 text-base">
+                        <p className="text-gray-400 text-[15px]">
                             {focusedReviewId ? "لا يمكن عرض التقييم المطلوب حالياً" : "لا توجد تقييمات بعد"}
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div>
                         {visibleReviews.map((r, i) => (
                             <ReviewCard key={r.id} review={r} highlighted={focusedReviewId === r.id} index={i} />
                         ))}
@@ -376,19 +352,19 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
                 )}
 
                 {/* ── Footer ── */}
-                <footer className="mt-20 pt-8 border-t border-white/[0.04] text-center">
-                    <div className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-white/[0.03] border border-white/[0.05]">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-500/60" strokeLinecap="round" strokeLinejoin="round">
+                <footer className="mt-16 pt-6 border-t border-gray-100 text-center">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-50 border border-gray-100">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-500" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                             <polyline points="9 12 11 14 15 10" />
                         </svg>
-                        <p className="text-[12px] text-slate-500 leading-none">
+                        <p className="text-[12px] text-gray-400 leading-none">
                             تقييمات مدققة بواسطة{" "}
                             <a
                                 href="https://theqah.com.sa"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-emerald-400/70 hover:text-emerald-400 transition-colors"
+                                className="text-emerald-600 hover:text-emerald-700 transition-colors font-medium"
                             >
                                 مشتري موثق
                             </a>
