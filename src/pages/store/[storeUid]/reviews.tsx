@@ -322,10 +322,10 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
             <main className="relative max-w-2xl mx-auto px-6 pt-2 pb-20">
                 {/* Focused review notice (text only, no button) */}
                 {focusedReviewId && (
-                    <div className="my-5 rounded-xl bg-amber-50 border border-amber-200 px-5 py-3.5">
-                        <p className="text-sm leading-7 text-amber-800">
+                    <div className="my-5 rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-3.5">
+                        <p className="text-sm leading-7 text-emerald-800">
                             {focusedReviewExists
-                                ? "يتم الآن عرض التقييم المحدد فقط."
+                                ? "هذا التقييم مدقق و موثق من طرف مشتري موثق"
                                 : "تعذر العثور على التقييم المحدد."}
                         </p>
                     </div>
