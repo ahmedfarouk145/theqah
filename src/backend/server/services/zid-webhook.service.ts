@@ -7,7 +7,6 @@
 
 import crypto from 'crypto';
 
-/** Zid order from webhook payload */
 /** Zid order from webhook — supports both nested (API) and flat (webhook) formats */
 export interface ZidOrder {
     id?: string | number;
