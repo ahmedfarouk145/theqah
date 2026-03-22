@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { LIMITS } from "@/config/constants";
 import { log } from "@/lib/logger";
 import { RepositoryFactory } from "@/server/repositories";
 import { handleApiError } from "@/server/core";
@@ -33,6 +34,7 @@ export default async function handler(
 
   try {
     const reviewRepo = RepositoryFactory.getReviewRepository();
+    const startedAt = Date.now();
 
     log("info", "backfill-review-ids started", { scope: "cron" });
 
@@ -63,6 +65,17 @@ export default async function handler(
     }
 
     for (const [storeUid, storeReviews] of reviewsByStore.entries()) {
+      const elapsedMs = Date.now() - startedAt;
+      if (elapsedMs >= LIMITS.SALLA_CRON_LOOKUP_TIME_BUDGET_MS) {
+        log("warn", "Stopping backfill-review-ids early due to cron time budget", {
+          scope: "cron",
+          elapsedMs,
+          timeBudgetMs: LIMITS.SALLA_CRON_LOOKUP_TIME_BUDGET_MS,
+          remainingStores: Array.from(reviewsByStore.keys()).filter((uid) => uid !== storeUid).length + 1,
+        });
+        break;
+      }
+
       try {
         const accessToken = await sallaTokenService.getValidAccessToken(storeUid);
         if (!accessToken) {
@@ -87,6 +100,7 @@ export default async function handler(
           pagesScanned: lookupResult.pagesScanned,
           totalPages: lookupResult.totalPages,
           totalRemote: lookupResult.totalRemote,
+          reachedMaxPages: lookupResult.reachedMaxPages,
           pendingReviews: storeReviews.length,
           matchedReviews: lookupResult.matches.size,
         });

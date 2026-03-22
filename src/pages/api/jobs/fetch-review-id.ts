@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { LIMITS } from '@/config/constants';
 import { getDb } from '@/server/firebase-admin';
 import type { Review } from '@/server/core/types';
 import { sallaTokenService } from '@/server/services/salla-token.service';
@@ -101,20 +102,39 @@ async function processReviewIdFetch(
         throw new Error(`No access token for store ${storeUid}`);
       }
 
-      const matchingReview = await sallaReviewIdLookupService.findMatchForReview({
+      const lookupResult = await sallaReviewIdLookupService.findMatchesForStoreReviews({
         accessToken,
         storeUid,
-        review: {
+        reviews: [{
           reviewId: reviewDocId,
           orderId: resolvedOrderId,
           productId: reviewData?.productId,
           stars: reviewData?.stars,
           text: reviewData?.text,
-        },
+        }],
+        // Fresh webhook reviews should surface near the first pages.
+        // Deep backlog scans are handled by the cron path.
+        maxPages: LIMITS.RECENT_SALLA_REVIEW_LOOKUP_PAGES,
       });
+      const matchingReview = lookupResult.matches.get(reviewDocId);
 
       if (!matchingReview) {
-        throw new Error(`Review not found for order ${resolvedOrderId} after pagination`);
+        console.log(
+          `[PROCESS] Review ${reviewDocId} not found within ${lookupResult.pagesScanned} pages; leaving for cron backfill`
+        );
+
+        if (attempt === retryDelays.length - 1) {
+          await db.collection('reviews').doc(reviewDocId).update({
+            fetchFailed: false,
+            fetchError: null,
+            fetchAttempts: attempt + 1,
+            lastFetchAttempt: new Date().toISOString(),
+          });
+          console.log(`[PROCESS] Deferred deep pagination to cron for ${reviewDocId}`);
+          return;
+        }
+
+        continue;
       }
 
       console.log(`[PROCESS] Found matching review, updating Firestore doc: ${reviewDocId}`);

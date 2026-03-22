@@ -7,6 +7,9 @@ const DEFAULT_APP_URL = 'https://www.theqah.com.sa';
 const PAID_PLANS = new Set<PlanId>(['PAID_MONTHLY', 'PAID_ANNUAL']);
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 
+const MS_PER_DAY = 86_400_000;
+const TRIAL_THRESHOLD_DAYS = 15; // If duration < 15 days, it's likely a Salla trial period
+
 type AlertStatus = 'sending' | 'sent' | 'partial' | 'failed';
 
 export interface SendNewSubscriptionAdminAlertParams {
@@ -114,8 +117,9 @@ function getAppBaseUrl(): string {
   return raw.replace(/\/+$/, '');
 }
 
-function buildSubject(storeName: string, planId: string): string {
-  return `New subscription: ${storeName} (${planId})`;
+function buildSubject(storeName: string, planId: string, subscriptionType: string): string {
+  const typeLabel = subscriptionType.startsWith('Trial') ? 'TRIAL' : planId;
+  return `New subscription: ${storeName} (${typeLabel})`;
 }
 
 function buildHtml(params: {
@@ -128,11 +132,13 @@ function buildHtml(params: {
   merchantId?: string | null;
 }): string {
   const dashboardUrl = `${getAppBaseUrl()}/dashboard`;
+  const subscriptionType = detectSubscriptionType(params.planId, params.startedAt, params.expiresAt);
   const rows = [
     ['Store name', params.storeName],
     ['Store UID', params.storeUid],
     ['Provider', params.provider],
     ['Plan ID', params.planId],
+    ['Subscription Type', subscriptionType],
     ['Started at', formatDate(params.startedAt)],
     ['Expires at', formatDate(params.expiresAt)],
     ['Merchant ID', params.merchantId || 'N/A'],
@@ -152,9 +158,9 @@ function buildHtml(params: {
 </head>
 <body style="margin:0;padding:24px;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827;">
   <div style="max-width:680px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
-    <div style="padding:24px 28px;background:linear-gradient(135deg,#111827,#1f2937);color:#ffffff;">
-      <h1 style="margin:0 0 8px;font-size:24px;">New paid subscription</h1>
-      <p style="margin:0;font-size:14px;opacity:0.9;">A store has moved into an active paid plan.</p>
+    <div style="padding:24px 28px;background:linear-gradient(135deg,${subscriptionType.startsWith('Trial') ? '#b45309,#d97706' : '#111827,#1f2937'});color:#ffffff;">
+      <h1 style="margin:0 0 8px;font-size:24px;">${subscriptionType.startsWith('Trial') ? 'New subscription (Trial Period)' : 'New paid subscription'}</h1>
+      <p style="margin:0;font-size:14px;opacity:0.9;">${subscriptionType.startsWith('Trial') ? 'A store has started a trial period before full paid activation.' : 'A store has moved into an active paid plan.'}</p>
     </div>
     <div style="padding:28px;">
       <p style="margin:0 0 18px;font-size:15px;line-height:1.6;">
@@ -181,6 +187,32 @@ function isAlreadyExistsError(error: unknown): boolean {
 
 function normalizeAlertIdPart(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+/**
+ * Detect whether the subscription window looks like a Salla trial period
+ * rather than a full billing cycle.
+ * Returns a human-readable label like "Trial Period (8 days)" or "Full Cycle".
+ */
+export function detectSubscriptionType(
+  planId: string,
+  startedAt?: number | null,
+  expiresAt?: number | null,
+): string {
+  if (
+    typeof startedAt !== 'number' || !Number.isFinite(startedAt) || startedAt <= 0 ||
+    typeof expiresAt !== 'number' || !Number.isFinite(expiresAt) || expiresAt <= 0
+  ) {
+    return planId;
+  }
+
+  const durationDays = Math.round((expiresAt - startedAt) / MS_PER_DAY);
+
+  if (durationDays < TRIAL_THRESHOLD_DAYS) {
+    return `Trial Period (${durationDays} days)`;
+  }
+
+  return 'Full Cycle';
 }
 
 export function parseNotificationEmails(raw: string): string[] {
@@ -286,7 +318,8 @@ export async function sendNewSubscriptionAdminAlert(
       params.merchantId != null
         ? String(params.merchantId)
         : getStoreMerchantId(storeData, params.provider);
-    const subject = buildSubject(storeName, params.planId);
+    const subType = detectSubscriptionType(params.planId, params.startedAt, params.expiresAt);
+    const subject = buildSubject(storeName, params.planId, subType);
     const html = buildHtml({
       storeName,
       storeUid: params.storeUid,

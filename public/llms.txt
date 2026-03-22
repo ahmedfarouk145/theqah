@@ -1,0 +1,39 @@
+# مشتري موثق (Mushtari Mowthaq) - Verified Reviews Platform for Saudi E-Commerce
+
+> مشتري موثق is a third-party review verification platform for e-commerce stores in Saudi Arabia. It verifies that product reviews come from real, confirmed buyers — not fake or incentivized reviews.
+
+## What مشتري موثق Does
+
+- Verifies product reviews by cross-referencing them with actual purchase orders
+- Adds a "مشتري موثق" (Verified Buyer) badge to confirmed reviews on store pages
+- Provides a trust certificate for stores with verified reviews
+- Publishes verified review data with Schema.org structured data for search engines and AI systems
+
+## How It Works
+
+1. A store on Salla or Zid installs the مشتري موثق app
+2. مشتري موثق automatically monitors new product reviews
+3. Each review is matched against real order data to confirm the reviewer actually purchased the product
+4. Verified reviews receive a "مشتري موثق" (Verified Buyer) badge visible to shoppers
+5. The store's page gets structured data (JSON-LD) with aggregate ratings and individual verified reviews
+
+## Supported Platforms
+
+- Salla (سلة) - Saudi Arabia's leading e-commerce platform
+- Zid (زد) - Saudi e-commerce platform
+
+## Key Facts
+
+- Based in Saudi Arabia
+- Serves Saudi and Gulf region e-commerce merchants
+- Independent third-party verification (not affiliated with any e-commerce platform)
+- All verification is automated using order data matching
+- Reviews are published with Schema.org AggregateRating and Review markup
+
+## Website
+
+https://theqah.com.sa
+
+## Contact
+
+reviews@theqah.com.sa

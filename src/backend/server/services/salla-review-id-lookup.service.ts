@@ -26,6 +26,7 @@ export interface SallaReviewBatchLookupResult {
     pagesScanned: number;
     totalPages: number;
     totalRemote: number;
+    reachedMaxPages: boolean;
 }
 
 interface SallaReviewApiItem {
@@ -93,11 +94,13 @@ export class SallaReviewIdLookupService {
         accessToken: string;
         storeUid: string;
         review: SallaReviewLookupTarget;
+        maxPages?: number;
     }): Promise<SallaReviewLookupMatch | null> {
         const batchResult = await this.findMatchesForStoreReviews({
             accessToken: params.accessToken,
             storeUid: params.storeUid,
             reviews: [params.review],
+            maxPages: params.maxPages,
         });
 
         return batchResult.matches.get(params.review.reviewId) ?? null;
@@ -107,10 +110,12 @@ export class SallaReviewIdLookupService {
         accessToken: string;
         storeUid: string;
         reviews: SallaReviewLookupTarget[];
+        maxPages?: number;
     }): Promise<SallaReviewBatchLookupResult> {
         const { accessToken, storeUid, reviews } = params;
         const matches = new Map<string, SallaReviewLookupMatch>();
         const pendingByOrder = new Map<string, SallaReviewLookupTarget[]>();
+        const maxPages = params.maxPages ?? LIMITS.MAX_SALLA_REVIEW_LOOKUP_PAGES;
 
         if (reviews.length === 0) {
             return {
@@ -119,6 +124,7 @@ export class SallaReviewIdLookupService {
                 pagesScanned: 0,
                 totalPages: 0,
                 totalRemote: 0,
+                reachedMaxPages: false,
             };
         }
 
@@ -136,7 +142,7 @@ export class SallaReviewIdLookupService {
 
         while (
             pendingByOrder.size > 0 &&
-            currentPage <= LIMITS.MAX_SALLA_REVIEW_LOOKUP_PAGES
+            currentPage <= maxPages
         ) {
             const pageData = await this.fetchReviewPage(accessToken, currentPage);
             pagesScanned = currentPage;
@@ -198,12 +204,12 @@ export class SallaReviewIdLookupService {
 
         if (
             pendingByOrder.size > 0 &&
-            currentPage > LIMITS.MAX_SALLA_REVIEW_LOOKUP_PAGES
+            currentPage > maxPages
         ) {
             log('warn', `Stopped Salla review lookup for ${storeUid} at max page cap`, {
                 scope: 'salla-review-id-lookup',
                 storeUid,
-                maxPages: LIMITS.MAX_SALLA_REVIEW_LOOKUP_PAGES,
+                maxPages,
             });
         }
 
@@ -215,6 +221,7 @@ export class SallaReviewIdLookupService {
             pagesScanned,
             totalPages,
             totalRemote,
+            reachedMaxPages: pendingByOrder.size > 0 && currentPage > maxPages,
         };
     }
 

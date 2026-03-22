@@ -52,3 +52,14 @@ next-env.d.ts
 # internal secret governance docs
 /docs/SECRET*.md
 /docs/SECRETS*.md
+
+# temporary files
+/tmp/
+*.jpeg
+image*.png
+
+# superpowers generated docs
+/docs/superpowers/
+
+# claude local settings
+.claude/settings.local.json

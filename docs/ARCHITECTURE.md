@@ -1,7 +1,7 @@
 # Architecture Overview
 
-> **Last Updated:** January 21, 2026  
-> **Version:** 2.0 (Salla + Zid Integration)
+> **Last Updated:** March 2026
+> **Version:** 3.0 (Pull-Based Review Sync — Salla + Zid)
 
 ---
 
@@ -9,52 +9,52 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Frontend (Next.js 15.5.4)                       │
+│                              Frontend (Next.js 15.5)                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐       │
-│  │  Landing Page    │    │  Dashboard       │    │  Review Submit   │       │
-│  │  /index.tsx      │    │  /dashboard.tsx  │    │  /review/[token] │       │
+│  │  Landing Page    │    │  Dashboard       │    │  Public Store    │       │
+│  │  /index.tsx      │    │  /dashboard.tsx  │    │  /store/[uid]    │       │
 │  └─────────┬────────┘    └────────┬─────────┘    └─────────┬────────┘       │
 │            │                      │                        │                 │
 └────────────┼──────────────────────┼────────────────────────┼─────────────────┘
              │                      │                        │
              ▼                      ▼                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          API Routes (86+ Endpoints)                          │
+│                          API Routes (60+ Endpoints)                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│  /api/salla/          /api/reviews/         /api/admin/        /api/public/ │
-│  ├─ webhook.ts        ├─ submit.ts          ├─ 27 endpoints    ├─ reviews   │
-│  ├─ status.ts         ├─ list.ts            ├─ monitoring      ├─ widget    │
-│  └─ verify.ts         ├─ update-status.ts   └─ management      └─ embed     │
-│                       ├─ export-csv.ts                                       │
-│  /zid/api/            └─ export-pdf.ts       /api/cron/                      │
-│  ├─ webhook.ts                               ├─ webhook-retry.ts             │
-│  ├─ callback.ts                              └─ backfill-review-ids.ts       │
-│  ├─ start.ts                                                                 │
-│  └─ refresh.ts                                                               │
+│  /api/salla/           /api/zid/              /api/reviews/                  │
+│  ├─ webhook.ts         ├─ webhook.ts          ├─ index.ts                    │
+│  ├─ callback.ts        ├─ callback.ts         ├─ export-csv.ts               │
+│  └─ status.ts          ├─ sync-reviews.ts     └─ export-pdf.ts               │
+│                        ├─ status.ts                                          │
+│  /api/cron/            └─ disconnect.ts        /api/public/                  │
+│  ├─ backfill-review-ids.ts  (every 10min)      ├─ reviews.ts                 │
+│  ├─ sync-zid-reviews.ts                        └─ store-profile.ts           │
+│  ├─ sync-salla-reviews.ts                                                    │
+│  └─ cleanup-retention.ts                        /api/admin/  (27 endpoints)  │
 │                                                                              │
-└────────────────────────────────────────────────────────────────────────────-─┘
+└─────────────────────────────────────────────────────────────────────────────┘
              │
              ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          Server Layer (19 Services)                          │
+│                        Server Layer (19 Services)                            │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
 │  │                         Core Services                                │    │
-│  │  ReviewService (743 LOC)    │  SallaWebhookService (408 LOC)        │    │
-│  │  StoreService (14KB)        │  AdminService (21KB)                  │    │
-│  │  OrderService (8KB)         │  AuthService (7KB)                    │    │
-│  │  SMSService (7.5KB)         │  RegistrationService (9KB)            │    │
-│  │  SupportService (11KB)      │  DomainResolverService (9KB)          │    │
+│  │  ReviewService            │  SallaWebhookService                    │    │
+│  │  SallaReviewIdLookup      │  ZidReviewSyncService                   │    │
+│  │  SallaTokenService        │  ZidTokenService                        │    │
+│  │  StoreService             │  AdminService                           │    │
+│  │  AnalyticsService         │  MonitoringService                      │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
 │  │                         Repositories (10)                            │    │
-│  │  ReviewRepository │ StoreRepository │ OrderRepository │ TokenRepo   │    │
-│  │  DomainRepository │ OwnerRepository │ AuditLogRepository │ BaseRepo │    │
+│  │  ReviewRepository │ StoreRepository │ OrderRepository │ OwnerRepo   │    │
+│  │  DomainRepository │ AuditLogRepository │ BaseRepository              │    │
 │  └─────────────────────────────────────────────────────────────────────┘    │
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────┐    │
@@ -70,19 +70,90 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  Collections:                                                                │
-│  ├─ stores          # Store profiles & settings                             │
-│  ├─ reviews         # Customer reviews (status-based access)                │
-│  ├─ orders          # Order snapshots from Salla/Zid                        │
-│  ├─ review_tokens   # Secure review submission tokens                       │
-│  ├─ review_invites  # SMS/Email invitation tracking                         │
-│  ├─ salla_tokens    # Salla OAuth tokens                                    │
-│  ├─ zid_tokens      # Zid OAuth tokens                                      │
-│  ├─ short_links     # URL shortener for review links                        │
-│  ├─ outbox_jobs     # Background job queue                                  │
-│  ├─ metrics         # Monitoring data                                       │
-│  └─ feedback        # User feedback                                         │
+│  ├─ stores          # Store profiles, settings, connection status            │
+│  ├─ reviews         # Reviews pulled from Salla/Zid APIs                    │
+│  ├─ orders          # Order snapshots from webhooks                          │
+│  ├─ salla_tokens    # Salla OAuth tokens (auto-refresh)                      │
+│  ├─ zid_tokens      # Zid OAuth tokens (auto-refresh)                        │
+│  ├─ outbox_jobs     # Background job queue (SMS/email notifications)         │
+│  ├─ idempotency_keys# Prevent duplicate processing                           │
+│  ├─ metrics         # Monitoring & quota data                                │
+│  ├─ short_links     # URL shortener for share links                          │
+│  └─ feedback        # User feedback submissions                              │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Review Sync Architecture (Core Flow)
+
+TheQah no longer generates invitation links or sends review request SMS/emails.
+Reviews are **pulled from the native platform APIs** after buyers submit them on Salla/Zid directly.
+
+### Salla Review Flow
+
+```
+Buyer submits review on Salla storefront
+          │
+          ▼
+Salla fires review.added webhook
+          │
+          ▼
+salla-webhook.service.ts → saves review to Firestore
+  - status: approved/pending (based on AI moderation)
+  - verified: true if order date >= subscription start
+  - trustedBuyer: false (not yet enriched)
+  - needsSallaId: true  ← deferred enrichment flag
+          │
+          ▼
+Cron: backfill-review-ids (every 10 min)
+  - Finds reviews where needsSallaId === true
+  - Calls Salla Reviews API (https://api.salla.dev/admin/v2/reviews)
+  - Matches by: orderId + stars + text
+  - Updates: sallaReviewId, needsSallaId = false
+```
+
+**Key file:** `src/backend/server/services/salla-review-id-lookup.service.ts`
+- Paginates through Salla API results
+- Groups pending reviews by orderId for efficient matching
+- Stops early when all reviews are matched
+- Has page cap (`MAX_SALLA_REVIEW_LOOKUP_PAGES`) with warning log on hit
+
+### Zid Review Flow
+
+```
+Buyer submits review on Zid storefront
+          │
+          ▼
+Cron: sync-zid-reviews (scheduled) OR manual /api/zid/sync-reviews
+  - Calls Zid API: GET /v1/managers/store/reviews/product
+  - Paginates (page_size: 20, max 50 pages)
+  - Filters by: status=approved, date_from=(now - sinceDays)
+  - For each review: checks if zid_${reviewId} already exists in Firestore
+  - Maps: ZidApiReview → internal Review format
+  - Sets: trustedBuyer from product.bought_this_item
+  - Sets: verified based on subscription start date
+```
+
+**Key file:** `src/backend/server/services/zid-review-sync.service.ts`
+
+### Widget Display Flow
+
+```
+Visitor loads merchant storefront
+          │
+          ▼
+theqah-widget.min.js (<5KB) injected in product page
+          │
+          ▼
+GET /api/public/reviews?storeId=xxx&productId=yyy
+          │
+          ▼
+VerificationService.getVerifiedReviews()
+  - Checks store exists and is connected
+  - Returns only approved + verified reviews
+  - Displays trust badge + review list
 ```
 
 ---
@@ -93,72 +164,55 @@
 theqah/
 ├── src/
 │   ├── pages/                    # Next.js Pages Router
-│   │   ├── api/                  # 86+ API endpoints
+│   │   ├── api/                  # 60+ API endpoints
 │   │   │   ├── admin/            # 27 admin endpoints
 │   │   │   ├── salla/            # Salla OAuth & webhooks
+│   │   │   ├── zid/              # Zid OAuth, sync, webhooks
 │   │   │   ├── reviews/          # Review CRUD (8 endpoints)
-│   │   │   ├── orders/           # Order management
 │   │   │   ├── cron/             # Scheduled jobs
-│   │   │   ├── public/           # Public widget APIs
-│   │   │   └── webhooks/         # Webhook handlers
+│   │   │   ├── jobs/             # Async job handlers
+│   │   │   └── public/           # Public widget APIs
 │   │   ├── dashboard/            # Merchant dashboard
+│   │   ├── store/[storeUid]/     # Public store review pages
 │   │   └── *.tsx                 # Public pages (15+)
 │   │
-│   ├── server/                   # Server-side logic
+│   ├── backend/server/           # Server-side logic
 │   │   ├── services/             # 19 business services
+│   │   │   ├── review.service.ts
+│   │   │   ├── salla-review-id-lookup.service.ts  ← NEW
+│   │   │   ├── zid-review-sync.service.ts         ← NEW
+│   │   │   ├── salla-webhook.service.ts
+│   │   │   ├── zid-webhook.service.ts
+│   │   │   ├── salla-token.service.ts
+│   │   │   └── zid-token.service.ts
 │   │   ├── repositories/         # 10 data repositories
 │   │   ├── messaging/            # SMS, Email (12 files)
 │   │   ├── moderation/           # AI content moderation (4)
 │   │   ├── monitoring/           # Metrics & logging (5)
-│   │   ├── queue/                # Background jobs (3)
+│   │   ├── queue/                # Outbox pattern job queue (3)
 │   │   ├── core/                 # Shared types & errors (6)
-│   │   └── auth/                 # Authentication (3)
+│   │   └── auth/                 # Auth middleware (3)
 │   │
-│   ├── frontend/                 # Client-side code
-│   │   ├── components/           # 34 UI components
-│   │   ├── contexts/             # React contexts (2)
-│   │   ├── hooks/                # Custom hooks (1)
-│   │   └── features/             # Feature flags (2)
+│   ├── components/               # Shared UI components
+│   │   ├── ui/                   # Base UI (Radix-based)
+│   │   ├── dashboard/            # Dashboard components
+│   │   └── admin/                # Admin components
 │   │
-│   ├── lib/                      # Core libraries
-│   │   ├── firebase.ts           # Client Firebase SDK
-│   │   ├── firebaseAdmin.ts      # Admin SDK
-│   │   ├── sallaClient.ts        # Salla API client
-│   │   ├── oursms.ts             # SMS provider
-│   │   └── logger.ts             # Logging utility
-│   │
-│   └── components/               # Shared UI components
-│       ├── ui/                   # Base UI (11 components)
-│       ├── dashboard/            # Dashboard components (7)
-│       └── admin/                # Admin components (9)
-│
-├── zid/                          # 🆕 ZID E-COMMERCE (separate integration)
-│   ├── api/                      # 6 API endpoints
-│   │   ├── webhook.ts            # Order webhooks (188 LOC)
-│   │   ├── callback.ts           # OAuth callback
-│   │   ├── start.ts              # OAuth initiation
-│   │   ├── refresh.ts            # Token refresh
-│   │   ├── status.ts             # Connection status
-│   │   └── disconnect.ts         # Store disconnect
-│   ├── lib/                      # 5 library files
-│   │   ├── auth.ts               # Token management
-│   │   ├── tokens.ts             # Token storage
-│   │   └── webhooks.ts           # Webhook verification
-│   └── server/                   # State management
-│
-├── tools/                        # Testing & debugging (11 files)
-│   ├── salla-webhook-tester.js   # Webhook simulation
-│   ├── test-review-sending.js    # Review flow testing
-│   └── loadtest/k6/              # Load tests (3 scripts)
-│
-├── scripts/                      # Maintenance scripts (10 files)
-│   ├── fix-review-order-ids.js   # Data repair
-│   ├── export-reviews.mjs        # Data export
-│   └── minify-widgets.js         # Build widgets
+│   └── lib/                      # Core libraries
+│       ├── firebase.ts           # Client Firebase SDK
+│       ├── firebaseAdmin.ts      # Admin SDK singleton
+│       ├── sallaClient.ts        # Salla API client (auto token refresh)
+│       └── zid/client.ts         # Zid API client
 │
 ├── functions/                    # Firebase Cloud Functions
 ├── public/widgets/               # Embeddable widget scripts
-└── docs/                         # Documentation (16 files)
+│   ├── theqah-widget.js          # Full source
+│   ├── theqah-widget.min.js      # Minified production (<5KB)
+│   └── theqah-zid-widget.js      # Zid-specific widget
+├── scripts/                      # Build & maintenance scripts
+├── tools/                        # Testing & debugging tools
+│   └── loadtest/k6/              # Load tests (3 scripts)
+└── docs/                         # Documentation
 ```
 
 ---
@@ -166,54 +220,117 @@ theqah/
 ## E-Commerce Platform Integrations
 
 ### Salla Integration
-- **Location:** `src/pages/api/salla/`
-- **Webhook Handler:** 669 lines
-- **Events:** app.authorize, subscription.*, order.*, review.added
 
-### Zid Integration  
-- **Location:** `/zid/` (standalone)
-- **Webhook Handler:** 188 lines
-- **Events:** order.delivered, order.cancelled
+| Aspect | Detail |
+|---|---|
+| OAuth | `/api/salla/callback.ts` — stores tokens in `salla_tokens` collection |
+| Webhook Events | `app.installed`, `order.created`, `order.updated`, `review.added` |
+| Review Webhook | Saves review immediately with `needsSallaId: true` |
+| Review Backfill | Cron every 10 min — matches via Salla Reviews API |
+| Token Refresh | `SallaTokenService.getValidAccessToken()` — auto-refreshes before expiry |
+| API Base | `https://api.salla.dev/admin/v2` |
+
+### Zid Integration
+
+| Aspect | Detail |
+|---|---|
+| OAuth | `/api/zid/callback.ts` — dual-token storage (`access_token` + `authorization`) |
+| Review Sync | Cron/manual — polls `/v1/managers/store/reviews/product` |
+| Trusted Buyer | Set from `product.bought_this_item` in Zid API response |
+| Verified Flag | Set based on `subscriptionStart` date vs review `created_at` |
+| API Base | `https://api.zid.sa/v1` |
 
 ---
 
 ## Security Model
 
+### Authentication Layers
+
+| Layer | Mechanism |
+|---|---|
+| Merchant (client) | Firebase Auth (email/password) |
+| API routes (server) | Firebase Admin SDK — JWT verification |
+| Salla OAuth | OAuth 2.0 with auto-refresh |
+| Zid OAuth | OAuth 2.0 dual-token (access_token + authorization header) |
+| Cron endpoints | `CRON_SECRET` bearer token |
+| Admin endpoints | `ADMIN_SECRET` + Firebase custom claim `admin: true` |
+
+### Firestore Security Rules
+
+| Collection | Public Read | Write Access |
+|---|---|---|
+| `reviews` | approved only | Admin/Server |
+| `stores` | No | Owner/Admin |
+| `orders` | No | Owner/Admin |
+| `salla_tokens` / `zid_tokens` | No | Admin only |
+| `outbox_jobs` / `outbox_dlq` | No | Admin only |
+| `idempotency_keys` | No | Admin only |
+| `metrics` | No | Admin only |
+| `feedback` | No | Create: public, manage: Admin |
+
 ### Rate Limiting
+
 ```
-Middleware: 20 requests/60 seconds per IP
-Public APIs: Configurable via RateLimitPresets
-⚠️ Currently in-memory (needs Redis for production scaling)
+Middleware:  20 requests / 60 seconds per IP (in-memory)
+KV backend:  Upstash Redis for distributed rate limiting
+Public APIs: Configurable presets via RateLimitPresets
 ```
 
-### Firestore Rules
-| Collection | Public Read | Write Access |
-|------------|-------------|--------------|
-| reviews | approved only | Admin/Server |
-| stores | No | Owner/Admin |
-| orders | No | Owner/Admin |
-| tokens | No | Admin only |
+---
+
+## Cron Jobs
+
+| Route | Schedule | Purpose |
+|---|---|---|
+| `/api/cron/backfill-review-ids` | Every 10 min | Enrich Salla reviews with sallaReviewId |
+| `/api/cron/sync-zid-reviews` | Scheduled | Pull new Zid reviews via API |
+| `/api/cron/sync-salla-reviews` | Daily 3 AM UTC | Backup sync for Salla reviews |
+| `/api/cron/cleanup-retention` | Scheduled | Delete expired data |
+| `/api/cron/subscription-alerts` | Scheduled | Notify expiring subscriptions |
 
 ---
 
 ## Key Design Decisions
 
 | Decision | Rationale |
-|----------|-----------|
-| Repository Pattern | Consistent data access, testability |
-| Service Layer | Business logic separation |
-| Outbox Pattern | Reliable async notifications |
-| Feature Flags | Safe gradual rollout |
-| Dual Platform | Salla + Zid market coverage |
+|---|---|
+| Pull-based review sync | Platform-native reviews carry stronger authenticity than self-submitted ones |
+| `needsSallaId` deferred flag | Salla webhook fires before their API indexes the review — backfill bridges the gap |
+| Repository Pattern | Consistent data access layer, easy to test and swap implementations |
+| Outbox Pattern | Reliable async notifications even under network failure |
+| Idempotency Keys | Prevents duplicate processing under retry/concurrent webhook delivery |
+| Serverless (Vercel) | Zero fixed infrastructure cost, auto-scales with traffic |
+
+---
+
+## Tech Stack Summary
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 15.5 (Pages Router) + TypeScript strict |
+| Styling | Tailwind CSS 3 + Radix UI + Framer Motion |
+| Database | Google Cloud Firestore (NoSQL, serverless) |
+| Auth | Firebase Auth + Firebase Admin SDK |
+| Hosting | Vercel (Serverless Functions + Static) |
+| Cloud Functions | Firebase Cloud Functions (Node 20) |
+| Cache / Rate Limit | Upstash Redis / Vercel KV |
+| Email | SendGrid (primary) + Dmail SMTP (fallback) |
+| SMS | OurSMS |
+| AI Moderation | OpenAI API |
+| Image CDN | Firebase Storage + Uploadcare |
 
 ---
 
 ## Dependencies
 
 | Category | Key Packages |
-|----------|--------------|
-| Framework | Next.js 15.5.4, React 19.1.0 |
-| Database | Firebase 12.3.0, Firebase Admin 13.4.0 |
-| UI | Radix UI, Framer Motion, TailwindCSS |
-| Integrations | SendGrid, OpenAI, OurSMS |
+|---|---|
+| Framework | Next.js 15.5, React 19 |
+| Database | Firebase 12, Firebase Admin 13 |
+| UI | Radix UI, Framer Motion, Recharts, TipTap |
+| Validation | Zod |
+| HTTP | Axios |
+| AI | OpenAI v5 |
+| Notifications | SendGrid, Nodemailer |
 | Testing | Vitest, Playwright, k6 |
+| Build | Terser (widget minification) |
