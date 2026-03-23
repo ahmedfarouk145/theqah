@@ -9,7 +9,19 @@
       "WebFetch(domain:apidog.com)",
       "WebFetch(domain:share.apidog.com)",
       "Bash(npx tsc:*)",
-      "Skill(commit-commands:commit-push-pr)"
+      "Skill(commit-commands:commit-push-pr)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(gh api:*)",
+      "Bash(npx vercel:*)",
+      "Bash(curl:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "Bash(find:*)",
+      "Bash(npx next:*)",
+      "Bash(git diff:*)",
+      "Bash(ls:*)",
+      "Bash(npm list:*)"
     ]
   }
 }

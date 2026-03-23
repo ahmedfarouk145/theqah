@@ -216,7 +216,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Feedback Widget - lazy loaded */}
-      <FeedbackWidget userName={storeName} />
+      <FeedbackWidget userName={storeName} userEmail={user?.email || undefined} />
     </div>
   );
 }

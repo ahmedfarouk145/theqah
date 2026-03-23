@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { X, MessageSquare, Bug, Lightbulb, HelpCircle, Send, CheckCircle } from "lucide-react";
 
 interface FeedbackWidgetProps {
@@ -12,8 +12,15 @@ export default function FeedbackWidget({ userEmail, userName }: FeedbackWidgetPr
   const [isOpen, setIsOpen] = useState(false);
   const [type, setType] = useState<FeedbackType>("bug");
   const [message, setMessage] = useState("");
+  const [contact, setContact] = useState(userEmail || "");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (userEmail && !contact) {
+      setContact(userEmail);
+    }
+  }, [userEmail, contact]);
 
   const feedbackTypes = [
     { value: "bug", label: "🐛 Bug Report", icon: Bug, color: "bg-red-50 border-red-200 text-red-700" },
@@ -33,7 +40,7 @@ export default function FeedbackWidget({ userEmail, userName }: FeedbackWidgetPr
         body: JSON.stringify({
           type,
           message,
-          userEmail,
+          userEmail: contact,
           userName,
           userAgent: navigator.userAgent,
           url: window.location.href,
@@ -47,6 +54,7 @@ export default function FeedbackWidget({ userEmail, userName }: FeedbackWidgetPr
         setIsOpen(false);
         setSubmitted(false);
         setMessage("");
+        setContact(userEmail || "");
         setType("bug");
       }, 2000);
     } catch (error) {
@@ -149,6 +157,26 @@ export default function FeedbackWidget({ userEmail, userName }: FeedbackWidgetPr
                     </div>
                   </div>
 
+                  {/* Contact Info */}
+                  <div>
+                    <label
+                      htmlFor="feedback-contact"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      البريد الإلكتروني أو رقم الجوال
+                    </label>
+                    <input
+                      id="feedback-contact"
+                      type="text"
+                      value={contact}
+                      onChange={(e) => setContact(e.target.value)}
+                      placeholder="example@domain.com أو 05xxxxxxxx"
+                      required
+                      dir="ltr"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow mb-4 text-left"
+                    />
+                  </div>
+
                   {/* Message */}
                   <div>
                     <label
@@ -172,11 +200,11 @@ export default function FeedbackWidget({ userEmail, userName }: FeedbackWidgetPr
                   </div>
 
                   {/* User Info (if available) */}
-                  {(userName || userEmail) && (
+                  {userName && (
                     <div className="bg-gray-50 rounded-xl p-3">
                       <p className="text-xs text-gray-600 mb-1">سيتم الإرسال من:</p>
                       <p className="text-sm font-medium text-gray-900">
-                        {userName || userEmail}
+                        {userName}
                       </p>
                     </div>
                   )}
@@ -184,7 +212,7 @@ export default function FeedbackWidget({ userEmail, userName }: FeedbackWidgetPr
                   {/* Submit Button */}
                   <button
                     type="submit"
-                    disabled={loading || message.length < 10}
+                    disabled={loading || message.length < 10 || !contact}
                     className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-xl font-medium hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 group"
                   >
                     {loading ? (
