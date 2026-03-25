@@ -8,6 +8,19 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
 User-agent: *
 Allow: /
 
+# AI Crawlers - explicitly allowed
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
 # Disallow private/internal paths
 Disallow: /api/
 Disallow: /dashboard
