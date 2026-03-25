@@ -89,6 +89,28 @@ function getStoreName(storeData: Record<string, unknown> | undefined): string {
   );
 }
 
+function getStorePhone(storeData: Record<string, unknown> | undefined): string | null {
+  return (
+    getNestedString(storeData, ['meta', 'userinfo', 'data', 'merchant', 'mobile']) ||
+    getNestedString(storeData, ['meta', 'userinfo', 'merchant', 'mobile']) ||
+    getNestedString(storeData, ['salla', 'mobile']) ||
+    getNestedString(storeData, ['zid', 'mobile']) ||
+    null
+  );
+}
+
+function getStoreUrl(storeData: Record<string, unknown> | undefined): string | null {
+  return (
+    getNestedString(storeData, ['domain', 'base']) ||
+    getNestedString(storeData, ['meta', 'userinfo', 'data', 'merchant', 'url']) ||
+    getNestedString(storeData, ['meta', 'userinfo', 'merchant', 'url']) ||
+    getNestedString(storeData, ['meta', 'userinfo', 'store', 'url']) ||
+    getNestedString(storeData, ['salla', 'domain']) ||
+    getNestedString(storeData, ['zid', 'domain']) ||
+    null
+  );
+}
+
 function getStoreMerchantId(
   storeData: Record<string, unknown> | undefined,
   provider: 'salla' | 'zid'
@@ -130,22 +152,32 @@ function buildHtml(params: {
   startedAt: number;
   expiresAt?: number | null;
   merchantId?: string | null;
+  phone?: string | null;
+  storeUrl?: string | null;
 }): string {
   const dashboardUrl = `${getAppBaseUrl()}/dashboard`;
   const subscriptionType = detectSubscriptionType(params.planId, params.startedAt, params.expiresAt);
+
+  // Build store URL cell with clickable link
+  const storeUrlDisplay = params.storeUrl
+    ? `<a href="https://${escapeHtml(params.storeUrl)}" style="color:#2563eb;text-decoration:none;">${escapeHtml(params.storeUrl)}</a>`
+    : 'N/A';
+
   const rows = [
-    ['Store name', params.storeName],
-    ['Store UID', params.storeUid],
-    ['Provider', params.provider],
-    ['Plan ID', params.planId],
-    ['Subscription Type', subscriptionType],
-    ['Started at', formatDate(params.startedAt)],
-    ['Expires at', formatDate(params.expiresAt)],
-    ['Merchant ID', params.merchantId || 'N/A'],
+    ['Store name', escapeHtml(params.storeName)],
+    ['Store UID', escapeHtml(params.storeUid)],
+    ['Provider', escapeHtml(params.provider)],
+    ['Phone', escapeHtml(params.phone || 'N/A')],
+    ['Store URL', storeUrlDisplay],
+    ['Plan ID', escapeHtml(params.planId)],
+    ['Subscription Type', escapeHtml(subscriptionType)],
+    ['Started at', escapeHtml(formatDate(params.startedAt))],
+    ['Expires at', escapeHtml(formatDate(params.expiresAt))],
+    ['Merchant ID', escapeHtml(params.merchantId || 'N/A')],
   ]
     .map(
       ([label, value]) =>
-        `<tr><td style="padding:10px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f8fafc;">${escapeHtml(label)}</td><td style="padding:10px 12px;border:1px solid #e5e7eb;">${escapeHtml(value)}</td></tr>`
+        `<tr><td style="padding:10px 12px;border:1px solid #e5e7eb;font-weight:600;background:#f8fafc;">${label}</td><td style="padding:10px 12px;border:1px solid #e5e7eb;">${value}</td></tr>`
     )
     .join('');
 
@@ -320,6 +352,8 @@ export async function sendNewSubscriptionAdminAlert(
         : getStoreMerchantId(storeData, params.provider);
     const subType = detectSubscriptionType(params.planId, params.startedAt, params.expiresAt);
     const subject = buildSubject(storeName, params.planId, subType);
+    const phone = getStorePhone(storeData);
+    const storeUrl = getStoreUrl(storeData);
     const html = buildHtml({
       storeName,
       storeUid: params.storeUid,
@@ -328,6 +362,8 @@ export async function sendNewSubscriptionAdminAlert(
       startedAt: params.startedAt,
       expiresAt: params.expiresAt,
       merchantId,
+      phone,
+      storeUrl,
     });
 
     const deliveryResults = await Promise.allSettled(
