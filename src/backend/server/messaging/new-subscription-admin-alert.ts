@@ -91,6 +91,7 @@ function getStoreName(storeData: Record<string, unknown> | undefined): string {
 
 function getStorePhone(storeData: Record<string, unknown> | undefined): string | null {
   return (
+    getNestedString(storeData, ['meta', 'userinfo', 'data', 'mobile']) ||
     getNestedString(storeData, ['meta', 'userinfo', 'data', 'merchant', 'mobile']) ||
     getNestedString(storeData, ['meta', 'userinfo', 'merchant', 'mobile']) ||
     getNestedString(storeData, ['salla', 'mobile']) ||
@@ -102,6 +103,7 @@ function getStorePhone(storeData: Record<string, unknown> | undefined): string |
 function getStoreUrl(storeData: Record<string, unknown> | undefined): string | null {
   return (
     getNestedString(storeData, ['domain', 'base']) ||
+    getNestedString(storeData, ['meta', 'userinfo', 'data', 'merchant', 'domain']) ||
     getNestedString(storeData, ['meta', 'userinfo', 'data', 'merchant', 'url']) ||
     getNestedString(storeData, ['meta', 'userinfo', 'merchant', 'url']) ||
     getNestedString(storeData, ['meta', 'userinfo', 'store', 'url']) ||
