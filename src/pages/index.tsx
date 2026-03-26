@@ -97,6 +97,93 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Install & Videos Section - moved to top */}
+        <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-12 sm:mb-16">
+              <span className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full mb-4">
+                ابدأ في دقائق
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">
+                حمّل التطبيق وشاهد الشرح
+              </h2>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                تطبيق مشتري موثّق متاح على متجر سلة — حمّله الآن وشاهد الفيديوهات التوضيحية
+              </p>
+            </div>
+
+            {/* Salla App Store Button */}
+            <div className="text-center mb-12">
+              <a
+                href="https://apps.salla.sa/ar/app/1180703836"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 bg-green-700 text-white px-8 sm:px-10 py-4 rounded-2xl text-lg font-bold shadow-lg shadow-green-500/20 hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+              >
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18 15v3H6v-3H4v3c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-3h-2zm-1-4-1.41-1.41L13 12.17V4h-2v8.17L8.41 9.59 7 11l5 5 5-5z" />
+                </svg>
+                حمّل التطبيق من متجر سلة
+              </a>
+            </div>
+
+            {/* TikTok Videos + YouTube Links */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 max-w-3xl mx-auto">
+              {/* Video 1 - What is مشتري موثق */}
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-green-900 mb-4">ماهو مشتري موثّق؟</h3>
+                <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
+                  <iframe
+                    src="https://www.tiktok.com/player/v1/7610461655754935572?&music_info=1&description=1"
+                    className="w-full"
+                    style={{ height: '580px' }}
+                    allow="fullscreen"
+                    allowFullScreen
+                    title="ماهو مشتري موثّق"
+                  />
+                </div>
+                <a
+                  href="https://youtube.com/shorts/UqvdRG1ogN8?si=Qdo1Lpd9DMeE6TiP"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                  </svg>
+                  شاهد على يوتيوب
+                </a>
+              </div>
+
+              {/* Video 2 - How to connect */}
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-green-900 mb-4">كيف تربط متجرك؟</h3>
+                <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
+                  <iframe
+                    src="https://www.tiktok.com/player/v1/7605638835929664786?&music_info=1&description=1"
+                    className="w-full"
+                    style={{ height: '580px' }}
+                    allow="fullscreen"
+                    allowFullScreen
+                    title="كيف تربط متجرك مع مشتري موثق"
+                  />
+                </div>
+                <a
+                  href="https://youtube.com/shorts/s6gBXoANREY?si=YNKmQ1CxPpFatRoU"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                  </svg>
+                  شاهد على يوتيوب
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* لماذا مشتري موثق - Premium Cards */}
         <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
           <div className="max-w-6xl mx-auto">
@@ -262,70 +349,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Install & Videos Section */}
-        <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-12 sm:mb-16">
-              <span className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full mb-4">
-                ابدأ في دقائق
-              </span>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">
-                حمّل التطبيق وشاهد الشرح
-              </h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
-                تطبيق مشتري موثّق متاح على متجر سلة — حمّله الآن وشاهد الفيديوهات التوضيحية
-              </p>
-            </div>
 
-            {/* Salla App Store Button */}
-            <div className="text-center mb-12">
-              <a
-                href="https://apps.salla.sa/ar/app/1180703836"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 bg-green-700 text-white px-8 sm:px-10 py-4 rounded-2xl text-lg font-bold shadow-lg shadow-green-500/20 hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
-              >
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18 15v3H6v-3H4v3c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-3h-2zm-1-4-1.41-1.41L13 12.17V4h-2v8.17L8.41 9.59 7 11l5 5 5-5z" />
-                </svg>
-                حمّل التطبيق من متجر سلة
-              </a>
-            </div>
-
-            {/* TikTok Videos */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 max-w-3xl mx-auto">
-              {/* Video 1 - What is مشتري موثق */}
-              <div className="text-center">
-                <h3 className="text-lg font-bold text-green-900 mb-4">ماهو مشتري موثّق؟</h3>
-                <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
-                  <iframe
-                    src="https://www.tiktok.com/player/v1/7610461655754935572?&music_info=1&description=1"
-                    className="w-full"
-                    style={{ height: '580px' }}
-                    allow="fullscreen"
-                    allowFullScreen
-                    title="ماهو مشتري موثّق"
-                  />
-                </div>
-              </div>
-
-              {/* Video 2 - How to connect */}
-              <div className="text-center">
-                <h3 className="text-lg font-bold text-green-900 mb-4">كيف تربط متجرك؟</h3>
-                <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
-                  <iframe
-                    src="https://www.tiktok.com/player/v1/7605638835929664786?&music_info=1&description=1"
-                    className="w-full"
-                    style={{ height: '580px' }}
-                    allow="fullscreen"
-                    allowFullScreen
-                    title="كيف تربط متجرك مع مشتري موثق"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* CTA Section */}
         <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white text-center">
