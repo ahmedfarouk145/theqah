@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import axios from '@/lib/axiosInstance';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
+import { LIMITS } from '@/config/constants';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -116,6 +117,7 @@ export default function AdminReviews() {
 
       const params = new URLSearchParams();
 
+      params.append('limit', String(LIMITS.MAX_BATCH_SIZE));
       if (starsFilter && starsFilter !== 'all') params.append('stars', starsFilter);
       if (publishedFilter !== 'all') params.append('published', publishedFilter);
       if (sortBy) params.append('sortBy', sortBy);

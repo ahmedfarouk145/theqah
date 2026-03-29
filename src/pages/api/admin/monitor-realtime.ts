@@ -1,135 +1,128 @@
-// src/pages/api/admin/monitor-realtime.ts
-import type { NextApiRequest, NextApiResponse } from "next";
-import { dbAdmin } from "@/lib/firebaseAdmin";
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { LIMITS } from '@/config/constants';
+import { dbAdmin } from '@/lib/firebaseAdmin';
+import {
+  buildMonitoringRealtimePayload,
+  getMetricTimestampMs,
+  type MonitoringMetricRecord,
+} from '@/server/utils/admin-monitoring';
+import type { AdminMonitoringRealtimeResponse } from '@/types/admin-monitoring';
+import { verifyAdmin } from '@/utils/verifyAdmin';
 
 export const config = { api: { bodyParser: true } };
 
-/**
- * Real-time monitoring - last 5 minutes of activity
- * GET /api/admin/monitor-realtime
- */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+async function fetchRealtimeMetrics(params: {
+  db: FirebaseFirestore.Firestore;
+  startTime: number;
+  limit: number;
+  cursorId?: string;
+}) {
+  const { db, startTime, limit, cursorId } = params;
+  const cursorDoc = cursorId
+    ? await db.collection('metrics').doc(cursorId).get()
+    : null;
 
-  // Auth check
-  const authHeader = req.headers.authorization;
-  const adminSecret = process.env.ADMIN_SECRET || process.env.CRON_SECRET;
-  
-  if (!adminSecret || authHeader !== `Bearer ${adminSecret}`) {
-    return res.status(401).json({ error: "Unauthorized" });
+  const buildQuery = (threshold: number | Date) => {
+    let query = db
+      .collection('metrics')
+      .where('timestamp', '>=', threshold)
+      .orderBy('timestamp', 'desc')
+      .limit(limit);
+
+    if (cursorDoc?.exists) {
+      query = query.startAfter(cursorDoc);
+    }
+
+    return query;
+  };
+
+  const [numericSnap, dateSnap] = await Promise.all([
+    buildQuery(startTime).get(),
+    buildQuery(new Date(startTime)).get(),
+  ]);
+
+  const mergedDocs = Array.from(
+    new Map(
+      [...numericSnap.docs, ...dateSnap.docs].map((doc) => [doc.id, doc]),
+    ).values(),
+  ).sort((left, right) => {
+    const leftTimestamp = getMetricTimestampMs(
+      (left.data() as MonitoringMetricRecord).timestamp,
+    ) || 0;
+    const rightTimestamp = getMetricTimestampMs(
+      (right.data() as MonitoringMetricRecord).timestamp,
+    ) || 0;
+    return rightTimestamp - leftTimestamp;
+  });
+
+  const docs = mergedDocs.slice(0, limit);
+  const hasMore = numericSnap.docs.length === limit || dateSnap.docs.length === limit;
+  const nextCursor = hasMore && docs.length > 0 ? docs[docs.length - 1].id : null;
+
+  return { docs, hasMore, nextCursor };
+}
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<AdminMonitoringRealtimeResponse | { error: string; message?: string }>,
+) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    await verifyAdmin(req);
+
     const db = dbAdmin();
     const now = Date.now();
-    const fiveMinutesAgo = now - (5 * 60 * 1000);
+    const fiveMinutesAgo = now - 5 * 60 * 1000;
+    const limit = Math.min(
+      LIMITS.METRICS_QUERY_LIMIT,
+      Math.max(1, parseInt(String(req.query.limit || '500'), 10)),
+    );
+    const page = parseInt(String(req.query.page || '1'), 10);
 
-    // H5: Pagination for realtime (default 500, max 1000)
-    const limit = Math.min(parseInt(String(req.query.limit || "500")), 1000);
-    const page = parseInt(String(req.query.page || "1"));
-    
-    // Get very recent metrics
-    let query = db.collection("metrics")
-      .where("timestamp", ">=", fiveMinutesAgo)
-      .orderBy("timestamp", "desc")
-      .limit(limit);
-    
-    // Cursor-based pagination
-    if (page > 1 && req.query.cursor) {
-      const cursorDoc = await db.collection("metrics").doc(String(req.query.cursor)).get();
-      if (cursorDoc.exists) {
-        query = query.startAfter(cursorDoc);
-      }
-    }
-
-    const metricsSnap = await query.get();
-
-    const metrics = metricsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Record<string, unknown> & { id: string }));
-
-    // Real-time statistics
-    const apiCalls = metrics.filter(m => (m.type as string) === "api_call");
-    const errors = metrics.filter(m => (m.severity as string) === "error" || (m.severity as string) === "critical");
-    const activeEndpoints = new Set(apiCalls.map(m => m.endpoint as string)).size;
-    const activeStores = new Set(metrics.filter(m => m.storeUid).map(m => m.storeUid as string)).size;
-
-    // Requests per minute
-    const minuteBuckets: Record<number, number> = {};
-    apiCalls.forEach(call => {
-      const minute = Math.floor((call.timestamp as number) / 60000);
-      minuteBuckets[minute] = (minuteBuckets[minute] || 0) + 1;
+    const { docs, hasMore, nextCursor } = await fetchRealtimeMetrics({
+      db,
+      startTime: fiveMinutesAgo,
+      limit,
+      cursorId: page > 1 && typeof req.query.cursor === 'string' ? req.query.cursor : undefined,
     });
-
-    const requestsPerMinute = Object.values(minuteBuckets);
-    const avgRpm = requestsPerMinute.length > 0 
-      ? Math.round(requestsPerMinute.reduce((a, b) => a + b, 0) / requestsPerMinute.length)
-      : 0;
-
-    // Current error rate
-    const errorRate = apiCalls.length > 0 
-      ? ((errors.length / apiCalls.length) * 100).toFixed(2)
-      : "0";
-
-    // Recent activity stream
-    const activityStream = metrics.slice(0, 50).map(m => ({
-      timestamp: m.timestamp as number,
-      type: m.type as string,
-      severity: m.severity as string,
-      endpoint: m.endpoint as string | undefined,
-      method: m.method as string | undefined,
-      statusCode: m.statusCode as number | undefined,
-      duration: m.duration as number | undefined,
-      error: m.error as string | undefined,
-      storeUid: m.storeUid as string | undefined
-    }));
-
-    // H5: Pagination metadata
-    const hasMore = metricsSnap.docs.length === limit;
-    const lastDoc = metricsSnap.docs[metricsSnap.docs.length - 1];
-    const nextCursor = hasMore && lastDoc ? lastDoc.id : null;
+    const metrics = docs.map(
+      (doc) => ({ id: doc.id, ...doc.data() }) as MonitoringMetricRecord,
+    );
+    const payload = buildMonitoringRealtimePayload({ metrics, now });
 
     return res.status(200).json({
       ok: true,
       timestamp: now,
-      window: "5 minutes",
-      
-      stats: {
-        totalRequests: apiCalls.length,
-        totalErrors: errors.length,
-        errorRate: errorRate + "%",
-        activeEndpoints,
-        activeStores,
-        avgRequestsPerMinute: avgRpm
-      },
-
-      activity: activityStream,
-
-      // H5: Pagination info
+      window: '5 minutes',
+      requestsPerMinute: payload.requestsPerMinute,
+      recentActivity: payload.recentActivity,
+      activeEndpoints: payload.activeEndpoints,
+      health: payload.health,
+      stats: payload.stats,
+      activity: payload.activity,
       pagination: {
         page,
         limit,
         hasMore,
         nextCursor,
-        totalFetched: metrics.length
+        totalFetched: metrics.length,
       },
-
-      health: {
-        status: errors.length > 10 ? "⚠️ High error rate" :
-                apiCalls.length === 0 ? "💤 No activity" :
-                "✅ Healthy",
-        requestsPerMinute: requestsPerMinute.slice(-5), // Last 5 minutes
-        errorsPerMinute: errors.length > 0 
-          ? Math.round((errors.length / 5) * 10) / 10
-          : 0
-      }
     });
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('[monitor-realtime] error:', err);
 
-  } catch (error: unknown) {
-    console.error("[Monitor Realtime Error]:", error);
-    return res.status(500).json({ 
-      error: "Internal server error",
-      message: error instanceof Error ? error.message : "Unknown error"
-    });
+    if (err.message.startsWith('permission-denied')) {
+      return res.status(403).json({ error: 'Forbidden', message: 'ليس لديك صلاحية' });
+    }
+
+    if (err.message.startsWith('unauthenticated')) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'غير مصرح' });
+    }
+
+    return res.status(500).json({ error: 'Internal server error', message: err.message });
   }
 }

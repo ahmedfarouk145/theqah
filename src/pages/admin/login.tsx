@@ -1,88 +1,73 @@
-import { useState, FormEvent } from "react";
+import { useEffect, useState } from "react";
 import type { NextPage } from "next";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/router";
+import { app } from "@/lib/firebase";
 
 const AdminLogin: NextPage = () => {
   const router = useRouter();
-  const [secret, setSecret] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      // Verify the secret by making a test API call
-      const response = await fetch("/api/admin/monitor-app?period=24h", {
-        headers: {
-          Authorization: `Bearer ${secret}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Invalid admin secret");
-      }
-
-      // Store in localStorage
-      localStorage.setItem("adminSecret", secret);
-      
-      // Redirect to monitoring dashboard
-      router.push("/admin/monitoring");
-    } catch {
-      setError("Invalid admin secret. Please try again.");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      setAuthLoading(false);
+      return;
     }
-  };
+
+    const auth = getAuth(app);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setAuthLoading(false);
+      if (user) {
+        router.replace("/admin/dashboard");
+      }
+    });
+
+    return unsubscribe;
+  }, [router]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Login</h1>
-          <p className="text-gray-600 mt-2">Enter your admin secret to access monitoring</p>
+          <h1 className="text-3xl font-bold text-gray-900">تسجيل دخول المشرف</h1>
+          <p className="text-gray-600 mt-2">لوحة المشرف تستخدم نفس تسجيل الدخول الأساسي للتطبيق.</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-8">
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
-              <label htmlFor="secret" className="block text-sm font-medium text-gray-700 mb-2">
-                Admin Secret
-              </label>
-              <input
-                id="secret"
-                type="password"
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter ADMIN_SECRET"
-                required
-                autoComplete="off"
-              />
-            </div>
-
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 leading-6">
+              تم إيقاف تسجيل الدخول بواسطة <code>ADMIN_SECRET</code> داخل المتصفح.
+              استخدم حساب Firebase الذي يملك صلاحيات المشرف، ثم ادخل إلى لوحة المشرف مباشرة.
+            </p>
 
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              type="button"
+              onClick={() => router.push("/login")}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
             >
-              {loading ? "Verifying..." : "Access Monitoring"}
+              الذهاب إلى تسجيل الدخول
             </button>
-          </form>
+
+            <button
+              type="button"
+              onClick={() => router.push("/admin/dashboard")}
+              className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium"
+            >
+              فتح لوحة المشرف بعد تسجيل الدخول
+            </button>
+          </div>
 
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-xs text-gray-500 text-center">
-              The admin secret is stored in environment variables.
-              <br />
-              For security, it&apos;s never exposed in the frontend code.
+              الدخول الآن يعتمد على جلسة Firebase وصلاحيات المشرف في الخادم.
             </p>
           </div>
         </div>

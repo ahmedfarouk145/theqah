@@ -1,6 +1,4 @@
 // src/pages/admin/dashboard.tsx
-'use client';
-
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
@@ -35,7 +33,9 @@ const AdminMonitoring = dynamic(() => import('@/components/admin/AdminMonitoring
 const adminTabs = [
   'مراجعة التقييمات',
   'بلاغات التقييمات',
-  'المتاجر',
+  'متاجر سلة',
+  'متاجر زد',
+  'سجلات غير مصنفة',
   'الإحصائيات العامة',
   'إدارة الاشتراكات',
   'المراقبة',
@@ -70,7 +70,9 @@ export default function AdminDashboard() {
       <div className="bg-white p-6 rounded-xl shadow min-h-[400px]">
         {activeTab === 'مراجعة التقييمات' && <AdminReviews />}
         {activeTab === 'بلاغات التقييمات' && <AdminReports />}
-        {activeTab === 'المتاجر' && <AdminStores />}
+        {activeTab === 'متاجر سلة' && <AdminStores provider="salla" />}
+        {activeTab === 'متاجر زد' && <AdminStores provider="zid" />}
+        {activeTab === 'سجلات غير مصنفة' && <AdminStores provider="unknown" />}
         {activeTab === 'الإحصائيات العامة' && <AdminAnalytics />}
         {activeTab === 'إدارة الاشتراكات' && <AdminSubscriptions />}
         {activeTab === 'المراقبة' && <AdminMonitoring />}

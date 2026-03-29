@@ -247,6 +247,58 @@ function parseSallaStatus(statusRaw) {
   return normalized;
 }
 
+async function refreshSallaAccessToken(refreshToken) {
+  const clientId = firstString(
+    process.env.SALLA_CLIENT_ID,
+    process.env.NEXT_PUBLIC_SALLA_CLIENT_ID,
+  );
+  const clientSecret = firstString(process.env.SALLA_CLIENT_SECRET);
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null;
+  }
+
+  const response = await fetch('https://accounts.salla.sa/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: clientId,
+      client_secret: clientSecret,
+    }).toString(),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return null;
+  }
+
+  const nextAccessToken = firstString(body?.access_token);
+  const nextRefreshToken = firstString(body?.refresh_token) || refreshToken;
+
+  if (!nextAccessToken) {
+    return null;
+  }
+
+  return {
+    accessToken: nextAccessToken,
+    refreshToken: nextRefreshToken,
+  };
+}
+
+async function fetchSallaUserInfo(accessToken) {
+  const response = await fetch('https://accounts.salla.sa/oauth2/user/info', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+    },
+  });
+
+  const body = await response.json().catch(() => ({}));
+  return { response, body };
+}
+
 function buildOutputPath(outArg) {
   if (outArg) return path.resolve(process.cwd(), outArg);
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -289,6 +341,8 @@ async function main() {
       sallaChecked: 0,
       sallaOk: 0,
       sallaUnauthorized: 0,
+      sallaRefreshed: 0,
+      sallaRefreshFailed: 0,
       sallaMissingOwner: 0,
       sallaMissingToken: 0,
       sallaNoEndDate: 0,
@@ -338,24 +392,40 @@ async function main() {
         } else {
           const owner = ownerSnap.data() || {};
           const token = firstString(owner?.oauth?.access_token);
+          const refreshToken = firstString(owner?.oauth?.refresh_token);
 
           if (!token) {
             report.stats.sallaMissingToken += 1;
           } else {
             try {
-              const response = await fetch('https://accounts.salla.sa/oauth2/user/info', {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  Accept: 'application/json',
-                },
-              });
+              let { response, body } = await fetchSallaUserInfo(token);
+
+              if (opts.apply && response.status === 401 && refreshToken) {
+                const refreshed = await refreshSallaAccessToken(refreshToken);
+                if (refreshed?.accessToken) {
+                  report.stats.sallaRefreshed += 1;
+                  await ownerSnap.ref.set(
+                    {
+                      oauth: {
+                        ...(owner.oauth && typeof owner.oauth === 'object' ? owner.oauth : {}),
+                        access_token: refreshed.accessToken,
+                        refresh_token: refreshed.refreshToken,
+                        receivedAt: Date.now(),
+                      },
+                    },
+                    { merge: true }
+                  );
+                  ({ response, body } = await fetchSallaUserInfo(refreshed.accessToken));
+                } else {
+                  report.stats.sallaRefreshFailed += 1;
+                }
+              }
 
               if (response.status === 401) {
                 report.stats.sallaUnauthorized += 1;
               } else if (!response.ok) {
                 report.stats.sallaRequestErrors += 1;
               } else {
-                const body = await response.json();
                 const dataNode = firstObject(body?.data, body);
                 const merchant = firstObject(dataNode?.merchant);
                 const subscriptionNode = firstObject(merchant?.subscription);

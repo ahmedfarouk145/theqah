@@ -117,7 +117,7 @@ export class MaintenanceService {
 
         // Log cleanup
         await db.collection('metrics').add({
-            timestamp: new Date(),
+            timestamp: Date.now(),
             type: 'cleanup',
             severity: 'info',
             metadata: { deletedCount: totalDeleted, cutoffDate: cutoffDate.toISOString(), daysOld },
@@ -159,7 +159,7 @@ export class MaintenanceService {
 
         // Log cleanup
         await db.collection('metrics').add({
-            timestamp: new Date(),
+            timestamp: Date.now(),
             type: 'cleanup',
             severity: 'info',
             metadata: { collection: 'syncLogs', deletedCount: totalDeleted, cutoffDate: cutoffDate.toISOString(), daysOld },
@@ -245,6 +245,7 @@ export class MaintenanceService {
     // Helper: Convert Firestore timestamp or number to milliseconds
     private toMillis(v: unknown): number | undefined {
         if (typeof v === 'number') return v;
+        if (v instanceof Date) return v.getTime();
         if (typeof v === 'object' && v !== null && 'toDate' in v && typeof (v as { toDate: () => Date }).toDate === 'function') {
             return (v as { toDate: () => Date }).toDate().getTime();
         }

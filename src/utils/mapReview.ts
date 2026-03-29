@@ -28,12 +28,25 @@ export type ReviewOut = {
 //eslint-disable-next-line @typescript-eslint/no-explicit-any
 const isTS = (v: any): v is FirebaseFirestore.Timestamp => v && typeof v.toDate === "function";
 //eslint-disable-next-line @typescript-eslint/no-explicit-any
-const toMs = (v: any) => (isTS(v) ? v.toDate().getTime() : typeof v === "number" ? v : undefined);
+const toMs = (v: any) => (
+  isTS(v)
+    ? v.toDate().getTime()
+    : v instanceof Date
+      ? v.getTime()
+      : typeof v === "number"
+        ? v
+        : undefined
+);
 //eslint-disable-next-line @typescript-eslint/no-explicit-any
 const toIso = (v: any) => {
   const ms = toMs(v);
   return typeof ms === "number" ? new Date(ms).toISOString() : undefined;
 };
+
+//eslint-disable-next-line @typescript-eslint/no-explicit-any
+const isPublishedReview = (d: any) =>
+  d?.published === true || d?.status === 'published' || d?.status === 'approved';
+
 //eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapReview(id: string, d: any, storeName: string, storeDomain?: string | null): ReviewOut {
   const author = d?.author || {};
@@ -48,13 +61,13 @@ export function mapReview(id: string, d: any, storeName: string, storeDomain?: s
     stars: Number(d?.stars) || 0,
     storeName,
     storeDomain: storeDomain ?? null,
-    published: !!d?.published,
-    status: d?.status,
+    published: isPublishedReview(d),
+    status: typeof d?.status === 'string' ? d.status : 'pending',
     createdAt: toIso(d?.createdAt),
     publishedAt: toIso(d?.publishedAt),
     lastModified: toIso(d?.lastModified),
     platform: d?.platform || "web",
-    trustedBuyer: !!d?.trustedBuyer,
+    trustedBuyer: !!(d?.trustedBuyer ?? d?.verified),
     verified: !!d?.verified,
     verifiedReason: d?.verifiedReason || null,
     images: Array.isArray(d?.images) ? d.images.slice(0, 10) : [],

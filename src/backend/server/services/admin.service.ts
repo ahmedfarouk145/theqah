@@ -5,6 +5,7 @@
 
 import { RepositoryFactory } from '../repositories';
 import type { Store, Review, PaginatedResult, PaginationOptions } from '../core/types';
+import { LIMITS } from '@/config/constants';
 
 export interface PlatformStats {
     totalStores: number;
@@ -30,6 +31,72 @@ export interface AdminAlert {
     createdBy?: string | null;
 }
 
+type FirestoreDoc = Record<string, unknown>;
+
+function toDateValue(value: unknown): Date | undefined {
+    if (value instanceof Date) {
+        return value;
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return new Date(value);
+    }
+
+    if (
+        typeof value === 'object' &&
+        value !== null &&
+        'toDate' in value &&
+        typeof (value as { toDate?: () => Date }).toDate === 'function'
+    ) {
+        return (value as { toDate: () => Date }).toDate();
+    }
+
+    return undefined;
+}
+
+function isAliasStoreDoc(docId: string, data: FirestoreDoc | undefined): boolean {
+    return typeof data?.storeUid === 'string' && data.storeUid !== docId;
+}
+
+function isPublishedReviewDoc(data: FirestoreDoc | undefined): boolean {
+    return data?.published === true || data?.status === 'published' || data?.status === 'approved';
+}
+
+function resolveStoreDisplayName(data: FirestoreDoc | undefined): string {
+    const meta = (data?.meta || {}) as FirestoreDoc;
+    const userinfo = (meta.userinfo || {}) as FirestoreDoc;
+    const payload = (userinfo.data || userinfo.context || {}) as FirestoreDoc;
+    const merchant = (payload.merchant || {}) as FirestoreDoc;
+    const store = (payload.store || {}) as FirestoreDoc;
+
+    return (
+        (typeof merchant.name === 'string' ? merchant.name : undefined) ||
+        (typeof store.name === 'string' ? store.name : undefined) ||
+        (typeof data?.storeName === 'string' ? data.storeName : undefined) ||
+        (typeof data?.name === 'string' ? data.name : undefined) ||
+        ((data?.salla || {}) as FirestoreDoc).storeName as string ||
+        'غير محدد'
+    );
+}
+
+function resolveStoreDomainValue(data: FirestoreDoc | undefined): string | null {
+    const domain = data?.domain;
+    if (typeof domain === 'string') {
+        return domain;
+    }
+
+    const domainObject = (domain || {}) as FirestoreDoc;
+    const salla = (data?.salla || {}) as FirestoreDoc;
+    const zid = (data?.zid || {}) as FirestoreDoc;
+
+    return (
+        (typeof domainObject.base === 'string' ? domainObject.base : undefined) ||
+        (typeof salla.domain === 'string' ? salla.domain : undefined) ||
+        (typeof zid.domain === 'string' ? zid.domain : undefined) ||
+        null
+    );
+}
+
 export class AdminService {
     private storeRepo = RepositoryFactory.getStoreRepository();
     private reviewRepo = RepositoryFactory.getReviewRepository();
@@ -42,14 +109,27 @@ export class AdminService {
         const { dbAdmin } = await import('@/lib/firebaseAdmin');
         const db = dbAdmin();
 
-        let totalStores = 0, totalReviews = 0, totalAlerts = 0;
-        let publishedReviews = 0, pendingReviews = 0;
+        let totalStores = 0;
+        let totalReviews = 0;
+        let totalAlerts = 0;
+        let publishedReviews = 0;
+        let pendingReviews = 0;
 
-        try { totalStores = (await db.collection('stores').count().get()).data().count; } catch { /* */ }
-        try { totalReviews = (await db.collection('reviews').count().get()).data().count; } catch { /* */ }
-        try { totalAlerts = (await db.collection('review_reports').count().get()).data().count; } catch { /* */ }
-        try { publishedReviews = (await db.collection('reviews').where('published', '==', true).count().get()).data().count; } catch { /* */ }
-        try { pendingReviews = (await db.collection('reviews').where('published', '==', false).count().get()).data().count; } catch { /* */ }
+        try {
+            const [storesSnap, reviewsSnap, alertsSnap] = await Promise.all([
+                db.collection('stores').select('storeUid').get(),
+                db.collection('reviews').select('published', 'status').get(),
+                db.collection('review_reports').count().get(),
+            ]);
+
+            totalStores = storesSnap.docs.filter((doc) => !isAliasStoreDoc(doc.id, doc.data() as FirestoreDoc)).length;
+            totalReviews = reviewsSnap.size;
+            totalAlerts = alertsSnap.data().count;
+            publishedReviews = reviewsSnap.docs.filter((doc) => isPublishedReviewDoc(doc.data() as FirestoreDoc)).length;
+            pendingReviews = totalReviews - publishedReviews;
+        } catch {
+            /* */
+        }
 
         return { totalStores, totalReviews, totalAlerts, publishedReviews, pendingReviews, fetchedAt: new Date().toISOString() };
     }
@@ -190,8 +270,8 @@ export class AdminService {
         const feedback = docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate(),
-            resolvedAt: doc.data().resolvedAt?.toDate(),
+            createdAt: toDateValue(doc.data().createdAt),
+            resolvedAt: toDateValue(doc.data().resolvedAt),
         }));
 
         const nextCursor = snap.docs.length > limitNum ? snap.docs[limitNum - 1].id : null;
@@ -295,9 +375,7 @@ export class AdminService {
                 const qs = await db.collection('stores').where('uid', '==', data.storeUid).limit(1).get();
                 sDoc = qs.docs[0];
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const s = sDoc?.data() as any || {};
-            storeName = s?.merchant?.name || s?.salla?.storeName || s?.storeName || 'غير محدد';
+            storeName = resolveStoreDisplayName((sDoc?.data() as FirestoreDoc | undefined) || undefined);
         }
 
         return { review: d, storeName };
@@ -319,15 +397,17 @@ export class AdminService {
 
         if (updates.published !== undefined) {
             updateData.published = updates.published;
-            if (updates.published) updateData.publishedAt = now;
+            updateData.status = updates.published ? 'published' : 'hidden';
+            updateData.publishedAt = updates.published ? now : null;
         }
         if (updates.status !== undefined) {
             updateData.status = updates.status;
-            if (updates.status === 'published') {
+            if (updates.status === 'published' || updates.status === 'approved') {
                 updateData.published = true;
                 updateData.publishedAt = now;
-            } else if (updates.status === 'hidden') {
+            } else if (updates.status === 'hidden' || updates.status === 'rejected' || updates.status === 'pending') {
                 updateData.published = false;
+                updateData.publishedAt = null;
             }
         }
         if (updates.moderatorNote !== undefined) {
@@ -397,10 +477,20 @@ export class AdminService {
 
             switch (action) {
                 case 'publish':
-                    batch.update(ref, { published: true, lastModified: now });
+                    batch.update(ref, {
+                        published: true,
+                        status: 'published',
+                        publishedAt: Date.now(),
+                        lastModified: now,
+                    });
                     break;
                 case 'unpublish':
-                    batch.update(ref, { published: false, lastModified: now });
+                    batch.update(ref, {
+                        published: false,
+                        status: 'hidden',
+                        publishedAt: null,
+                        lastModified: now,
+                    });
                     break;
                 case 'updateNotes':
                     batch.update(ref, {
@@ -444,19 +534,18 @@ export class AdminService {
         const { dbAdmin } = await import('@/lib/firebaseAdmin');
         const db = dbAdmin();
 
-        const [storesSnap, reviewsSnap, alertsSnap, publishedSnap, unresolvedSnap, recentSnap] = await Promise.all([
+        const [storesSnap, reviewsSnap, alertsSnap, unresolvedSnap, recentSnap] = await Promise.all([
             db.collection('stores').get(),
             db.collection('reviews').get(),
             db.collection('review_reports').get(),
-            db.collection('reviews').where('published', '==', true).get(),
             db.collection('review_reports').where('resolved', '==', false).get(),
             db.collection('reviews').orderBy('createdAt', 'desc').limit(10).get(),
         ]);
 
-        const totalStores = storesSnap.size;
+        const totalStores = storesSnap.docs.filter((doc) => !isAliasStoreDoc(doc.id, doc.data() as FirestoreDoc)).length;
         const totalReviews = reviewsSnap.size;
         const totalAlerts = alertsSnap.size;
-        const publishedReviews = publishedSnap.size;
+        const publishedReviews = reviewsSnap.docs.filter((doc) => isPublishedReviewDoc(doc.data() as FirestoreDoc)).length;
         const pendingReviews = totalReviews - publishedReviews;
         const unresolvedAlerts = unresolvedSnap.size;
 
@@ -483,10 +572,10 @@ export class AdminService {
             return {
                 id: doc.id,
                 type: 'review',
-                storeName: data.storeName,
+                storeName: data.storeName || resolveStoreDisplayName(data),
                 stars: data.stars,
                 createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt,
-                published: data.published,
+                published: isPublishedReviewDoc(data),
             };
         });
 
@@ -542,10 +631,16 @@ export class AdminService {
         const { mapReview } = await import('@/utils/mapReview');
         const db = dbAdmin();
 
-        const limitNum = Math.min(100, Math.max(1, params.limit || 20));
-        const sortField = ['createdAt', 'stars', 'storeName', 'lastModified', 'publishedAt'].includes(params.sortBy || '')
+        const limitNum = Math.min(
+            LIMITS.MAX_BATCH_SIZE,
+            Math.max(1, params.limit || LIMITS.MAX_BATCH_SIZE),
+        );
+        const sortField = ['createdAt', 'stars', 'storeName', 'name', 'lastModified', 'publishedAt'].includes(params.sortBy || '')
             ? params.sortBy!
             : 'createdAt';
+        const querySortField = sortField === 'name' || sortField === 'storeName'
+            ? 'createdAt'
+            : sortField;
         const sortDirection: FirebaseFirestore.OrderByDirection = params.sortOrder === 'asc' ? 'asc' : 'desc';
         const searchTerm = (params.search || '').toLowerCase().trim();
 
@@ -553,10 +648,9 @@ export class AdminService {
         if (params.storeUid) q = q.where('storeUid', '==', params.storeUid);
         if (params.stars !== undefined) q = q.where('stars', '==', params.stars);
         if (params.status) q = q.where('status', '==', params.status);
-        if (params.published !== undefined) q = q.where('published', '==', params.published);
 
-        q = q.orderBy(sortField, sortDirection);
-        if (sortField !== 'createdAt') q = q.orderBy('createdAt', 'desc');
+        q = q.orderBy(querySortField, sortDirection);
+        if (querySortField !== 'createdAt') q = q.orderBy('createdAt', 'desc');
         q = q.limit(limitNum + 1);
 
         if (params.cursor) {
@@ -577,10 +671,9 @@ export class AdminService {
                 const alt = await db.collection('stores').where('uid', '==', uid).limit(1).get();
                 sDoc = alt.docs[0];
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const s: any = sDoc?.data() || {};
-            const name = s?.salla?.storeName || s?.storeName || s?.merchant?.name || 'غير محدد';
-            const domain = s?.domain?.base || s?.salla?.domain || null;
+            const s = (sDoc?.data() as FirestoreDoc | undefined) || undefined;
+            const name = resolveStoreDisplayName(s);
+            const domain = resolveStoreDomainValue(s);
             storeInfo.set(uid, { name, domain });
         }));
 
@@ -589,20 +682,43 @@ export class AdminService {
             return mapReview(r.id, r.data, info.name, info.domain);
         });
 
+        if (params.published !== undefined) {
+            reviews = reviews.filter(
+                (review) => (review as { published?: boolean }).published === params.published,
+            );
+        }
+
         if (searchTerm) {
             reviews = reviews.filter((r: Record<string, unknown>) =>
                 [r.storeName, r.text, r.status, r.name, r.storeDomain].filter(Boolean).join(' ').toLowerCase().includes(searchTerm)
             );
         }
 
-        const hasMore = !searchTerm && reviews.length > limitNum;
-        const nextCursor = hasMore ? snap.docs[limitNum]?.id ?? null : null;
-        reviews = reviews.slice(0, limitNum);
+        if (sortField === 'name' || sortField === 'storeName') {
+            const directionFactor = sortDirection === 'asc' ? 1 : -1;
+            reviews.sort((left, right) => {
+                const leftValue = String(
+                    (sortField === 'name'
+                        ? (left as { name?: string }).name
+                        : (left as { storeName?: string }).storeName) || '',
+                );
+                const rightValue = String(
+                    (sortField === 'name'
+                        ? (right as { name?: string }).name
+                        : (right as { storeName?: string }).storeName) || '',
+                );
+                return leftValue.localeCompare(rightValue, 'ar') * directionFactor;
+            });
+        }
 
         const total = reviews.length;
         const publishedCount = reviews.filter((r: Record<string, unknown>) => r.published).length;
         const pendingCount = total - publishedCount;
         const avg = total ? Math.round((reviews.reduce((s: number, r: Record<string, unknown>) => s + (Number(r.stars) || 0), 0) / total) * 10) / 10 : 0;
+        const hasMore = total > limitNum || snap.docs.length > limitNum;
+        const nextCursor = hasMore ? snap.docs[limitNum]?.id ?? null : null;
+
+        reviews = reviews.slice(0, limitNum);
 
         return { reviews, total, published: publishedCount, pending: pendingCount, averageRating: avg, hasMore, nextCursor };
     }

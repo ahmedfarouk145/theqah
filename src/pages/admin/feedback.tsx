@@ -1,7 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import type { NextPage } from "next";
+import { isAxiosError } from "axios";
+import { getAuth, onAuthStateChanged, type User } from "firebase/auth";
 import { useRouter } from "next/router";
 import { CheckCircle, Eye, Trash2, FileText } from "lucide-react";
+import axios from "@/lib/axiosInstance";
+import { app } from "@/lib/firebase";
 
 interface Feedback {
   id: string;
@@ -11,44 +15,70 @@ interface Feedback {
   userName?: string;
   url?: string;
   status: "new" | "reviewed" | "resolved";
-  createdAt: Date;
-  resolvedAt?: Date;
+  createdAt: string | number | Date;
+  resolvedAt?: string | number | Date;
   notes?: string;
 }
 
 const AdminFeedbackPage: NextPage = () => {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [filter, setFilter] = useState<"all" | "new" | "reviewed" | "resolved">("all");
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchFeedbackCallback = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      setAuthLoading(false);
+      return;
+    }
+
     try {
-      const adminSecret = localStorage.getItem("adminSecret");
-      if (!adminSecret) {
-        router.push("/admin/login");
-        return;
-      }
-
-      const response = await fetch("/api/admin/feedback", {
-        headers: { Authorization: `Bearer ${adminSecret}` },
+      const auth = getAuth(app);
+      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
+        setAuthLoading(false);
+        if (!currentUser) {
+          router.push("/login");
+        }
       });
-
-      if (!response.ok) throw new Error("Failed to fetch feedback");
-
-      const data = await response.json();
-      setFeedbacks(data.feedbacks);
-    } catch (error) {
-      console.error("Failed to fetch feedback:", error);
-    } finally {
-      setLoading(false);
+      return unsubscribe;
+    } catch (authError) {
+      console.warn("[AdminFeedback] Firebase auth error:", authError);
+      setAuthLoading(false);
+      setError("تعذر التحقق من جلسة المشرف.");
     }
   }, [router]);
 
+  const fetchFeedbackCallback = useCallback(async () => {
+    if (!user) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await axios.get<{ feedbacks?: Feedback[]; feedback?: Feedback[] }>("/api/admin/feedback");
+      setFeedbacks(data.feedbacks || data.feedback || []);
+    } catch (fetchError) {
+      console.error("Failed to fetch feedback:", fetchError);
+      if (isAxiosError(fetchError)) {
+        setError((fetchError.response?.data as { message?: string } | undefined)?.message || fetchError.message);
+      } else {
+        setError("فشل في تحميل الملاحظات.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
-    fetchFeedbackCallback();
-  }, [fetchFeedbackCallback]);
+    if (!authLoading && user) {
+      void fetchFeedbackCallback();
+    }
+  }, [authLoading, fetchFeedbackCallback, user]);
 
   const fetchFeedback = async () => {
     await fetchFeedbackCallback();
@@ -56,18 +86,11 @@ const AdminFeedbackPage: NextPage = () => {
 
   const updateStatus = async (id: string, status: "reviewed" | "resolved") => {
     try {
-      const adminSecret = localStorage.getItem("adminSecret");
-      await fetch("/api/admin/feedback", {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${adminSecret}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ feedbackId: id, status }),
-      });
+      await axios.put("/api/admin/feedback", { feedbackId: id, status });
       await fetchFeedback();
-    } catch (error) {
-      console.error("Failed to update status:", error);
+    } catch (updateError) {
+      console.error("Failed to update status:", updateError);
+      setError(isAxiosError(updateError) ? updateError.message : "فشل في تحديث الحالة.");
     }
   };
 
@@ -75,14 +98,11 @@ const AdminFeedbackPage: NextPage = () => {
     if (!confirm("هل أنت متأكد من حذف هذه الملاحظة؟")) return;
 
     try {
-      const adminSecret = localStorage.getItem("adminSecret");
-      await fetch(`/api/admin/feedback?id=${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${adminSecret}` },
-      });
+      await axios.delete("/api/admin/feedback", { params: { id } });
       await fetchFeedback();
-    } catch (error) {
-      console.error("Failed to delete feedback:", error);
+    } catch (deleteError) {
+      console.error("Failed to delete feedback:", deleteError);
+      setError(isAxiosError(deleteError) ? deleteError.message : "فشل في حذف الملاحظة.");
     }
   };
 
@@ -104,10 +124,21 @@ const AdminFeedbackPage: NextPage = () => {
     resolved: "bg-green-100 text-green-800",
   };
 
-  if (loading) {
+  if (authLoading || (loading && feedbacks.length === 0)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+          <h2 className="text-lg font-semibold text-red-800">تسجيل الدخول مطلوب</h2>
+          <p className="mt-2 text-red-600">يجب تسجيل الدخول بحساب مشرف للوصول إلى صفحة الملاحظات.</p>
+        </div>
       </div>
     );
   }
@@ -134,6 +165,12 @@ const AdminFeedbackPage: NextPage = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+            {error}
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex gap-2 mb-6">
           {["all", "new", "reviewed", "resolved"].map((status) => (

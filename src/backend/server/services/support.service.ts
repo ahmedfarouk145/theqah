@@ -48,7 +48,8 @@ export class SupportService {
 
         const { getDb } = await import('@/server/firebase-admin');
         const db = getDb();
-        const timestamp = new Date();
+        const createdAt = new Date();
+        const metricsTimestamp = Date.now();
 
         // Save to Firestore
         const feedbackRef = await db.collection('feedback').add({
@@ -59,7 +60,7 @@ export class SupportService {
             userAgent: userAgent || null,
             url: url || null,
             status: 'new',
-            createdAt: timestamp,
+            createdAt,
             resolvedAt: null,
             notes: null,
         });
@@ -73,7 +74,7 @@ export class SupportService {
                 userEmail,
                 userName,
                 url,
-                timestamp,
+                timestamp: createdAt,
             });
         } catch (err) {
             console.error('Failed to send feedback email:', err);
@@ -81,7 +82,7 @@ export class SupportService {
 
         // Track in metrics
         await db.collection('metrics').add({
-            timestamp,
+            timestamp: metricsTimestamp,
             type: 'feedback',
             severity: 'info',
             metadata: {
