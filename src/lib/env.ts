@@ -64,6 +64,7 @@ const client = z.object({
   NEXT_PUBLIC_FIREBASE_APP_ID: z.string().optional(),
   NEXT_PUBLIC_ZID_CLIENT_ID: z.string().optional(),
   NEXT_PUBLIC_ZID_REDIRECT_URI: z.string().url().optional(),
+  NEXT_PUBLIC_GA_MEASUREMENT_ID: z.string().optional(),
 });
 
 // Parse with safeParse to avoid crashing on missing optional vars

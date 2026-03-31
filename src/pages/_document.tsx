@@ -20,6 +20,24 @@ export default function Document() {
                 <link rel="manifest" href="/site.webmanifest" />
                 <meta name="theme-color" content="#ffffff" />
 
+                {/* Google Analytics (GA4) */}
+                <script
+                    async
+                    src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-V2FV8T4ER8'}`}
+                />
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            window.dataLayer = window.dataLayer || [];
+                            function gtag(){dataLayer.push(arguments);}
+                            gtag('js', new Date());
+                            gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-V2FV8T4ER8'}', {
+                                page_path: window.location.pathname,
+                            });
+                        `,
+                    }}
+                />
+
                 {/* Preconnect to Google Fonts for faster font loading */}
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -31,6 +49,10 @@ export default function Document() {
                 {/* Preconnect to Salla API */}
                 <link rel="preconnect" href="https://api.salla.dev" />
                 <link rel="preconnect" href="https://api.salla.sa" />
+
+                {/* Preconnect to Google Analytics */}
+                <link rel="preconnect" href="https://www.googletagmanager.com" />
+                <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
                 {/* DNS prefetch as fallback for non-font services */}
                 <link rel="dns-prefetch" href="https://firebaseapp.com" />
