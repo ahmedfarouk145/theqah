@@ -1,7 +1,9 @@
 // src/pages/admin/dashboard.tsx
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/router';
+import { Loader2, LogOut } from 'lucide-react';
+import { logoutUser } from '@/lib/auth/login';
 
 // Dynamic imports for all admin components - reduces initial bundle
 const AdminReviews = dynamic(() => import('@/components/admin/AdminReviews'), {
@@ -45,10 +47,34 @@ type Tab = typeof adminTabs[number];
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>(adminTabs[0]);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch('/api/auth/session', { method: 'DELETE' });
+      await logoutUser();
+      router.push('/login');
+    } catch (e) {
+      console.error('Logout failed:', e);
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      <h1 className="text-3xl font-bold mb-6 text-green-800">لوحة تحكم المشرف</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold text-green-800">لوحة تحكم المشرف</h1>
+        <button
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition font-medium text-sm disabled:opacity-50"
+        >
+          <LogOut className="w-4 h-4" />
+          {loggingOut ? 'جارٍ الخروج…' : 'تسجيل الخروج'}
+        </button>
+      </div>
 
       {/* Tabs with fixed height to prevent CLS */}
       <div className="flex space-x-2 mb-6 rtl:space-x-reverse min-h-[44px]">

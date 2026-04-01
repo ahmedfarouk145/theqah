@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import axios from '@/lib/axiosInstance';
-import { Loader2, Lock } from 'lucide-react';
+import { Loader2, Lock, LogOut } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { logoutUser } from '@/lib/auth/login';
 
 // Dynamic imports with loading states - all ssr: false for faster initial load
 const DashboardAnalytics = dynamic(() => import('@/components/dashboard/Analytics'), {
@@ -52,6 +54,20 @@ function getCookie(name: string): string | null {
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch('/api/auth/session', { method: 'DELETE' });
+      await logoutUser();
+      router.push('/login');
+    } catch (e) {
+      console.error('Logout failed:', e);
+      setLoggingOut(false);
+    }
+  };
 
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (typeof window !== 'undefined') {
@@ -172,7 +188,17 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-green-800">لوحة التحكم</h1>
-        {headerRight}
+        <div className="flex items-center gap-3">
+          {headerRight}
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition font-medium text-sm disabled:opacity-50"
+          >
+            <LogOut className="w-4 h-4" />
+            {loggingOut ? 'جارٍ الخروج…' : 'تسجيل الخروج'}
+          </button>
+        </div>
       </div>
 
 
