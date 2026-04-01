@@ -67,26 +67,34 @@ function isProductReviewType(type: string | null | undefined): boolean {
     return PRODUCT_REVIEW_TYPES.has((type || '').trim().toLowerCase());
 }
 
-function matchesRemoteReview(target: SallaReviewLookupTarget, remote: SallaReviewApiItem): boolean {
+/**
+ * Score how well a remote review matches a target.
+ * Returns -1 if definitely not a match, 0+ for potential matches (higher = better).
+ * We require order_id + product review type as hard filters.
+ * Stars and text are soft criteria used to disambiguate (customers can edit reviews).
+ */
+function scoreRemoteReview(target: SallaReviewLookupTarget, remote: SallaReviewApiItem): number {
     if (!isProductReviewType(remote.type)) {
-        return false;
+        return -1;
     }
 
     if (String(remote.order_id) !== String(target.orderId)) {
-        return false;
+        return -1;
     }
 
-    if (typeof target.stars === 'number' && target.stars > 0 && remote.rating !== target.stars) {
-        return false;
+    let score = 1; // base score for order_id match
+
+    if (typeof target.stars === 'number' && target.stars > 0 && remote.rating === target.stars) {
+        score += 2;
     }
 
     const targetText = normalizeText(target.text);
     const remoteText = normalizeText(remote.content);
-    if (targetText && remoteText && targetText !== remoteText) {
-        return false;
+    if (targetText && remoteText && targetText === remoteText) {
+        score += 3;
     }
 
-    return true;
+    return score;
 }
 
 export class SallaReviewIdLookupService {
@@ -135,6 +143,9 @@ export class SallaReviewIdLookupService {
             pendingByOrder.set(orderKey, existing);
         }
 
+        // Track best match per candidate (highest score wins)
+        const bestScores = new Map<string, number>();
+
         let currentPage = 1;
         let pagesScanned = 0;
         let totalPages = 1;
@@ -170,20 +181,21 @@ export class SallaReviewIdLookupService {
                 }
 
                 for (const candidate of candidates) {
-                    if (matches.has(candidate.reviewId)) {
+                    const score = scoreRemoteReview(candidate, remoteReview);
+                    if (score < 0) {
                         continue;
                     }
 
-                    if (!matchesRemoteReview(candidate, remoteReview)) {
-                        continue;
+                    const prevScore = bestScores.get(candidate.reviewId) ?? -1;
+                    if (score > prevScore) {
+                        bestScores.set(candidate.reviewId, score);
+                        matches.set(candidate.reviewId, {
+                            reviewId: candidate.reviewId,
+                            sallaReviewId: String(remoteReview.id),
+                            pageFound: currentPage,
+                            remoteRating: typeof remoteReview.rating === 'number' ? remoteReview.rating : undefined,
+                        });
                     }
-
-                    matches.set(candidate.reviewId, {
-                        reviewId: candidate.reviewId,
-                        sallaReviewId: String(remoteReview.id),
-                        pageFound: currentPage,
-                        remoteRating: typeof remoteReview.rating === 'number' ? remoteReview.rating : undefined,
-                    });
                 }
 
                 if (candidates.every((candidate) => matches.has(candidate.reviewId))) {

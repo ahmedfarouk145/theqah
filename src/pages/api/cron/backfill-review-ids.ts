@@ -10,6 +10,8 @@ export const config = {
   maxDuration: 300,
 };
 
+const MAX_BACKFILL_ATTEMPTS = 10;
+
 /**
  * Cron job to backfill sallaReviewId for reviews that were saved from webhooks
  * without the review ID (due to Salla's indexing delay).
@@ -110,13 +112,20 @@ export default async function handler(
           const matchingReview = lookupResult.matches.get(review.reviewId);
 
           if (!matchingReview) {
-            log("info", `Review not found in Salla API after pagination: ${review.reviewId}, order ${review.orderId}`, {
-              scope: "cron",
-              reviewId: review.reviewId,
-              orderId: review.orderId,
-              storeUid,
-              pagesScanned: lookupResult.pagesScanned,
-            });
+            const { gaveUp, attempts } = await reviewRepo.incrementBackfillAttempt(review.reviewId, MAX_BACKFILL_ATTEMPTS);
+            log(gaveUp ? "warn" : "info",
+              gaveUp
+                ? `Gave up backfilling review after ${attempts} attempts: ${review.reviewId}`
+                : `Review not found in Salla API after pagination: ${review.reviewId}, order ${review.orderId}`,
+              {
+                scope: "cron",
+                reviewId: review.reviewId,
+                orderId: review.orderId,
+                storeUid,
+                pagesScanned: lookupResult.pagesScanned,
+                backfillAttempts: attempts,
+                gaveUp,
+              });
             continue;
           }
 

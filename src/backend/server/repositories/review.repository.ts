@@ -68,6 +68,31 @@ export class ReviewRepository extends BaseRepository<Review> {
     }
 
     /**
+     * Increment backfill attempt counter; if max reached, mark as failed.
+     */
+    async incrementBackfillAttempt(reviewId: string, maxAttempts: number): Promise<{ gaveUp: boolean; attempts: number }> {
+        const review = await this.findById(reviewId);
+        if (!review) return { gaveUp: false, attempts: 0 };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- backfillAttempts is a dynamic field not in the Review type
+        const attempts = ((review as any).backfillAttempts ?? 0) + 1;
+        if (attempts >= maxAttempts) {
+            await this.update(reviewId, {
+                needsSallaId: false,
+                backfillFailed: true,
+                backfillAttempts: attempts,
+                backfillGivenUpAt: new Date().toISOString(),
+            } as Partial<Review>);
+            return { gaveUp: true, attempts };
+        }
+
+        await this.update(reviewId, {
+            backfillAttempts: attempts,
+        } as Partial<Review>);
+        return { gaveUp: false, attempts };
+    }
+
+    /**
      * Find reviews by store with pagination
      */
     async findByStoreUid(
