@@ -48,9 +48,9 @@ export default function LandingPage() {
 
             {/* Headline */}
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-green-900">
-              ابنِ الثقة..
+              حول شك عملائك إلى مبيعات..
               <br />
-              <span className="text-green-700">وضاعف مبيعاتك</span>
+              <span className="text-green-700">وانضم لنخبة المتاجر التي تُهيكل تقييماتها تقنياً لتتصدر ترشيحات الذكاء الاصطناعي.</span>
             </h1>
 
             {/* Subtitle */}
@@ -82,12 +82,6 @@ export default function LandingPage() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
-              <Link href="/signup">
-                <button className="group bg-green-700 text-white px-8 sm:px-10 py-3.5 sm:py-4 rounded-full text-lg font-bold shadow-lg shadow-green-500/20 hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-                  ابدأ الآن
-                  <span className="inline-block mr-2 group-hover:translate-x-1 transition-transform">←</span>
-                </button>
-              </Link>
               <Link href="/faq">
                 <button className="bg-white text-green-700 border-2 border-green-200 px-6 sm:px-8 py-3.5 sm:py-4 rounded-full text-lg font-semibold hover:bg-green-50 hover:border-green-300 transition-all duration-300">
                   تعرف أكثر
@@ -123,7 +117,7 @@ export default function LandingPage() {
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M18 15v3H6v-3H4v3c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-3h-2zm-1-4-1.41-1.41L13 12.17V4h-2v8.17L8.41 9.59 7 11l5 5 5-5z" />
                 </svg>
-                حمّل التطبيق من متجر سلة
+                حمّل التطبيق من متجر سلة وابدأ الآن
               </a>
             </div>
 
