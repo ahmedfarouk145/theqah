@@ -55,7 +55,7 @@ export default function LandingPage() {
 
             {/* Subtitle */}
             <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto">
-              حول شك عملائك إلى مبيعات.. وانضم لنخبة المتاجر التي تُهيكل تقييماتها تقنياً لتتصدر ترشيحات الذكاء الاصطناعي.
+              مع أول منصة سعودية تضمن مصداقية التقييم بربطه بـ (مشتري حقيقي)؛ عبر أتمتة كاملة لجمع التقييمات وعرضها كشهادة ثقة تدفع العميل للشراء فوراً.
             </p>
 
             {/* Rating Widget */}
@@ -77,7 +77,7 @@ export default function LandingPage() {
 
             {/* Live Stats */}
             <p className="text-green-600 font-semibold text-sm sm:text-base">
-              اشترِ وأنت متطمن.. أكثر من 5,000 تقييم تم التحقق من صحته ومطابقته للطلب
+              حول شك عملائك إلى مبيعات.. وانضم لنخبة المتاجر التي تُهيكل تقييماتها تقنياً لتتصدر ترشيحات الذكاء الاصطناعي.
             </p>
 
             {/* CTA Buttons */}
