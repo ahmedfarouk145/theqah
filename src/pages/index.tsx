@@ -48,14 +48,14 @@ export default function LandingPage() {
 
             {/* Headline */}
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-green-900">
-              حول شك عملائك إلى مبيعات..
+              ابنِ الثقة..
               <br />
-              <span className="text-green-700">وانضم لنخبة المتاجر التي تُهيكل تقييماتها تقنياً لتتصدر ترشيحات الذكاء الاصطناعي.</span>
+              <span className="text-green-700">وضاعف مبيعاتك</span>
             </h1>
 
             {/* Subtitle */}
             <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto">
-              مع أول منصة سعودية تضمن مصداقية التقييم بربطه بـ (مشتري حقيقي)؛ عبر أتمتة كاملة لجمع التقييمات وعرضها كشهادة ثقة تدفع العميل للشراء فوراً.
+              حول شك عملائك إلى مبيعات.. وانضم لنخبة المتاجر التي تُهيكل تقييماتها تقنياً لتتصدر ترشيحات الذكاء الاصطناعي.
             </p>
 
             {/* Rating Widget */}
