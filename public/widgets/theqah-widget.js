@@ -173,11 +173,10 @@
     return urlParams.get('product_id') || urlParams.get('productId') || null;
   }
 
-  function buildStoreReviewsUrl(storeUid, reviewId, ref = 'widget') {
+  function buildStoreReviewsUrl(storeUid, reviewId) {
     const base = `${SCRIPT_ORIGIN}/store/${encodeURIComponent(storeUid)}/reviews`;
     const params = new URLSearchParams();
     if (reviewId) params.set('review', reviewId);
-    if (ref) params.set('ref', ref);
     const query = params.toString();
     return query ? `${base}?${query}` : base;
   }
@@ -332,8 +331,8 @@
         const resolvedStoreUid = storeUidOverride || G.storeData?.storeUid || G.storeUid || '';
         const logoLink = document.createElement('a');
         logoLink.href = resolvedStoreUid
-          ? buildStoreReviewsUrl(resolvedStoreUid, publicReviewId, 'widget')
-          : 'https://theqah.com.sa?ref=widget';
+          ? buildStoreReviewsUrl(resolvedStoreUid, publicReviewId)
+          : SCRIPT_ORIGIN;
         logoLink.target = '_blank';
         logoLink.rel = 'noopener noreferrer';
         logoLink.title = publicReviewId
@@ -404,14 +403,12 @@
       `
     });
 
-    // Create logo with link to theqah homepage
-    // TODO: uncomment to link to store reviews page when ready
-    // const _certStoreUid = G.storeData?.storeUid || G.storeUid || '';
-    // href: _certStoreUid
-    //   ? `${SCRIPT_ORIGIN}/store/${encodeURIComponent(_certStoreUid)}/reviews?ref=certificate`
-    //   : `${SCRIPT_ORIGIN}?ref=certificate`,
+    // Link the certificate badge to the store review page when possible.
+    const _certStoreUid = G.storeData?.storeUid || G.storeUid || '';
     const logoLink = h('a', {
-      href: 'https://theqah.com.sa?ref=certificate',
+      href: _certStoreUid
+        ? buildStoreReviewsUrl(_certStoreUid)
+        : SCRIPT_ORIGIN,
       target: '_blank',
       rel: 'noopener noreferrer',
       style: `

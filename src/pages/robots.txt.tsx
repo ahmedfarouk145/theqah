@@ -1,7 +1,8 @@
 // src/pages/robots.txt.tsx
 import { GetServerSideProps } from "next";
+import { URLS } from "@/config/constants";
 
-const SITE_URL = "https://theqah.com.sa";
+const SITE_URL = URLS.CANONICAL_ORIGIN;
 
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     const robotsTxt = `# robots.txt for ${SITE_URL}

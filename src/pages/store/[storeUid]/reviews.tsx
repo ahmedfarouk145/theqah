@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import Image from "next/image";
+import { URLS } from "@/config/constants";
 
 /* ── Types ── */
 interface ReviewItem {
@@ -41,9 +42,22 @@ type PageProps = {
 export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => {
     const storeUid = typeof ctx.params?.storeUid === "string" ? ctx.params.storeUid.trim() : "";
     const focusedReviewId = typeof ctx.query.review === "string" ? ctx.query.review.trim() : "";
+    const trackingRef = typeof ctx.query.ref === "string" ? ctx.query.ref.trim() : "";
 
     if (!storeUid) {
         return { props: { profile: null, error: "missing_store", focusedReviewId: focusedReviewId || null } };
+    }
+
+    if (trackingRef) {
+        const params = new URLSearchParams();
+        if (focusedReviewId) params.set("review", focusedReviewId);
+
+        return {
+            redirect: {
+                destination: `/store/${encodeURIComponent(storeUid)}/reviews${params.size > 0 ? `?${params.toString()}` : ""}`,
+                permanent: false,
+            },
+        };
     }
 
     try {
@@ -189,7 +203,7 @@ function ErrorView({ error }: { error: string }) {
                 </div>
                 <h1 className="text-xl font-bold text-gray-900 mb-3">{msg}</h1>
                 <a
-                    href="https://theqah.com.sa"
+                    href={URLS.CANONICAL_ORIGIN}
                     className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors text-sm font-semibold"
                 >
                     الذهاب إلى مشتري موثق
@@ -235,16 +249,20 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
 
     const pageTitle = `تقييمات ${storeName} | مشتري موثق`;
     const pageDesc = `اطلع على ${stats.totalReviews} تقييم موثق لمتجر ${storeName}. جميع التقييمات مدققة ومتحقق منها بواسطة مشتري موثق.`;
+    const canonicalUrl = `${URLS.CANONICAL_ORIGIN}/store/${encodeURIComponent(store.storeUid)}/reviews`;
+    const shouldIndexPage = !focusedReviewId;
 
     return (
         <div className={`min-h-screen bg-white transition-opacity duration-500 ${mounted ? "opacity-100" : "opacity-0"}`} dir="rtl">
             <Head>
                 <title>{pageTitle}</title>
                 <meta name="description" content={pageDesc} />
+                <link rel="canonical" href={canonicalUrl} />
                 <meta property="og:title" content={pageTitle} />
                 <meta property="og:description" content={pageDesc} />
                 <meta property="og:type" content="website" />
-                <meta name="robots" content="index, follow" />
+                <meta property="og:url" content={canonicalUrl} />
+                <meta name="robots" content={shouldIndexPage ? "index, follow" : "noindex, follow"} />
                 {/* eslint-disable-next-line @next/next/no-page-custom-font */}
                 <link
                     href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"
@@ -277,7 +295,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
                 <div className="max-w-2xl mx-auto px-6 pt-8 pb-7">
                     {/* Theqah branding */}
                     <a
-                        href="https://theqah.com.sa"
+                        href={URLS.CANONICAL_ORIGIN}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2.5 mb-8 group"
@@ -361,7 +379,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
                         <p className="text-[12px] text-gray-400 leading-none">
                             تقييمات مدققة بواسطة{" "}
                             <a
-                                href="https://theqah.com.sa"
+                                href={URLS.CANONICAL_ORIGIN}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-emerald-600 hover:text-emerald-700 transition-colors font-medium"

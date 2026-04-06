@@ -6,6 +6,7 @@ import NavbarLanding from "@/components/NavbarLanding";
 import { GetServerSideProps } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
+import { URLS } from "@/config/constants";
 
 interface BlogPostFull {
     id: string;
@@ -113,15 +114,18 @@ function readingTime(html: string): number {
 export default function BlogPostPage({ post, related }: Props) {
     const pageTitle = post.seoTitle || post.title;
     const pageDesc = post.seoDescription || post.excerpt;
+    const canonicalUrl = `${URLS.CANONICAL_ORIGIN}/blog/${post.slug}`;
 
     return (
         <>
             <Head>
                 <title>{pageTitle} | مدونة مشتري موثّق</title>
                 <meta name="description" content={pageDesc} />
+                <link rel="canonical" href={canonicalUrl} />
                 <meta property="og:title" content={pageTitle} />
                 <meta property="og:description" content={pageDesc} />
                 <meta property="og:type" content="article" />
+                <meta property="og:url" content={canonicalUrl} />
                 {post.coverImage && <meta property="og:image" content={post.coverImage} />}
                 <meta property="article:author" content={post.author} />
                 {post.publishedAt && <meta property="article:published_time" content={post.publishedAt} />}
@@ -145,7 +149,7 @@ export default function BlogPostPage({ post, related }: Props) {
                             publisher: {
                                 "@type": "Organization",
                                 name: "مشتري موثّق",
-                                logo: { "@type": "ImageObject", url: "https://theqah.com.sa/logo.png" },
+                                logo: { "@type": "ImageObject", url: `${URLS.CANONICAL_ORIGIN}/logo.png` },
                             },
                         }),
                     }}

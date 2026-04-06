@@ -1,11 +1,13 @@
 // src/pages/index.tsx
 'use client';
 
+import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
 import NavbarLanding from '@/components/NavbarLanding';
+import { URLS } from '@/config/constants';
 
 const FeedbackWidget = dynamic(() => import('@/components/FeedbackWidget'), {
   ssr: false,
@@ -15,6 +17,11 @@ const FeedbackWidget = dynamic(() => import('@/components/FeedbackWidget'), {
 export default function LandingPage() {
   return (
     <>
+      <Head>
+        <link rel="canonical" href={`${URLS.CANONICAL_ORIGIN}/`} />
+        <meta property="og:url" content={`${URLS.CANONICAL_ORIGIN}/`} />
+        <meta name="robots" content="index, follow" />
+      </Head>
       <NavbarLanding />
       <div className="h-20" aria-hidden="true" />
 

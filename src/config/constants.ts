@@ -284,6 +284,13 @@ export const ERROR_MESSAGES = {
   EXTERNAL_SERVICE_ERROR: "External service error",
 } as const;
 
+// ============= Public URLs =============
+
+export const URLS = {
+  CANONICAL_ORIGIN: "https://www.theqah.com.sa",
+  LEGACY_ORIGIN: "https://theqah.com.sa",
+} as const;
+
 // Export all as default for convenient access
 const CONSTANTS = {
   TIME,
@@ -301,6 +308,7 @@ const CONSTANTS = {
   FEATURES,
   ENV,
   ERROR_MESSAGES,
+  URLS,
 };
 
 export default CONSTANTS;

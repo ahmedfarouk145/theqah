@@ -48,6 +48,19 @@ function cleanupExpired(now: number) {
 }
 
 export function middleware(req: NextRequest) {
+  const trackingRef = req.nextUrl.searchParams.get("ref");
+
+  // Strip legacy tracking params from the homepage to keep a single crawlable URL.
+  if (
+    req.nextUrl.pathname === "/" &&
+    trackingRef &&
+    ["widget", "certificate", "zid-certificate"].includes(trackingRef)
+  ) {
+    const cleanUrl = req.nextUrl.clone();
+    cleanUrl.searchParams.delete("ref");
+    return NextResponse.redirect(cleanUrl, 308);
+  }
+
   // Log Zid webhook requests for debugging
   if (req.nextUrl.pathname === "/api/zid/webhook") {
     console.log(`[MIDDLEWARE] Zid webhook: method=${req.method}, ip=${getClientIp(req)}, ua=${req.headers.get("user-agent")?.substring(0, 60)}`);
