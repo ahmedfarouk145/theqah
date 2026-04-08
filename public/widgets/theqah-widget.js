@@ -201,7 +201,10 @@
   async function fetchAndAddLogos(storeUid) {
     try {
       const productId = extractProductId();
+      console.log('[theqah-widget] fetchAndAddLogos store=' + storeUid + ' productId=' + (productId || 'none'));
       const checkResult = await checkVerifiedReviews(storeUid, productId);
+      console.log('[theqah-widget] API response: hasVerified=' + checkResult.hasVerified + ' count=' + (checkResult.reviews?.length || 0));
+
       if (checkResult.hasVerified) {
         const verifiedReviews = (Array.isArray(checkResult.reviews) ? checkResult.reviews : [])
           .filter(r => r && r.sallaReviewId)
@@ -210,9 +213,14 @@
             sallaReviewId: String(r.sallaReviewId)
           }));
 
+        console.log('[theqah-widget] verified sallaIds=[' + verifiedReviews.map(r => r.sallaReviewId).join(',') + ']');
+
         G.verifiedReviews = verifiedReviews;
         G.verifiedIds = verifiedReviews.map(r => r.sallaReviewId);
         addLogosToSallaReviews(verifiedReviews, storeUid);
+
+        const placedCount = document.querySelectorAll('.theqah-verified-logo').length;
+        console.log('[theqah-widget] after first pass: placed=' + placedCount + ' expected=' + verifiedReviews.length);
 
         // iOS Safari: Shadow DOM / custom elements render late.
         // Retry logo injection with increasing delays to catch late-rendered reviews.
@@ -222,12 +230,15 @@
           setTimeout(() => {
             const currentCount = document.querySelectorAll('.theqah-verified-logo').length;
             if (currentCount < expectedCount) {
+              console.log('[theqah-widget] retry @' + delay + 'ms: placed=' + currentCount + '/' + expectedCount);
               addLogosToSallaReviews(verifiedReviews, storeUid);
             }
           }, delay);
         });
+      } else {
+        console.log('[theqah-widget] no verified reviews for store=' + storeUid);
       }
-    } catch { /* silent */ }
+    } catch (e) { console.warn('[theqah-widget] fetchAndAddLogos error:', e); }
   }
 
   // ——— Add logos to Salla reviews ———
