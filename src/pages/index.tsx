@@ -180,25 +180,14 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 <h3 className="text-lg font-bold text-green-900 mb-4">ماهو مشتري موثّق؟</h3>
                 <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
                   <iframe
-                    src="https://www.tiktok.com/player/v1/7610461655754935572?&music_info=1&description=1"
+                    src="https://www.youtube.com/embed/UqvdRG1ogN8"
                     className="w-full"
                     style={{ height: '580px' }}
-                    allow="fullscreen"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                     allowFullScreen
                     title="ماهو مشتري موثّق"
                   />
                 </div>
-                <a
-                  href="https://youtube.com/shorts/UqvdRG1ogN8?si=Qdo1Lpd9DMeE6TiP"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                  </svg>
-                  شاهد على يوتيوب
-                </a>
               </div>
 
               {/* Video 2 - How to connect */}
@@ -206,25 +195,14 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 <h3 className="text-lg font-bold text-green-900 mb-4">كيف تربط متجرك؟</h3>
                 <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
                   <iframe
-                    src="https://www.tiktok.com/player/v1/7605638835929664786?&music_info=1&description=1"
+                    src="https://www.youtube.com/embed/s6gBXoANREY"
                     className="w-full"
                     style={{ height: '580px' }}
-                    allow="fullscreen"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                     allowFullScreen
                     title="كيف تربط متجرك مع مشتري موثق"
                   />
                 </div>
-                <a
-                  href="https://youtube.com/shorts/s6gBXoANREY?si=YNKmQ1CxPpFatRoU"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                  </svg>
-                  شاهد على يوتيوب
-                </a>
               </div>
 
               {/* Video 3 - Real store demo */}
