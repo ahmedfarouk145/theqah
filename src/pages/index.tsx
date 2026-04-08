@@ -82,34 +82,40 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Live Stats */}
-            <p className="text-green-600 font-semibold text-sm sm:text-base">
-              اشترِ وأنت متطمن.. أكثر من 5,000 تقييم تم التحقق من صحته ومطابقته للطلب
+            {/* AI text */}
+            <p className="text-gray-700 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto">
+              حوّل شك عملائك إلى مبيعات.. وانضم لنخبة المتاجر التي تُهيكل تقييماتها تقنياً لتتصدر ترشيحات الذكاء الاصطناعي.
             </p>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
-              <Link href="/signup">
-                <button className="group bg-green-700 text-white px-8 sm:px-10 py-3.5 sm:py-4 rounded-full text-lg font-bold shadow-lg shadow-green-500/20 hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-                  ابدأ الآن
-                  <span className="inline-block mr-2 group-hover:translate-x-1 transition-transform">←</span>
+              <a
+                href="https://apps.salla.sa/ar/app/1180703836"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <button className="group bg-green-700 text-white px-8 sm:px-10 py-3.5 sm:py-4 rounded-full text-lg font-bold shadow-lg shadow-green-500/20 hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-3">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18 15v3H6v-3H4v3c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-3h-2zm-1-4-1.41-1.41L13 12.17V4h-2v8.17L8.41 9.59 7 11l5 5 5-5z" />
+                  </svg>
+                  حمّل التطبيق من متجر سلة
                 </button>
-              </Link>
-              <Link href="/faq">
+              </a>
+              <a href="#install-section">
                 <button className="bg-white text-green-700 border-2 border-green-200 px-6 sm:px-8 py-3.5 sm:py-4 rounded-full text-lg font-semibold hover:bg-green-50 hover:border-green-300 transition-all duration-300">
                   تعرف أكثر
                 </button>
-              </Link>
+              </a>
             </div>
           </div>
         </section>
 
         {/* Install & Videos Section - moved to top */}
-        <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
+        <section id="install-section" className="py-16 sm:py-24 px-4 sm:px-6 bg-white scroll-mt-24">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12 sm:mb-16">
               <span className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full mb-4">
-                ابدأ في دقائق
+                ابدأ في أقل من دقيقة
               </span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">
                 حمّل التطبيق وشاهد الشرح
@@ -119,23 +125,8 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Salla App Store Button */}
-            <div className="text-center mb-12">
-              <a
-                href="https://apps.salla.sa/ar/app/1180703836"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 bg-green-700 text-white px-8 sm:px-10 py-4 rounded-2xl text-lg font-bold shadow-lg shadow-green-500/20 hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
-              >
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18 15v3H6v-3H4v3c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-3h-2zm-1-4-1.41-1.41L13 12.17V4h-2v8.17L8.41 9.59 7 11l5 5 5-5z" />
-                </svg>
-                حمّل التطبيق من متجر سلة
-              </a>
-            </div>
-
-            {/* TikTok Videos + YouTube Links */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 max-w-3xl mx-auto">
+            {/* Videos */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
               {/* Video 1 - What is مشتري موثق */}
               <div className="text-center">
                 <h3 className="text-lg font-bold text-green-900 mb-4">ماهو مشتري موثّق؟</h3>
@@ -177,6 +168,32 @@ export default function LandingPage() {
                 </div>
                 <a
                   href="https://youtube.com/shorts/s6gBXoANREY?si=YNKmQ1CxPpFatRoU"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                  </svg>
+                  شاهد على يوتيوب
+                </a>
+              </div>
+
+              {/* Video 3 - Real store demo */}
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-green-900 mb-4">شاهد كيف يعمل على متجر حقيقي</h3>
+                <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
+                  <iframe
+                    src="https://www.youtube.com/embed/rFl9wS8s4c0"
+                    className="w-full"
+                    style={{ height: '580px' }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                    allowFullScreen
+                    title="شاهد كيف يعمل مشتري موثق على متجر حقيقي"
+                  />
+                </div>
+                <a
+                  href="https://youtube.com/shorts/rFl9wS8s4c0?si=SAqoTt9DifF8GE7H"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
@@ -346,13 +363,6 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <div className="text-center mt-10 sm:mt-12">
-              <Link href="/signup">
-                <button className="bg-green-700 text-white px-10 py-4 rounded-full text-lg font-bold shadow-lg hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
-                  جرّب الآن
-                </button>
-              </Link>
-            </div>
           </div>
         </section>
 
@@ -363,11 +373,6 @@ export default function LandingPage() {
           <div className="max-w-2xl mx-auto">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">جاهز لزيادة مبيعاتك؟</h2>
             <p className="text-gray-600 mb-8 text-lg">انضم الى العديد من المتاجر التي حسّنت ثقة عملائها مع مشتري موثّق</p>
-            <Link href="/signup">
-              <button className="bg-green-700 text-white px-10 sm:px-12 py-4 rounded-full text-lg font-bold shadow-lg hover:bg-green-800 hover:shadow-xl hover:scale-105 active:scale-100 transition-all duration-300">
-                ابدأ الآن
-              </button>
-            </Link>
           </div>
         </section>
 
