@@ -213,6 +213,19 @@
         G.verifiedReviews = verifiedReviews;
         G.verifiedIds = verifiedReviews.map(r => r.sallaReviewId);
         addLogosToSallaReviews(verifiedReviews, storeUid);
+
+        // iOS Safari: Shadow DOM / custom elements render late.
+        // Retry logo injection with increasing delays to catch late-rendered reviews.
+        const expectedCount = verifiedReviews.length;
+        const retryDelays = [500, 1500, 3000, 5000];
+        retryDelays.forEach(delay => {
+          setTimeout(() => {
+            const currentCount = document.querySelectorAll('.theqah-verified-logo').length;
+            if (currentCount < expectedCount) {
+              addLogosToSallaReviews(verifiedReviews, storeUid);
+            }
+          }, delay);
+        });
       }
     } catch { /* silent */ }
   }
@@ -258,8 +271,29 @@
         // Extract review ID from multiple possible sources
         let domReviewId = null;
 
-        // 1. From data-review-id or data-comment-id attribute
+        // 1. From data-review-id or data-comment-id attribute on the element itself
         domReviewId = el.getAttribute('data-review-id') || el.getAttribute('data-id') || el.getAttribute('data-comment-id');
+
+        // 1b. Salla custom element attributes (Vue-style bindings rendered as attributes)
+        if (!domReviewId) {
+          domReviewId = el.getAttribute('comment-id') || el.getAttribute('commentid') ||
+            el.getAttribute(':comment-id') || el.getAttribute(':id') ||
+            el.getAttribute('review-id') || el.getAttribute('reviewid');
+        }
+
+        // 1c. For salla-comment-item, try to extract from any attribute containing a numeric ID
+        if (!domReviewId && el.tagName?.toLowerCase() === 'salla-comment-item') {
+          const attrs = el.attributes;
+          for (let i = 0; i < attrs.length; i++) {
+            const name = attrs[i].name.toLowerCase();
+            if (name === 'class' || name === 'style' || name === 'slot') continue;
+            const match = attrs[i].value.match(/^(\d{5,})$/); // Exact numeric ID
+            if (match) {
+              domReviewId = match[1];
+              break;
+            }
+          }
+        }
 
         // 2. From internal div with id="s-comments-item-[ID]"
         if (!domReviewId) {
@@ -294,12 +328,21 @@
           }
         }
 
-        // 6. Check shadow DOM for salla-comment-item
+        // 6. Check shadow DOM for salla-comment-item (open shadow DOM only)
         if (!domReviewId && el.shadowRoot) {
           const shadowDiv = el.shadowRoot.querySelector('[id^="s-comments-item-"]');
           if (shadowDiv) {
             const idMatch = shadowDiv.id.match(/s-comments-item-(\d+)/);
             if (idMatch) domReviewId = idMatch[1];
+          }
+          // Also try other selectors inside shadow DOM
+          if (!domReviewId) {
+            const shadowReview = el.shadowRoot.querySelector('[data-review-id], [data-comment-id], [data-id]');
+            if (shadowReview) {
+              domReviewId = shadowReview.getAttribute('data-review-id') ||
+                shadowReview.getAttribute('data-comment-id') ||
+                shadowReview.getAttribute('data-id');
+            }
           }
         }
 
@@ -308,9 +351,12 @@
 
 
         if (!domReviewId || !verifiedIdStrings.includes(String(domReviewId))) return;
+        // Check for existing logo in both light DOM and shadow DOM
         if (el.querySelector('.theqah-verified-logo')) return;
+        if (el.shadowRoot?.querySelector('.theqah-verified-logo')) return;
 
         // Find best insertion point for Salla modern theme
+        // Try light DOM first, then shadow DOM, then element itself as fallback
         let insertPoint =
           el.querySelector('.s-comments-item-user-info-name') ||  // User name in Salla
           el.querySelector('.s-comments-item-user-wrapper') ||    // User wrapper
@@ -323,7 +369,19 @@
           el.querySelector('[class*="rating"]') ||                // Any rating class
           el.firstElementChild;
 
-        if (!insertPoint) return;
+        // Shadow DOM fallback for iOS Safari
+        if (!insertPoint && el.shadowRoot) {
+          insertPoint =
+            el.shadowRoot.querySelector('.s-comments-item-user-info-name') ||
+            el.shadowRoot.querySelector('.s-comments-item-user-wrapper') ||
+            el.shadowRoot.querySelector('[class*="user-name"]') ||
+            el.shadowRoot.querySelector('[class*="user-info"]') ||
+            el.shadowRoot.querySelector('[class*="rating"]') ||
+            el.shadowRoot.firstElementChild;
+        }
+
+        // Ultimate fallback: append directly to the element
+        if (!insertPoint) insertPoint = el;
 
 
 
