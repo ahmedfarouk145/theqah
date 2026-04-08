@@ -50,7 +50,14 @@ export class VerificationService {
             return { hasVerified: false, reviews: [], count: 0 };
         }
 
-        const reviews = await this.reviewRepo.findVerifiedByStore(storeId, productId);
+        let reviews = await this.reviewRepo.findVerifiedByStore(storeId, productId);
+
+        // Fallback: if product-filtered query returns nothing, try store-wide
+        // Reviews may not have productId stored (e.g. backfilled reviews)
+        if (reviews.length === 0 && productId) {
+            console.log(`[VerificationService] store=${storeId} productId=${productId} → 0 results, falling back to store-wide query`);
+            reviews = await this.reviewRepo.findVerifiedByStore(storeId);
+        }
 
         console.log(`[VerificationService] store=${storeId} productId=${productId || 'all'} → ${reviews.length} verified reviews, sallaIds=[${reviews.map(r => r.sallaReviewId || 'NO_SALLA_ID').join(',')}]`);
 
