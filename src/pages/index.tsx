@@ -5,6 +5,7 @@ import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import type { InferGetStaticPropsType, GetStaticProps } from 'next';
 
 import NavbarLanding from '@/components/NavbarLanding';
 import { URLS } from '@/config/constants';
@@ -14,7 +15,54 @@ const FeedbackWidget = dynamic(() => import('@/components/FeedbackWidget'), {
   loading: () => null,
 });
 
-export default function LandingPage() {
+interface AppReviewItem {
+  storeName: string;
+  stars: number;
+  text: string;
+}
+
+// Hardcoded fallback reviews (used if Firestore has none yet)
+const FALLBACK_REVIEWS: AppReviewItem[] = [
+  {
+    stars: 5,
+    text: 'من افضل التطبيقات بلا شك ولا يردني فيه ولا شك ماشاء الله تبارك الله انصح فيه',
+    storeName: 'STORE NGLR',
+  },
+  {
+    stars: 5,
+    text: 'التطبيق ممتاز بعد التثبيت والاشتراك في الخدمة فرق معي في المبيعات وزادت ثقة العملاء والتعامل راقي في الدعم الفني.',
+    storeName: 'بيت القهوة الشدوية',
+  },
+  {
+    stars: 5,
+    text: 'التطبيق يساعد العميل علي عملية الثقة بتقيم العملاء ويرفع المبيعات',
+    storeName: 'متجر الهدف التكتيكي',
+  },
+];
+
+export const getStaticProps: GetStaticProps<{ appReviews: AppReviewItem[] }> = async () => {
+  let appReviews: AppReviewItem[] = FALLBACK_REVIEWS;
+
+  try {
+    const base = process.env.NEXT_PUBLIC_BASE_URL?.trim() || `http://localhost:${process.env.PORT || 3000}`;
+    const res = await fetch(`${base}/api/public/app-reviews`, { headers: { 'x-internal': '1' } });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.reviews) && data.reviews.length > 0) {
+        appReviews = data.reviews;
+      }
+    }
+  } catch {
+    // Use fallback
+  }
+
+  return {
+    props: { appReviews },
+    revalidate: 21600, // Re-generate every 6 hours
+  };
+};
+
+export default function LandingPage({ appReviews }: InferGetStaticPropsType<typeof getStaticProps>) {
   return (
     <>
       <Head>
@@ -367,6 +415,40 @@ export default function LandingPage() {
         </section>
 
 
+
+        {/* Testimonials Section */}
+        <section className="py-16 sm:py-24 px-4 sm:px-6 bg-green-50/50">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-12 sm:mb-16">
+              <span className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full mb-4">
+                ماذا يقول عملاؤنا؟
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">
+                متاجر حقيقية.. نتائج حقيقية
+              </h2>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                أصحاب متاجر يشاركون تجربتهم مع مشتري موثّق
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+              {appReviews.map((item, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                >
+                  <div className="flex gap-0.5 mb-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span key={star} className={`text-lg ${star <= item.stars ? 'text-green-700' : 'text-gray-300'}`}>★</span>
+                    ))}
+                  </div>
+                  <p className="text-gray-700 leading-relaxed mb-6 text-[15px]">{item.text}</p>
+                  <p className="text-green-700 font-semibold text-sm">{item.storeName}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* CTA Section */}
         <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white text-center">

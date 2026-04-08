@@ -9,6 +9,7 @@ import { OrderRepository } from './order.repository';
 import { OwnerRepository } from './owner.repository';
 import { DomainRepository } from './domain.repository';
 import { AuditLogRepository } from './audit-log.repository';
+import { AppReviewRepository } from './app-review.repository';
 import type { BaseRepository } from './base.repository';
 import type { EntityBase } from '../core/types';
 
@@ -77,6 +78,16 @@ export class RepositoryFactory {
             this.instances.set('auditLog', new AuditLogRepository());
         }
         return this.instances.get('auditLog') as AuditLogRepository;
+    }
+
+    /**
+     * Get AppReviewRepository instance
+     */
+    static getAppReviewRepository(): AppReviewRepository {
+        if (!this.instances.has('appReview')) {
+            this.instances.set('appReview', new AppReviewRepository());
+        }
+        return this.instances.get('appReview') as AppReviewRepository;
     }
 
     /**

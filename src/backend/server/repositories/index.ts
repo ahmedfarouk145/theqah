@@ -13,6 +13,7 @@ export { OrderRepository } from './order.repository';
 export { OwnerRepository } from './owner.repository';
 export { DomainRepository } from './domain.repository';
 export { AuditLogRepository, type AuditLog } from './audit-log.repository';
+export { AppReviewRepository, type AppReview } from './app-review.repository';
 
 // Factory
 export { RepositoryFactory } from './factory';
