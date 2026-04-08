@@ -462,12 +462,13 @@
       `
     });
 
-    // Link the certificate badge to the store review page when possible.
+    // Link the certificate badge to the store review page (4+ stars only).
     const _certStoreUid = G.storeData?.storeUid || G.storeUid || '';
+    const certUrl = _certStoreUid
+      ? buildStoreReviewsUrl(_certStoreUid) + (buildStoreReviewsUrl(_certStoreUid).includes('?') ? '&' : '?') + 'minStars=4'
+      : SCRIPT_ORIGIN;
     const logoLink = h('a', {
-      href: _certStoreUid
-        ? buildStoreReviewsUrl(_certStoreUid)
-        : SCRIPT_ORIGIN,
+      href: certUrl,
       target: '_blank',
       rel: 'noopener noreferrer',
       style: `

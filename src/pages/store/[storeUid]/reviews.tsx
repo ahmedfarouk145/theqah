@@ -36,6 +36,7 @@ type PageProps = {
     profile: StoreProfile | null;
     error: string | null;
     focusedReviewId: string | null;
+    minStars: number | null;
 };
 
 /* ── Server-side data fetching ── */
@@ -43,9 +44,11 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
     const storeUid = typeof ctx.params?.storeUid === "string" ? ctx.params.storeUid.trim() : "";
     const focusedReviewId = typeof ctx.query.review === "string" ? ctx.query.review.trim() : "";
     const trackingRef = typeof ctx.query.ref === "string" ? ctx.query.ref.trim() : "";
+    const minStarsRaw = typeof ctx.query.minStars === "string" ? parseInt(ctx.query.minStars, 10) : NaN;
+    const minStars = !isNaN(minStarsRaw) && minStarsRaw >= 1 && minStarsRaw <= 5 ? minStarsRaw : null;
 
     if (!storeUid) {
-        return { props: { profile: null, error: "missing_store", focusedReviewId: focusedReviewId || null } };
+        return { props: { profile: null, error: "missing_store", focusedReviewId: focusedReviewId || null, minStars } };
     }
 
     if (trackingRef) {
@@ -66,7 +69,7 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
         const res = await fetch(url, { headers: { "x-internal": "1" } });
 
         if (!res.ok) {
-            return { props: { profile: null, error: res.status === 404 ? "not_found" : "fetch_error", focusedReviewId: focusedReviewId || null } };
+            return { props: { profile: null, error: res.status === 404 ? "not_found" : "fetch_error", focusedReviewId: focusedReviewId || null, minStars } };
         }
 
         const profile: StoreProfile = await res.json();
@@ -74,9 +77,9 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
         // Cache for 10 minutes
         ctx.res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=60");
 
-        return { props: { profile, error: null, focusedReviewId: focusedReviewId || null } };
+        return { props: { profile, error: null, focusedReviewId: focusedReviewId || null, minStars } };
     } catch {
-        return { props: { profile: null, error: "fetch_error", focusedReviewId: focusedReviewId || null } };
+        return { props: { profile: null, error: "fetch_error", focusedReviewId: focusedReviewId || null, minStars } };
     }
 };
 
@@ -214,7 +217,7 @@ function ErrorView({ error }: { error: string }) {
 }
 
 /* ── Main Page ── */
-export default function StoreReviewsPage({ profile, error, focusedReviewId }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function StoreReviewsPage({ profile, error, focusedReviewId, minStars }: InferGetServerSidePropsType<typeof getServerSideProps>) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -241,11 +244,12 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: In
     const storeName = store.name || "متجر";
     const focusedReviewExists = !!focusedReviewId && reviews.some((review) => review.id === focusedReviewId);
     const showingFocusedOnly = !!focusedReviewId && focusedReviewExists;
+    const starsFiltered = minStars ? reviews.filter((r) => r.stars >= minStars) : reviews;
     const visibleReviews = showingFocusedOnly
         ? reviews.filter((review) => review.id === focusedReviewId)
         : focusedReviewId
             ? []
-            : reviews;
+            : starsFiltered;
 
     const pageTitle = `تقييمات ${storeName} | مشتري موثق`;
     const pageDesc = `اطلع على ${stats.totalReviews} تقييم موثق لمتجر ${storeName}. جميع التقييمات مدققة ومتحقق منها بواسطة مشتري موثق.`;
