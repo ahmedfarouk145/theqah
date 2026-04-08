@@ -45,29 +45,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const verificationService = new VerificationService();
     const productIdStr = productId && typeof productId === "string" ? productId : undefined;
 
-    console.log(`[check-verified] storeId=${storeId} productId=${productIdStr || 'none'} ua=${(req.headers['user-agent'] || '').slice(0, 80)}`);
-
     const result = await verificationService.getVerifiedReviews(storeId, productIdStr);
-
-    const mapped = result.reviews.map(r => ({
-      reviewId: r.reviewId || r.id || null,
-      sallaReviewId: r.sallaReviewId || null,
-      productId: r.productId || null,
-      stars: r.stars,
-      verified: r.verified
-    }));
-
-    console.log(`[check-verified] storeId=${storeId} productId=${productIdStr || 'none'} → hasVerified=${result.hasVerified} count=${result.count} sallaIds=[${mapped.map(r => r.sallaReviewId).join(',')}]`);
 
     // Public response: use reviewId for navigation and sallaReviewId for storefront DOM matching
     return res.status(200).json({
       hasVerified: result.hasVerified,
       count: result.count,
-      reviews: mapped
+      reviews: result.reviews.map(r => ({
+        reviewId: r.reviewId || r.id || null,
+        sallaReviewId: r.sallaReviewId || null,
+        productId: r.productId || null,
+        stars: r.stars,
+        verified: r.verified
+      }))
     });
 
   } catch (error) {
-    console.error(`[check-verified] ERROR storeId=${storeId} productId=${productId || 'none'}`, error);
     handleApiError(res, error);
   }
 }

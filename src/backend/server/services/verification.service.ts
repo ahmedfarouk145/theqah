@@ -39,14 +39,12 @@ export class VerificationService {
         // 1. Store doesn't exist in database
         // 2. Store is not connected/installed (app was uninstalled)
         if (!store) {
-            console.log(`[VerificationService] store NOT FOUND: ${storeId}`);
             return { hasVerified: false, reviews: [], count: 0 };
         }
 
         // Check if store has Salla connected flag
         const isConnected = store.salla?.connected !== false && store.salla?.installed !== false;
         if (!isConnected) {
-            console.log(`[VerificationService] store NOT CONNECTED: ${storeId} salla.connected=${store.salla?.connected} salla.installed=${store.salla?.installed}`);
             return { hasVerified: false, reviews: [], count: 0 };
         }
 
@@ -55,11 +53,8 @@ export class VerificationService {
         // Fallback: if product-filtered query returns nothing, try store-wide
         // Reviews may not have productId stored (e.g. backfilled reviews)
         if (reviews.length === 0 && productId) {
-            console.log(`[VerificationService] store=${storeId} productId=${productId} → 0 results, falling back to store-wide query`);
             reviews = await this.reviewRepo.findVerifiedByStore(storeId);
         }
-
-        console.log(`[VerificationService] store=${storeId} productId=${productId || 'all'} → ${reviews.length} verified reviews, sallaIds=[${reviews.map(r => r.sallaReviewId || 'NO_SALLA_ID').join(',')}]`);
 
         return {
             hasVerified: reviews.length > 0,
