@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useBlogAuth } from '@/contexts/BlogAuthContext';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -21,6 +21,7 @@ const CATEGORIES = [
     'دليل الاستخدام',
     'التجارة الإلكترونية',
     'تقييمات وثقة',
+    'قصص نجاح',
 ];
 
 interface BlogPost {
@@ -42,7 +43,7 @@ interface BlogPost {
 type View = 'list' | 'edit';
 
 export default function BlogManage() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading } = useBlogAuth();
     const [view, setView] = useState<View>('list');
     const [posts, setPosts] = useState<BlogPost[]>([]);
     const [loading, setLoading] = useState(true);
@@ -217,7 +218,7 @@ export default function BlogManage() {
                     </div>
                     <h2 className="text-xl font-bold text-gray-900 mb-2">غير مصرح</h2>
                     <p className="text-gray-600 mb-6">هذه الصفحة متاحة فقط لصاحب المدونة.</p>
-                    <Link href="/login" className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                    <Link href="/blog/login" className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
                         تسجيل الدخول
                     </Link>
                 </div>

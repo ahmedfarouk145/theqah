@@ -7,7 +7,23 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { SimpleThemeToggle } from '@/components/ThemeToggle';
 import { useState } from 'react';
 
-export default function NavbarLanding() {
+type NavbarLandingProps = {
+  /** Destination of the login button. Defaults to the main store/admin login. */
+  loginHref?: string;
+  /** Desktop label for the login button. */
+  loginLabel?: string;
+  /** Mobile label for the login button (short version). */
+  loginLabelMobile?: string;
+  /** Extra Tailwind classes applied to the desktop login button — lets callers recolor it. */
+  loginButtonClassName?: string;
+};
+
+export default function NavbarLanding({
+  loginHref = '/login',
+  loginLabel = 'تسجيل الدخول',
+  loginLabelMobile = 'دخول',
+  loginButtonClassName = 'bg-green-700 dark:bg-green-600 hover:bg-green-800 dark:hover:bg-green-700',
+}: NavbarLandingProps) {
   const [open, setOpen] = useState(false);
 
   const NavLinks = (
@@ -49,10 +65,10 @@ export default function NavbarLanding() {
           {NavLinks}
           <SimpleThemeToggle />
           <Link
-            href="/login"
-            className="bg-green-700 dark:bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-800 dark:hover:bg-green-700 transition"
+            href={loginHref}
+            className={`text-white px-5 py-2 rounded-full transition ${loginButtonClassName}`}
           >
-            تسجيل الدخول
+            {loginLabel}
           </Link>
         </div>
 
@@ -60,10 +76,10 @@ export default function NavbarLanding() {
         <div className="md:hidden flex items-center gap-4">
           <SimpleThemeToggle />
           <Link
-            href="/login"
+            href={loginHref}
             className="text-green-700 hover:text-green-900 font-semibold transition"
           >
-            دخول
+            {loginLabelMobile}
           </Link>
 
           <Sheet open={open} onOpenChange={setOpen}>

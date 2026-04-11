@@ -18,10 +18,20 @@ const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.appspot.com`,
 };
 
-const app: FirebaseApp = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);
+// Default app — powers store owner + admin dashboards
+const app: FirebaseApp =
+  getApps().find((a) => a.name === "[DEFAULT]") ?? initializeApp(firebaseConfig);
 const auth: Auth = getAuth(app);
 const db: Firestore = getFirestore(app);
 const storage: FirebaseStorage = getStorage(app);
+
+// Blog app — same Firebase project, but an isolated browser session so
+// signing into the blog does not log you into the store/admin dashboards
+// (and vice versa). Firebase stores each named app's auth state under a
+// distinct IndexedDB key, keeping the two sessions physically independent.
+const blogApp: FirebaseApp =
+  getApps().find((a) => a.name === "blog") ?? initializeApp(firebaseConfig, "blog");
+const blogAuth: Auth = getAuth(blogApp);
 
 // App Check is DISABLED temporarily - reCAPTCHA domain needs to be configured
 // To re-enable: go to https://www.google.com/recaptcha/admin and add www.theqah.com.sa
@@ -38,6 +48,7 @@ if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY)
 
 // حاولة حفظ الجلسة محلياً
 setPersistence(auth, browserLocalPersistence).catch(() => { });
+setPersistence(blogAuth, browserLocalPersistence).catch(() => { });
 
-export { app, auth, db, storage, appCheck };
+export { app, auth, db, storage, appCheck, blogApp, blogAuth };
 

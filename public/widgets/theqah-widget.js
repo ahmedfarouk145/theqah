@@ -181,6 +181,13 @@
     return query ? `${base}?${query}` : base;
   }
 
+  // The certificate page enforces a 4+ star floor on the server. Never
+  // build a `/reviews?minStars=4` URL for the certificate logo — that was
+  // trivially bypassable by editing the query string.
+  function buildStoreCertificateUrl(storeUid) {
+    return `${SCRIPT_ORIGIN}/store/${encodeURIComponent(storeUid)}/certificate`;
+  }
+
   // ——— Check verified reviews ———
   async function checkVerifiedReviews(storeId, productId) {
     try {
@@ -462,10 +469,12 @@
       `
     });
 
-    // Link the certificate badge to the store review page (4+ stars only).
+    // Link the certificate badge to the dedicated certificate page. The
+    // 4+ star floor is enforced server-side inside that route — do not
+    // append a `minStars` query param here (it would be bypassable).
     const _certStoreUid = G.storeData?.storeUid || G.storeUid || '';
     const certUrl = _certStoreUid
-      ? buildStoreReviewsUrl(_certStoreUid) + (buildStoreReviewsUrl(_certStoreUid).includes('?') ? '&' : '?') + 'minStars=4'
+      ? buildStoreCertificateUrl(_certStoreUid)
       : SCRIPT_ORIGIN;
     const logoLink = h('a', {
       href: certUrl,
@@ -884,7 +893,7 @@
             if (
               n.tagName?.toLowerCase() === 'salla-comment-item' ||
               n.classList?.contains('s-comments-item') ||
-              n.id?.startsWith('s-comments-item-') ||
+              (typeof n.id === 'string' && n.id.startsWith('s-comments-item-')) ||
               n.querySelector?.('salla-comment-item') ||
               n.querySelector?.('[id^="s-comments-item-"]')
             ) {

@@ -2,7 +2,9 @@
 import type { NextApiRequest } from "next";
 import { authAdmin } from "@/lib/firebaseAdmin";
 
-const BLOG_OWNER_EMAIL = process.env.BLOG_OWNER_EMAIL || "";
+// The single email allowed to manage the blog. Hardcoded intentionally —
+// change this value and redeploy to transfer ownership.
+const BLOG_OWNER_EMAIL = "abuyzzn@yahoo.com";
 
 export async function requireBlogOwner(
     req: NextApiRequest

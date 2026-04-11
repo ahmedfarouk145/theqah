@@ -3,8 +3,10 @@ import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
 import NavbarLanding from "@/components/NavbarLanding";
+import JsonLd from "@/components/JsonLd";
 import { GetServerSideProps } from "next";
 import { dbAdmin } from "@/lib/firebaseAdmin";
+import { URLS } from "@/config/constants";
 
 interface BlogPostSummary {
     id: string;
@@ -89,17 +91,111 @@ function formatDate(iso: string | null): string {
 
 
 export default function BlogPage({ posts, categories, activeCategory, pagination }: Props) {
+    const pageTitle = activeCategory
+        ? `${activeCategory} | مدونة مشتري موثّق`
+        : "المدونة | مشتري موثّق";
+    const pageDesc =
+        "مقالات ونصائح حول التجارة الإلكترونية، تقييمات المتاجر، وبناء الثقة مع العملاء من فريق مشتري موثّق.";
+    const canonicalUrl = activeCategory
+        ? `${URLS.CANONICAL_ORIGIN}/blog?category=${encodeURIComponent(activeCategory)}`
+        : `${URLS.CANONICAL_ORIGIN}/blog`;
+    const ogImage = `${URLS.CANONICAL_ORIGIN}/logo.png`;
+
+    // Blog (CollectionPage) JSON-LD — gives AI crawlers a list of recent posts
+    // with enough metadata to understand the feed without parsing HTML cards.
+    const blogJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "Blog",
+        "@id": `${URLS.CANONICAL_ORIGIN}/blog`,
+        url: `${URLS.CANONICAL_ORIGIN}/blog`,
+        name: "مدونة مشتري موثّق",
+        description: pageDesc,
+        inLanguage: "ar",
+        publisher: {
+            "@type": "Organization",
+            name: "مشتري موثّق",
+            url: URLS.CANONICAL_ORIGIN,
+            logo: {
+                "@type": "ImageObject",
+                url: `${URLS.CANONICAL_ORIGIN}/logo.png`,
+            },
+        },
+        blogPost: posts.map((p) => ({
+            "@type": "BlogPosting",
+            "@id": `${URLS.CANONICAL_ORIGIN}/blog/${p.slug}`,
+            url: `${URLS.CANONICAL_ORIGIN}/blog/${p.slug}`,
+            headline: p.title,
+            description: p.excerpt,
+            image: p.coverImage || ogImage,
+            datePublished: p.publishedAt || undefined,
+            articleSection: p.category,
+            keywords: p.tags.join(", "),
+            author: { "@type": "Person", name: p.author },
+        })),
+    };
+
+    // WebSite JSON-LD with SearchAction — lets ChatGPT Search / Google SGE
+    // expose the blog's category filter as a sitelinks searchbox equivalent.
+    const websiteJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "@id": `${URLS.CANONICAL_ORIGIN}/#website`,
+        url: URLS.CANONICAL_ORIGIN,
+        name: "مشتري موثّق",
+        inLanguage: "ar",
+        potentialAction: {
+            "@type": "SearchAction",
+            target: {
+                "@type": "EntryPoint",
+                urlTemplate: `${URLS.CANONICAL_ORIGIN}/blog?category={search_term_string}`,
+            },
+            "query-input": "required name=search_term_string",
+        },
+    };
+
     return (
         <>
             <Head>
-                <title>المدونة | مشتري موثّق</title>
-                <meta name="description" content="مقالات ونصائح حول التجارة الإلكترونية وتقييمات المتاجر من فريق مشتري موثق" />
-                <meta property="og:title" content="المدونة | مشتري موثّق" />
-                <meta property="og:description" content="مقالات ونصائح حول التجارة الإلكترونية وتقييمات المتاجر" />
+                <title>{pageTitle}</title>
+                <meta name="description" content={pageDesc} />
+                <link rel="canonical" href={canonicalUrl} />
+
+                {/* OpenGraph */}
+                <meta property="og:title" content={pageTitle} />
+                <meta property="og:description" content={pageDesc} />
                 <meta property="og:type" content="website" />
+                <meta property="og:url" content={canonicalUrl} />
+                <meta property="og:site_name" content="مشتري موثّق" />
+                <meta property="og:locale" content="ar_SA" />
+                <meta property="og:image" content={ogImage} />
+
+                {/* Twitter / X Card */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={pageTitle} />
+                <meta name="twitter:description" content={pageDesc} />
+                <meta name="twitter:image" content={ogImage} />
+
+                {/* Feed discovery for AI crawlers & feed readers */}
+                <link
+                    rel="alternate"
+                    type="application/rss+xml"
+                    title="مدونة مشتري موثّق"
+                    href={`${URLS.CANONICAL_ORIGIN}/blog/rss.xml`}
+                />
+
+                {/* Structured Data — Blog feed & WebSite search action.
+                    JsonLd pre-escapes <, >, &, U+2028/9 so `</script>` inside
+                    any post can't break out of the script tag. */}
+                <JsonLd data={blogJsonLd} />
+                <JsonLd data={websiteJsonLd} />
             </Head>
 
-            <NavbarLanding />
+            <NavbarLanding
+                loginHref="/blog/login"
+                loginLabel="دخول المدونة"
+                loginLabelMobile="دخول المدونة"
+                loginButtonClassName="bg-emerald-900 dark:bg-emerald-800 hover:bg-emerald-950 dark:hover:bg-emerald-900"
+            />
 
             <main id="main-content" className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-gray-950 dark:to-gray-900 pt-28 pb-16" dir="rtl">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6">

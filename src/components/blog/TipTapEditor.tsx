@@ -20,6 +20,10 @@ export default function TipTapEditor({ content, onChange }: Props) {
     const imageInputRef = useRef<HTMLInputElement>(null);
 
     const editor = useEditor({
+        // Tiptap's default initial render runs eagerly on the server and
+        // diverges from the client DOM → hydration mismatch. Deferring to
+        // after mount is the officially recommended fix for Next.js.
+        immediatelyRender: false,
         extensions: [
             StarterKit.configure({
                 heading: { levels: [2, 3] },

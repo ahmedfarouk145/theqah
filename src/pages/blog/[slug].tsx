@@ -14,14 +14,57 @@ interface BlogPostFull {
     title: string;
     excerpt: string;
     content: string;
+    /** Plain-text extract of `content` — exposed to AI crawlers via JSON-LD `articleBody`. */
+    plainText: string;
+    wordCount: number;
     coverImage: string | null;
     author: string;
     category: string;
     tags: string[];
     publishedAt: string | null;
+    updatedAt: string | null;
     viewCount: number;
     seoTitle: string | null;
     seoDescription: string | null;
+}
+
+/**
+ * Safely serialize a value into a JSON-LD `<script>` body.
+ *
+ * `JSON.stringify` does NOT escape `<`, so a post containing `</script>` in
+ * its body could break out of the script tag and inject HTML. Unicode-escaping
+ * `<`, `>`, `&`, U+2028 and U+2029 keeps the output valid JSON (JSON.parse
+ * still works) but makes it impossible to confuse an HTML parser. This is the
+ * standard pattern recommended by the React docs for JSON-in-script.
+ */
+function safeJsonLd(obj: unknown): string {
+    return JSON.stringify(obj)
+        .replace(/</g, "\\u003c")
+        .replace(/>/g, "\\u003e")
+        .replace(/&/g, "\\u0026")
+        .replace(/\u2028/g, "\\u2028")
+        .replace(/\u2029/g, "\\u2029");
+}
+
+/**
+ * Strip HTML tags and collapse whitespace. Not a parser — intentional.
+ * This runs server-side only (inside getServerSideProps) and its output
+ * goes into JSON-LD / metadata, never back into the DOM, so we don't
+ * need full sanitization, just readable plain text for AI indexers.
+ */
+function htmlToPlainText(html: string): string {
+    return html
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/\s+/g, " ")
+        .trim();
 }
 
 interface RelatedPost {
@@ -55,17 +98,23 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params, re
     // Increment view count (fire & forget)
     doc.ref.update({ viewCount: FieldValue.increment(1) }).catch(() => { });
 
+    const plainText = htmlToPlainText(data.content || "");
+    const wordCount = plainText ? plainText.split(/\s+/).filter(Boolean).length : 0;
+
     const post: BlogPostFull = {
         id: doc.id,
         slug: data.slug,
         title: data.title,
         excerpt: data.excerpt,
         content: data.content,
+        plainText,
+        wordCount,
         coverImage: data.coverImage || null,
         author: data.author,
         category: data.category,
         tags: data.tags || [],
         publishedAt: data.publishedAt?.toDate?.()?.toISOString?.() || null,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || null,
         viewCount: (data.viewCount || 0) + 1,
         seoTitle: data.seoTitle || null,
         seoDescription: data.seoDescription || null,
@@ -115,6 +164,59 @@ export default function BlogPostPage({ post, related }: Props) {
     const pageTitle = post.seoTitle || post.title;
     const pageDesc = post.seoDescription || post.excerpt;
     const canonicalUrl = `${URLS.CANONICAL_ORIGIN}/blog/${post.slug}`;
+    const ogImage = post.coverImage || `${URLS.CANONICAL_ORIGIN}/logo.png`;
+
+    // BlogPosting JSON-LD — enriched for AI crawlers (ChatGPT Search, Perplexity,
+    // Claude, Google SGE). articleBody carries the plain-text content so
+    // crawlers can index the article without executing HTML.
+    const articleJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "@id": canonicalUrl,
+        mainEntityOfPage: { "@type": "WebPage", "@id": canonicalUrl },
+        headline: post.title,
+        name: post.title,
+        description: pageDesc,
+        image: ogImage,
+        inLanguage: "ar",
+        articleSection: post.category,
+        keywords: post.tags.join(", "),
+        wordCount: post.wordCount,
+        articleBody: post.plainText,
+        author: {
+            "@type": "Person",
+            name: post.author,
+        },
+        datePublished: post.publishedAt || undefined,
+        dateModified: post.updatedAt || post.publishedAt || undefined,
+        publisher: {
+            "@type": "Organization",
+            name: "مشتري موثّق",
+            url: URLS.CANONICAL_ORIGIN,
+            logo: {
+                "@type": "ImageObject",
+                url: `${URLS.CANONICAL_ORIGIN}/logo.png`,
+            },
+        },
+    };
+
+    // BreadcrumbList JSON-LD — helps Google SGE, ChatGPT Search and Perplexity
+    // render the navigation trail and understand the page hierarchy.
+    const breadcrumbJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+            { "@type": "ListItem", position: 1, name: "الرئيسية", item: URLS.CANONICAL_ORIGIN },
+            { "@type": "ListItem", position: 2, name: "المدونة", item: `${URLS.CANONICAL_ORIGIN}/blog` },
+            {
+                "@type": "ListItem",
+                position: 3,
+                name: post.category,
+                item: `${URLS.CANONICAL_ORIGIN}/blog?category=${encodeURIComponent(post.category)}`,
+            },
+            { "@type": "ListItem", position: 4, name: post.title, item: canonicalUrl },
+        ],
+    };
 
     return (
         <>
@@ -122,41 +224,52 @@ export default function BlogPostPage({ post, related }: Props) {
                 <title>{pageTitle} | مدونة مشتري موثّق</title>
                 <meta name="description" content={pageDesc} />
                 <link rel="canonical" href={canonicalUrl} />
+
+                {/* OpenGraph */}
                 <meta property="og:title" content={pageTitle} />
                 <meta property="og:description" content={pageDesc} />
                 <meta property="og:type" content="article" />
                 <meta property="og:url" content={canonicalUrl} />
-                {post.coverImage && <meta property="og:image" content={post.coverImage} />}
+                <meta property="og:site_name" content="مشتري موثّق" />
+                <meta property="og:locale" content="ar_SA" />
+                <meta property="og:image" content={ogImage} />
                 <meta property="article:author" content={post.author} />
                 {post.publishedAt && <meta property="article:published_time" content={post.publishedAt} />}
+                {post.updatedAt && <meta property="article:modified_time" content={post.updatedAt} />}
                 <meta property="article:section" content={post.category} />
                 {post.tags.map((tag) => (
                     <meta key={tag} property="article:tag" content={tag} />
                 ))}
 
-                {/* Structured Data */}
+                {/* Twitter / X Card */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={pageTitle} />
+                <meta name="twitter:description" content={pageDesc} />
+                <meta name="twitter:image" content={ogImage} />
+
+                {/* Feed discovery for AI crawlers & readers */}
+                <link rel="alternate" type="application/rss+xml" title="مدونة مشتري موثّق" href={`${URLS.CANONICAL_ORIGIN}/blog/rss.xml`} />
+
+                {/* Structured Data — BlogPosting (safeJsonLd escapes <, >, &,
+                    U+2028/9 so the script tag cannot be broken out of even if
+                    post content contains '</script>'). */}
                 <script
                     type="application/ld+json"
-                    dangerouslySetInnerHTML={{
-                        __html: JSON.stringify({
-                            "@context": "https://schema.org",
-                            "@type": "Article",
-                            headline: post.title,
-                            description: post.excerpt,
-                            image: post.coverImage || undefined,
-                            author: { "@type": "Person", name: post.author },
-                            datePublished: post.publishedAt,
-                            publisher: {
-                                "@type": "Organization",
-                                name: "مشتري موثّق",
-                                logo: { "@type": "ImageObject", url: `${URLS.CANONICAL_ORIGIN}/logo.png` },
-                            },
-                        }),
-                    }}
+                    dangerouslySetInnerHTML={{ __html: safeJsonLd(articleJsonLd) }}
+                />
+                {/* Structured Data — BreadcrumbList */}
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
                 />
             </Head>
 
-            <NavbarLanding />
+            <NavbarLanding
+                loginHref="/blog/login"
+                loginLabel="دخول المدونة"
+                loginLabelMobile="دخول المدونة"
+                loginButtonClassName="bg-emerald-900 dark:bg-emerald-800 hover:bg-emerald-950 dark:hover:bg-emerald-900"
+            />
 
             <main className="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-gray-950 dark:to-gray-900 pt-28 pb-16" dir="rtl">
                 <article className="max-w-3xl mx-auto px-4 sm:px-6">
