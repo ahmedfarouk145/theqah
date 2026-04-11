@@ -235,12 +235,14 @@ export default function FAQPage() {
             <p className="text-gray-600 mb-6">
               ابدأ بجمع تقييمات حقيقية بعد الشراء وانشرها بعلامة &ldquo;مشتري موثّق&rdquo;.
             </p>
-            <Link
-              href="/signup"
+            <a
+              href="https://apps.salla.sa/ar/app/1180703836"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-block bg-green-700 text-white px-8 py-3 rounded-full text-md shadow-md hover:bg-green-800 hover:scale-105 transition-all duration-200"
             >
               ابدأ الآن
-            </Link>
+            </a>
           </div>
         </section>
 
