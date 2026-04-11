@@ -255,28 +255,34 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                   emoji: '🎯',
                   color: 'from-amber-400 to-orange-500',
                   bgColor: 'bg-amber-50',
-                  title: 'حسم قرار الشراء',
-                  desc: 'إزالة تردد العميل لحظة الدفع ورفع معدل التحويل فوراً',
-                  stat: '+35%',
-                  statLabel: 'معدل التحويل'
+                  title: 'رفع احتمالية الشراء',
+                  desc: 'بمجرد وجود 5 تقييمات موثّقة',
+                  stat: '+270%',
+                  statLabel: 'احتمالية الشراء',
+                  source: 'Northwestern Spiegel',
+                  sourceUrl: 'https://spiegel.medill.northwestern.edu/how-online-reviews-influence-sales/',
                 },
                 {
                   emoji: '🛒',
                   color: 'from-blue-400 to-indigo-500',
                   bgColor: 'bg-blue-50',
-                  title: 'رفع قيمة السلة',
-                  desc: 'منح العميل الجرأة والثقة لشراء منتجات أغلى وبكميات أكثر',
-                  stat: '+28%',
-                  statLabel: 'قيمة الطلب'
+                  title: 'زيادة المبيعات المباشرة',
+                  desc: 'عند إضافة شارة "المشتري الموثّق"',
+                  stat: '+15%',
+                  statLabel: 'مبيعات مباشرة',
+                  source: 'AMA',
+                  sourceUrl: 'https://www.ama.org/marketing-news/the-power-of-verified-reviews-in-shaping-buying-decisions-and-building-brand-trust/',
                 },
                 {
                   emoji: '📈',
                   color: 'from-green-400 to-emerald-500',
                   bgColor: 'bg-green-50',
-                  title: 'مضاعفة نتائج الإعلانات',
-                  desc: 'تحويل الزوار الجدد إلى مشترين بسرعة بفضل ضمان طرف ثالث محايد',
-                  stat: '2x',
-                  statLabel: 'ROI الإعلانات'
+                  title: 'مضاعفة معدل التحويل',
+                  desc: 'للمنتجات مرتفعة السعر عند عرض تقييمات موثّقة',
+                  stat: '+380%',
+                  statLabel: 'معدل التحويل',
+                  source: 'Capital One Shopping',
+                  sourceUrl: 'https://capitaloneshopping.com/research/online-reviews-statistics/',
                 },
               ].map((item, i) => (
                 <div
@@ -298,6 +304,16 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                     </span>
                     <span className="text-gray-500 text-sm">{item.statLabel}</span>
                   </div>
+
+                  {/* Source */}
+                  <a
+                    href={item.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-block text-xs italic text-gray-500 hover:text-green-700 hover:underline"
+                  >
+                    المصدر: {item.source}
+                  </a>
                 </div>
               ))}
             </div>
