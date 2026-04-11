@@ -113,13 +113,37 @@ const faqItems = [
   {
     q: 'كيف أبدأ؟',
     a: (
-      <p className="text-gray-700 leading-relaxed">
-        ثبّت تطبيق &quot;مشتري موثّق&quot; من سوق تطبيقات سلة، وسيبدأ النظام تلقائيًا بتوثيق تقييمات متجرك فور استلامها. ابدأ الآن من
-        <Link href="/signup" className="text-green-700 font-semibold hover:underline mr-1">
-          صفحة التسجيل
-        </Link>
-        .
-      </p>
+      <div className="text-gray-700 leading-relaxed space-y-3">
+        <p>
+          حمّل تطبيق &quot;مشتري موثّق&quot; من سوق تطبيقات سلة، وسيبدأ النظام تلقائيًا بتوثيق تقييمات متجرك فور استلامها.
+        </p>
+        <ul className="list-disc list-inside space-y-1">
+          <li>
+            تحميل التطبيق من{' '}
+            <a
+              href="https://apps.salla.sa/ar/app/1180703836"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-green-700 font-semibold hover:underline"
+            >
+              سوق تطبيقات سلة
+            </a>
+            .
+          </li>
+          <li>
+            شاهد{' '}
+            <a
+              href="https://youtube.com/shorts/s6gBXoANREY"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-green-700 font-semibold hover:underline"
+            >
+              طريقة الربط بالفيديو
+            </a>
+            .
+          </li>
+        </ul>
+      </div>
     ),
   },
 ];
@@ -211,12 +235,14 @@ export default function FAQPage() {
             <p className="text-gray-600 mb-6">
               ابدأ بجمع تقييمات حقيقية بعد الشراء وانشرها بعلامة &ldquo;مشتري موثّق&rdquo;.
             </p>
-            <Link
-              href="/signup"
+            <a
+              href="https://apps.salla.sa/ar/app/1180703836"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-block bg-green-700 text-white px-8 py-3 rounded-full text-md shadow-md hover:bg-green-800 hover:scale-105 transition-all duration-200"
             >
               ابدأ الآن
-            </Link>
+            </a>
           </div>
         </section>
 
