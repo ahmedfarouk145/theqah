@@ -143,13 +143,6 @@ const faqItems = [
             .
           </li>
         </ul>
-        <p>
-          أو ابدأ الآن من
-          <Link href="/signup" className="text-green-700 font-semibold hover:underline mr-1">
-            صفحة التسجيل
-          </Link>
-          .
-        </p>
       </div>
     ),
   },
