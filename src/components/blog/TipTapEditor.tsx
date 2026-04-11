@@ -8,7 +8,10 @@ import LinkExtension from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useEffect, useRef, useState } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
+// Use `blogStorage` (bound to the `blog` Firebase app), not the default
+// `storage`. The blog editor signs in via `blogAuth`, so only `blogStorage`
+// carries the right auth token to satisfy Storage Rules for /blog/*.
+import { blogStorage } from '@/lib/firebase';
 
 interface Props {
     content: string;
@@ -77,13 +80,17 @@ export default function TipTapEditor({ content, onChange }: Props) {
         setUploading(true);
         try {
             const ext = file.name.split('.').pop() || 'jpg';
-            const storageRef = ref(storage, `blog/content/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`);
+            const storageRef = ref(blogStorage, `blog/content/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`);
             await uploadBytes(storageRef, file, { contentType: file.type });
             const url = await getDownloadURL(storageRef);
             editor.chain().focus().setImage({ src: url }).run();
         } catch (err) {
             console.error('Image upload error:', err);
-            alert('خطأ في رفع الصورة');
+            // Surface the real error code so misconfigurations (auth, rules,
+            // CORS, quota) are visible to the user without opening devtools.
+            const code = (err as { code?: string })?.code || '';
+            const message = (err as { message?: string })?.message || String(err);
+            alert(`خطأ في رفع الصورة${code ? ` (${code})` : ''}: ${message}`);
         } finally {
             setUploading(false);
         }

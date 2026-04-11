@@ -32,6 +32,12 @@ const storage: FirebaseStorage = getStorage(app);
 const blogApp: FirebaseApp =
   getApps().find((a) => a.name === "blog") ?? initializeApp(firebaseConfig, "blog");
 const blogAuth: Auth = getAuth(blogApp);
+// Storage instance bound to `blogApp` — required so that uploads from the
+// blog editor carry the blog session's auth token. Using the default
+// `storage` (bound to `app`) here would make Storage Rules see the blog
+// user as anonymous, because the default `app`'s auth state is empty
+// during a blog-only session.
+const blogStorage: FirebaseStorage = getStorage(blogApp);
 
 // App Check is DISABLED temporarily - reCAPTCHA domain needs to be configured
 // To re-enable: go to https://www.google.com/recaptcha/admin and add www.theqah.com.sa
@@ -50,5 +56,5 @@ if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY)
 setPersistence(auth, browserLocalPersistence).catch(() => { });
 setPersistence(blogAuth, browserLocalPersistence).catch(() => { });
 
-export { app, auth, db, storage, appCheck, blogApp, blogAuth };
+export { app, auth, db, storage, appCheck, blogApp, blogAuth, blogStorage };
 

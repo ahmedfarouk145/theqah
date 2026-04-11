@@ -9,7 +9,10 @@ import dynamic from 'next/dynamic';
 import axios from '@/lib/axiosInstance';
 import { Loader2, Plus, Pencil, Trash2, Eye, EyeOff, ArrowRight, Save, X, Upload } from 'lucide-react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
+// Cover uploads must use `blogStorage` (bound to the `blog` Firebase app)
+// not the default `storage`. The blog editor authenticates via `blogAuth`,
+// so only `blogStorage` carries the right token for Storage Rules.
+import { blogStorage } from '@/lib/firebase';
 
 const TipTapEditor = dynamic(() => import('@/components/blog/TipTapEditor'), { ssr: false });
 
@@ -75,13 +78,17 @@ export default function BlogManage() {
         setUploadingCover(true);
         try {
             const ext = file.name.split('.').pop() || 'jpg';
-            const storageRef = ref(storage, `blog/covers/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`);
+            const storageRef = ref(blogStorage, `blog/covers/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`);
             await uploadBytes(storageRef, file, { contentType: file.type });
             const url = await getDownloadURL(storageRef);
             setCoverImage(url);
         } catch (err) {
             console.error('Cover upload error:', err);
-            alert('خطأ في رفع الصورة');
+            // Surface the real Firebase Storage error so failures are
+            // diagnosable without opening devtools.
+            const code = (err as { code?: string })?.code || '';
+            const message = (err as { message?: string })?.message || String(err);
+            alert(`خطأ في رفع الصورة${code ? ` (${code})` : ''}: ${message}`);
         } finally {
             setUploadingCover(false);
         }
