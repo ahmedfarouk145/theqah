@@ -6,8 +6,18 @@
  */
 
 import { log } from '@/lib/logger';
+import { createHash } from 'crypto';
 
 const ZID_API_URL = process.env.ZID_API_URL || 'https://api.zid.sa/v1';
+
+/** Generate a deterministic hash for Zid review DOM matching.
+ *  The widget computes the same hash from DOM data-time + reviewer name. */
+function zidDomHash(authorName: string, createdAt: string): string {
+    return createHash('sha256')
+        .update(authorName + '|' + createdAt)
+        .digest('hex')
+        .substring(0, 16); // 16 hex chars = 64 bits, collision-safe for per-store reviews
+}
 
 /** Zid review from API response — matches actual Zid API schema */
 export interface ZidApiReview {
@@ -186,6 +196,11 @@ export class ZidReviewSyncService {
         storeUid: string,
         subscriptionStart?: number
     ): Promise<boolean> {
+        // Skip anonymous reviews — cannot generate a reliable DOM hash
+        if (zidReview.is_anonymous) {
+            return false;
+        }
+
         const reviewDocId = `zid_${zidReview.id}`;
 
         // Check if already saved
@@ -227,6 +242,8 @@ export class ZidReviewSyncService {
             publishedAt: reviewCreatedAt || Date.now(),
             needsSallaId: false,
             zidReviewId: zidReview.id,
+            zidCreatedAt: zidReview.created_at || '',
+            zidDomHash: zidDomHash(zidReview.customer?.name || '', zidReview.created_at || ''),
             images: zidReview.images || [],
             reply: zidReview.reply || null,
             isAnonymous: zidReview.is_anonymous || false,
