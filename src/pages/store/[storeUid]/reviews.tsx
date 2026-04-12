@@ -335,7 +335,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
                         {store.domain && (
                             <>
                                 <a
-                                    href={`https://${store.domain}`}
+                                    href={store.domain.startsWith("http") ? store.domain : `https://${store.domain}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-gray-400 hover:text-emerald-600 transition-colors duration-200"
