@@ -53,12 +53,13 @@ export class StoreService {
 
 
         const s = data.salla || {};
-        const name = s.storeName ?? data.storeName ?? null;
+        const z = data.zid || {};
+        const name = s.storeName ?? z.storeName ?? data.storeName ?? null;
 
         return {
             storeUid: store.id || storeUid,
             name,
-            domain: s.domain ?? null,
+            domain: s.domain ?? z.domain ?? null,
             platform: data.platform ?? 'salla',
             salla: s,
         };
