@@ -37,8 +37,23 @@ export default function MyApp({ Component, pageProps }: AppProps) {
       <AuthProvider>
         <BlogAuthProvider>
           <Head>
-            <title>مشتري موثّق</title>
-            <meta name="description" content="مشتري موثّق - منصة توثيق التقييمات الآلية" />
+            <title>مشتري موثّق — منصة توثيق تقييمات المتاجر الإلكترونية وزيادة ثقة العملاء</title>
+            <meta name="description" content="أول منصة سعودية تربط كل تقييم بمشترٍ حقيقي عبر أتمتة كاملة. وثّق تقييمات متجرك على سلة وزد، واعرض شارة الثقة التي تدفع العميل للشراء فوراً وتضاعف مبيعاتك." />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+            {/* Open Graph */}
+            <meta property="og:type" content="website" />
+            <meta property="og:site_name" content="مشتري موثّق" />
+            <meta property="og:title" content="مشتري موثّق — وثّق تقييمات متجرك وضاعف مبيعاتك" />
+            <meta property="og:description" content="أول منصة سعودية تربط كل تقييم بمشترٍ حقيقي. شارة ثقة تدفع العميل للشراء فوراً." />
+            <meta property="og:image" content="https://www.theqah.com.sa/logo.png" />
+            <meta property="og:locale" content="ar_SA" />
+
+            {/* Twitter Card */}
+            <meta name="twitter:card" content="summary" />
+            <meta name="twitter:title" content="مشتري موثّق — وثّق تقييمات متجرك وضاعف مبيعاتك" />
+            <meta name="twitter:description" content="أول منصة سعودية تربط كل تقييم بمشترٍ حقيقي. شارة ثقة تدفع العميل للشراء فوراً." />
+            <meta name="twitter:image" content="https://www.theqah.com.sa/logo.png" />
           </Head>
           <Component {...pageProps} />
           <SpeedInsights />

@@ -1,6 +1,5 @@
 // src/pages/index.tsx
-'use client';
-
+import { useState, useCallback } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -9,6 +8,49 @@ import type { InferGetStaticPropsType, GetStaticProps } from 'next';
 
 import NavbarLanding from '@/components/NavbarLanding';
 import { URLS } from '@/config/constants';
+
+function YouTubeFacade({ videoId, title }: { videoId: string; title: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const handleClick = useCallback(() => setLoaded(true), []);
+
+  if (loaded) {
+    return (
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+        className="w-full"
+        style={{ height: '580px' }}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allowFullScreen
+        title={title}
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      className="relative w-full bg-black cursor-pointer group"
+      style={{ height: '580px' }}
+      aria-label={`تشغيل فيديو: ${title}`}
+    >
+      {/* YouTube thumbnail */}
+      <img
+        src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
+        alt={title}
+        className="absolute inset-0 w-full h-full object-cover"
+        loading="lazy"
+      />
+      {/* Play button overlay */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:bg-red-700 transition-colors">
+          <svg className="w-7 h-7 text-white mr-[-2px]" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </div>
+      </div>
+    </button>
+  );
+}
 
 const FeedbackWidget = dynamic(() => import('@/components/FeedbackWidget'), {
   ssr: false,
@@ -69,6 +111,31 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
         <link rel="canonical" href={`${URLS.CANONICAL_ORIGIN}/`} />
         <meta property="og:url" content={`${URLS.CANONICAL_ORIGIN}/`} />
         <meta name="robots" content="index, follow" />
+        {/* Structured data - all values are hardcoded/trusted, no user input */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'SoftwareApplication',
+              name: 'مشتري موثّق',
+              url: URLS.CANONICAL_ORIGIN,
+              applicationCategory: 'BusinessApplication',
+              operatingSystem: 'Web',
+              description: 'أول منصة سعودية تربط كل تقييم بمشترٍ حقيقي عبر أتمتة كاملة لتوثيق تقييمات المتاجر الإلكترونية.',
+              offers: {
+                '@type': 'Offer',
+                price: '0',
+                priceCurrency: 'SAR',
+              },
+              aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: '5',
+                ratingCount: String(appReviews.length),
+              },
+            }),
+          }}
+        />
       </Head>
       <NavbarLanding />
       <div className="h-20" aria-hidden="true" />
@@ -95,6 +162,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 alt="شعار مشتري موثّق"
                 width={450}
                 height={450}
+                sizes="(max-width: 640px) 200px, (max-width: 768px) 300px, (max-width: 1024px) 400px, 450px"
                 className="mx-auto relative drop-shadow-2xl transition-transform duration-500 group-hover:scale-105 w-[200px] h-[200px] sm:w-[300px] sm:h-[300px] md:w-[400px] md:h-[400px] lg:w-[450px] lg:h-[450px]"
                 priority
               />
@@ -179,14 +247,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
               <div className="text-center">
                 <h3 className="text-lg font-bold text-green-900 mb-4">ماهو مشتري موثّق؟</h3>
                 <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
-                  <iframe
-                    src="https://www.youtube.com/embed/UqvdRG1ogN8"
-                    className="w-full"
-                    style={{ height: '580px' }}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                    allowFullScreen
-                    title="ماهو مشتري موثّق"
-                  />
+                  <YouTubeFacade videoId="UqvdRG1ogN8" title="ماهو مشتري موثّق" />
                 </div>
               </div>
 
@@ -194,14 +255,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
               <div className="text-center">
                 <h3 className="text-lg font-bold text-green-900 mb-4">كيف تربط متجرك؟</h3>
                 <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
-                  <iframe
-                    src="https://www.youtube.com/embed/s6gBXoANREY"
-                    className="w-full"
-                    style={{ height: '580px' }}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                    allowFullScreen
-                    title="كيف تربط متجرك مع مشتري موثق"
-                  />
+                  <YouTubeFacade videoId="s6gBXoANREY" title="كيف تربط متجرك مع مشتري موثق" />
                 </div>
               </div>
 
@@ -209,14 +263,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
               <div className="text-center">
                 <h3 className="text-lg font-bold text-green-900 mb-4">شاهد كيف يعمل على متجر حقيقي</h3>
                 <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
-                  <iframe
-                    src="https://www.youtube.com/embed/rFl9wS8s4c0"
-                    className="w-full"
-                    style={{ height: '580px' }}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                    allowFullScreen
-                    title="شاهد كيف يعمل مشتري موثق على متجر حقيقي"
-                  />
+                  <YouTubeFacade videoId="rFl9wS8s4c0" title="شاهد كيف يعمل مشتري موثق على متجر حقيقي" />
                 </div>
                 <a
                   href="https://youtube.com/shorts/rFl9wS8s4c0?si=SAqoTt9DifF8GE7H"

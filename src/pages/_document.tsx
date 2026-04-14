@@ -38,9 +38,16 @@ export default function Document() {
                     }}
                 />
 
-                {/* Preconnect to Google Fonts for faster font loading */}
+                {/* Google Fonts - loaded as link instead of CSS @import to avoid render-blocking */}
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+                <link
+                    href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap"
+                    rel="stylesheet"
+                />
+
+                {/* Preconnect to YouTube thumbnails (for video facade pattern) */}
+                <link rel="preconnect" href="https://img.youtube.com" />
 
                 {/* Preconnect to Firebase services */}
                 <link rel="preconnect" href="https://firebaseapp.com" />

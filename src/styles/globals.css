@@ -1,6 +1,3 @@
-/* ==== Font (Cairo) ==== */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap');
-
 /* ==== Tailwind Layers ==== */
 @tailwind base;
 @tailwind components;
@@ -320,6 +317,21 @@ textarea::placeholder {
     animation: glow-pulse 2s ease-in-out infinite;
   }
 
+
+  /* Respect reduced-motion preferences & improve animation performance */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-float,
+    .animate-glow-pulse,
+    .animate-shimmer,
+    .animate-shine {
+      animation: none !important;
+    }
+  }
+
+  .animate-float,
+  .animate-glow-pulse {
+    will-change: transform, opacity;
+  }
 
   /* Scrollbar (webkit) */
   .nice-scroll::-webkit-scrollbar {
