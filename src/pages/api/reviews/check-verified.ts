@@ -48,6 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const result = await verificationService.getVerifiedReviews(storeId, productIdStr);
 
     // Public response: reviewId for navigation, sallaReviewId for Salla DOM, zidDomHash for Zid DOM
+    // Also includes author/text/product for JSON-LD schema injection (AI search engines)
     return res.status(200).json({
       hasVerified: result.hasVerified,
       count: result.count,
@@ -56,8 +57,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         sallaReviewId: r.sallaReviewId || null,
         zidDomHash: (r as unknown as Record<string, unknown>).zidDomHash as string || null,
         productId: r.productId || null,
+        productName: r.productName || null,
         stars: r.stars,
         verified: r.verified,
+        authorName: r.author?.displayName || null,
+        text: r.text || null,
+        publishedAt: r.publishedAt || null,
       }))
     });
 

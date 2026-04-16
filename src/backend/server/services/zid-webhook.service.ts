@@ -17,6 +17,7 @@ export interface ZidOrder {
     order_status?: string;            // ZID webhook uses "order_status"
     payment_status?: string;
     customer?: {
+        id?: string | number;
         name?: string;
         email?: string;
         mobile?: string;
@@ -285,6 +286,13 @@ export class ZidWebhookService {
         const orderTotal = order.total ?? order.order_total ?? null;
         const currency = order.currency ?? order.currency_code ?? null;
 
+        // Extract customer info for later review verification (Option C)
+        // Reviews are matched against orders by customer ID + product ID
+        const customerId = order.customer?.id != null ? String(order.customer.id) : null;
+        const customerEmail = order.customer?.email || null;
+        const customerMobile = order.customer?.mobile || null;
+        const customerName = order.customer?.name || null;
+
         await db.collection('orders').doc(`zid_${orderId}`).set(
             {
                 id: orderId,
@@ -299,6 +307,11 @@ export class ZidWebhookService {
                 platform: 'zid',
                 total: orderTotal,
                 currency,
+                // Customer info for review verification matching
+                customerId,
+                customerEmail,
+                customerMobile,
+                customerName,
                 reviewChecked: false,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
@@ -306,7 +319,7 @@ export class ZidWebhookService {
             { merge: true }
         );
 
-        console.log(`[ZID_WEBHOOK] Order created: ${orderId} (${productIds.length} products) number=${orderNumber}`);
+        console.log(`[ZID_WEBHOOK] Order created: ${orderId} (${productIds.length} products) number=${orderNumber} customerId=${customerId}`);
     }
 
     /**

@@ -211,19 +211,49 @@ export class ZidReviewSyncService {
             return false; // Already synced
         }
 
-        // Determine verification status
+        // Determine verification status (Option C: verify against actual Zid order)
+        // verified = reviewer has a real paid/delivered order for this product AND review is within subscription period
         const reviewCreatedAt = new Date(zidReview.created_at).getTime();
-        const verified = subscriptionStart
+        const withinSubscription = subscriptionStart
             ? reviewCreatedAt >= subscriptionStart
             : true;
+
+        // Find matching order: same store, same customer, same product, paid status
+        const customerId = zidReview.customer?.id != null ? String(zidReview.customer.id) : null;
+        const productId = zidReview.product.id;
+        let matchingOrderId = '';
+        let matchingOrderNumber = '';
+
+        if (customerId && productId) {
+            const orderSnap = await db.collection('orders')
+                .where('storeUid', '==', storeUid)
+                .where('customerId', '==', customerId)
+                .where('productIds', 'array-contains', productId)
+                .limit(1)
+                .get();
+
+            if (!orderSnap.empty) {
+                const orderDoc = orderSnap.docs[0];
+                const orderData = orderDoc.data();
+                // Accept only orders that are paid (payment verified)
+                const paymentStatus = String(orderData.paymentStatus || '').toLowerCase();
+                if (paymentStatus === 'paid') {
+                    matchingOrderId = String(orderData.id || '');
+                    matchingOrderNumber = String(orderData.number || '');
+                }
+            }
+        }
+
+        const hasMatchingOrder = matchingOrderId !== '';
+        const verified = withinSubscription && hasMatchingOrder;
 
         // Map to internal Review format
         await db.collection('reviews').doc(reviewDocId).set({
             reviewId: reviewDocId,
             storeUid,
             platform: 'zid',
-            orderId: '',        // Zid reviews don't always link to specific order in response
-            orderNumber: '',
+            orderId: matchingOrderId,      // Link to the matched order (empty if no match)
+            orderNumber: matchingOrderNumber,
             productId: zidReview.product.id,
             productName: zidReview.product.name || '',
             source: 'zid_sync',
@@ -237,7 +267,7 @@ export class ZidReviewSyncService {
                 mobile: '',
             },
             status: 'approved',
-            trustedBuyer: zidReview.product.bought_this_item || false,
+            trustedBuyer: hasMatchingOrder, // Based on actual matching paid order
             verified,
             publishedAt: reviewCreatedAt || Date.now(),
             needsSallaId: false,

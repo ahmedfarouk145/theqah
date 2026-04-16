@@ -204,6 +204,92 @@
     }
   }
 
+  // ——— JSON-LD schema injection for AI search engines ———
+  function injectReviewSchemaJsonLd(verifiedReviews, storeUid) {
+    // Remove any previously injected Theqah JSON-LD to avoid duplicates
+    const existing = document.getElementById('theqah-reviews-jsonld');
+    if (existing) existing.remove();
+
+    const validReviews = (Array.isArray(verifiedReviews) ? verifiedReviews : [])
+      .filter(r => r && r.stars && r.authorName);
+    if (validReviews.length === 0) return;
+
+    // Extract product info from page JSON-LD if available
+    let productName = null;
+    let productUrl = null;
+    try {
+      const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+      for (const s of scripts) {
+        const data = JSON.parse(s.textContent);
+        if (data['@type']?.toLowerCase() === 'product') {
+          productName = data.name || null;
+          productUrl = data.url || null;
+          break;
+        }
+      }
+    } catch { /* ignore */ }
+
+    const reviewSchema = validReviews.map(r => {
+      const review = {
+        '@type': 'Review',
+        'author': { '@type': 'Person', 'name': r.authorName },
+        'reviewRating': {
+          '@type': 'Rating',
+          'ratingValue': r.stars,
+          'bestRating': 5,
+          'worstRating': 1
+        },
+        'publisher': {
+          '@type': 'Organization',
+          'name': 'مشتري موثق - Theqah',
+          'url': SCRIPT_ORIGIN
+        }
+      };
+      if (r.text) review.reviewBody = r.text;
+      if (r.publishedAt) review.datePublished = new Date(r.publishedAt).toISOString().split('T')[0];
+      if (r.productName || productName) {
+        review.itemReviewed = {
+          '@type': 'Product',
+          'name': r.productName || productName
+        };
+        if (productUrl) review.itemReviewed.url = productUrl;
+      }
+      return review;
+    });
+
+    // Calculate aggregate rating
+    const totalStars = validReviews.reduce((sum, r) => sum + r.stars, 0);
+    const avgRating = (totalStars / validReviews.length).toFixed(1);
+
+    const schema = {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      'name': 'مشتري موثق - Theqah',
+      'url': SCRIPT_ORIGIN,
+      'review': reviewSchema
+    };
+
+    // If on a product page, also add AggregateRating
+    if (productName || validReviews[0]?.productName) {
+      schema['@type'] = 'Product';
+      schema.name = productName || validReviews[0].productName;
+      if (productUrl) schema.url = productUrl;
+      schema.aggregateRating = {
+        '@type': 'AggregateRating',
+        'ratingValue': avgRating,
+        'reviewCount': validReviews.length,
+        'bestRating': 5,
+        'worstRating': 1
+      };
+    }
+
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id = 'theqah-reviews-jsonld';
+    script.textContent = JSON.stringify(schema);
+    document.head.appendChild(script);
+  }
+
   // ——— Fetch and add logos helper ———
   async function fetchAndAddLogos(storeUid) {
     try {
@@ -211,6 +297,9 @@
       const checkResult = await checkVerifiedReviews(storeUid, productId);
 
       if (checkResult.hasVerified) {
+        // Inject JSON-LD schema for AI search engines (uses full review data)
+        injectReviewSchemaJsonLd(checkResult.reviews, storeUid);
+
         const verifiedReviews = (Array.isArray(checkResult.reviews) ? checkResult.reviews : [])
           .filter(r => r && r.sallaReviewId)
           .map(r => ({
