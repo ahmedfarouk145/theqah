@@ -40,6 +40,7 @@ interface BlogPost {
     status: 'draft' | 'published';
     publishedAt?: unknown;
     createdAt?: unknown;
+    domain?: string | null;
     viewCount: number;
 }
 
@@ -64,6 +65,7 @@ export default function BlogManage() {
     const [uploadingCover, setUploadingCover] = useState(false);
     const [seoTitle, setSeoTitle] = useState('');
     const [seoDescription, setSeoDescription] = useState('');
+    const [domain, setDomain] = useState('');
     const coverInputRef = useRef<HTMLInputElement>(null);
 
     const handleCoverUpload = async (file: File) => {
@@ -130,6 +132,7 @@ export default function BlogManage() {
         setCoverImage('');
         setSeoTitle('');
         setSeoDescription('');
+        setDomain('');
         setEditingPost(null);
     };
 
@@ -148,6 +151,7 @@ export default function BlogManage() {
         setCoverImage(post.coverImage || '');
         setSeoTitle('');
         setSeoDescription('');
+        setDomain(post.domain || '');
         setEditingPost(post);
         setView('edit');
     };
@@ -161,7 +165,7 @@ export default function BlogManage() {
         try {
             const token = await getToken();
             const tags = tagsStr.split(/[,،]/).map((t) => t.trim()).filter(Boolean);
-            const payload = { title, excerpt, content, category, tags, author, coverImage: coverImage || null, status, seoTitle, seoDescription };
+            const payload = { title, excerpt, content, category, tags, author, coverImage: coverImage || null, status, seoTitle, seoDescription, domain: domain.trim() || null };
 
             if (editingPost) {
                 await axios.put(`/api/blog/${editingPost.id}`, payload, {
@@ -516,6 +520,20 @@ export default function BlogManage() {
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                                             placeholder="وصف مخصص لمحركات البحث"
                                         />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">النطاق المخصص (Domain)</label>
+                                        <input
+                                            type="text"
+                                            dir="ltr"
+                                            value={domain}
+                                            onChange={(e) => setDomain(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
+                                            placeholder="blog.example.com"
+                                        />
+                                        <p className="text-[11px] text-gray-400 mt-1">
+                                            اترك الحقل فارغًا لاستخدام النطاق الافتراضي. عند تحديده سيُستخدم كـ canonical ورابط OpenGraph.
+                                        </p>
                                     </div>
                                 </div>
                             </details>

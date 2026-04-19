@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireBlogOwner } from "@/backend/server/auth/requireBlogOwner";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { Timestamp } from "firebase-admin/firestore";
+import { normalizeDomain } from "@/backend/server/types/blog.types";
 
 function slugify(text: string): string {
     return text
@@ -34,10 +35,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === "POST") {
-        const { title, excerpt, content, coverImage, author, category, tags, status, seoTitle, seoDescription } = req.body;
+        const { title, excerpt, content, coverImage, author, category, tags, status, seoTitle, seoDescription, domain } = req.body;
 
         if (!title || !content) {
             return res.status(400).json({ error: "title and content are required" });
+        }
+
+        // Reject non-empty domains that fail to parse so the owner notices a
+        // typo immediately rather than silently saving an invalid host.
+        if (typeof domain === "string" && domain.trim() && !normalizeDomain(domain)) {
+            return res.status(400).json({ error: "invalid domain" });
         }
 
         const slug = slugify(title);
@@ -62,6 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             updatedAt: now,
             seoTitle: seoTitle || null,
             seoDescription: seoDescription || null,
+            domain: normalizeDomain(domain),
             viewCount: 0,
         };
 

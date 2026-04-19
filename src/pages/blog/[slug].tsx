@@ -26,6 +26,8 @@ interface BlogPostFull {
     viewCount: number;
     seoTitle: string | null;
     seoDescription: string | null;
+    /** Owner-chosen canonical host (e.g. "blog.example.com"), or null to fall back to site default. */
+    domain: string | null;
 }
 
 /**
@@ -118,6 +120,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ params, re
         viewCount: (data.viewCount || 0) + 1,
         seoTitle: data.seoTitle || null,
         seoDescription: data.seoDescription || null,
+        domain: data.domain || null,
     };
 
     // Fetch related posts (same category, different slug)
@@ -163,7 +166,11 @@ function readingTime(html: string): number {
 export default function BlogPostPage({ post, related }: Props) {
     const pageTitle = post.seoTitle || post.title;
     const pageDesc = post.seoDescription || post.excerpt;
-    const canonicalUrl = `${URLS.CANONICAL_ORIGIN}/blog/${post.slug}`;
+    // When the owner set a custom domain for this post, use it as the canonical
+    // origin — this drives <link rel="canonical">, og:url, and JSON-LD @id so
+    // search engines & social crawlers attribute the post to the chosen host.
+    const postOrigin = post.domain ? `https://${post.domain}` : URLS.CANONICAL_ORIGIN;
+    const canonicalUrl = `${postOrigin}/blog/${post.slug}`;
     const ogImage = post.coverImage || `${URLS.CANONICAL_ORIGIN}/logo.png`;
 
     // BlogPosting JSON-LD — enriched for AI crawlers (ChatGPT Search, Perplexity,
