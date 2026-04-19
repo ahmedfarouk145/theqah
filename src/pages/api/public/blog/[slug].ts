@@ -48,5 +48,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         viewCount: (data.viewCount || 0) + 1,
         seoTitle: data.seoTitle || null,
         seoDescription: data.seoDescription || null,
+        domain: data.domain || null,
     });
 }

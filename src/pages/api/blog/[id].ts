@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireBlogOwner } from "@/backend/server/auth/requireBlogOwner";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { Timestamp } from "firebase-admin/firestore";
+import { normalizeDomain } from "@/backend/server/types/blog.types";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     try {
@@ -31,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const snap = await docRef.get();
         if (!snap.exists) return res.status(404).json({ error: "not found" });
 
-        const { title, excerpt, content, coverImage, author, category, tags, status, seoTitle, seoDescription } = req.body;
+        const { title, excerpt, content, coverImage, author, category, tags, status, seoTitle, seoDescription, domain } = req.body;
         const existing = snap.data()!;
         const now = Timestamp.now();
 
@@ -46,6 +47,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (tags !== undefined) updates.tags = tags;
         if (seoTitle !== undefined) updates.seoTitle = seoTitle;
         if (seoDescription !== undefined) updates.seoDescription = seoDescription;
+        if (domain !== undefined) {
+            if (typeof domain === "string" && domain.trim() && !normalizeDomain(domain)) {
+                return res.status(400).json({ error: "invalid domain" });
+            }
+            updates.domain = normalizeDomain(domain);
+        }
 
         if (status !== undefined) {
             updates.status = status;
