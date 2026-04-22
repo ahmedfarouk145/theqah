@@ -103,7 +103,7 @@ export class StoreService {
             if (!token) return null;
 
             const info = await fetchStoreInfo(token);
-            const name = info?.store?.name?.trim() || info?.merchant?.name?.trim() || null;
+            const name = info?.data?.name?.trim() || null;
             if (!name) return null;
 
             // Cache back — fire-and-forget; failures here shouldn't affect the
