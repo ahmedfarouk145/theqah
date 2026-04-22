@@ -97,9 +97,13 @@ export class StoreService {
     private async fetchAndCacheSallaName(storeUid: string): Promise<string | null> {
         try {
             const { dbAdmin } = await import('@/lib/firebaseAdmin');
-            const { getOwnerAccessToken, fetchStoreInfo } = await import('@/lib/sallaClient');
-            const db = dbAdmin();
-            const token = await getOwnerAccessToken(db, storeUid);
+            const { fetchStoreInfo } = await import('@/lib/sallaClient');
+            const { SallaTokenService } = await import('./salla-token.service');
+
+            // Use the token service — it refreshes expired tokens automatically
+            // via the stored refresh_token. Raw owners/{uid}.oauth.access_token
+            // is frequently stale on older stores.
+            const token = await SallaTokenService.getInstance().getValidAccessToken(storeUid);
             if (!token) return null;
 
             const info = await fetchStoreInfo(token);
@@ -108,7 +112,7 @@ export class StoreService {
 
             // Cache back — fire-and-forget; failures here shouldn't affect the
             // response since we already have the name in hand.
-            db.collection('stores').doc(storeUid).set(
+            dbAdmin().collection('stores').doc(storeUid).set(
                 { salla: { storeName: name }, updatedAt: Date.now() },
                 { merge: true }
             ).catch(() => { });
