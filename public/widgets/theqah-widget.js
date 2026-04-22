@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "3.0.0"; // Smart badge: message OR logos on Salla reviews
+  const SCRIPT_VERSION = "3.1.0"; // Certificate badge shows store name + verified count (or "newly joined" fallback)
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -186,6 +186,25 @@
   // trivially bypassable by editing the query string.
   function buildStoreCertificateUrl(storeUid) {
     return `${SCRIPT_ORIGIN}/store/${encodeURIComponent(storeUid)}/certificate`;
+  }
+
+  // ——— Fetch store profile (name + verified count) ———
+  async function fetchStoreProfile(storeUid) {
+    try {
+      const url = `${SCRIPT_ORIGIN}/api/public/store-profile?storeUid=${encodeURIComponent(storeUid)}`;
+      const res = await fetch(url, {
+        cache: 'default',
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return {
+        storeName: data?.store?.name || null,
+        verifiedCount: Number.isFinite(data?.stats?.totalReviews) ? data.stats.totalReviews : 0,
+      };
+    } catch {
+      return null;
+    }
   }
 
   // ——— Check verified reviews ———
@@ -515,7 +534,7 @@
   }
 
   // ——— إنشاء بادج شهادة توثيق التقييمات ———
-  function createCertificateBadge(lang = 'ar', theme = 'light') {
+  function createCertificateBadge(lang = 'ar', theme = 'light', profile = null) {
     // Check if certificate already exists
     if (document.querySelector('.theqah-certificate-badge')) return null;
 
@@ -531,14 +550,32 @@
     const isArabic = lang === 'ar';
     const isDark = theme === 'dark';
 
-    const title = isArabic
-      ? 'شهادة توثيق التقييمات'
-      : 'Verified Reviews Certificate';
+    const verifiedCount = Number.isFinite(profile?.verifiedCount) ? profile.verifiedCount : null;
+    const storeName = (profile?.storeName || '').trim();
+    const hasNoReviews = verifiedCount === 0;
 
-    // Updated subtitle as per user request (referencing "Verified Buyer Third Party")
-    const subtitle = isArabic
-      ? 'جميع تقييمات هذا المتجر مدققة من مشتري موثق "طرف ثالث" لضمان المصداقية'
-      : 'All store reviews are audited by verified buyer "Third Party" to ensure credibility';
+    let title;
+    if (hasNoReviews) {
+      title = isArabic ? 'شهادة توثيق التقييمات' : 'Verified Reviews Certificate';
+    } else if (verifiedCount && verifiedCount > 0) {
+      title = isArabic
+        ? (storeName ? `${storeName} · ${verifiedCount} تقييم موثق` : `${verifiedCount} تقييم موثق`)
+        : (storeName ? `${storeName} · ${verifiedCount} Verified Review${verifiedCount === 1 ? '' : 's'}` : `${verifiedCount} Verified Review${verifiedCount === 1 ? '' : 's'}`);
+    } else {
+      title = isArabic ? 'شهادة توثيق التقييمات' : 'Verified Reviews Certificate';
+    }
+
+    let subtitle;
+    if (hasNoReviews) {
+      const nameForMsg = storeName || (isArabic ? 'هذا المتجر' : 'this store');
+      subtitle = isArabic
+        ? `${storeName ? `متجر ${nameForMsg}` : nameForMsg} انضم حديثاً لمنصة مشتري موثق وإلى الآن لا يوجد تقييمات موثقة`
+        : `${nameForMsg} recently joined Mushtari Mowthaq and has no verified reviews yet`;
+    } else {
+      subtitle = isArabic
+        ? 'جميع تقييمات هذا المتجر مدققة من مشتري موثق "طرف ثالث" لضمان المصداقية'
+        : 'All store reviews are audited by verified buyer "Third Party" to ensure credibility';
+    }
 
     // Create the certificate container (Option 6: Transparent, No Border)
     const container = h('div', {
@@ -630,11 +667,11 @@
   }
 
   // ——— إدراج شهادة التوثيق في صفحة المتجر ———
-  function insertCertificateBadge(storeUid, lang, theme, position = 'auto') {
+  function insertCertificateBadge(storeUid, lang, theme, position = 'auto', profile = null) {
     // Check if already inserted
     const existing = document.querySelector('.theqah-certificate-badge');
     if (existing) {
-      // Fix for tabbed interfaces: If existing badge is hidden (e.g. in a hidden tab), 
+      // Fix for tabbed interfaces: If existing badge is hidden (e.g. in a hidden tab),
       // remove it so we can re-insert in the active location.
       if (existing.offsetParent === null) {
         existing.remove();
@@ -643,7 +680,7 @@
       }
     }
 
-    const certificate = createCertificateBadge(lang, theme);
+    const certificate = createCertificateBadge(lang, theme, profile);
     if (!certificate) return;
 
     // Smart Heuristics: find best placement based on position setting
@@ -745,9 +782,19 @@
 
   // ——— تركيب البادج الذكي ———
   async function mountOne(hostEl, store, lang, theme, certificatePosition = 'auto') {
+    // Fetch store profile (name + verified count) — cached per storeUid for the session
+    if (!G.storeProfile || G.storeProfile._storeUid !== store) {
+      const profile = await fetchStoreProfile(store);
+      if (profile) {
+        G.storeProfile = { ...profile, _storeUid: store };
+      } else {
+        G.storeProfile = { storeName: null, verifiedCount: null, _storeUid: store };
+      }
+    }
+
     // Always insert/update the certificate badge for subscribed stores
     // This runs on every mount/update check to handle tab switching
-    insertCertificateBadge(store, lang, theme, certificatePosition);
+    insertCertificateBadge(store, lang, theme, certificatePosition, G.storeProfile);
 
     // If already mounted, still try to add logos (reviews tab might have just become visible)
     if (hostEl.getAttribute("data-state") === "done") {
