@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "3.2.0"; // Certificate badge: gold 3D count beside logo with "تقييم موثق" label
+  const SCRIPT_VERSION = "3.3.0"; // Certificate count: self-contained dark medallion with polished-gold digits (bg-agnostic)
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -636,6 +636,10 @@
     headerRow.appendChild(logoLink);
 
     if (hasReviews) {
+      // Medallion plaque — a self-contained dark "coin" that carries its own
+      // contrast. The gold inside reads the same whether the host storefront
+      // page is pure white or fully dark, because the background/ring/shadows
+      // are computed against the plaque interior, not the page.
       const countBox = h('div', {
         style: `
           display: flex;
@@ -644,42 +648,92 @@
           justify-content: center;
           line-height: 1;
           flex-shrink: 0;
+          padding: 20px 30px 16px;
+          border-radius: 22px;
+          background:
+            radial-gradient(130% 120% at 30% 15%, #231a10 0%, #120c07 55%, #080503 100%);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 224, 150, 0.35),
+            inset 0 -2px 6px rgba(0, 0, 0, 0.65),
+            inset 0 0 0 1px rgba(255, 200, 90, 0.18),
+            0 0 0 1.5px #8a5e12,
+            0 14px 28px -10px rgba(0, 0, 0, 0.45),
+            0 2px 6px rgba(0, 0, 0, 0.25);
+          position: relative;
         `
       });
 
+      // Polished-metal gradient: highlight → warm mid → deep shadow → return
+      // highlight at the baseline (classic metallic "Fresnel" reading). Paired
+      // with filter:drop-shadow for depth, since text-shadow doesn't render
+      // through a transparent -webkit-text-fill-color.
       const countNumber = h('div', {
         style: `
           font-family: 'Cairo', system-ui, sans-serif;
           font-size: 72px;
           font-weight: 900;
-          color: #ffd700;
           line-height: 1;
           letter-spacing: -0.02em;
-          text-shadow:
-            1px 1px 0 #e6b800,
-            2px 2px 0 #cc9900,
-            3px 3px 0 #b38600,
-            4px 4px 0 #997300,
-            5px 5px 0 #806000,
-            6px 6px 10px rgba(0, 0, 0, 0.28),
-            0 0 24px rgba(255, 215, 0, 0.45);
-          transform: perspective(400px) rotateX(8deg);
-          transform-origin: center bottom;
           padding: 0 4px;
+          background: linear-gradient(
+            180deg,
+            #fff3c2 0%,
+            #ffd96a 22%,
+            #eab338 46%,
+            #a97519 72%,
+            #7a5412 90%,
+            #ffe992 100%
+          );
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          filter:
+            drop-shadow(0 1px 0 rgba(70, 45, 5, 0.9))
+            drop-shadow(0 3px 0 rgba(40, 25, 2, 0.65))
+            drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
+          transform: perspective(420px) rotateX(6deg);
+          transform-origin: center bottom;
         `
       }, String(verifiedCount));
 
+      // Thin gold filament separator — reads on the dark plaque interior.
+      const countDivider = h('div', {
+        style: `
+          width: 60%;
+          height: 1px;
+          margin: 12px 0 10px;
+          background: linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(234, 179, 56, 0.55) 30%,
+            rgba(255, 217, 106, 0.85) 50%,
+            rgba(234, 179, 56, 0.55) 70%,
+            transparent 100%
+          );
+        `
+      });
+
+      // Label uses the same metallic gradient at smaller scale — cohesive with
+      // the number and still legible because the plaque interior is the frame.
       const countLabel = h('div', {
         style: `
-          margin-top: 12px;
-          font-size: 16px;
+          font-family: 'Cairo', system-ui, sans-serif;
+          font-size: 13px;
           font-weight: 800;
-          color: ${isDark ? '#e2e8f0' : '#1f2937'};
-          letter-spacing: 0.02em;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          background: linear-gradient(180deg, #ffe08a 0%, #d9a535 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          filter: drop-shadow(0 1px 0 rgba(30, 18, 2, 0.8));
         `
       }, isArabic ? 'تقييم موثق' : (verifiedCount === 1 ? 'Verified Review' : 'Verified Reviews'));
 
       countBox.appendChild(countNumber);
+      countBox.appendChild(countDivider);
       countBox.appendChild(countLabel);
       headerRow.appendChild(countBox);
     }
