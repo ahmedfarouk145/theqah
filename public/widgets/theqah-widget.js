@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "3.3.0"; // Certificate count: self-contained dark medallion with polished-gold digits (bg-agnostic)
+  const SCRIPT_VERSION = "4.0.0"; // V4 "Royal Navy + Champagne": transparent bg, champagne title, navy medallion, gold cert-num chip
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -570,7 +570,22 @@
         : 'All store reviews are audited by verified buyer "Third Party" to ensure credibility';
     }
 
-    // Create the certificate container (Option 6: Transparent, No Border)
+    // Resolve the storeUid now — needed for both the certificate link and
+    // the deterministic cert code (djb2 → base36 → 6 chars).
+    const _certStoreUid = profile?._storeUid || G.storeData?.storeUid || G.storeUid || '';
+    const certUrl = _certStoreUid ? buildStoreCertificateUrl(_certStoreUid) : SCRIPT_ORIGIN;
+
+    const certCode = (uid) => {
+      if (!uid) return '';
+      let hash = 5381;
+      for (let i = 0; i < uid.length; i++) {
+        hash = ((hash * 33) ^ uid.charCodeAt(i)) >>> 0;
+      }
+      return 'TQ-' + (hash.toString(36).toUpperCase() + '000000').slice(0, 6);
+    };
+    const code = certCode(_certStoreUid);
+
+    // Root container — transparent, vertical stack, centered.
     const container = h('div', {
       class: 'theqah-certificate-badge',
       style: `
@@ -579,197 +594,159 @@
         text-align: center;
         background: transparent;
         border: none;
-        border-radius: 16px;
-        padding: 24px;
+        padding: 28px 20px 24px;
         margin: 20px auto;
         max-width: 500px;
-        position: relative;
-        overflow: visible;
-      `
-    });
-
-    // Link the certificate badge to the dedicated certificate page. The
-    // 4+ star floor is enforced server-side inside that route — do not
-    // append a `minStars` query param here (it would be bypassable).
-    const _certStoreUid = G.storeData?.storeUid || G.storeUid || '';
-    const certUrl = _certStoreUid
-      ? buildStoreCertificateUrl(_certStoreUid)
-      : SCRIPT_ORIGIN;
-    // Header row: logo + (optional) gold 3D count box, side by side
-    const headerRow = h('div', {
-      style: `
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 24px;
-        margin-bottom: 18px;
-        flex-wrap: wrap;
+        gap: 18px;
       `
     });
 
+    // Logo — 140px, soft navy drop-shadow so it lifts off any background.
     const logoLink = h('a', {
       href: certUrl,
       target: '_blank',
       rel: 'noopener noreferrer',
-      style: `
-        display: inline-block;
-        transition: transform 0.2s ease;
-        flex-shrink: 0;
-      `
+      style: `display: inline-block; transition: transform 0.2s ease;`
     });
-
     const logo = h('img', {
       src: CERTIFICATE_LOGO_URL,
       alt: isArabic ? 'مشتري موثق' : 'Mushtari Mowthaq',
       style: `
-        width: 130px;
-        height: 130px;
+        width: 140px;
+        height: 140px;
         object-fit: contain;
         background: transparent;
-        filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5));
+        filter: drop-shadow(0 6px 20px rgba(30, 42, 74, 0.3));
       `
     });
-
     logoLink.appendChild(logo);
     logoLink.onmouseover = function () { this.style.transform = 'scale(1.05)'; };
     logoLink.onmouseout = function () { this.style.transform = 'scale(1)'; };
-    headerRow.appendChild(logoLink);
+    container.appendChild(logoLink);
 
-    if (hasReviews) {
-      // Medallion plaque — a self-contained dark "coin" that carries its own
-      // contrast. The gold inside reads the same whether the host storefront
-      // page is pure white or fully dark, because the background/ring/shadows
-      // are computed against the plaque interior, not the page.
-      const countBox = h('div', {
-        style: `
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          line-height: 1;
-          flex-shrink: 0;
-          padding: 20px 30px 16px;
-          border-radius: 22px;
-          background:
-            radial-gradient(130% 120% at 30% 15%, #231a10 0%, #120c07 55%, #080503 100%);
-          box-shadow:
-            inset 0 1px 0 rgba(255, 224, 150, 0.35),
-            inset 0 -2px 6px rgba(0, 0, 0, 0.65),
-            inset 0 0 0 1px rgba(255, 200, 90, 0.18),
-            0 0 0 1.5px #8a5e12,
-            0 14px 28px -10px rgba(0, 0, 0, 0.45),
-            0 2px 6px rgba(0, 0, 0, 0.25);
-          position: relative;
-        `
-      });
-
-      // Polished-metal gradient: highlight → warm mid → deep shadow → return
-      // highlight at the baseline (classic metallic "Fresnel" reading). Paired
-      // with filter:drop-shadow for depth, since text-shadow doesn't render
-      // through a transparent -webkit-text-fill-color.
-      const countNumber = h('div', {
-        style: `
-          font-family: 'Cairo', system-ui, sans-serif;
-          font-size: 72px;
-          font-weight: 900;
-          line-height: 1;
-          letter-spacing: -0.02em;
-          padding: 0 4px;
-          background: linear-gradient(
-            180deg,
-            #fff3c2 0%,
-            #ffd96a 22%,
-            #eab338 46%,
-            #a97519 72%,
-            #7a5412 90%,
-            #ffe992 100%
-          );
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-          color: transparent;
-          filter:
-            drop-shadow(0 1px 0 rgba(70, 45, 5, 0.9))
-            drop-shadow(0 3px 0 rgba(40, 25, 2, 0.65))
-            drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
-          transform: perspective(420px) rotateX(6deg);
-          transform-origin: center bottom;
-        `
-      }, String(verifiedCount));
-
-      // Thin gold filament separator — reads on the dark plaque interior.
-      const countDivider = h('div', {
-        style: `
-          width: 60%;
-          height: 1px;
-          margin: 12px 0 10px;
-          background: linear-gradient(
-            90deg,
-            transparent 0%,
-            rgba(234, 179, 56, 0.55) 30%,
-            rgba(255, 217, 106, 0.85) 50%,
-            rgba(234, 179, 56, 0.55) 70%,
-            transparent 100%
-          );
-        `
-      });
-
-      // Label uses the same metallic gradient at smaller scale — cohesive with
-      // the number and still legible because the plaque interior is the frame.
-      const countLabel = h('div', {
-        style: `
-          font-family: 'Cairo', system-ui, sans-serif;
-          font-size: 13px;
-          font-weight: 800;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          background: linear-gradient(180deg, #ffe08a 0%, #d9a535 100%);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-          color: transparent;
-          filter: drop-shadow(0 1px 0 rgba(30, 18, 2, 0.8));
-        `
-      }, isArabic ? 'تقييم موثق' : (verifiedCount === 1 ? 'Verified Review' : 'Verified Reviews'));
-
-      countBox.appendChild(countNumber);
-      countBox.appendChild(countDivider);
-      countBox.appendChild(countLabel);
-      headerRow.appendChild(countBox);
-    }
-
-    // Title (store name or generic)
+    // Title — champagne gold gradient; switch to brighter champagne on dark.
+    const titleGradient = isDark
+      ? 'linear-gradient(180deg, #f0dcab, #b89968)'
+      : 'linear-gradient(180deg, #d9b879, #8a6d3b)';
     const titleEl = h('h3', {
       style: `
-        font-size: 24px;
+        font-size: 26px;
         font-weight: 900;
-        margin: 0 0 10px 0;
+        margin: 0;
         line-height: 1.3;
-        background: linear-gradient(to left, #10b981, #3b82f6);
+        background: ${titleGradient};
         -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
         background-clip: text;
-        color: #10b981;
+        -webkit-text-fill-color: transparent;
+        color: #8a6d3b;
         display: inline-block;
       `
     }, title);
+    container.appendChild(titleEl);
 
+    // Medallion — rounded navy rectangle with inline number + label, only
+    // shown when the store actually has verified reviews. Gold ring + inner
+    // rim lighting carry their own contrast regardless of host page colour.
+    if (hasReviews) {
+      const medallion = h('div', {
+        style: `
+          display: inline-flex;
+          align-items: center;
+          gap: 18px;
+          padding: 16px 38px;
+          border-radius: 16px;
+          background: linear-gradient(160deg, #2a3860 0%, #17213f 50%, #0a1020 100%);
+          box-shadow:
+            inset 0 1px 0 rgba(232, 212, 160, 0.3),
+            inset 0 -2px 6px rgba(0, 0, 0, 0.55),
+            0 0 0 1.5px #b89968,
+            0 12px 28px -10px rgba(10, 16, 32, 0.4);
+        `
+      });
+
+      const numEl = h('div', {
+        style: `
+          font-family: 'Cairo', system-ui, sans-serif;
+          font-size: 52px;
+          font-weight: 900;
+          line-height: 1;
+          letter-spacing: -0.02em;
+          background: linear-gradient(180deg, #fff8e1, #f0dcab 30%, #c9a86c 70%, #8a6d3b);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          filter: drop-shadow(0 2px 0 rgba(10, 16, 32, 0.8));
+        `
+      }, String(verifiedCount));
+
+      const lblEl = h('div', {
+        style: `
+          font-family: 'Cairo', system-ui, sans-serif;
+          font-size: 14px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          background: linear-gradient(180deg, #f0dcab, #b89968);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+        `
+      }, isArabic ? 'تقييم موثق' : (verifiedCount === 1 ? 'Verified Review' : 'Verified Reviews'));
+
+      medallion.appendChild(numEl);
+      medallion.appendChild(lblEl);
+      container.appendChild(medallion);
+    }
+
+    // Subtitle — mid-slate on light, periwinkle on dark.
     const subtitleEl = h('p', {
       style: `
-        font-size: 15px;
+        font-size: 13.5px;
         font-weight: 600;
-        color: ${isDark ? '#94a3b8' : '#4b5563'};
+        color: ${isDark ? '#9fb0d0' : '#475569'};
         margin: 0;
-        line-height: 1.7;
-        max-width: 420px;
-        margin-left: auto;
-        margin-right: auto;
+        line-height: 1.75;
+        max-width: 440px;
       `
     }, subtitle);
-
-    container.appendChild(headerRow);
-    container.appendChild(titleEl);
     container.appendChild(subtitleEl);
+
+    // Cert-number chip — gold-outlined capsule, reads as an official seal.
+    if (code) {
+      const certBorder = isDark ? 'rgba(184, 153, 104, 0.5)' : 'rgba(184, 153, 104, 0.55)';
+      const certColor = isDark ? '#c9a86c' : '#8a6d3b';
+      const certChip = h('div', {
+        style: `
+          margin: 4px 0 0;
+          padding: 7px 18px;
+          border-radius: 999px;
+          border: 1px solid ${certBorder};
+          color: ${certColor};
+          font-family: 'Cairo', system-ui, sans-serif;
+          font-size: 10.5px;
+          font-weight: 700;
+          letter-spacing: 0.22em;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        `
+      });
+      certChip.appendChild(document.createTextNode(isArabic ? 'رقم الشهادة · ' : 'CERTIFICATE · '));
+      const codeEl = h('span', {
+        style: `
+          font-family: 'Courier New', ui-monospace, monospace;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          color: inherit;
+        `
+      }, code);
+      certChip.appendChild(codeEl);
+      container.appendChild(certChip);
+    }
 
     return container;
   }
