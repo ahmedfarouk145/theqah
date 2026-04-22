@@ -57,10 +57,11 @@ export class StoreService {
 
         // Store name is saved at different paths depending on install flow:
         // - Zid webhook writes it to `name` at the root
-        // - Salla saves it at `salla.storeName`
+        // - Salla saves it at `salla.storeName` (if at all — older installs
+        //   never captured it, hence the lazy fetch below)
         // - Older rows may use `storeName` at root or nested `meta.storeName`
         // Mirrors the resolution order used by new-subscription-admin-alert.
-        const name =
+        let name: string | null =
             data.name ??
             s.storeName ??
             z.storeName ??
@@ -71,6 +72,14 @@ export class StoreService {
         const domain = s.domain ?? z.domain ?? data.domain?.base ?? null;
         const platform = data.platform ?? (data.provider === 'zid' || z?.storeId ? 'zid' : 'salla');
 
+        // Lazy-fetch + self-heal: the Salla install webhook never writes
+        // storeName, so stores installed pre-fix have `name: null`. Pull it
+        // from Salla's /store/info once per store and cache it back.
+        if (!name && platform === 'salla') {
+            const fetched = await this.fetchAndCacheSallaName(store.id || storeUid).catch(() => null);
+            if (fetched) name = fetched;
+        }
+
         return {
             storeUid: store.id || storeUid,
             name,
@@ -78,6 +87,36 @@ export class StoreService {
             platform,
             salla: s,
         };
+    }
+
+    /**
+     * Fetch a Salla store's display name from the /store/info endpoint using
+     * the owner's cached OAuth access token, then write it back to Firestore
+     * so subsequent lookups are synchronous. Returns null on any failure.
+     */
+    private async fetchAndCacheSallaName(storeUid: string): Promise<string | null> {
+        try {
+            const { dbAdmin } = await import('@/lib/firebaseAdmin');
+            const { getOwnerAccessToken, fetchStoreInfo } = await import('@/lib/sallaClient');
+            const db = dbAdmin();
+            const token = await getOwnerAccessToken(db, storeUid);
+            if (!token) return null;
+
+            const info = await fetchStoreInfo(token);
+            const name = info?.store?.name?.trim() || info?.merchant?.name?.trim() || null;
+            if (!name) return null;
+
+            // Cache back — fire-and-forget; failures here shouldn't affect the
+            // response since we already have the name in hand.
+            db.collection('stores').doc(storeUid).set(
+                { salla: { storeName: name }, updatedAt: Date.now() },
+                { merge: true }
+            ).catch(() => { });
+
+            return name;
+        } catch {
+            return null;
+        }
     }
 
     /**
