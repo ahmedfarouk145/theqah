@@ -53,13 +53,29 @@ export class StoreService {
 
 
         const s = data.salla || {};
-        const name = s.storeName ?? data.storeName ?? null;
+        const z = data.zid || {};
+
+        // Store name is saved at different paths depending on install flow:
+        // - Zid webhook writes it to `name` at the root
+        // - Salla saves it at `salla.storeName`
+        // - Older rows may use `storeName` at root or nested `meta.storeName`
+        // Mirrors the resolution order used by new-subscription-admin-alert.
+        const name =
+            data.name ??
+            s.storeName ??
+            z.storeName ??
+            data.storeName ??
+            data.meta?.storeName ??
+            null;
+
+        const domain = s.domain ?? z.domain ?? data.domain?.base ?? null;
+        const platform = data.platform ?? (data.provider === 'zid' || z?.storeId ? 'zid' : 'salla');
 
         return {
             storeUid: store.id || storeUid,
             name,
-            domain: s.domain ?? null,
-            platform: data.platform ?? 'salla',
+            domain,
+            platform,
             salla: s,
         };
     }
