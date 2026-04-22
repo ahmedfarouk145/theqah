@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "3.1.0"; // Certificate badge shows store name + verified count (or "newly joined" fallback)
+  const SCRIPT_VERSION = "3.2.0"; // Certificate badge: gold 3D count beside logo with "تقييم موثق" label
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -553,24 +553,17 @@
     const verifiedCount = Number.isFinite(profile?.verifiedCount) ? profile.verifiedCount : null;
     const storeName = (profile?.storeName || '').trim();
     const hasNoReviews = verifiedCount === 0;
+    const hasReviews = Number.isFinite(verifiedCount) && verifiedCount > 0;
 
-    let title;
-    if (hasNoReviews) {
-      title = isArabic ? 'شهادة توثيق التقييمات' : 'Verified Reviews Certificate';
-    } else if (verifiedCount && verifiedCount > 0) {
-      title = isArabic
-        ? (storeName ? `${storeName} · ${verifiedCount} تقييم موثق` : `${verifiedCount} تقييم موثق`)
-        : (storeName ? `${storeName} · ${verifiedCount} Verified Review${verifiedCount === 1 ? '' : 's'}` : `${verifiedCount} Verified Review${verifiedCount === 1 ? '' : 's'}`);
-    } else {
-      title = isArabic ? 'شهادة توثيق التقييمات' : 'Verified Reviews Certificate';
-    }
+    const title = storeName
+      ? storeName
+      : (isArabic ? 'شهادة توثيق التقييمات' : 'Verified Reviews Certificate');
 
     let subtitle;
     if (hasNoReviews) {
-      const nameForMsg = storeName || (isArabic ? 'هذا المتجر' : 'this store');
       subtitle = isArabic
-        ? `${storeName ? `متجر ${nameForMsg}` : nameForMsg} انضم حديثاً لمنصة مشتري موثق وإلى الآن لا يوجد تقييمات موثقة`
-        : `${nameForMsg} recently joined Mushtari Mowthaq and has no verified reviews yet`;
+        ? `${storeName ? `متجر ${storeName}` : 'هذا المتجر'} انضم حديثاً لمنصة مشتري موثق وإلى الآن لا يوجد تقييمات موثقة`
+        : `${storeName || 'This store'} recently joined Mushtari Mowthaq and has no verified reviews yet`;
     } else {
       subtitle = isArabic
         ? 'جميع تقييمات هذا المتجر مدققة من مشتري موثق "طرف ثالث" لضمان المصداقية'
@@ -602,14 +595,26 @@
     const certUrl = _certStoreUid
       ? buildStoreCertificateUrl(_certStoreUid)
       : SCRIPT_ORIGIN;
+    // Header row: logo + (optional) gold 3D count box, side by side
+    const headerRow = h('div', {
+      style: `
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+      `
+    });
+
     const logoLink = h('a', {
       href: certUrl,
       target: '_blank',
       rel: 'noopener noreferrer',
       style: `
         display: inline-block;
-        margin-bottom: 20px;
         transition: transform 0.2s ease;
+        flex-shrink: 0;
       `
     });
 
@@ -617,8 +622,8 @@
       src: CERTIFICATE_LOGO_URL,
       alt: isArabic ? 'مشتري موثق' : 'Mushtari Mowthaq',
       style: `
-        width: 150px;
-        height: 150px;
+        width: 130px;
+        height: 130px;
         object-fit: contain;
         background: transparent;
         filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5));
@@ -628,38 +633,87 @@
     logoLink.appendChild(logo);
     logoLink.onmouseover = function () { this.style.transform = 'scale(1.05)'; };
     logoLink.onmouseout = function () { this.style.transform = 'scale(1)'; };
+    headerRow.appendChild(logoLink);
 
-    // Create title (Option 6: Gradient, Extra Bold)
+    if (hasReviews) {
+      const countBox = h('div', {
+        style: `
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          line-height: 1;
+          flex-shrink: 0;
+        `
+      });
+
+      const countNumber = h('div', {
+        style: `
+          font-family: 'Cairo', system-ui, sans-serif;
+          font-size: 72px;
+          font-weight: 900;
+          color: #ffd700;
+          line-height: 1;
+          letter-spacing: -0.02em;
+          text-shadow:
+            1px 1px 0 #e6b800,
+            2px 2px 0 #cc9900,
+            3px 3px 0 #b38600,
+            4px 4px 0 #997300,
+            5px 5px 0 #806000,
+            6px 6px 10px rgba(0, 0, 0, 0.28),
+            0 0 24px rgba(255, 215, 0, 0.45);
+          transform: perspective(400px) rotateX(8deg);
+          transform-origin: center bottom;
+          padding: 0 4px;
+        `
+      }, String(verifiedCount));
+
+      const countLabel = h('div', {
+        style: `
+          margin-top: 12px;
+          font-size: 16px;
+          font-weight: 800;
+          color: ${isDark ? '#e2e8f0' : '#1f2937'};
+          letter-spacing: 0.02em;
+        `
+      }, isArabic ? 'تقييم موثق' : (verifiedCount === 1 ? 'Verified Review' : 'Verified Reviews'));
+
+      countBox.appendChild(countNumber);
+      countBox.appendChild(countLabel);
+      headerRow.appendChild(countBox);
+    }
+
+    // Title (store name or generic)
     const titleEl = h('h3', {
       style: `
-        font-size: 28px;
+        font-size: 24px;
         font-weight: 900;
-        margin: 0 0 12px 0;
+        margin: 0 0 10px 0;
         line-height: 1.3;
         background: linear-gradient(to left, #10b981, #3b82f6);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        color: #10b981; /* Fallback */
+        color: #10b981;
         display: inline-block;
       `
     }, title);
 
-    // Create subtitle
     const subtitleEl = h('p', {
       style: `
         font-size: 15px;
         font-weight: 600;
         color: ${isDark ? '#94a3b8' : '#4b5563'};
         margin: 0;
-        line-height: 1.6;
-        max-width: 400px;
+        line-height: 1.7;
+        max-width: 420px;
         margin-left: auto;
         margin-right: auto;
       `
     }, subtitle);
 
-    container.appendChild(logoLink);
+    container.appendChild(headerRow);
     container.appendChild(titleEl);
     container.appendChild(subtitleEl);
 
