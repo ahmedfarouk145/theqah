@@ -249,9 +249,9 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
 
             {/* Headline */}
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-green-900">
-              توثيق التقييمات بنظام Triple Match
+              توثيق التقييمات بنظام Triple Match ورفع الظهور في GEO
               <br />
-              <span className="text-green-700">مشتري موثّق</span>
+              <span className="text-green-700">مشتري موثق</span>
             </h1>
 
             {/* Subtitle */}

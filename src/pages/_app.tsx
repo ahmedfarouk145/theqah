@@ -37,7 +37,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
       <AuthProvider>
         <BlogAuthProvider>
           <Head>
-            <title>مشتري موثّق | توثيق التقييمات الآلي لزيادة مبيعات متجرك</title>
+            <title>مشتري موثق | توثيق التقييمات الآلي لزيادة مبيعات متجرك</title>
             <meta name="description" content="مشتري موثّق هي منصة توثيق التقييمات الآلية للمتاجر الإلكترونية. ارفع معدل التحويل وضاعف مبيعاتك بشهادات موثّقة تبني ثقة المشترين. جرّب مجاناً اليوم!" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
 
