@@ -258,28 +258,75 @@
     container.appendChild(title);
     container.appendChild(subtitle);
 
-    // Smart placement
-    const placementCandidates = [
-      { sel: '.list-group .list-group-item:last-child', pos: 'after' },
-      { sel: '.list-group', pos: 'after' },
-      { sel: '#nav-tab, .nav-tabs', pos: 'before' },
-      { sel: '#nav-tabContent, .tab-content', pos: 'before' },
-      { sel: 'h1', pos: 'after' },
-      { sel: 'footer', pos: 'before' },
-    ];
+    // Smart placement (Salla-style heuristics, ordered by priority)
+    const placement = findBestZidPlacement();
+    if (!placement) return;
 
-    for (const c of placementCandidates) {
-      const el = document.querySelector(c.sel);
-      if (el && el.offsetParent !== null) {
-        if (c.pos === 'before') el.parentNode.insertBefore(container, el);
-        else el.parentNode.insertBefore(container, el.nextSibling);
-        return;
-      }
+    if (placement.type === 'floating') {
+      container.style.cssText += 'position:fixed;bottom:20px;right:20px;z-index:9999;max-width:320px;background:white;box-shadow:0 10px 40px rgba(0,0,0,0.15);border-radius:16px;';
+      document.body.appendChild(container);
+      return;
     }
 
-    // Floating fallback
-    container.style.cssText += 'position:fixed;bottom:20px;right:20px;z-index:9999;max-width:320px;background:white;box-shadow:0 10px 40px rgba(0,0,0,0.15);border-radius:16px;';
-    document.body.appendChild(container);
+    const el = placement.element;
+    if (placement.position === 'before') el.parentNode.insertBefore(container, el);
+    else el.parentNode.insertBefore(container, el.nextSibling);
+
+    // Defense-in-depth: if somehow landed inside a card, eject to floating.
+    if (container.closest(UNSAFE_ANCESTORS)) {
+      container.remove();
+      container.style.cssText += 'position:fixed;bottom:20px;right:20px;z-index:9999;max-width:320px;background:white;box-shadow:0 10px 40px rgba(0,0,0,0.15);border-radius:16px;';
+      document.body.appendChild(container);
+    }
+  }
+
+  // Nodes whose descendants must never host the badge.
+  const UNSAFE_ANCESTORS = [
+    '.product-card', '.product-item', '.product-box',
+    '[data-product-id]', '[data-product-sku]',
+    '.card', '.swiper-slide',
+    '.list-group-item',
+  ].join(',');
+
+  const isVisible = (el) => !!(el && el.offsetParent !== null);
+  const isSafe = (el) => el && !el.closest(UNSAFE_ANCESTORS);
+  const pick = (sel) => {
+    for (const el of document.querySelectorAll(sel)) {
+      if (isVisible(el) && isSafe(el)) return el;
+    }
+    return null;
+  };
+
+  // ——— Heuristic: best page-level anchor, never inside a product card ———
+  function findBestZidPlacement() {
+    // Priority 1 — Product detail: directly after the reviews list.
+    //             Only matches a .list-group that actually holds review rows.
+    const reviewsList = (() => {
+      for (const lg of document.querySelectorAll('.tab-pane .list-group, #nav-tabContent .list-group, .list-group')) {
+        if (!isVisible(lg) || !isSafe(lg)) continue;
+        if (lg.querySelector('small[data-time]')) return lg;
+      }
+      return null;
+    })();
+    if (reviewsList) return { element: reviewsList, position: 'after' };
+
+    // Priority 2 — Product detail: after the description/info blocks.
+    const productDesc = pick('#description, #nav-description, .product-description, [data-product-description]');
+    if (productDesc) return { element: productDesc, position: 'after' };
+
+    const productInfo = pick('.product-details, .product-single, .product-show, .product-info');
+    if (productInfo) return { element: productInfo, position: 'after' };
+
+    // Priority 3 — Storefront / category / home: right above the site footer.
+    const footer = pick('footer, .footer, .site-footer, .store-footer');
+    if (footer) return { element: footer, position: 'before' };
+
+    // Priority 4 — Very last <main> child, still outside any card.
+    const mainTail = pick('main > section:last-of-type, main > div:last-of-type, #app-body > :last-child, #content > :last-child');
+    if (mainTail) return { element: mainTail, position: 'after' };
+
+    // Fallback — floating pill (guaranteed outside the grid).
+    return { type: 'floating' };
   }
 
   // ——— Add logos to Zid reviews ———
