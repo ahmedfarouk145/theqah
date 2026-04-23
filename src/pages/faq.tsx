@@ -9,18 +9,18 @@ import NavbarLanding from '@/components/NavbarLanding';
 // FAQ data for cleaner code
 const faqItems = [
   {
-    q: 'ما هي خدمة مشتري موثّق؟',
+    q: 'ما هي خدمة مشتري موثق؟',
     a: (
       <p className="text-gray-700 leading-relaxed">
         نظام <strong>طرف ثالث محايد وذكي</strong> يعمل في الخلفية لتوثيق تقييمات متجرك تلقائياً،
         حيث يقوم بمطابقة كل تقييم جديد مع بيانات الطلب الفعلي،
-        ويمنحه شارة <strong>&quot;مشتري موثّق&quot;</strong> فور التأكد من مصداقيته.
+        ويمنحه شارة <strong>&quot;مشتري موثق&quot;</strong> فور التأكد من مصداقيته.
 
       </p>
     ),
   },
   {
-    q: 'كيف يعمل مشتري موثّق؟',
+    q: 'كيف يعمل مشتري موثق؟',
     a: (
       <ol className="list-decimal list-inside space-y-2 text-gray-700">
         <li><strong>التفعيل:</strong> اربط الخدمة بمتجرك بضغطة زر.</li>
@@ -115,7 +115,7 @@ const faqItems = [
     a: (
       <div className="text-gray-700 leading-relaxed space-y-3">
         <p>
-          حمّل تطبيق &quot;مشتري موثّق&quot; من سوق تطبيقات سلة، وسيبدأ النظام تلقائيًا بتوثيق تقييمات متجرك فور استلامها.
+          حمّل تطبيق &quot;مشتري موثق&quot; من سوق تطبيقات سلة، وسيبدأ النظام تلقائيًا بتوثيق تقييمات متجرك فور استلامها.
         </p>
         <ul className="list-disc list-inside space-y-1">
           <li>
@@ -205,13 +205,13 @@ export default function FAQPage() {
 
           <div className="z-10 max-w-3xl space-y-6 animate-slide-up relative">
             <div className="inline-block p-3 bg-green-100 rounded-full mb-2 animate-bounce-slow">
-              <Image src="/logo.png" alt="مشتري موثّق" width={48} height={48} className="w-12 h-12 object-contain" priority />
+              <Image src="/logo.png" alt="مشتري موثق" width={48} height={48} className="w-12 h-12 object-contain" priority />
             </div>
             <h1 className="text-4xl md:text-6xl font-black text-green-900 leading-tight tracking-tight">
               الأسئلة الشائعة
             </h1>
             <p className="text-lg md:text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
-              كل ما تحتاج معرفته عن <span className="text-green-700 font-bold">مشتري موثّق</span>.. إجابات واضحة لتبدأ رحلة الثقة.
+              كل ما تحتاج معرفته عن <span className="text-green-700 font-bold">مشتري موثق</span>.. إجابات واضحة لتبدأ رحلة الثقة.
             </p>
           </div>
         </section>
@@ -231,9 +231,9 @@ export default function FAQPage() {
         {/* CTA */}
         <section className="py-16 px-6 bg-white">
           <div className="max-w-3xl mx-auto text-center">
-            <h3 className="text-2xl font-bold text-green-900 mb-3">جاهز تفعّل مشتري موثّق في متجرك؟</h3>
+            <h3 className="text-2xl font-bold text-green-900 mb-3">جاهز تفعّل مشتري موثق في متجرك؟</h3>
             <p className="text-gray-600 mb-6">
-              ابدأ بجمع تقييمات حقيقية بعد الشراء وانشرها بعلامة &ldquo;مشتري موثّق&rdquo;.
+              ابدأ بجمع تقييمات حقيقية بعد الشراء وانشرها بعلامة &ldquo;مشتري موثق&rdquo;.
             </p>
             <a
               href="https://apps.salla.sa/ar/app/1180703836"
@@ -253,7 +253,7 @@ export default function FAQPage() {
             <Link href="/terms" className="hover:underline">الشروط والأحكام</Link>
             <Link href="/support" className="hover:underline">الدعم والمساعدة</Link>
           </div>
-          <p>© 2026 مشتري موثّق - جميع الحقوق محفوظة</p>
+          <p>© 2026 مشتري موثق - جميع الحقوق محفوظة</p>
           <a href="https://drive.google.com/file/d/1HTVS6PJeV5p9jOHFWq_8Kc_VC-gpQZVg/view?usp=drivesdk" target="_blank" rel="noopener noreferrer" className="mt-1 block hover:underline">النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية</a>
         </footer>
 
@@ -267,11 +267,11 @@ export default function FAQPage() {
               mainEntity: [
                 {
                   '@type': 'Question',
-                  name: 'ما هي خدمة مشتري موثّق؟',
+                  name: 'ما هي خدمة مشتري موثق؟',
                   acceptedAnswer: {
                     '@type': 'Answer',
                     text:
-                      'خدمة تضمن مصداقية التقييمات. يكتب العميل تقييمه مباشرة عبر نظام التقييمات في سلة بعد إتمام طلبه، ثم نتحقق من صحة الطلب ونمرّر التقييم عبر الفلترة بالذكاء الاصطناعي ليظهر بوسم "مشتري موثّق".',
+                      'خدمة تضمن مصداقية التقييمات. يكتب العميل تقييمه مباشرة عبر نظام التقييمات في سلة بعد إتمام طلبه، ثم نتحقق من صحة الطلب ونمرّر التقييم عبر الفلترة بالذكاء الاصطناعي ليظهر بوسم "مشتري موثق".',
                   },
                 },
                 {
@@ -280,7 +280,7 @@ export default function FAQPage() {
                   acceptedAnswer: {
                     '@type': 'Answer',
                     text:
-                      'يكمل المشتري الشراء ويضيف تقييمه على متجرك في سلة، نستقبل التقييم تلقائيًا، نتحقق من صحة الطلب، تُفلتره الخوارزميات، ثم يُنشر مع وسم "مشتري موثّق".',
+                      'يكمل المشتري الشراء ويضيف تقييمه على متجرك في سلة، نستقبل التقييم تلقائيًا، نتحقق من صحة الطلب، تُفلتره الخوارزميات، ثم يُنشر مع وسم "مشتري موثق".',
                   },
                 },
 

@@ -82,7 +82,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
                 title: String(data.title || ""),
                 excerpt: String(data.excerpt || ""),
                 content: String(data.content || ""),
-                author: String(data.author || "مشتري موثّق"),
+                author: String(data.author || "مشتري موثق"),
                 category: String(data.category || ""),
                 publishedAt: data.publishedAt?.toDate?.() || null,
             };
@@ -118,10 +118,10 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>مدونة مشتري موثّق</title>
+    <title>مدونة مشتري موثق</title>
     <link>${escapeXml(BLOG_URL)}</link>
     <atom:link href="${escapeXml(FEED_URL)}" rel="self" type="application/rss+xml" />
-    <description>مقالات ونصائح حول التجارة الإلكترونية، تقييمات المتاجر، وبناء الثقة مع العملاء من فريق مشتري موثّق.</description>
+    <description>مقالات ونصائح حول التجارة الإلكترونية، تقييمات المتاجر، وبناء الثقة مع العملاء من فريق مشتري موثق.</description>
     <language>ar</language>
     <lastBuildDate>${lastBuildDate}</lastBuildDate>
     <generator>theqah.com.sa</generator>

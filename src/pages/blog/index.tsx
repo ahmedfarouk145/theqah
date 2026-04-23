@@ -92,10 +92,10 @@ function formatDate(iso: string | null): string {
 
 export default function BlogPage({ posts, categories, activeCategory, pagination }: Props) {
     const pageTitle = activeCategory
-        ? `${activeCategory} | مدونة مشتري موثّق`
-        : "المدونة | مشتري موثّق";
+        ? `${activeCategory} | مدونة مشتري موثق`
+        : "المدونة | مشتري موثق";
     const pageDesc =
-        "مقالات ونصائح حول التجارة الإلكترونية، تقييمات المتاجر، وبناء الثقة مع العملاء من فريق مشتري موثّق.";
+        "مقالات ونصائح حول التجارة الإلكترونية، تقييمات المتاجر، وبناء الثقة مع العملاء من فريق مشتري موثق.";
     const canonicalUrl = activeCategory
         ? `${URLS.CANONICAL_ORIGIN}/blog?category=${encodeURIComponent(activeCategory)}`
         : `${URLS.CANONICAL_ORIGIN}/blog`;
@@ -108,12 +108,12 @@ export default function BlogPage({ posts, categories, activeCategory, pagination
         "@type": "Blog",
         "@id": `${URLS.CANONICAL_ORIGIN}/blog`,
         url: `${URLS.CANONICAL_ORIGIN}/blog`,
-        name: "مدونة مشتري موثّق",
+        name: "مدونة مشتري موثق",
         description: pageDesc,
         inLanguage: "ar",
         publisher: {
             "@type": "Organization",
-            name: "مشتري موثّق",
+            name: "مشتري موثق",
             url: URLS.CANONICAL_ORIGIN,
             logo: {
                 "@type": "ImageObject",
@@ -141,7 +141,7 @@ export default function BlogPage({ posts, categories, activeCategory, pagination
         "@type": "WebSite",
         "@id": `${URLS.CANONICAL_ORIGIN}/#website`,
         url: URLS.CANONICAL_ORIGIN,
-        name: "مشتري موثّق",
+        name: "مشتري موثق",
         inLanguage: "ar",
         potentialAction: {
             "@type": "SearchAction",
@@ -165,7 +165,7 @@ export default function BlogPage({ posts, categories, activeCategory, pagination
                 <meta property="og:description" content={pageDesc} />
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content={canonicalUrl} />
-                <meta property="og:site_name" content="مشتري موثّق" />
+                <meta property="og:site_name" content="مشتري موثق" />
                 <meta property="og:locale" content="ar_SA" />
                 <meta property="og:image" content={ogImage} />
 
@@ -179,7 +179,7 @@ export default function BlogPage({ posts, categories, activeCategory, pagination
                 <link
                     rel="alternate"
                     type="application/rss+xml"
-                    title="مدونة مشتري موثّق"
+                    title="مدونة مشتري موثق"
                     href={`${URLS.CANONICAL_ORIGIN}/blog/rss.xml`}
                 />
 
@@ -311,7 +311,7 @@ export default function BlogPage({ posts, categories, activeCategory, pagination
             {/* Footer */}
             <footer className="bg-white dark:bg-gray-900 border-t dark:border-gray-800 py-6 pb-20 text-center text-sm text-gray-500" dir="rtl">
                 <a href="https://drive.google.com/file/d/1HTVS6PJeV5p9jOHFWq_8Kc_VC-gpQZVg/view?usp=drivesdk" target="_blank" rel="noopener noreferrer" className="hover:text-green-700 transition-colors">النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية</a>
-                <p className="mt-1">© {new Date().getFullYear()} مشتري موثّق. جميع الحقوق محفوظة.</p>
+                <p className="mt-1">© {new Date().getFullYear()} مشتري موثق. جميع الحقوق محفوظة.</p>
             </footer>
         </>
     );

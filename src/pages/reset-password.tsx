@@ -90,7 +90,7 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-green-50 to-white px-4">
       <form onSubmit={onSubmit} className="w-full max-w-md bg-white p-8 rounded-xl shadow-md border" noValidate>
         <div className="text-center space-y-3 mb-6">
-          <Image src="/logo.png" alt="مشتري موثّق" width={56} height={56} className="mx-auto rounded" />
+          <Image src="/logo.png" alt="مشتري موثق" width={56} height={56} className="mx-auto rounded" />
           <h1 className="text-2xl font-extrabold text-green-900">تعيين كلمة مرور جديدة</h1>
           {email ? <p className="text-sm text-gray-600">للحساب: <span dir="ltr">{email}</span></p> : null}
         </div>

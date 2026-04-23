@@ -100,7 +100,7 @@ export default function LoginPage() {
         noValidate
       >
         <div className="mb-7 text-center">
-          <Image src="/logo.png" alt="مشتري موثّق" width={56} height={56} className="mx-auto rounded-md" priority />
+          <Image src="/logo.png" alt="مشتري موثق" width={56} height={56} className="mx-auto rounded-md" priority />
           <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-emerald-900">تسجيل الدخول</h1>
           <p className="mt-2 text-sm text-gray-600">أدخل بيانات حسابك للوصول إلى لوحة التحكم</p>
         </div>

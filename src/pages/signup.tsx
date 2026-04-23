@@ -93,7 +93,7 @@ export default function SignupPage() {
       <Toaster position="top-center" />
       <div className="w-full max-w-md rounded-2xl border border-emerald-100 bg-white p-8 shadow-[0_20px_60px_-35px_rgba(5,150,105,0.45)]">
         <div className="text-center">
-          <Image src="/logo.png" alt="شعار مشتري موثّق" width={56} height={56} className="mx-auto rounded-md" priority />
+          <Image src="/logo.png" alt="شعار مشتري موثق" width={56} height={56} className="mx-auto rounded-md" priority />
           <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-emerald-900">إنشاء حساب جديد</h1>
           <p className="mt-2 text-sm text-gray-600">أدخل بيانات متجرك ثم أكمل الربط في الخطوة التالية</p>
         </div>

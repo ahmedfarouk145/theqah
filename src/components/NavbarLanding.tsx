@@ -56,7 +56,7 @@ export default function NavbarLanding({
             />
           </div>
           <span className="text-2xl font-extrabold text-green-800 dark:text-green-400 tracking-tight group-hover:text-green-900 dark:group-hover:text-green-300 transition-colors">
-            مشتري موثّق
+            مشتري موثق
           </span>
         </Link>
 

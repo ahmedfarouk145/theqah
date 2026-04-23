@@ -198,7 +198,7 @@ export default function BlogPostPage({ post, related }: Props) {
         dateModified: post.updatedAt || post.publishedAt || undefined,
         publisher: {
             "@type": "Organization",
-            name: "مشتري موثّق",
+            name: "مشتري موثق",
             url: URLS.CANONICAL_ORIGIN,
             logo: {
                 "@type": "ImageObject",
@@ -228,7 +228,7 @@ export default function BlogPostPage({ post, related }: Props) {
     return (
         <>
             <Head>
-                <title>{pageTitle} | مدونة مشتري موثّق</title>
+                <title>{pageTitle} | مدونة مشتري موثق</title>
                 <meta name="description" content={pageDesc} />
                 <link rel="canonical" href={canonicalUrl} />
 
@@ -237,7 +237,7 @@ export default function BlogPostPage({ post, related }: Props) {
                 <meta property="og:description" content={pageDesc} />
                 <meta property="og:type" content="article" />
                 <meta property="og:url" content={canonicalUrl} />
-                <meta property="og:site_name" content="مشتري موثّق" />
+                <meta property="og:site_name" content="مشتري موثق" />
                 <meta property="og:locale" content="ar_SA" />
                 <meta property="og:image" content={ogImage} />
                 <meta property="article:author" content={post.author} />
@@ -255,7 +255,7 @@ export default function BlogPostPage({ post, related }: Props) {
                 <meta name="twitter:image" content={ogImage} />
 
                 {/* Feed discovery for AI crawlers & readers */}
-                <link rel="alternate" type="application/rss+xml" title="مدونة مشتري موثّق" href={`${URLS.CANONICAL_ORIGIN}/blog/rss.xml`} />
+                <link rel="alternate" type="application/rss+xml" title="مدونة مشتري موثق" href={`${URLS.CANONICAL_ORIGIN}/blog/rss.xml`} />
 
                 {/* Structured Data — BlogPosting (safeJsonLd escapes <, >, &,
                     U+2028/9 so the script tag cannot be broken out of even if
@@ -417,7 +417,7 @@ export default function BlogPostPage({ post, related }: Props) {
 
             <footer className="bg-white dark:bg-gray-900 border-t dark:border-gray-800 py-6 text-center text-sm text-gray-500" dir="rtl">
                 <a href="https://drive.google.com/file/d/1HTVS6PJeV5p9jOHFWq_8Kc_VC-gpQZVg/view?usp=drivesdk" target="_blank" rel="noopener noreferrer" className="hover:text-green-700 transition-colors">النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية</a>
-                <p className="mt-1">© {new Date().getFullYear()} مشتري موثّق. جميع الحقوق محفوظة.</p>
+                <p className="mt-1">© {new Date().getFullYear()} مشتري موثق. جميع الحقوق محفوظة.</p>
             </footer>
         </>
     );

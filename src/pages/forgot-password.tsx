@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
           {/* Header */}
           <div className="text-center space-y-4 mb-8">
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <Image src="/logo.png" alt="مشتري موثّق" width={32} height={32} className="rounded-lg" />
+              <Image src="/logo.png" alt="مشتري موثق" width={32} height={32} className="rounded-lg" />
             </div>
             <div className="space-y-2">
               <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-green-700 bg-clip-text text-transparent">

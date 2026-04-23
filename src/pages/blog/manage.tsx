@@ -240,7 +240,7 @@ export default function BlogManage() {
     return (
         <>
             <Head>
-                <title>إدارة المدونة | مشتري موثّق</title>
+                <title>إدارة المدونة | مشتري موثق</title>
                 <meta name="robots" content="noindex, nofollow" />
             </Head>
 

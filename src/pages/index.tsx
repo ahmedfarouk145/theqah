@@ -118,7 +118,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'SoftwareApplication',
-              name: 'مشتري موثّق',
+              name: 'مشتري موثق',
               url: URLS.CANONICAL_ORIGIN,
               applicationCategory: 'BusinessApplication',
               operatingSystem: 'Web',
@@ -143,7 +143,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Organization',
-              name: 'مشتري موثّق',
+              name: 'مشتري موثق',
               alternateName: 'Theqah',
               url: URLS.CANONICAL_ORIGIN,
               logo: `${URLS.CANONICAL_ORIGIN}/logo.png`,
@@ -164,14 +164,14 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'HowTo',
-              name: 'كيف يعمل مشتري موثّق لتوثيق التقييمات؟',
-              description: 'خطوات تفعيل منصة مشتري موثّق لجمع تقييمات موثّقة وزيادة مبيعات متجرك الإلكتروني.',
+              name: 'كيف يعمل مشتري موثق لتوثيق التقييمات؟',
+              description: 'خطوات تفعيل منصة مشتري موثق لجمع تقييمات موثّقة وزيادة مبيعات متجرك الإلكتروني.',
               totalTime: 'PT5M',
               step: [
                 {
                   '@type': 'HowToStep',
                   name: 'فعّل التطبيق',
-                  text: 'ثبّت تطبيق مشتري موثّق على متجرك في سلة أو زد بنقرة واحدة.',
+                  text: 'ثبّت تطبيق مشتري موثق على متجرك في سلة أو زد بنقرة واحدة.',
                   position: 1,
                 },
                 {
@@ -237,7 +237,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
               {/* Logo - Responsive size */}
               <Image
                 src="/logo.png"
-                alt="شعار مشتري موثّق"
+                alt="شعار مشتري موثق"
                 width={450}
                 height={450}
                 sizes="(max-width: 640px) 200px, (max-width: 768px) 300px, (max-width: 1024px) 400px, 450px"
@@ -315,7 +315,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 حمّل التطبيق وشاهد الشرح
               </h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                تطبيق مشتري موثّق متاح على متجر سلة — حمّله الآن وشاهد الفيديوهات التوضيحية
+                تطبيق مشتري موثق متاح على متجر سلة — حمّله الآن وشاهد الفيديوهات التوضيحية
               </p>
             </div>
 
@@ -323,9 +323,9 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
               {/* Video 1 - What is مشتري موثق */}
               <div className="text-center">
-                <h3 className="text-lg font-bold text-green-900 mb-4">ماهو مشتري موثّق؟</h3>
+                <h3 className="text-lg font-bold text-green-900 mb-4">ماهو مشتري موثق؟</h3>
                 <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
-                  <YouTubeFacade videoId="UqvdRG1ogN8" title="ماهو مشتري موثّق" />
+                  <YouTubeFacade videoId="UqvdRG1ogN8" title="ماهو مشتري موثق" />
                 </div>
               </div>
 
@@ -367,7 +367,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 لماذا نحن؟
               </span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">
-                لماذا مشتري موثّق = مبيعات أكثر
+                لماذا مشتري موثق = مبيعات أكثر
               </h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
                 ضمان طرف ثالث محايد يُزيل تردد العميل ويحوّل الزوار إلى مشترين
@@ -450,7 +450,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-10 sm:mb-14">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-3">
-                كيف يعمل مشتري موثّق؟
+                كيف يعمل مشتري موثق؟
               </h2>
               <p className="text-gray-600">خطوات بسيطة لبناء ثقة عملائك</p>
             </div>
@@ -461,7 +461,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                   num: '1',
                   emoji: '🔗',
                   title: 'فعّل التطبيق',
-                  desc: 'اربط "مشتري موثّق" بمتجرك في سلة بضغطة زر واحدة، بدون إعدادات معقدة أو خبرة تقنية.',
+                  desc: 'اربط "مشتري موثق" بمتجرك في سلة بضغطة زر واحدة، بدون إعدادات معقدة أو خبرة تقنية.',
                   color: 'bg-green-500'
                 },
                 {
@@ -484,7 +484,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                     <div className="relative w-12 h-12">
                       <Image
                         src="/logo.png"
-                        alt="شعار مشتري موثّق"
+                        alt="شعار مشتري موثق"
                         fill
                         className="object-contain"
                       />
@@ -546,7 +546,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 متاجر حقيقية.. نتائج حقيقية
               </h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                أصحاب متاجر يشاركون تجربتهم مع مشتري موثّق
+                أصحاب متاجر يشاركون تجربتهم مع مشتري موثق
               </p>
             </div>
 
@@ -573,7 +573,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
         <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white text-center">
           <div className="max-w-2xl mx-auto">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">جاهز لزيادة مبيعاتك؟</h2>
-            <p className="text-gray-600 mb-8 text-lg">انضم الى العديد من المتاجر التي حسّنت ثقة عملائها مع مشتري موثّق</p>
+            <p className="text-gray-600 mb-8 text-lg">انضم الى العديد من المتاجر التي حسّنت ثقة عملائها مع مشتري موثق</p>
           </div>
         </section>
 
@@ -582,8 +582,8 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
         <footer className="bg-white py-10 pb-28 text-gray-800 border-t border-gray-200">
           <div className="max-w-5xl mx-auto px-4 text-center space-y-6">
             <div className="flex items-center justify-center gap-3">
-              <Image src="/logo.png" alt="مشتري موثّق" width={45} height={45} loading="lazy" />
-              <span className="text-xl font-bold text-green-800">مشتري موثّق</span>
+              <Image src="/logo.png" alt="مشتري موثق" width={45} height={45} loading="lazy" />
+              <span className="text-xl font-bold text-green-800">مشتري موثق</span>
             </div>
 
             <nav className="flex flex-wrap justify-center gap-4 sm:gap-6 text-sm">
@@ -604,7 +604,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
             </div>
 
             <div className="text-xs text-gray-500 pt-4 border-t border-gray-100">
-              <p>© {new Date().getFullYear()} مُشتري موثّق. جميع الحقوق محفوظة.</p>
+              <p>© {new Date().getFullYear()} مُشتري موثق. جميع الحقوق محفوظة.</p>
               <a href="https://drive.google.com/file/d/1HTVS6PJeV5p9jOHFWq_8Kc_VC-gpQZVg/view?usp=drivesdk" target="_blank" rel="noopener noreferrer" className="mt-1 block hover:text-green-700 transition-colors">
                 النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية
               </a>

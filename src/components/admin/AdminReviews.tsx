@@ -290,7 +290,7 @@ export default function AdminReviews() {
   const TrustedBadge = ({ on }: { on?: boolean }) =>
     on ? (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-xs">
-        <ShieldCheck className="h-3.5 w-3.5" /> مشتري موثّق
+        <ShieldCheck className="h-3.5 w-3.5" /> مشتري موثق
       </span>
     ) : null;
 
