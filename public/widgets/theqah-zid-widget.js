@@ -1,7 +1,7 @@
 // public/widgets/theqah-zid-widget.js
 // Zid-specific widget — certificate badge + verified review logos
 (() => {
-  const SCRIPT_VERSION = '2.0.0';
+  const SCRIPT_VERSION = '2.1.0';
 
   // Prevent double load
   if (window.__THEQAH_ZID_LOADING__) return;
@@ -18,6 +18,7 @@
 
   const API_RESOLVE = `${SCRIPT_ORIGIN}/api/public/reviews/resolve`;
   const API_CHECK = `${SCRIPT_ORIGIN}/api/reviews/check-verified`;
+  const API_PROFILE = `${SCRIPT_ORIGIN}/api/public/store-profile`;
   const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png?v=3`;
 
   // ——— Shared state ———
@@ -210,8 +211,30 @@
     }
   }
 
+  // ——— Fetch store profile (name + verified count) ———
+  async function fetchStoreProfile(storeUid) {
+    try {
+      const url = `${API_PROFILE}?storeUid=${encodeURIComponent(storeUid)}`;
+      const res = await fetch(url, { cache: 'default', signal: AbortSignal.timeout(5000) });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return {
+        storeName: data?.store?.name || null,
+        verifiedCount: Number.isFinite(data?.stats?.totalReviews) ? data.stats.totalReviews : 0,
+      };
+    } catch { return null; }
+  }
+
+  // Deterministic certificate code — djb2 → base36 → 6 chars.
+  function certCode(uid) {
+    if (!uid) return '';
+    let hash = 5381;
+    for (let i = 0; i < uid.length; i++) hash = ((hash * 33) ^ uid.charCodeAt(i)) >>> 0;
+    return 'TQ-' + (hash.toString(36).toUpperCase() + '000000').slice(0, 6);
+  }
+
   // ——— Certificate badge ———
-  function insertCertificateBadge(storeUid) {
+  function insertCertificateBadge(storeUid, profile = null) {
     const existing = document.querySelector('.theqah-zid-certificate');
     if (existing) {
       if (existing.offsetParent === null) existing.remove();
@@ -229,34 +252,77 @@
 
     const certUrl = `${SCRIPT_ORIGIN}/store/${encodeURIComponent(storeUid)}/certificate`;
 
+    const verifiedCount = Number.isFinite(profile?.verifiedCount) ? profile.verifiedCount : null;
+    const storeName = (profile?.storeName || '').trim();
+    const hasNoReviews = verifiedCount === 0;
+    const hasReviews = Number.isFinite(verifiedCount) && verifiedCount > 0;
+    const code = certCode(storeUid);
+
+    const titleText = storeName || 'شهادة توثيق التقييمات';
+    const subtitleText = hasNoReviews
+      ? `${storeName ? `متجر ${storeName}` : 'هذا المتجر'} انضم حديثاً لمنصة مشتري موثق وإلى الآن لا يوجد تقييمات موثقة`
+      : 'جميع تقييمات هذا المتجر مدققة من مشتري موثق "طرف ثالث" لضمان المصداقية';
+
+    // Root container — transparent, vertical stack, centered.
     const container = h('div', {
       class: 'theqah-zid-certificate',
-      style: "font-family:'Cairo',system-ui,sans-serif;direction:rtl;text-align:center;background:transparent;border:none;border-radius:16px;padding:24px;margin:20px auto;max-width:500px;position:relative;overflow:visible;"
+      style: "font-family:'Cairo',system-ui,-apple-system,sans-serif;direction:rtl;text-align:center;background:transparent;border:none;padding:28px 20px 24px;margin:20px auto;max-width:500px;display:flex;flex-direction:column;align-items:center;gap:18px;"
     });
 
+    // Logo — 140px, navy drop-shadow so it lifts off any background.
     const logoLink = h('a', {
       href: certUrl, target: '_blank', rel: 'noopener noreferrer',
-      style: 'display:inline-block;margin-bottom:20px;transition:transform 0.2s ease;'
+      style: 'display:inline-block;transition:transform 0.2s ease;'
     });
     const logo = h('img', {
       src: LOGO_URL, alt: 'مشتري موثق',
-      style: 'width:150px;height:150px;object-fit:contain;background:transparent;filter:drop-shadow(0 0 10px rgba(16,185,129,0.5));'
+      style: 'width:140px;height:140px;object-fit:contain;background:transparent;filter:drop-shadow(0 6px 20px rgba(30,42,74,0.3));'
     });
     logoLink.appendChild(logo);
     logoLink.onmouseover = function () { this.style.transform = 'scale(1.05)'; };
     logoLink.onmouseout = function () { this.style.transform = 'scale(1)'; };
-
-    const title = h('h3', {
-      style: 'font-size:28px;font-weight:900;margin:0 0 12px 0;line-height:1.3;background:linear-gradient(to left,#10b981,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;color:#10b981;display:inline-block;'
-    }, 'شهادة توثيق التقييمات');
-
-    const subtitle = h('p', {
-      style: 'font-size:15px;font-weight:600;color:#4b5563;margin:0;line-height:1.6;max-width:400px;margin-left:auto;margin-right:auto;'
-    }, 'جميع تقييمات هذا المتجر مدققة من مشتري موثق "طرف ثالث" لضمان المصداقية');
-
     container.appendChild(logoLink);
-    container.appendChild(title);
-    container.appendChild(subtitle);
+
+    // Title — champagne-gold gradient; uses store name when available.
+    const titleEl = h('h3', {
+      style: "font-size:26px;font-weight:900;margin:0;line-height:1.3;background:linear-gradient(180deg,#d9b879,#8a6d3b);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#8a6d3b;display:inline-block;"
+    }, titleText);
+    container.appendChild(titleEl);
+
+    // Medallion — navy rectangle with gold ring showing verified review count.
+    if (hasReviews) {
+      const medallion = h('div', {
+        style: "display:inline-flex;align-items:center;gap:18px;padding:16px 38px;border-radius:16px;background:linear-gradient(160deg,#2a3860 0%,#17213f 50%,#0a1020 100%);box-shadow:inset 0 1px 0 rgba(232,212,160,0.3),inset 0 -2px 6px rgba(0,0,0,0.55),0 0 0 1.5px #b89968,0 12px 28px -10px rgba(10,16,32,0.4);"
+      });
+      const numEl = h('div', {
+        style: "font-family:'Cairo',system-ui,sans-serif;font-size:52px;font-weight:900;line-height:1;letter-spacing:-0.02em;background:linear-gradient(180deg,#fff8e1,#f0dcab 30%,#c9a86c 70%,#8a6d3b);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;filter:drop-shadow(0 2px 0 rgba(10,16,32,0.8));"
+      }, String(verifiedCount));
+      const lblEl = h('div', {
+        style: "font-family:'Cairo',system-ui,sans-serif;font-size:14px;font-weight:800;letter-spacing:0.12em;background:linear-gradient(180deg,#f0dcab,#b89968);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;"
+      }, 'تقييم موثق');
+      medallion.appendChild(numEl);
+      medallion.appendChild(lblEl);
+      container.appendChild(medallion);
+    }
+
+    // Subtitle — mid-slate; switches to "no reviews yet" copy when count is 0.
+    const subtitleEl = h('p', {
+      style: "font-size:13.5px;font-weight:600;color:#475569;margin:0;line-height:1.75;max-width:440px;"
+    }, subtitleText);
+    container.appendChild(subtitleEl);
+
+    // Cert-number chip — gold-outlined capsule, reads as an official seal.
+    if (code) {
+      const certChip = h('div', {
+        style: "margin:4px 0 0;padding:7px 18px;border-radius:999px;border:1px solid rgba(184,153,104,0.55);color:#8a6d3b;font-family:'Cairo',system-ui,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:0.22em;display:inline-flex;align-items:center;gap:8px;"
+      });
+      certChip.appendChild(document.createTextNode('رقم الشهادة · '));
+      const codeEl = h('span', {
+        style: "font-family:'Courier New',ui-monospace,monospace;font-weight:700;letter-spacing:0.08em;color:inherit;"
+      }, code);
+      certChip.appendChild(codeEl);
+      container.appendChild(certChip);
+    }
 
     // Smart placement (Salla-style heuristics, ordered by priority)
     const placement = findBestZidPlacement();
@@ -443,8 +509,16 @@
       const storeUid = storeData.storeUid;
       G.storeUid = storeUid;
 
+      // Store profile (name + verified count) — cached per storeUid.
+      if (!G.storeProfile || G.storeProfile._storeUid !== storeUid) {
+        const profile = await fetchStoreProfile(storeUid);
+        G.storeProfile = profile
+          ? { ...profile, _storeUid: storeUid }
+          : { storeName: null, verifiedCount: null, _storeUid: storeUid };
+      }
+
       // Certificate badge
-      insertCertificateBadge(storeUid);
+      insertCertificateBadge(storeUid, G.storeProfile);
 
       // Verified review logos
       await fetchAndAddLogos(storeUid);
