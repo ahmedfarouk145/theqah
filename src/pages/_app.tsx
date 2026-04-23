@@ -37,21 +37,21 @@ export default function MyApp({ Component, pageProps }: AppProps) {
       <AuthProvider>
         <BlogAuthProvider>
           <Head>
-            <title>مشتري موثق | توثيق التقييمات الآلي لزيادة مبيعات متجرك</title>
-            <meta name="description" content="مشتري موثق هي منصة توثيق التقييمات الآلية للمتاجر الإلكترونية. ارفع معدل التحويل وضاعف مبيعاتك بشهادات موثّقة تبني ثقة المشترين. جرّب مجاناً اليوم!" />
+            <title>مشتري موثق | توثيق التقييمات بنظام Triple Match ورفع الظهور في GEO</title>
+            <meta name="description" content="مشتري موثق منصة سعودية لتوثيق التقييمات بنظام Triple Match ورفع الظهور في GEO ومحركات البحث، وزيادة مبيعات متجرك الإلكتروني بتقييمات موثقة تبني ثقة المشترين." />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
 
             {/* Open Graph */}
             <meta property="og:type" content="website" />
             <meta property="og:site_name" content="مشتري موثق" />
-            <meta property="og:title" content="مشتري موثق — وثّق تقييمات متجرك وضاعف مبيعاتك" />
-            <meta property="og:description" content="منصة توثيق التقييمات الآلية للمتاجر الإلكترونية — ضاعف مبيعاتك بشهادات موثّقة تبني ثقة المشترين." />
+            <meta property="og:title" content="مشتري موثق — وثق تقييمات متجرك وضاعف مبيعاتك" />
+            <meta property="og:description" content="منصة توثيق التقييمات الآلية للمتاجر الإلكترونية — ضاعف مبيعاتك بشهادات موثقة تبني ثقة المشترين." />
             <meta property="og:image" content="https://www.theqah.com.sa/logo.png" />
             <meta property="og:locale" content="ar_SA" />
 
             {/* Twitter Card */}
             <meta name="twitter:card" content="summary" />
-            <meta name="twitter:title" content="مشتري موثق — وثّق تقييمات متجرك وضاعف مبيعاتك" />
+            <meta name="twitter:title" content="مشتري موثق — وثق تقييمات متجرك وضاعف مبيعاتك" />
             <meta name="twitter:description" content="أول منصة سعودية تربط كل تقييم بمشترٍ حقيقي. شارة ثقة تدفع العميل للشراء فوراً." />
             <meta name="twitter:image" content="https://www.theqah.com.sa/logo.png" />
           </Head>

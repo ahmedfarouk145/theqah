@@ -165,25 +165,25 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
               '@context': 'https://schema.org',
               '@type': 'HowTo',
               name: 'كيف يعمل مشتري موثق لتوثيق التقييمات؟',
-              description: 'خطوات تفعيل منصة مشتري موثق لجمع تقييمات موثّقة وزيادة مبيعات متجرك الإلكتروني.',
+              description: 'خطوات تفعيل منصة مشتري موثق لجمع تقييمات موثقة وزيادة مبيعات متجرك الإلكتروني.',
               totalTime: 'PT5M',
               step: [
                 {
                   '@type': 'HowToStep',
-                  name: 'فعّل التطبيق',
-                  text: 'ثبّت تطبيق مشتري موثق على متجرك في سلة أو زد بنقرة واحدة.',
+                  name: 'فعل التطبيق',
+                  text: 'ثبت تطبيق مشتري موثق على متجرك في سلة أو زد بنقرة واحدة.',
                   position: 1,
                 },
                 {
                   '@type': 'HowToStep',
-                  name: 'العميل يقيّم كالمعتاد',
+                  name: 'العميل يقيم كالمعتاد',
                   text: 'يكمل عميلك عملية الشراء ويترك تقييمه بشكل طبيعي.',
                   position: 2,
                 },
                 {
                   '@type': 'HowToStep',
                   name: 'التوثيق الفوري',
-                  text: 'تتحقق المنصة تلقائيًا من صحة التقييم وتوثّقه فورًا.',
+                  text: 'تتحقق المنصة تلقائيًا من صحة التقييم وتوثقه فورًا.',
                   position: 3,
                 },
                 {
@@ -267,7 +267,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 ))}
               </div>
               <div className="flex items-center gap-1.5">
-                <Image src="/logo.png" alt="موثّق" width={28} height={28} />
+                <Image src="/logo.png" alt="موثق" width={28} height={28} />
                 <span className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                   <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -278,7 +278,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
 
             {/* AI text */}
             <p className="text-gray-700 text-sm sm:text-base leading-relaxed max-w-2xl mx-auto">
-              حوّل شك عملائك إلى مبيعات.. وانضم لنخبة المتاجر التي تُهيكل تقييماتها تقنياً لتتصدر ترشيحات الذكاء الاصطناعي.
+              حول شك عملائك إلى مبيعات.. وانضم لنخبة المتاجر التي تُهيكل تقييماتها تقنياً لتتصدر ترشيحات الذكاء الاصطناعي.
             </p>
 
             {/* CTA Buttons */}
@@ -292,7 +292,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M18 15v3H6v-3H4v3c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-3h-2zm-1-4-1.41-1.41L13 12.17V4h-2v8.17L8.41 9.59 7 11l5 5 5-5z" />
                   </svg>
-                  حمّل التطبيق من متجر سلة
+                  حمل التطبيق من متجر سلة
                 </button>
               </a>
               <a href="#install-section">
@@ -312,10 +312,10 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 ابدأ في أقل من دقيقة
               </span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">
-                حمّل التطبيق وشاهد الشرح
+                حمل التطبيق وشاهد الشرح
               </h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                تطبيق مشتري موثق متاح على متجر سلة — حمّله الآن وشاهد الفيديوهات التوضيحية
+                تطبيق مشتري موثق متاح على متجر سلة — حمله الآن وشاهد الفيديوهات التوضيحية
               </p>
             </div>
 
@@ -370,7 +370,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 لماذا مشتري موثق = مبيعات أكثر
               </h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                ضمان طرف ثالث محايد يُزيل تردد العميل ويحوّل الزوار إلى مشترين
+                ضمان طرف ثالث محايد يُزيل تردد العميل ويحول الزوار إلى مشترين
               </p>
             </div>
 
@@ -381,7 +381,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                   color: 'from-amber-400 to-orange-500',
                   bgColor: 'bg-amber-50',
                   title: 'رفع احتمالية الشراء',
-                  desc: 'بمجرد وجود 5 تقييمات موثّقة',
+                  desc: 'بمجرد وجود 5 تقييمات موثقة',
                   stat: '+270%',
                   statLabel: 'احتمالية الشراء',
                   source: 'Northwestern Spiegel',
@@ -392,7 +392,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                   color: 'from-blue-400 to-indigo-500',
                   bgColor: 'bg-blue-50',
                   title: 'زيادة المبيعات المباشرة',
-                  desc: 'عند إضافة شارة "المشتري الموثّق"',
+                  desc: 'عند إضافة شارة "المشتري الموثق"',
                   stat: '+15%',
                   statLabel: 'مبيعات مباشرة',
                   source: 'AMA',
@@ -403,7 +403,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                   color: 'from-green-400 to-emerald-500',
                   bgColor: 'bg-green-50',
                   title: 'مضاعفة معدل التحويل',
-                  desc: 'للمنتجات مرتفعة السعر عند عرض تقييمات موثّقة',
+                  desc: 'للمنتجات مرتفعة السعر عند عرض تقييمات موثقة',
                   stat: '+380%',
                   statLabel: 'معدل التحويل',
                   source: 'Capital One Shopping',
@@ -460,15 +460,15 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 {
                   num: '1',
                   emoji: '🔗',
-                  title: 'فعّل التطبيق',
+                  title: 'فعل التطبيق',
                   desc: 'اربط "مشتري موثق" بمتجرك في سلة بضغطة زر واحدة، بدون إعدادات معقدة أو خبرة تقنية.',
                   color: 'bg-green-500'
                 },
                 {
                   num: '2',
                   emoji: '⭐',
-                  title: 'العميل يقيّم كالمعتاد',
-                  desc: 'يقيّم العميل مشترياته داخل متجرك مباشرة عبر روابط سلة الرسمية، دون أي إزعاج.',
+                  title: 'العميل يقيم كالمعتاد',
+                  desc: 'يقيم العميل مشترياته داخل متجرك مباشرة عبر روابط سلة الرسمية، دون أي إزعاج.',
                   color: 'bg-blue-500'
                 },
                 {
@@ -573,7 +573,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
         <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white text-center">
           <div className="max-w-2xl mx-auto">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">جاهز لزيادة مبيعاتك؟</h2>
-            <p className="text-gray-600 mb-8 text-lg">انضم الى العديد من المتاجر التي حسّنت ثقة عملائها مع مشتري موثق</p>
+            <p className="text-gray-600 mb-8 text-lg">انضم الى العديد من المتاجر التي حسنت ثقة عملائها مع مشتري موثق</p>
           </div>
         </section>
 
@@ -606,7 +606,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
             <div className="text-xs text-gray-500 pt-4 border-t border-gray-100">
               <p>© {new Date().getFullYear()} مُشتري موثق. جميع الحقوق محفوظة.</p>
               <a href="https://drive.google.com/file/d/1HTVS6PJeV5p9jOHFWq_8Kc_VC-gpQZVg/view?usp=drivesdk" target="_blank" rel="noopener noreferrer" className="mt-1 block hover:text-green-700 transition-colors">
-                النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية
+                النظام مسجل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية
               </a>
               {/* Social Media Icons */}
               <div className="flex justify-center items-center gap-3 mt-4">
