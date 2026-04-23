@@ -136,6 +136,27 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
             }),
           }}
         />
+        {/* Organization structured data - hardcoded values, no user input */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'مشتري موثّق',
+              alternateName: 'Theqah',
+              url: URLS.CANONICAL_ORIGIN,
+              logo: `${URLS.CANONICAL_ORIGIN}/logo.png`,
+              description: 'أول منصة سعودية لتوثيق تقييمات المتاجر الإلكترونية بنظام Triple Match لربط كل تقييم بمشترٍ حقيقي.',
+              sameAs: [
+                'https://www.tiktok.com/@theqahapp',
+                'https://x.com/theqahapp',
+                'https://www.instagram.com/theqahapp',
+                'https://youtube.com/@theqahapp',
+              ],
+            }),
+          }}
+        />
         {/* HowTo structured data - hardcoded values, no user input */}
         <script
           type="application/ld+json"
@@ -228,9 +249,9 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
 
             {/* Headline */}
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-green-900">
-              ابنِ الثقة..
+              توثيق التقييمات بنظام Triple Match
               <br />
-              <span className="text-green-700">وضاعف مبيعاتك</span>
+              <span className="text-green-700">مشتري موثّق</span>
             </h1>
 
             {/* Subtitle */}
