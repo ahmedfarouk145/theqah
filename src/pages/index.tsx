@@ -136,6 +136,63 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
             }),
           }}
         />
+        {/* HowTo structured data - hardcoded values, no user input */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'HowTo',
+              name: 'كيف يعمل مشتري موثّق لتوثيق التقييمات؟',
+              description: 'خطوات تفعيل منصة مشتري موثّق لجمع تقييمات موثّقة وزيادة مبيعات متجرك الإلكتروني.',
+              totalTime: 'PT5M',
+              step: [
+                {
+                  '@type': 'HowToStep',
+                  name: 'فعّل التطبيق',
+                  text: 'ثبّت تطبيق مشتري موثّق على متجرك في سلة أو زد بنقرة واحدة.',
+                  position: 1,
+                },
+                {
+                  '@type': 'HowToStep',
+                  name: 'العميل يقيّم كالمعتاد',
+                  text: 'يكمل عميلك عملية الشراء ويترك تقييمه بشكل طبيعي.',
+                  position: 2,
+                },
+                {
+                  '@type': 'HowToStep',
+                  name: 'التوثيق الفوري',
+                  text: 'تتحقق المنصة تلقائيًا من صحة التقييم وتوثّقه فورًا.',
+                  position: 3,
+                },
+                {
+                  '@type': 'HowToStep',
+                  name: 'شارة الثقة تظهر',
+                  text: 'تظهر شارة التوثيق على المنتج لتعزيز ثقة المشترين وزيادة معدل التحويل.',
+                  position: 4,
+                },
+              ],
+            }),
+          }}
+        />
+        {/* BreadcrumbList structured data - hardcoded values, no user input */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'BreadcrumbList',
+              itemListElement: [
+                {
+                  '@type': 'ListItem',
+                  position: 1,
+                  name: 'الرئيسية',
+                  item: `${URLS.CANONICAL_ORIGIN}/`,
+                },
+              ],
+            }),
+          }}
+        />
       </Head>
       <NavbarLanding />
       <div className="h-20" aria-hidden="true" />
