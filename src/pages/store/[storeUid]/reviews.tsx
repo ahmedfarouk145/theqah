@@ -329,6 +329,14 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
     const total = Math.max(1, stats.totalReviews);
     const pct = (n: number) => Math.round((n / total) * 100);
 
+    // Stores where the distribution chart is intentionally suppressed.
+    // Match by domain substring or exact storeUid.
+    const HIDE_DIST_DOMAINS = ["nglr7.com"];
+    const HIDE_DIST_STORE_UIDS: string[] = [];
+    const showDist =
+        !HIDE_DIST_STORE_UIDS.includes(store.storeUid) &&
+        !HIDE_DIST_DOMAINS.some((d) => (store.domain || "").toLowerCase().includes(d));
+
     const pageTitle = `شهادة توثيق التقييمات — ${storeName} | مشتري موثق`;
     const pageDesc = `سجل رسمي لـ ${stats.totalReviews} تقييم موثق عن متجر ${storeName}، مدققة وفق نظام Triple Matching من مشتري موثق.`;
     const canonicalUrl = `${URLS.CANONICAL_ORIGIN}/store/${encodeURIComponent(store.storeUid)}/reviews`;
@@ -455,25 +463,27 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
                             </div>
                         </div>
 
-                        <div className="dist">
-                            <div className="dist-h">— توزيع التقييمات —</div>
-                            {[5, 4, 3, 2, 1].map((n) => {
-                                const count = dist[n - 1] || 0;
-                                const w = pct(count);
-                                return (
-                                    <div className="dist-row" key={n}>
-                                        <div className="dist-num">
-                                            {n}
-                                            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                        {showDist && (
+                            <div className="dist">
+                                <div className="dist-h">— توزيع التقييمات —</div>
+                                {[5, 4, 3, 2, 1].map((n) => {
+                                    const count = dist[n - 1] || 0;
+                                    const w = pct(count);
+                                    return (
+                                        <div className="dist-row" key={n}>
+                                            <div className="dist-num">
+                                                {n}
+                                                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                                            </div>
+                                            <div className="dist-bar">
+                                                <div className={`dist-bar-fill ${n <= 2 ? "low" : ""}`} data-w={String(w)} />
+                                            </div>
+                                            <div className="dist-c">{count}</div>
                                         </div>
-                                        <div className="dist-bar">
-                                            <div className={`dist-bar-fill ${n <= 2 ? "low" : ""}`} data-w={String(w)} />
-                                        </div>
-                                        <div className="dist-c">{count}</div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
 
                         <div className="registry">
                             <div>
