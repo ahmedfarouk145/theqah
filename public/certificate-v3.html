@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شهادة توثيق التقييمات | مشتري موثق — Royal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@500;700;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#04241a;
+    --bg-2:#0a3a29;
+    --bg-3:#102e22;
+    --parchment:#f5ecd6;
+    --parchment-2:#fbf6e6;
+    --parchment-3:#ece1c4;
+    --ink:#1d1606;
+    --ink-2:#3a2f15;
+    --muted:#6f5e36;
+    --gold:#c89b4a;
+    --gold-2:#e0bf6b;
+    --gold-deep:#8b6720;
+    --green:#0a6b49;
+    --green-2:#13a371;
+    --rule:#d8c997;
+    --rule-2:#b69a52;
+    --star:#c89b4a;
+    --danger:#a8412a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'IBM Plex Sans Arabic',sans-serif;
+    color:var(--ink);direction:rtl;-webkit-font-smoothing:antialiased;min-height:100vh;
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(200,155,74,.18), transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(19,163,113,.12), transparent 50%),
+      linear-gradient(180deg,var(--bg-deep) 0%,var(--bg-2) 100%);
+    background-attachment:fixed;
+  }
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.18;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='none' stroke='%23c89b4a' stroke-width='.6'%3E%3Cpath d='M30 6l6 12 12 6-12 6-6 12-6-12-12-6 12-6z'/%3E%3Ccircle cx='30' cy='30' r='10'/%3E%3C/g%3E%3C/svg%3E");
+    background-size:60px 60px;
+  }
+  main,nav,footer{position:relative;z-index:1}
+
+  /* gold-on-green nav */
+  .nav{
+    border-bottom:1px solid rgba(200,155,74,.25);
+    background:linear-gradient(180deg,rgba(4,36,26,.92),rgba(4,36,26,.78));
+    backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;
+  }
+  .nav-inner{max-width:1100px;margin:0 auto;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+  .nav-logo{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--parchment)}
+  .nav-logo img{width:36px;height:36px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}
+  .nav-logo-text{font-family:'Tajawal',sans-serif;font-weight:700;font-size:16px;color:var(--gold-2);letter-spacing:.3px}
+  .nav-actions{display:flex;gap:8px}
+  .nav-btn{
+    padding:8px 16px;font-size:12px;font-weight:600;color:var(--gold-2);
+    background:rgba(200,155,74,.08);border:1px solid rgba(200,155,74,.3);border-radius:0;cursor:pointer;
+    font-family:inherit;letter-spacing:.5px;transition:all .2s;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .nav-btn:hover{background:rgba(200,155,74,.18);border-color:var(--gold)}
+  .nav-btn svg{width:13px;height:13px}
+
+  /* main scroll */
+  .stage{max-width:920px;margin:0 auto;padding:48px 24px 64px}
+
+  /* parchment certificate */
+  .cert{
+    position:relative;background:var(--parchment);
+    background-image:
+      radial-gradient(ellipse at 30% 20%, rgba(200,155,74,.12), transparent 40%),
+      radial-gradient(ellipse at 70% 90%, rgba(139,103,32,.08), transparent 50%);
+    padding:64px 56px;
+    box-shadow:
+      0 0 0 1px var(--gold-deep),
+      0 4px 12px rgba(0,0,0,.5),
+      0 30px 80px rgba(0,0,0,.6);
+  }
+  /* gold inner border with corners */
+  .cert::before{
+    content:'';position:absolute;inset:18px;border:1px solid var(--gold);
+    pointer-events:none;
+  }
+  .cert::after{
+    content:'';position:absolute;inset:24px;border:1px solid rgba(200,155,74,.4);
+    pointer-events:none;
+  }
+  .corner{
+    position:absolute;width:48px;height:48px;pointer-events:none;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='%23c89b4a' stroke-width='1.4'%3E%3Cpath d='M4 24v-8a8 8 0 0 1 8-8h8'/%3E%3Cpath d='M10 24v-6a4 4 0 0 1 4-4h6'/%3E%3Cpath d='M24 4l4 4-4 4-4-4z'/%3E%3C/svg%3E") center/contain no-repeat;
+    z-index:2;
+  }
+  .corner.tl{top:14px;right:14px;transform:scaleX(-1)}
+  .corner.tr{top:14px;left:14px}
+  .corner.bl{bottom:14px;right:14px;transform:rotate(180deg) scaleX(-1)}
+  .corner.br{bottom:14px;left:14px;transform:rotate(180deg)}
+
+  .cert-inner{position:relative;z-index:1}
+
+  /* royal header */
+  .crest{display:flex;flex-direction:column;align-items:center;gap:0;text-align:center;margin-bottom:30px}
+  .crest-arabesque{
+    display:flex;align-items:center;gap:12px;color:var(--gold-deep);
+    font-family:'Amiri',serif;font-size:14px;letter-spacing:6px;text-transform:uppercase;font-weight:700;
+  }
+  .crest-arabesque::before,.crest-arabesque::after{
+    content:'';width:80px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);
+  }
+
+  .seal-royal{
+    width:140px;height:140px;margin:24px 0 18px;position:relative;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .seal-royal::before{
+    content:'';position:absolute;inset:0;border-radius:50%;
+    background:radial-gradient(circle at 30% 25%,var(--gold-2),var(--gold) 60%,var(--gold-deep) 100%);
+    box-shadow:
+      inset 0 4px 12px rgba(255,235,180,.5),
+      inset 0 -6px 14px rgba(80,55,15,.5),
+      0 6px 20px rgba(80,55,15,.4);
+  }
+  .seal-royal::after{
+    content:'';position:absolute;inset:8px;border-radius:50%;
+    border:1.5px solid rgba(80,55,15,.45);
+    border-style:dashed;
+  }
+  .seal-text{position:absolute;inset:0;animation:rotate 32s linear infinite;z-index:1}
+  @keyframes rotate{to{transform:rotate(360deg)}}
+  .seal-text text{font-family:'Amiri',serif;font-size:9px;font-weight:700;fill:rgba(60,40,10,.85);letter-spacing:2px}
+  .seal-medal{
+    position:relative;z-index:2;width:78px;height:78px;border-radius:50%;
+    background:radial-gradient(circle at 30% 25%,var(--parchment-2),var(--parchment-3));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:inset 0 2px 4px rgba(80,55,15,.2),0 1px 2px rgba(0,0,0,.15);
+  }
+  .seal-medal img{width:54px;height:54px;object-fit:contain}
+
+  .royal-title{
+    font-family:'Amiri',serif;font-size:48px;font-weight:700;line-height:1.05;
+    color:var(--ink);text-align:center;letter-spacing:-.5px;
+  }
+  .royal-title-en{
+    margin-top:10px;font-family:'Tajawal',sans-serif;font-weight:500;
+    font-size:13px;letter-spacing:6px;text-transform:uppercase;color:var(--gold-deep);
+    text-align:center;
+  }
+
+  .ornament{
+    margin:24px auto;width:240px;height:18px;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 18' fill='none' stroke='%23c89b4a' stroke-width='1'%3E%3Cline x1='0' y1='9' x2='100' y2='9'/%3E%3Cline x1='140' y1='9' x2='240' y2='9'/%3E%3Cpath d='M120 3l4 6-4 6-4-6z' fill='%23c89b4a'/%3E%3Ccircle cx='106' cy='9' r='1.5' fill='%23c89b4a'/%3E%3Ccircle cx='134' cy='9' r='1.5' fill='%23c89b4a'/%3E%3C/svg%3E") center/contain no-repeat;
+  }
+
+  .preamble{
+    text-align:center;font-family:'Amiri',serif;font-size:16px;line-height:1.95;
+    color:var(--ink-2);max-width:580px;margin:0 auto;
+  }
+  .preamble strong{font-family:'Tajawal',sans-serif;font-weight:900;color:var(--green);direction:ltr;display:inline-block;letter-spacing:.5px}
+  .preamble .tm{font-family:'Tajawal',sans-serif;font-weight:600;color:var(--gold-deep);font-size:14px;display:inline-block;direction:rtl}
+
+  /* store name as honoree */
+  .honoree{
+    margin-top:40px;text-align:center;padding:28px 24px;
+    background:linear-gradient(180deg,transparent,rgba(200,155,74,.07));
+    border-top:1px double var(--rule-2);border-bottom:1px double var(--rule-2);
+  }
+  .honoree-pre{
+    font-family:'Amiri',serif;font-style:italic;font-size:14px;color:var(--muted);
+    letter-spacing:1px;
+  }
+  .honoree-name{
+    margin-top:10px;font-family:'Tajawal',sans-serif;font-weight:900;
+    font-size:54px;color:var(--ink);letter-spacing:-1.5px;line-height:1.1;
+  }
+  .honoree-url{
+    margin-top:8px;display:inline-flex;align-items:center;gap:6px;
+    font-size:13px;color:var(--gold-deep);text-decoration:none;direction:ltr;
+    border-bottom:1px solid var(--rule-2);padding-bottom:1px;font-weight:600;letter-spacing:.5px;
+  }
+  .honoree-url:hover{color:var(--ink)}
+  .honoree-url svg{width:11px;height:11px}
+
+  /* trust panel — three columns of metrics with gold dividers */
+  .panel{
+    margin-top:36px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;
+    border:1px solid var(--rule-2);background:rgba(255,250,230,.5);
+  }
+  .panel-cell{padding:24px 18px;text-align:center;border-left:1px solid var(--rule);position:relative}
+  .panel-cell:last-child{border-left:0}
+  .panel-cell::before{
+    content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);
+    width:24px;height:1px;background:var(--gold);
+  }
+  .panel-l{font-family:'Amiri',serif;font-style:italic;font-size:13px;color:var(--muted);letter-spacing:.5px;margin-bottom:8px}
+  .panel-v{font-family:'Tajawal',sans-serif;font-weight:900;font-size:42px;color:var(--ink);line-height:1;letter-spacing:-1px}
+  .panel-v small{font-size:18px;color:var(--gold-deep);font-weight:700;margin-right:4px}
+  .panel-stars{display:inline-flex;gap:2px;margin-top:8px}
+  .panel-stars svg{width:14px;height:14px;fill:var(--gold)}
+
+  /* distribution */
+  .dist{margin-top:32px}
+  .dist-h{
+    text-align:center;font-family:'Amiri',serif;font-style:italic;
+    font-size:15px;color:var(--gold-deep);letter-spacing:1px;margin-bottom:14px;
+  }
+  .dist-row{display:grid;grid-template-columns:36px 1fr 36px;gap:14px;align-items:center;padding:6px 0}
+  .dist-num{font-family:'Tajawal',sans-serif;font-weight:700;font-size:14px;color:var(--ink-2);text-align:center;display:flex;align-items:center;gap:3px;justify-content:center}
+  .dist-num svg{width:11px;height:11px;fill:var(--gold)}
+  .dist-bar{height:7px;background:var(--parchment-3);border:1px solid var(--rule);border-radius:0;position:relative;overflow:hidden}
+  .dist-bar-fill{position:absolute;top:0;right:0;height:100%;width:0;transition:width 1.4s cubic-bezier(.4,0,.2,1);background:linear-gradient(90deg,var(--gold-2),var(--gold) 60%,var(--gold-deep))}
+  .dist-bar-fill.low{background:linear-gradient(90deg,#c87a5c,var(--danger))}
+  .dist-c{font-family:'Tajawal',sans-serif;font-weight:700;font-size:13px;color:var(--muted);text-align:left;direction:ltr}
+
+  /* registry block: cert#, date, qr */
+  .registry{
+    margin-top:36px;padding:20px 24px;
+    background:var(--parchment-2);border:1px solid var(--rule-2);
+    display:grid;grid-template-columns:1fr 1fr auto;gap:24px;align-items:center;
+  }
+  .reg-l{font-family:'Amiri',serif;font-style:italic;font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+  .reg-v{font-family:'Tajawal',sans-serif;font-weight:700;font-size:15px;color:var(--ink)}
+  .reg-v.ltr{font-family:'Courier New',monospace;direction:ltr;letter-spacing:1.5px}
+  .qr{padding:8px;background:#fff;border:1px solid var(--gold-deep);line-height:0}
+  .qr img{display:block;width:72px;height:72px;image-rendering:pixelated}
+
+  /* signature */
+  .sig{
+    margin-top:36px;display:grid;grid-template-columns:1fr auto 1fr;gap:32px;align-items:flex-end;
+  }
+  .sig-l{}
+  .sig-line{border-bottom:1px solid var(--ink);padding-bottom:6px}
+  .sig-name{font-family:'Amiri',serif;font-style:italic;font-size:14px;color:var(--muted);margin-top:6px;text-align:center}
+  .sig-stamp{
+    width:80px;height:80px;border-radius:50%;border:2px solid var(--green);
+    display:flex;align-items:center;justify-content:center;color:var(--green);
+    font-family:'Tajawal',sans-serif;font-weight:900;font-size:11px;letter-spacing:1px;
+    transform:rotate(-12deg);text-align:center;line-height:1.2;
+    background:rgba(10,107,73,.06);
+  }
+
+  /* actions outside cert */
+  .actions{margin-top:32px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;padding:11px 22px;
+    font-family:'Tajawal',sans-serif;font-weight:700;font-size:13px;letter-spacing:.5px;
+    border:0;cursor:pointer;transition:all .2s;
+  }
+  .btn svg{width:14px;height:14px}
+  .btn-gold{
+    background:linear-gradient(180deg,var(--gold-2),var(--gold));
+    color:var(--ink);
+    box-shadow:0 4px 14px rgba(80,55,15,.5),inset 0 1px 0 rgba(255,235,180,.5);
+  }
+  .btn-gold:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(80,55,15,.55),inset 0 1px 0 rgba(255,235,180,.5)}
+  .btn-outline{
+    background:transparent;color:var(--gold-2);
+    border:1px solid var(--gold);
+  }
+  .btn-outline:hover{background:rgba(200,155,74,.12);color:var(--gold-2)}
+
+  /* reviews — gold-on-green panel section */
+  .reviews{margin-top:64px}
+  .reviews-h{
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:14px;
+  }
+  .reviews-t{
+    font-family:'Amiri',serif;font-weight:700;font-size:30px;color:var(--gold-2);letter-spacing:-.3px;
+    display:flex;align-items:center;gap:14px;
+  }
+  .reviews-t::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--gold),transparent);min-width:40px}
+  .reviews-c{font-family:'Tajawal',sans-serif;font-weight:700;font-size:13px;color:var(--gold-deep);background:rgba(200,155,74,.15);border:1px solid var(--gold);padding:4px 14px}
+
+  .filters{display:flex;gap:0;border:1px solid rgba(200,155,74,.4);align-self:flex-start}
+  .fbtn{
+    background:transparent;border:0;border-left:1px solid rgba(200,155,74,.3);
+    padding:8px 14px;font-family:'Tajawal',sans-serif;font-weight:600;font-size:11px;letter-spacing:1px;
+    color:rgba(245,236,214,.65);cursor:pointer;transition:all .15s;text-transform:uppercase;
+  }
+  .fbtn:last-child{border-left:0}
+  .fbtn:hover{color:var(--gold-2)}
+  .fbtn.active{background:var(--gold);color:var(--ink);font-weight:700}
+
+  .review-list{display:flex;flex-direction:column;gap:14px}
+  .review{
+    background:var(--parchment);border:1px solid rgba(200,155,74,.4);
+    padding:24px 28px;position:relative;
+    box-shadow:0 4px 16px rgba(0,0,0,.25);
+  }
+  .review::before{
+    content:'';position:absolute;top:0;right:0;width:4px;height:100%;
+    background:linear-gradient(180deg,var(--gold),var(--gold-deep));
+  }
+  .review.low::before{background:linear-gradient(180deg,#c87a5c,var(--danger))}
+
+  .review-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px}
+  .review-who{display:flex;align-items:center;gap:14px;flex:1;min-width:0}
+  .avatar{
+    width:48px;height:48px;border-radius:50%;
+    background:radial-gradient(circle at 30% 25%,var(--parchment-2),var(--parchment-3));
+    border:1.5px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 3px 8px rgba(80,55,15,.25);
+    overflow:hidden;
+  }
+  .avatar img{width:32px;height:32px;object-fit:contain}
+
+  .who-name{font-family:'Tajawal',sans-serif;font-weight:700;font-size:15px;color:var(--ink);margin-bottom:3px}
+  .who-meta{font-family:'Amiri',serif;font-style:italic;font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .who-meta-sep{width:3px;height:3px;background:var(--rule-2);border-radius:50%}
+
+  .verified-tag{
+    display:inline-flex;align-items:center;gap:5px;padding:3px 10px;
+    background:rgba(10,107,73,.1);border:1px solid var(--green);color:var(--green);
+    font-family:'Tajawal',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;
+    flex-shrink:0;align-self:flex-start;
+  }
+  .verified-tag svg{width:11px;height:11px}
+
+  .stars{display:inline-flex;gap:1px}
+  .stars svg{width:14px;height:14px;fill:var(--gold)}
+  .stars .off{fill:var(--rule)}
+  .review-stars{margin-top:4px}
+
+  .review-text{
+    font-family:'Amiri',serif;font-size:18px;line-height:1.85;color:var(--ink-2);
+    margin-top:6px;padding-right:62px;
+  }
+  .review-text-empty{font-style:italic;color:var(--muted);font-size:14px}
+
+  /* footer */
+  .stage-foot{
+    margin-top:64px;text-align:center;color:var(--gold-deep);
+    font-family:'Amiri',serif;font-style:italic;font-size:14px;letter-spacing:.5px;
+  }
+  .stage-foot a{color:var(--gold-2);text-decoration:none;font-weight:700;border-bottom:1px solid var(--gold)}
+
+  /* toast */
+  .toast{
+    position:fixed;bottom:32px;right:50%;transform:translateX(50%) translateY(60px);
+    background:var(--bg-deep);color:var(--gold-2);padding:14px 24px;
+    font-family:'Tajawal',sans-serif;font-weight:600;font-size:13px;letter-spacing:.5px;
+    border:1px solid var(--gold);
+    z-index:100;opacity:0;transition:all .35s cubic-bezier(.4,0,.2,1);pointer-events:none;
+    box-shadow:0 8px 30px rgba(0,0,0,.6);
+  }
+  .toast.show{opacity:1;transform:translateX(50%) translateY(0)}
+
+  /* mobile */
+  @media(max-width:720px){
+    .stage{padding:24px 14px}
+    .cert{padding:48px 24px}
+    .cert::before{inset:12px}
+    .cert::after{inset:18px}
+    .corner{width:32px;height:32px}
+    .royal-title{font-size:32px}
+    .honoree-name{font-size:36px}
+    .panel{grid-template-columns:1fr}
+    .panel-cell{border-left:0;border-bottom:1px solid var(--rule)}
+    .panel-cell:last-child{border-bottom:0}
+    .registry{grid-template-columns:1fr 1fr;gap:16px}
+    .qr{grid-column:span 2;justify-self:flex-start}
+    .sig{grid-template-columns:1fr;gap:16px}
+    .sig-stamp{margin:0 auto}
+    .review-text{padding-right:0;margin-top:14px}
+    .reviews-t{font-size:22px}
+  }
+
+  .cert{animation:fadeUp .7s ease both}
+  .reviews{animation:fadeUp .6s .15s ease both}
+  .review{animation:fadeUp .5s both}
+  .review:nth-child(1){animation-delay:.1s}.review:nth-child(2){animation-delay:.18s}
+  .review:nth-child(3){animation-delay:.26s}.review:nth-child(4){animation-delay:.34s}
+  .review:nth-child(5){animation-delay:.42s}.review:nth-child(6){animation-delay:.5s}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="https://www.theqah.com.sa" class="nav-logo">
+      <img src="/widgets/logo.png" alt="">
+      <span class="nav-logo-text">مشتري موثق</span>
+    </a>
+    <div class="nav-actions">
+      <button class="nav-btn" onclick="copyLink()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.71"/></svg>
+        نسخ الرابط
+      </button>
+      <button class="nav-btn" onclick="window.print()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        طباعة
+      </button>
+    </div>
+  </div>
+</nav>
+
+<main class="stage">
+
+  <div class="cert">
+    <span class="corner tl"></span><span class="corner tr"></span>
+    <span class="corner bl"></span><span class="corner br"></span>
+
+    <div class="cert-inner">
+
+      <div class="crest">
+        <div class="crest-arabesque">Verified · موثق</div>
+
+        <div class="seal-royal">
+          <svg class="seal-text" viewBox="0 0 140 140">
+            <defs><path id="sc" d="M70,70 m-58,0 a58,58 0 1,1 116,0 a58,58 0 1,1 -116,0"/></defs>
+            <text><textPath href="#sc" startOffset="0">★ مشتري موثق · MUSHTARI MOWATHAQ · شهادة معتمدة · </textPath></text>
+          </svg>
+          <div class="seal-medal">
+            <img src="/widgets/logo.png" alt="">
+          </div>
+        </div>
+
+        <h1 class="royal-title">شهادة توثيق التقييمات</h1>
+        <div class="royal-title-en">Verified Buyer Certificate</div>
+
+        <div class="ornament"></div>
+
+        <p class="preamble">
+          جميع التقييمات المدرجة صادرة وفق نظام <strong>Triple Matching</strong> <span class="tm">(دفع + شحن + استلام)</span> لمشتري موثق — لضمان تجربة حقيقية ١٠٠٪ بعيداً عن التزييف.
+        </p>
+      </div>
+
+      <div class="honoree">
+        <div class="honoree-pre">— صادرة باسم —</div>
+        <div class="honoree-name">بيت القهوة الشدوية</div>
+        <a href="https://shdacoffee.com" class="honoree-url" target="_blank" rel="noopener">
+          shdacoffee.com
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+        </a>
+      </div>
+
+      <div class="panel">
+        <div class="panel-cell">
+          <div class="panel-l">المتوسط</div>
+          <div class="panel-v">4.5<small>/5</small></div>
+          <div class="panel-stars">
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+        </div>
+        <div class="panel-cell">
+          <div class="panel-l">تقييم موثق</div>
+          <div class="panel-v" data-count="9">0</div>
+          <div class="panel-l" style="margin-top:8px;font-size:11px">من ٩ تقييمات</div>
+        </div>
+        <div class="panel-cell">
+          <div class="panel-l">عضو منذ</div>
+          <div class="panel-v" style="font-size:30px">فبراير</div>
+          <div class="panel-l" style="margin-top:8px;font-size:11px">٢٠٢٦ · MMXXVI</div>
+        </div>
+      </div>
+
+      <div class="dist">
+        <div class="dist-h">— توزيع التقييمات —</div>
+        <div class="dist-row">
+          <div class="dist-num">5 <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+          <div class="dist-bar"><div class="dist-bar-fill" data-w="89"></div></div>
+          <div class="dist-c">8</div>
+        </div>
+        <div class="dist-row">
+          <div class="dist-num">4 <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+          <div class="dist-bar"><div class="dist-bar-fill" data-w="0"></div></div>
+          <div class="dist-c">0</div>
+        </div>
+        <div class="dist-row">
+          <div class="dist-num">3 <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+          <div class="dist-bar"><div class="dist-bar-fill" data-w="0"></div></div>
+          <div class="dist-c">0</div>
+        </div>
+        <div class="dist-row">
+          <div class="dist-num">2 <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+          <div class="dist-bar"><div class="dist-bar-fill" data-w="0"></div></div>
+          <div class="dist-c">0</div>
+        </div>
+        <div class="dist-row">
+          <div class="dist-num">1 <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+          <div class="dist-bar"><div class="dist-bar-fill low" data-w="11"></div></div>
+          <div class="dist-c">1</div>
+        </div>
+      </div>
+
+      <div class="registry">
+        <div>
+          <div class="reg-l">رقم الشهادة · CERTIFICATE №</div>
+          <div class="reg-v ltr" id="cert-code">TQ-—</div>
+        </div>
+        <div>
+          <div class="reg-l">آخر تحديث · LAST UPDATE</div>
+          <div class="reg-v">٢١ أبريل ٢٠٢٦</div>
+        </div>
+        <div class="qr" id="qr"></div>
+      </div>
+
+      <div class="sig">
+        <div>
+          <div class="sig-line">&nbsp;</div>
+          <div class="sig-name">— مشتري موثق · بروتوكول الثقة</div>
+        </div>
+        <div class="sig-stamp">موثق<br>ومعتمد</div>
+        <div>
+          <div class="sig-line">&nbsp;</div>
+          <div class="sig-name">— التاريخ ٢١ أبريل ٢٠٢٦</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-gold" onclick="showToast('تم نسخ رابط المشاركة')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      مشاركة الشهادة
+    </button>
+    <button class="btn btn-outline" onclick="showToast('تم نسخ كود التضمين')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      تضمين
+    </button>
+    <button class="btn btn-outline" onclick="window.print()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      تحميل PDF
+    </button>
+  </div>
+
+  <section class="reviews">
+    <div class="reviews-h">
+      <div class="reviews-t">المراجعات الموثقة</div>
+      <div class="reviews-c">٩ تقييمات</div>
+    </div>
+    <div class="filters">
+      <button class="fbtn active" data-f="all">الكل</button>
+      <button class="fbtn" data-f="5">5★</button>
+      <button class="fbtn" data-f="low">منخفضة</button>
+    </div>
+
+    <div class="review-list" style="margin-top:18px">
+
+      <article class="review" data-rating="5">
+        <div class="review-top">
+          <div class="review-who">
+            <div class="avatar"><img src="/widgets/logo.png" alt=""></div>
+            <div style="min-width:0">
+              <div class="who-name">Rashed Alzahrany</div>
+              <div class="who-meta">
+                <span>١٢ أبريل ٢٠٢٦</span><span class="who-meta-sep"></span><span>مشترٍ حقيقي</span>
+              </div>
+              <div class="review-stars stars">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="review-text">المنتج رائع</p>
+      </article>
+
+      <article class="review" data-rating="5">
+        <div class="review-top">
+          <div class="review-who">
+            <div class="avatar"><img src="/widgets/logo.png" alt=""></div>
+            <div style="min-width:0">
+              <div class="who-name">عبدالعزيز الحارثي</div>
+              <div class="who-meta"><span>٢١ مارس ٢٠٢٦</span><span class="who-meta-sep"></span><span>مشترٍ حقيقي</span></div>
+              <div class="review-stars stars">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="review-text">المنتج نضيف وطيب ويتساهل التقييم والطلب الدايم</p>
+      </article>
+
+      <article class="review" data-rating="5">
+        <div class="review-top">
+          <div class="review-who">
+            <div class="avatar"><img src="/widgets/logo.png" alt=""></div>
+            <div style="min-width:0">
+              <div class="who-name">محمد الغامدي</div>
+              <div class="who-meta"><span>٢٥ مارس ٢٠٢٦</span><span class="who-meta-sep"></span><span>مشترٍ حقيقي</span></div>
+              <div class="review-stars stars">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="review-text"><span class="review-text-empty">— لم يترك المشتري نصاً مكتوباً —</span></p>
+      </article>
+
+      <article class="review low" data-rating="1">
+        <div class="review-top">
+          <div class="review-who">
+            <div class="avatar"><img src="/widgets/logo.png" alt=""></div>
+            <div style="min-width:0">
+              <div class="who-name">Nouf Hassan</div>
+              <div class="who-meta"><span>٦ مارس ٢٠٢٦</span><span class="who-meta-sep"></span><span>مشترٍ حقيقي</span></div>
+              <div class="review-stars stars">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24" class="off"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24" class="off"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24" class="off"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24" class="off"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="review-text"><span class="review-text-empty">— لم يترك المشتري نصاً مكتوباً —</span></p>
+      </article>
+
+      <article class="review" data-rating="5">
+        <div class="review-top">
+          <div class="review-who">
+            <div class="avatar"><img src="/widgets/logo.png" alt=""></div>
+            <div style="min-width:0">
+              <div class="who-name">أريج</div>
+              <div class="who-meta"><span>٢٣ فبراير ٢٠٢٦</span><span class="who-meta-sep"></span><span>مشترٍ حقيقي</span></div>
+              <div class="review-stars stars">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="review-text">من أفضل أنواع القهوة اللي ذقتها، أتمنى لهم كل التوفيق</p>
+      </article>
+
+      <article class="review" data-rating="5">
+        <div class="review-top">
+          <div class="review-who">
+            <div class="avatar"><img src="/widgets/logo.png" alt=""></div>
+            <div style="min-width:0">
+              <div class="who-name">Rashed Alzahrany</div>
+              <div class="who-meta"><span>٢١ فبراير ٢٠٢٦</span><span class="who-meta-sep"></span><span>مشترٍ حقيقي</span></div>
+              <div class="review-stars stars">
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="review-text">منتج رائع وتعامل راقي</p>
+      </article>
+
+    </div>
+  </section>
+
+  <div class="stage-foot">
+    تقييمات مُدققة بواسطة <a href="https://www.theqah.com.sa">مشتري موثق</a>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+<script>
+  document.querySelectorAll('.fbtn').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const f=btn.dataset.f;
+    document.querySelectorAll('.review').forEach(r=>{
+      const rating=parseInt(r.dataset.rating);
+      r.style.display=(f==='all'||(f==='5'&&rating===5)||(f==='low'&&rating<=2))?'':'none';
+    });
+  }));
+
+  function animateCount(el,target,duration=1400){
+    const t0=performance.now();
+    function tick(now){
+      const p=Math.min((now-t0)/duration,1);
+      el.textContent=Math.floor(target*(1-Math.pow(1-p,3)));
+      if(p<1) requestAnimationFrame(tick); else el.textContent=target;
+    }
+    requestAnimationFrame(tick);
+  }
+  const obs=new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting){animateCount(e.target,parseInt(e.target.dataset.count));obs.unobserve(e.target);}
+  }),{threshold:.3});
+  document.querySelectorAll('[data-count]').forEach(el=>obs.observe(el));
+
+  setTimeout(()=>document.querySelectorAll('.dist-bar-fill').forEach(b=>b.style.width=b.dataset.w+'%'),300);
+
+  const toastEl=document.getElementById('toast'),toastMsg=document.getElementById('toastMsg');
+  let tt;
+  function showToast(m){toastMsg.textContent=m;toastEl.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('show'),2200);}
+  function copyLink(){if(navigator.clipboard) navigator.clipboard.writeText(location.href);showToast('تم نسخ الرابط');}
+
+  // Deterministic certificate code — same djb2-base36 hash used by the widget.
+  // In production, pass the real storeUid from the server.
+  function certCode(uid){
+    if(!uid) return '';
+    let hash=5381;
+    for(let i=0;i<uid.length;i++){hash=((hash*33)^uid.charCodeAt(i))>>>0;}
+    return 'TQ-'+(hash.toString(36).toUpperCase()+'000000').slice(0,6);
+  }
+  (function(){
+    const storeUid='shdacoffee'; // demo — replace with real storeUid server-side
+    const el=document.getElementById('cert-code');
+    if(el) el.textContent=certCode(storeUid);
+  })();
+
+  (function(){
+    const host=document.getElementById('qr');
+    if(!host||typeof qrcode==='undefined') return;
+    const qr=qrcode(0,'M');qr.addData(location.href);qr.make();
+    const img=document.createElement('img');
+    img.src=qr.createDataURL(4,0);img.alt='QR';
+    host.replaceChildren(img);
+  })();
+</script>
+</body>
+</html>
