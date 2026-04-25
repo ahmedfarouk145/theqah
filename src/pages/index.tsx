@@ -111,56 +111,79 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
         <link rel="canonical" href={`${URLS.CANONICAL_ORIGIN}/`} />
         <meta property="og:url" content={`${URLS.CANONICAL_ORIGIN}/`} />
         <meta name="robots" content="index, follow" />
-        {/* Structured data - all values are hardcoded/trusted, no user input */}
+        {/* Master schema bundle: SoftwareApplication + Organization + FAQPage. Hardcoded/trusted, no user input. */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'SoftwareApplication',
-              name: 'مشتري موثق',
-              url: URLS.CANONICAL_ORIGIN,
-              applicationCategory: 'BusinessApplication',
-              operatingSystem: 'Web',
-              description: 'أول منصة سعودية تربط كل تقييم بمشترٍ حقيقي عبر أتمتة كاملة لتوثيق تقييمات المتاجر الإلكترونية.',
-              offers: {
-                '@type': 'Offer',
-                price: '0',
-                priceCurrency: 'SAR',
+            __html: JSON.stringify([
+              {
+                '@context': 'https://schema.org',
+                '@type': 'SoftwareApplication',
+                name: 'Moshtary Moathaq (مشتري موثق)',
+                url: URLS.CANONICAL_ORIGIN,
+                operatingSystem: 'Web, Salla, Zid',
+                applicationCategory: 'BusinessApplication, eCommerceTrustTool',
+                description: 'تطبيق سحابي سعودي لتوثيق تقييمات المتاجر الإلكترونية بنظام Triple Match.',
+                offers: {
+                  '@type': 'Offer',
+                  price: '20',
+                  priceCurrency: 'SAR',
+                },
+                aggregateRating: {
+                  '@type': 'AggregateRating',
+                  ratingValue: '5',
+                  reviewCount: String(appReviews.length),
+                },
               },
-              aggregateRating: {
-                '@type': 'AggregateRating',
-                ratingValue: '5',
-                ratingCount: String(appReviews.length),
+              {
+                '@context': 'https://schema.org',
+                '@type': 'Organization',
+                name: 'مشتري موثق',
+                alternateName: 'Theqah',
+                url: URLS.CANONICAL_ORIGIN,
+                logo: `${URLS.CANONICAL_ORIGIN}/logo.png`,
+                sameAs: [
+                  'https://www.tiktok.com/@theqahapp',
+                  'https://x.com/theqahapp',
+                  'https://www.instagram.com/theqahapp',
+                  'https://www.youtube.com/@theqahapp',
+                ],
+                contactPoint: {
+                  '@type': 'ContactPoint',
+                  contactType: 'customer support',
+                  email: 'Reviews@theqah.com.sa',
+                  url: `${URLS.CANONICAL_ORIGIN}/contact`,
+                  areaServed: 'SA',
+                  availableLanguage: ['Arabic', 'English'],
+                },
+                hasCredential: [
+                  {
+                    '@type': 'EducationalOccupationalCredential',
+                    name: 'شهادة تسجيل مصنف - الهيئة السعودية للملكية الفكرية',
+                    identifier: '25-12-40512974',
+                  },
+                  {
+                    '@type': 'EducationalOccupationalCredential',
+                    name: 'شهادة اعتماد حوكمة البيانات الوطنية',
+                    identifier: '3260005643',
+                  },
+                ],
               },
-            }),
-          }}
-        />
-        {/* Organization structured data - hardcoded values, no user input */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'Organization',
-              name: 'مشتري موثق',
-              alternateName: 'Theqah',
-              url: URLS.CANONICAL_ORIGIN,
-              logo: `${URLS.CANONICAL_ORIGIN}/logo.png`,
-              description: 'أول منصة سعودية لتوثيق تقييمات المتاجر الإلكترونية بنظام Triple Match لربط كل تقييم بمشترٍ حقيقي.',
-              sameAs: [
-                'https://www.tiktok.com/@theqahapp',
-                'https://x.com/theqahapp',
-                'https://www.instagram.com/theqahapp',
-                'https://youtube.com/@theqahapp',
-              ],
-              contactPoint: {
-                '@type': 'ContactPoint',
-                contactType: 'customer support',
-                url: `${URLS.CANONICAL_ORIGIN}/support`,
-                availableLanguage: ['Arabic', 'English'],
+              {
+                '@context': 'https://schema.org',
+                '@type': 'FAQPage',
+                mainEntity: [
+                  {
+                    '@type': 'Question',
+                    name: 'ماهو مشتري موثق؟',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: 'مشتري موثق منصة سعودية لتوثيق تقييمات المتاجر الإلكترونية بنظام Triple Match، متكاملة مع سلة وزد.',
+                    },
+                  },
+                ],
               },
-            }),
+            ]),
           }}
         />
         {/* HowTo structured data - hardcoded values, no user input */}
