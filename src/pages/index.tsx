@@ -154,6 +154,12 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 'https://www.instagram.com/theqahapp',
                 'https://youtube.com/@theqahapp',
               ],
+              contactPoint: {
+                '@type': 'ContactPoint',
+                contactType: 'customer support',
+                url: `${URLS.CANONICAL_ORIGIN}/support`,
+                availableLanguage: ['Arabic', 'English'],
+              },
             }),
           }}
         />
