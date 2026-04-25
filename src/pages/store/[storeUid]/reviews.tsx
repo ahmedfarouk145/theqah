@@ -432,14 +432,16 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
                             )}
                         </div>
 
-                        <div className="panel">
-                            <div className="panel-cell">
-                                <div className="panel-l">المتوسط</div>
-                                <div className="panel-v">
-                                    {stats.avgStars.toFixed(1)}<small>/5</small>
+                        <div className={`panel ${stats.avgStars >= 4 ? "panel-3" : "panel-2"}`}>
+                            {stats.avgStars >= 4 && (
+                                <div className="panel-cell">
+                                    <div className="panel-l">المتوسط</div>
+                                    <div className="panel-v">
+                                        {stats.avgStars.toFixed(1)}<small>/5</small>
+                                    </div>
+                                    <Stars count={stats.avgStars} className="panel-stars-wrap" />
                                 </div>
-                                <Stars count={stats.avgStars} className="panel-stars-wrap" />
-                            </div>
+                            )}
                             <div className="panel-cell">
                                 <div className="panel-l">تقييم موثق</div>
                                 <div className="panel-v" data-count={stats.totalReviews}>0</div>
@@ -681,7 +683,9 @@ const V3_CSS = `
 .v3-root .honoree-url:hover{color:var(--ink)}
 .v3-root .honoree-url svg{width:11px;height:11px}
 
-.v3-root .panel{margin-top:36px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--rule-2);background:rgba(255,250,230,.5)}
+.v3-root .panel{margin-top:36px;display:grid;gap:0;border:1px solid var(--rule-2);background:rgba(255,250,230,.5)}
+.v3-root .panel-3{grid-template-columns:1fr 1fr 1fr}
+.v3-root .panel-2{grid-template-columns:1fr 1fr}
 .v3-root .panel-cell{padding:24px 18px;text-align:center;border-left:1px solid var(--rule);position:relative}
 .v3-root .panel-cell:last-child{border-left:0}
 .v3-root .panel-cell::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);width:24px;height:1px;background:var(--gold)}
