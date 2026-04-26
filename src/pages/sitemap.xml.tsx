@@ -48,7 +48,52 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
         console.error("[sitemap] Failed to fetch blog posts:", err);
     }
 
+    // Fetch stores that have at least one verified+approved review. Without
+    // sitemap entries Google has no path to discover certificate pages — the
+    // only inbound links are from third-party widgets which it ignores for
+    // crawl prioritisation.
+    const storeEntries = new Map<string, number>(); // storeUid -> latest publishedAt
+    try {
+        const snap = await dbAdmin()
+            .collection("reviews")
+            .where("verified", "==", true)
+            .where("status", "==", "approved")
+            .select("storeUid", "publishedAt", "createdAt")
+            .limit(20000)
+            .get();
+
+        for (const doc of snap.docs) {
+            const d = doc.data() as { storeUid?: string; publishedAt?: number; createdAt?: number };
+            if (!d.storeUid) continue;
+            const ts = Number(d.publishedAt ?? d.createdAt ?? 0) || 0;
+            const prev = storeEntries.get(d.storeUid) ?? 0;
+            if (ts > prev) storeEntries.set(d.storeUid, ts);
+            else if (!storeEntries.has(d.storeUid)) storeEntries.set(d.storeUid, ts);
+        }
+    } catch (err) {
+        console.error("[sitemap] Failed to fetch verified reviews for store URLs:", err);
+    }
+
     const today = toW3CDate(new Date());
+
+    const storeUrlBlocks: string[] = [];
+    for (const [storeUid, ts] of storeEntries) {
+        const lastmod = ts > 0 ? toW3CDate(new Date(ts)) : today;
+        const enc = encodeURIComponent(storeUid);
+        // Both routes — /reviews (canonical) and /certificate (filtered ≥4★).
+        storeUrlBlocks.push(`  <url>
+    <loc>${escapeXml(`${SITE_URL}/store/${enc}/reviews`)}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`);
+        storeUrlBlocks.push(`  <url>
+    <loc>${escapeXml(`${SITE_URL}/store/${enc}/certificate`)}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`);
+    }
 
     // Build XML
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -71,6 +116,7 @@ ${blogEntries
   </url>`
             )
             .join("\n")}
+${storeUrlBlocks.join("\n")}
 </urlset>`;
 
     // Set response headers

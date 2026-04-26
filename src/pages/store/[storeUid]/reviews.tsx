@@ -324,27 +324,41 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
         return () => window.clearTimeout(t);
     }, [mounted]);
 
-    // Animate count
+    // Animate count. SSR prints the real number so non-JS clients (Googlebot,
+    // LLM scrapers, no-JS users) see the actual total. After mount we reset to
+    // 0 only on elements that are still off-screen, then count up when they
+    // intersect — anything already in view stays at the final value.
     useEffect(() => {
         if (!mounted) return;
-        const els = document.querySelectorAll<HTMLElement>("[data-count]");
+        const els = Array.from(document.querySelectorAll<HTMLElement>("[data-count]"));
+
+        const animate = (el: HTMLElement) => {
+            const target = parseInt(el.dataset.count || "0", 10);
+            const t0 = performance.now();
+            const tick = (now: number) => {
+                const p = Math.min((now - t0) / 1400, 1);
+                el.textContent = String(Math.floor(target * (1 - Math.pow(1 - p, 3))));
+                if (p < 1) requestAnimationFrame(tick);
+                else el.textContent = String(target);
+            };
+            requestAnimationFrame(tick);
+        };
+
         const obs = new IntersectionObserver((entries) => {
             entries.forEach((e) => {
                 if (!e.isIntersecting) return;
-                const el = e.target as HTMLElement;
-                const target = parseInt(el.dataset.count || "0", 10);
-                const t0 = performance.now();
-                const tick = (now: number) => {
-                    const p = Math.min((now - t0) / 1400, 1);
-                    el.textContent = String(Math.floor(target * (1 - Math.pow(1 - p, 3))));
-                    if (p < 1) requestAnimationFrame(tick);
-                    else el.textContent = String(target);
-                };
-                requestAnimationFrame(tick);
-                obs.unobserve(el);
+                animate(e.target as HTMLElement);
+                obs.unobserve(e.target);
             });
         }, { threshold: 0.3 });
-        els.forEach((el) => obs.observe(el));
+
+        els.forEach((el) => {
+            const rect = el.getBoundingClientRect();
+            const inView = rect.top < window.innerHeight && rect.bottom > 0;
+            if (inView) return; // keep SSR value, no flicker
+            el.textContent = "0";
+            obs.observe(el);
+        });
         return () => obs.disconnect();
     }, [mounted]);
 
@@ -560,7 +574,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
                             )}
                             <div className="panel-cell">
                                 <div className="panel-l">تقييم موثق</div>
-                                <div className="panel-v" data-count={stats.totalReviews}>0</div>
+                                <div className="panel-v" data-count={stats.totalReviews}>{stats.totalReviews}</div>
                                 <div className="panel-l" style={{ marginTop: 8, fontSize: 11 }}>إجمالي السجل</div>
                             </div>
                             <div className="panel-cell">
