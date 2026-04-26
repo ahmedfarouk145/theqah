@@ -110,6 +110,108 @@ function arMonthYear(ts: number): string {
     return new Date(ts).toLocaleDateString("ar-SA", { year: "numeric", month: "long" });
 }
 
+/* ── JSON-LD (Schema.org) ──
+ * Emits dynamic structured data so Google and LLM crawlers can recognise
+ * this page as a third-party-verified review record. The `publisher` field
+ * on each Review names "مشتري موثق" — this is what tags the reviews as
+ * independently verified rather than self-published by the merchant.
+ */
+type JsonLdValue = string | number | boolean | JsonLdValue[] | { [k: string]: JsonLdValue | undefined };
+
+function isoOrUndefined(ts: number): string | undefined {
+    if (!Number.isFinite(ts) || ts <= 0) return undefined;
+    const d = new Date(ts);
+    return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
+function buildStoreJsonLd(profile: StoreProfile, canonicalUrl: string): JsonLdValue {
+    const { store, stats, reviews } = profile;
+    const storeName = store.name || "متجر";
+    const orgId = `${canonicalUrl}#organization`;
+    const verifier = {
+        "@type": "Organization",
+        name: "مشتري موثق",
+        alternateName: "Mushtari Mowathaq",
+        url: URLS.CANONICAL_ORIGIN,
+    } as const;
+
+    const organization: JsonLdValue = {
+        "@type": "Organization",
+        "@id": orgId,
+        name: storeName,
+        url: store.domain
+            ? (store.domain.startsWith("http") ? store.domain : `https://${store.domain}`)
+            : canonicalUrl,
+        mainEntityOfPage: canonicalUrl,
+    };
+
+    if (stats.totalReviews > 0) {
+        organization.aggregateRating = {
+            "@type": "AggregateRating",
+            ratingValue: Number(stats.avgStars.toFixed(2)),
+            bestRating: 5,
+            worstRating: 1,
+            ratingCount: stats.totalReviews,
+            reviewCount: stats.totalReviews,
+        };
+    }
+
+    const reviewNodes: JsonLdValue[] = reviews.slice(0, 100).map((r) => {
+        const node: JsonLdValue = {
+            "@type": "Review",
+            "@id": `${canonicalUrl}#review-${r.id}`,
+            itemReviewed: { "@id": orgId },
+            author: {
+                "@type": "Person",
+                name: r.author.displayName || "عميل",
+            },
+            reviewRating: {
+                "@type": "Rating",
+                ratingValue: r.stars,
+                bestRating: 5,
+                worstRating: 1,
+            },
+            publisher: { ...verifier },
+        };
+        const dt = isoOrUndefined(r.publishedAt);
+        if (dt) node.datePublished = dt;
+        const body = (r.text || "").trim();
+        if (body) node.reviewBody = body;
+        if (r.images && r.images.length > 0) node.image = r.images;
+        if (r.trustedBuyer) {
+            node.additionalProperty = [
+                { "@type": "PropertyValue", name: "verifiedPurchase", value: true },
+                { "@type": "PropertyValue", name: "verificationMethod", value: "Triple Matching (payment + shipment + delivery)" },
+            ];
+        }
+        return node;
+    });
+
+    const breadcrumb: JsonLdValue = {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+            { "@type": "ListItem", position: 1, name: "مشتري موثق", item: URLS.CANONICAL_ORIGIN },
+            { "@type": "ListItem", position: 2, name: storeName, item: canonicalUrl },
+        ],
+    };
+
+    return {
+        "@context": "https://schema.org",
+        "@graph": [organization, ...reviewNodes, breadcrumb],
+    };
+}
+
+// Escape characters that would break out of <script>...</script> or trip
+// up JS parsers (LS/PS are valid in JSON but unescaped line terminators in JS).
+const LS_PS_RE = new RegExp('[\u2028\u2029]', 'g');
+function jsonLdToHtml(data: JsonLdValue): string {
+    return JSON.stringify(data)
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e')
+        .replace(/&/g, '\\u0026')
+        .replace(LS_PS_RE, (ch) => ch === '\u2028' ? '\\u2028' : '\\u2029');
+}
+
 /* ── Star icon ── */
 function Stars({ count, className = "" }: { count: number; className?: string }) {
     const s = Math.max(0, Math.min(5, Math.round(count)));
@@ -222,27 +324,41 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
         return () => window.clearTimeout(t);
     }, [mounted]);
 
-    // Animate count
+    // Animate count. SSR prints the real number so non-JS clients (Googlebot,
+    // LLM scrapers, no-JS users) see the actual total. After mount we reset to
+    // 0 only on elements that are still off-screen, then count up when they
+    // intersect — anything already in view stays at the final value.
     useEffect(() => {
         if (!mounted) return;
-        const els = document.querySelectorAll<HTMLElement>("[data-count]");
+        const els = Array.from(document.querySelectorAll<HTMLElement>("[data-count]"));
+
+        const animate = (el: HTMLElement) => {
+            const target = parseInt(el.dataset.count || "0", 10);
+            const t0 = performance.now();
+            const tick = (now: number) => {
+                const p = Math.min((now - t0) / 1400, 1);
+                el.textContent = String(Math.floor(target * (1 - Math.pow(1 - p, 3))));
+                if (p < 1) requestAnimationFrame(tick);
+                else el.textContent = String(target);
+            };
+            requestAnimationFrame(tick);
+        };
+
         const obs = new IntersectionObserver((entries) => {
             entries.forEach((e) => {
                 if (!e.isIntersecting) return;
-                const el = e.target as HTMLElement;
-                const target = parseInt(el.dataset.count || "0", 10);
-                const t0 = performance.now();
-                const tick = (now: number) => {
-                    const p = Math.min((now - t0) / 1400, 1);
-                    el.textContent = String(Math.floor(target * (1 - Math.pow(1 - p, 3))));
-                    if (p < 1) requestAnimationFrame(tick);
-                    else el.textContent = String(target);
-                };
-                requestAnimationFrame(tick);
-                obs.unobserve(el);
+                animate(e.target as HTMLElement);
+                obs.unobserve(e.target);
             });
         }, { threshold: 0.3 });
-        els.forEach((el) => obs.observe(el));
+
+        els.forEach((el) => {
+            const rect = el.getBoundingClientRect();
+            const inView = rect.top < window.innerHeight && rect.bottom > 0;
+            if (inView) return; // keep SSR value, no flicker
+            el.textContent = "0";
+            obs.observe(el);
+        });
         return () => obs.disconnect();
     }, [mounted]);
 
@@ -341,6 +457,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
     const pageDesc = `سجل رسمي لـ ${stats.totalReviews} تقييم موثق عن متجر ${storeName}، مدققة وفق نظام Triple Matching من مشتري موثق.`;
     const canonicalUrl = `${URLS.CANONICAL_ORIGIN}/store/${encodeURIComponent(store.storeUid)}/reviews`;
     const shouldIndex = !focusedReviewId;
+    const jsonLdHtml = jsonLdToHtml(buildStoreJsonLd(profile, canonicalUrl));
 
     return (
         <div className={`v3-root ${mounted ? "is-mounted" : ""}`} dir="rtl">
@@ -353,6 +470,11 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content={canonicalUrl} />
                 <meta name="robots" content={shouldIndex ? "index, follow" : "noindex, follow"} />
+                <script
+                    type="application/ld+json"
+                    key="store-reviews-jsonld"
+                    dangerouslySetInnerHTML={{ __html: jsonLdHtml }}
+                />
                 {/* eslint-disable-next-line @next/next/no-page-custom-font */}
                 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@500;700;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet" />
                 <style>{V3_CSS}</style>
@@ -452,7 +574,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
                             )}
                             <div className="panel-cell">
                                 <div className="panel-l">تقييم موثق</div>
-                                <div className="panel-v" data-count={stats.totalReviews}>0</div>
+                                <div className="panel-v" data-count={stats.totalReviews}>{stats.totalReviews}</div>
                                 <div className="panel-l" style={{ marginTop: 8, fontSize: 11 }}>إجمالي السجل</div>
                             </div>
                             <div className="panel-cell">
