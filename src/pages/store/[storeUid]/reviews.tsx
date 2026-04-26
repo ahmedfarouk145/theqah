@@ -110,6 +110,108 @@ function arMonthYear(ts: number): string {
     return new Date(ts).toLocaleDateString("ar-SA", { year: "numeric", month: "long" });
 }
 
+/* ── JSON-LD (Schema.org) ──
+ * Emits dynamic structured data so Google and LLM crawlers can recognise
+ * this page as a third-party-verified review record. The `publisher` field
+ * on each Review names "مشتري موثق" — this is what tags the reviews as
+ * independently verified rather than self-published by the merchant.
+ */
+type JsonLdValue = string | number | boolean | JsonLdValue[] | { [k: string]: JsonLdValue | undefined };
+
+function isoOrUndefined(ts: number): string | undefined {
+    if (!Number.isFinite(ts) || ts <= 0) return undefined;
+    const d = new Date(ts);
+    return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+}
+
+function buildStoreJsonLd(profile: StoreProfile, canonicalUrl: string): JsonLdValue {
+    const { store, stats, reviews } = profile;
+    const storeName = store.name || "متجر";
+    const orgId = `${canonicalUrl}#organization`;
+    const verifier = {
+        "@type": "Organization",
+        name: "مشتري موثق",
+        alternateName: "Mushtari Mowathaq",
+        url: URLS.CANONICAL_ORIGIN,
+    } as const;
+
+    const organization: JsonLdValue = {
+        "@type": "Organization",
+        "@id": orgId,
+        name: storeName,
+        url: store.domain
+            ? (store.domain.startsWith("http") ? store.domain : `https://${store.domain}`)
+            : canonicalUrl,
+        mainEntityOfPage: canonicalUrl,
+    };
+
+    if (stats.totalReviews > 0) {
+        organization.aggregateRating = {
+            "@type": "AggregateRating",
+            ratingValue: Number(stats.avgStars.toFixed(2)),
+            bestRating: 5,
+            worstRating: 1,
+            ratingCount: stats.totalReviews,
+            reviewCount: stats.totalReviews,
+        };
+    }
+
+    const reviewNodes: JsonLdValue[] = reviews.slice(0, 100).map((r) => {
+        const node: JsonLdValue = {
+            "@type": "Review",
+            "@id": `${canonicalUrl}#review-${r.id}`,
+            itemReviewed: { "@id": orgId },
+            author: {
+                "@type": "Person",
+                name: r.author.displayName || "عميل",
+            },
+            reviewRating: {
+                "@type": "Rating",
+                ratingValue: r.stars,
+                bestRating: 5,
+                worstRating: 1,
+            },
+            publisher: { ...verifier },
+        };
+        const dt = isoOrUndefined(r.publishedAt);
+        if (dt) node.datePublished = dt;
+        const body = (r.text || "").trim();
+        if (body) node.reviewBody = body;
+        if (r.images && r.images.length > 0) node.image = r.images;
+        if (r.trustedBuyer) {
+            node.additionalProperty = [
+                { "@type": "PropertyValue", name: "verifiedPurchase", value: true },
+                { "@type": "PropertyValue", name: "verificationMethod", value: "Triple Matching (payment + shipment + delivery)" },
+            ];
+        }
+        return node;
+    });
+
+    const breadcrumb: JsonLdValue = {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+            { "@type": "ListItem", position: 1, name: "مشتري موثق", item: URLS.CANONICAL_ORIGIN },
+            { "@type": "ListItem", position: 2, name: storeName, item: canonicalUrl },
+        ],
+    };
+
+    return {
+        "@context": "https://schema.org",
+        "@graph": [organization, ...reviewNodes, breadcrumb],
+    };
+}
+
+// Escape characters that would break out of <script>...</script> or trip
+// up JS parsers (LS/PS are valid in JSON but unescaped line terminators in JS).
+const LS_PS_RE = new RegExp('[\u2028\u2029]', 'g');
+function jsonLdToHtml(data: JsonLdValue): string {
+    return JSON.stringify(data)
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e')
+        .replace(/&/g, '\\u0026')
+        .replace(LS_PS_RE, (ch) => ch === '\u2028' ? '\\u2028' : '\\u2029');
+}
+
 /* ── Star icon ── */
 function Stars({ count, className = "" }: { count: number; className?: string }) {
     const s = Math.max(0, Math.min(5, Math.round(count)));
@@ -341,6 +443,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
     const pageDesc = `سجل رسمي لـ ${stats.totalReviews} تقييم موثق عن متجر ${storeName}، مدققة وفق نظام Triple Matching من مشتري موثق.`;
     const canonicalUrl = `${URLS.CANONICAL_ORIGIN}/store/${encodeURIComponent(store.storeUid)}/reviews`;
     const shouldIndex = !focusedReviewId;
+    const jsonLdHtml = jsonLdToHtml(buildStoreJsonLd(profile, canonicalUrl));
 
     return (
         <div className={`v3-root ${mounted ? "is-mounted" : ""}`} dir="rtl">
@@ -353,6 +456,11 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content={canonicalUrl} />
                 <meta name="robots" content={shouldIndex ? "index, follow" : "noindex, follow"} />
+                <script
+                    type="application/ld+json"
+                    key="store-reviews-jsonld"
+                    dangerouslySetInnerHTML={{ __html: jsonLdHtml }}
+                />
                 {/* eslint-disable-next-line @next/next/no-page-custom-font */}
                 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@500;700;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet" />
                 <style>{V3_CSS}</style>
