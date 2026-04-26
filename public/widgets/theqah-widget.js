@@ -650,7 +650,9 @@
     // Medallion — rounded navy rectangle with inline number + label, only
     // shown when the store actually has verified reviews. Gold ring + inner
     // rim lighting carry their own contrast regardless of host page colour.
-    if (hasReviews) {
+    // Medallion temporarily hidden — set SHOW_MEDALLION = true to restore.
+    const SHOW_MEDALLION = false;
+    if (SHOW_MEDALLION && hasReviews) {
       const medallion = h('div', {
         style: `
           display: inline-flex;

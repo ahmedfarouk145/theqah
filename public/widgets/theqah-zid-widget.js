@@ -290,7 +290,9 @@
     container.appendChild(titleEl);
 
     // Medallion — navy rectangle with gold ring showing verified review count.
-    if (hasReviews) {
+    // Temporarily hidden — set SHOW_MEDALLION = true to restore.
+    const SHOW_MEDALLION = false;
+    if (SHOW_MEDALLION && hasReviews) {
       const medallion = h('div', {
         style: "display:inline-flex;align-items:center;gap:18px;padding:16px 38px;border-radius:16px;background:linear-gradient(160deg,#2a3860 0%,#17213f 50%,#0a1020 100%);box-shadow:inset 0 1px 0 rgba(232,212,160,0.3),inset 0 -2px 6px rgba(0,0,0,0.55),0 0 0 1.5px #b89968,0 12px 28px -10px rgba(10,16,32,0.4);"
       });
