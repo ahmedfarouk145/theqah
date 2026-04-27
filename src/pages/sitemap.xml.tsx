@@ -162,7 +162,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     //
     // lastmod = max(updatedAt, lastReviewsSyncAt) — whichever is fresher,
     // so a new verified review reflects in the sitemap on the next refresh.
-    let certificateEntries: UrlEntry[] = [];
+    const certificateEntries: UrlEntry[] = [];
     try {
         const now = Date.now();
         const snap = await db
