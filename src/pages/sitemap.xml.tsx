@@ -47,6 +47,59 @@ type UrlEntry = {
     priority: number;
 };
 
+/**
+ * Mirrors the fallback logic of
+ * @/server/utils/admin-subscription-buckets:getEffectiveExpiresAt
+ * but kept inline so the sitemap doesn't pull in admin-only deps.
+ *
+ * Returns true when the store is currently subscribed by ANY signal:
+ *   1. subscription.expiresAt (number) is in the future          (admin panel)
+ *   2. subscription.status === "active"                          (marketplace webhooks)
+ *   3. subscription.raw[0].end_date / expires_at / expired_at    (Salla raw payload)
+ *      parses to a future date
+ */
+function isSubscribed(sub: unknown, now: number): boolean {
+    if (!sub || typeof sub !== "object") return false;
+    const s = sub as Record<string, unknown>;
+
+    // 1. Numeric expiresAt set by the admin panel
+    if (typeof s.expiresAt === "number" && s.expiresAt > now) return true;
+
+    // 2. Status string set by Salla / Zid marketplace webhooks
+    const status = typeof s.status === "string" ? s.status.trim().toLowerCase() : "";
+    if (status === "active" || status === "trial" || status === "trialing") {
+        return true;
+    }
+
+    // 3. Salla raw payload — date strings nested under raw or raw.data[0]
+    const raw = s.raw;
+    let entry: Record<string, unknown> | null = null;
+    if (raw && typeof raw === "object") {
+        const r = raw as Record<string, unknown>;
+        if (Array.isArray(r.data) && r.data.length > 0 && typeof r.data[0] === "object") {
+            entry = r.data[0] as Record<string, unknown>;
+        } else if (Array.isArray(raw) && raw.length > 0 && typeof raw[0] === "object") {
+            entry = raw[0] as Record<string, unknown>;
+        } else {
+            entry = r;
+        }
+    }
+    if (entry) {
+        for (const key of ["end_date", "expires_at", "expired_at"] as const) {
+            const v = entry[key];
+            if (typeof v === "string" && v.trim()) {
+                const trimmed = v.trim();
+                const ms = /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+                    ? Date.parse(`${trimmed}T23:59:59.999Z`)
+                    : Date.parse(trimmed.replace(" ", "T"));
+                if (Number.isFinite(ms) && ms > now) return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 function renderUrl(entry: UrlEntry): string {
     return `  <url>
     <loc>${escapeXml(entry.loc)}</loc>
@@ -95,8 +148,18 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     }
 
     // 3. Subscribed stores → /store/{storeUid}/certificate.
-    // "Subscribed" = subscription.expiresAt is in the future (matches the
-    // gate used by the subscription-alerts cron).
+    //
+    // Subscription state is written from three places with different shapes:
+    //   - Admin panel:       subscription.expiresAt (number, ms)
+    //   - Salla webhook:     subscription.status = "active" + raw end_date string
+    //   - Zid webhook:       subscription.status = "active"
+    // A Firestore where("subscription.expiresAt", ">", now) silently drops
+    // stores that don't have that exact numeric field, which means every
+    // marketplace-only subscriber is invisible to the sitemap. Instead we
+    // fetch the whole stores collection (cheap with .select() projection)
+    // and decide subscription state in memory using the same fallback chain
+    // as @/server/utils/admin-subscription-buckets:getEffectiveExpiresAt.
+    //
     // lastmod = max(updatedAt, lastReviewsSyncAt) — whichever is fresher,
     // so a new verified review reflects in the sitemap on the next refresh.
     let certificateEntries: UrlEntry[] = [];
@@ -104,24 +167,35 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
         const now = Date.now();
         const snap = await db
             .collection("stores")
-            .where("subscription.expiresAt", ">", now)
-            .limit(5000)
+            .select("subscription", "updatedAt", "lastReviewsSyncAt")
+            .limit(10000)
             .get();
 
-        certificateEntries = snap.docs.map((doc) => {
-            const data = doc.data();
+        for (const doc of snap.docs) {
+            const data = doc.data() as {
+                subscription?: {
+                    expiresAt?: unknown;
+                    status?: unknown;
+                    raw?: unknown;
+                };
+                updatedAt?: unknown;
+                lastReviewsSyncAt?: unknown;
+            };
+            if (!isSubscribed(data.subscription, now)) continue;
+
             const lastTouchMs =
                 Math.max(
                     typeof data.updatedAt === "number" ? data.updatedAt : 0,
                     typeof data.lastReviewsSyncAt === "number" ? data.lastReviewsSyncAt : 0,
                 ) || Date.now();
-            return {
+
+            certificateEntries.push({
                 loc: `${SITE_URL}/store/${encodeURIComponent(doc.id)}/certificate`,
                 lastmod: toW3CDate(new Date(lastTouchMs)),
                 changefreq: "weekly",
                 priority: 0.8,
-            };
-        });
+            });
+        }
 
         // Most recently updated stores first — helps crawlers prioritize
         // pages that changed since their last visit.
