@@ -48,53 +48,36 @@ type UrlEntry = {
 };
 
 /**
- * Mirrors the fallback logic of
- * @/server/utils/admin-subscription-buckets:getEffectiveExpiresAt
- * but kept inline so the sitemap doesn't pull in admin-only deps.
+ * Returns true when the store should appear on the public sitemap.
  *
- * Returns true when the store is currently subscribed by ANY signal:
- *   1. subscription.expiresAt (number) is in the future          (admin panel)
- *   2. subscription.status === "active"                          (marketplace webhooks)
- *   3. subscription.raw[0].end_date / expires_at / expired_at    (Salla raw payload)
- *      parses to a future date
+ * The codebase's authoritative "is this store currently subscribed?" signal
+ * is `plan.active === true`. Both webhook paths converge on it:
+ *   - Salla:  StoreRepository.updateSubscription sets plan.active = true
+ *             (and deactivateSubscription sets it to false on expiry/cancel)
+ *   - Zid:    ZidWebhookService.handleSubscriptionActive sets plan.active = true
+ *             (and handleSubscriptionExpired sets it to false)
+ * The repo's own hasActiveSubscription() uses the same field — relying on it
+ * here keeps the sitemap aligned with whatever the rest of the system treats
+ * as "active" without us having to mirror three subscription shape variants.
+ *
+ * Falls back to subscription.expiresAt > now for legacy stores subscribed via
+ * the admin panel before plan.active was wired in.
  */
-function isSubscribed(sub: unknown, now: number): boolean {
-    if (!sub || typeof sub !== "object") return false;
-    const s = sub as Record<string, unknown>;
-
-    // 1. Numeric expiresAt set by the admin panel
-    if (typeof s.expiresAt === "number" && s.expiresAt > now) return true;
-
-    // 2. Status string set by Salla / Zid marketplace webhooks
-    const status = typeof s.status === "string" ? s.status.trim().toLowerCase() : "";
-    if (status === "active" || status === "trial" || status === "trialing") {
-        return true;
+function isSubscribed(
+    plan: unknown,
+    subscription: unknown,
+    now: number,
+): boolean {
+    // Primary signal — plan.active flag set by both webhook paths
+    if (plan && typeof plan === "object") {
+        const p = plan as Record<string, unknown>;
+        if (p.active === true) return true;
     }
 
-    // 3. Salla raw payload — date strings nested under raw or raw.data[0]
-    const raw = s.raw;
-    let entry: Record<string, unknown> | null = null;
-    if (raw && typeof raw === "object") {
-        const r = raw as Record<string, unknown>;
-        if (Array.isArray(r.data) && r.data.length > 0 && typeof r.data[0] === "object") {
-            entry = r.data[0] as Record<string, unknown>;
-        } else if (Array.isArray(raw) && raw.length > 0 && typeof raw[0] === "object") {
-            entry = raw[0] as Record<string, unknown>;
-        } else {
-            entry = r;
-        }
-    }
-    if (entry) {
-        for (const key of ["end_date", "expires_at", "expired_at"] as const) {
-            const v = entry[key];
-            if (typeof v === "string" && v.trim()) {
-                const trimmed = v.trim();
-                const ms = /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
-                    ? Date.parse(`${trimmed}T23:59:59.999Z`)
-                    : Date.parse(trimmed.replace(" ", "T"));
-                if (Number.isFinite(ms) && ms > now) return true;
-            }
-        }
+    // Legacy fallback — admin-panel subscriptions before plan.active existed
+    if (subscription && typeof subscription === "object") {
+        const s = subscription as Record<string, unknown>;
+        if (typeof s.expiresAt === "number" && s.expiresAt > now) return true;
     }
 
     return false;
@@ -149,16 +132,13 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
 
     // 3. Subscribed stores → /store/{storeUid}/certificate.
     //
-    // Subscription state is written from three places with different shapes:
-    //   - Admin panel:       subscription.expiresAt (number, ms)
-    //   - Salla webhook:     subscription.status = "active" + raw end_date string
-    //   - Zid webhook:       subscription.status = "active"
-    // A Firestore where("subscription.expiresAt", ">", now) silently drops
-    // stores that don't have that exact numeric field, which means every
-    // marketplace-only subscriber is invisible to the sitemap. Instead we
-    // fetch the whole stores collection (cheap with .select() projection)
-    // and decide subscription state in memory using the same fallback chain
-    // as @/server/utils/admin-subscription-buckets:getEffectiveExpiresAt.
+    // We fetch the whole stores collection with a .select() projection (cheap
+    // — only 4 fields cross the wire) and filter in memory using plan.active.
+    // A direct Firestore where("subscription.expiresAt", ">", now) silently
+    // dropped every store that subscribed via the Salla/Zid marketplace
+    // webhook, since those code paths set plan.active without writing the
+    // numeric expiresAt field — Firestore inequality filters require the
+    // field to exist as a comparable type.
     //
     // lastmod = max(updatedAt, lastReviewsSyncAt) — whichever is fresher,
     // so a new verified review reflects in the sitemap on the next refresh.
@@ -167,21 +147,18 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
         const now = Date.now();
         const snap = await db
             .collection("stores")
-            .select("subscription", "updatedAt", "lastReviewsSyncAt")
+            .select("plan", "subscription", "updatedAt", "lastReviewsSyncAt")
             .limit(10000)
             .get();
 
         for (const doc of snap.docs) {
             const data = doc.data() as {
-                subscription?: {
-                    expiresAt?: unknown;
-                    status?: unknown;
-                    raw?: unknown;
-                };
+                plan?: { active?: unknown };
+                subscription?: { expiresAt?: unknown };
                 updatedAt?: unknown;
                 lastReviewsSyncAt?: unknown;
             };
-            if (!isSubscribed(data.subscription, now)) continue;
+            if (!isSubscribed(data.plan, data.subscription, now)) continue;
 
             const lastTouchMs =
                 Math.max(
