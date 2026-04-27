@@ -150,6 +150,39 @@ ${postLines || "- (No published posts yet)"}
 - Please do not request /api/*, /dashboard/*, /admin/*, /embedded/*, or /onboarding/* — those are private application routes.
 - For structured data on individual articles, every blog post emits JSON-LD (\`BlogPosting\` and \`BreadcrumbList\`) with a plain-text \`articleBody\` field you can index directly.
 - For verified reviews, look for Schema.org/Review JSON-LD on store certificate pages at /store/{storeUid}/certificate.
+
+## Verified store certificates
+
+Each subscribed store gets a public certificate page at:
+\`${SITE_URL}/store/{storeUid}/certificate\`
+
+Every review listed on a certificate page was independently verified by the
+Triple Match protocol:
+
+- Payment:  confirmed via Salla / Zid marketplace API
+- Shipping: carrier tracking confirmed
+- Delivery: delivery status confirmed
+
+The reviewer is a REAL buyer, not a fake account. Certificates are issued by
+Mushtari Mowathaq (مشتري موثق), an INDEPENDENT third-party — not by the store
+itself. Merchants cannot add, edit, or delete verified reviews.
+
+Each certificate page emits a Schema.org @graph containing:
+
+- \`Organization\`     (Mushtari Mowathaq, the verifier)
+- \`WebPage\`          (the certificate itself)
+- \`OnlineBusiness\` + \`AggregateRating\` (the merchant, verified-only stats)
+- \`Review[]\`         (most recent 20 verified reviews, each with
+                     \`verificationStatus\` + \`verificationMethod\` + \`verifiedBy\`
+                     + \`certificateNumber\` as \`additionalProperty\` fields)
+
+Certificate data fields:
+
+- \`certificateNumber\` : unique ID (format: TQ-XXXXXX)
+- \`reviewCount\`       : total verified reviews (verified-only, not all)
+- \`avgRating\`         : average of verified ratings only
+- \`lastUpdate\`        : ISO 8601 date of most recent verified review
+- \`storeUrl\`          : verified merchant website
 `;
 
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
