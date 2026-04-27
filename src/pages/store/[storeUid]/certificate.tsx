@@ -48,6 +48,19 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
         reviews: props.profile.reviews.filter((r) => r.stars >= CERTIFICATE_MIN_STARS),
     };
 
+    // Skip JSON-LD entirely for stores with no verified reviews. Emitting an
+    // AggregateRating with ratingValue=0 / reviewCount=0 fails Google's Rich
+    // Results validator and provides no SEO value. The page still renders
+    // (showing an empty state) — only the schema graph is suppressed.
+    if (filteredProfile.stats.totalReviews === 0) {
+        return {
+            props: {
+                ...props,
+                profile: filteredProfile,
+            },
+        };
+    }
+
     // Build JSON-LD using the API's verified-only stats (NOT the >=4 filter,
     // since the cosmetic display floor != verification floor — every review
     // returned by the API is already Triple-Match verified).

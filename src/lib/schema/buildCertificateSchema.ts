@@ -68,6 +68,7 @@ export function buildCertificateSchema(input: CertSchemaInput) {
                 name: "مشتري موثق",
                 alternateName: ["Mushtari Mowathaq", "theqah"],
                 url: BASE,
+                logo: `${BASE}/widgets/logo.png`,
                 sameAs: ["https://twitter.com/theqahapp"],
                 description:
                     "Independent third-party buyer review verification for Saudi e-commerce. " +
