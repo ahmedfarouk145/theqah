@@ -37,6 +37,13 @@ export type StoreReviewsPageProps = {
     profile: StoreProfile | null;
     error: string | null;
     focusedReviewId: string | null;
+    /**
+     * When present, this page is the certificate route — it will emit the
+     * verified-review JSON-LD graph and the trio of verification meta tags.
+     * The reviews route leaves this null so it stays a normal listing.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    jsonLd?: any | null;
 };
 
 /**
@@ -92,8 +99,21 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
 
 /* ── Helpers ── */
 
+// Safe serializer for JSON embedded inside an HTML <script type="application/ld+json"> tag.
+// Buyer-supplied review text could contain "</script>"; escape '<' as a unicode
+// sequence so the parser cannot break out of the script element. Also escape U+2028
+// and U+2029 which are valid JSON but invalid in JS string literals (legacy precaution).
+const LS = String.fromCharCode(0x2028);
+const PS = String.fromCharCode(0x2029);
+function serializeJsonLd(data: unknown): string {
+    return JSON.stringify(data)
+        .replace(/</g, "\\u003c")
+        .split(LS).join("\\u2028")
+        .split(PS).join("\\u2029");
+}
+
 // Deterministic certificate code — same djb2-base36 hash used by theqah-widget.js.
-function certCode(uid: string): string {
+export function certCode(uid: string): string {
     if (!uid) return "";
     let hash = 5381;
     for (let i = 0; i < uid.length; i++) {
@@ -205,7 +225,7 @@ function ErrorView({ error }: { error: string }) {
 }
 
 /* ── Main ── */
-export default function StoreReviewsPage({ profile, error, focusedReviewId }: StoreReviewsPageProps) {
+export default function StoreReviewsPage({ profile, error, focusedReviewId, jsonLd }: StoreReviewsPageProps) {
     const [mounted, setMounted] = useState(false);
     const [filter, setFilter] = useState<"all" | "5" | "low">("all");
 
@@ -339,7 +359,12 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
 
     const pageTitle = `شهادة توثيق التقييمات — ${storeName} | مشتري موثق`;
     const pageDesc = `سجل رسمي لـ ${stats.totalReviews} تقييم موثق عن متجر ${storeName}، مدققة وفق نظام Triple Matching من مشتري موثق.`;
-    const canonicalUrl = `${URLS.CANONICAL_ORIGIN}/store/${encodeURIComponent(store.storeUid)}/reviews`;
+    // Canonical must point to the route the user is actually on. The certificate
+    // route (where `jsonLd` is injected) is a distinct, indexable URL — not a
+    // duplicate of /reviews. Pointing both routes at /reviews caused
+    // "Duplicate without user-selected canonical" in Search Console.
+    const routeSegment = jsonLd ? "certificate" : "reviews";
+    const canonicalUrl = `${URLS.CANONICAL_ORIGIN}/store/${encodeURIComponent(store.storeUid)}/${routeSegment}`;
     const shouldIndex = !focusedReviewId;
 
     return (
@@ -353,6 +378,21 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId }: St
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content={canonicalUrl} />
                 <meta name="robots" content={shouldIndex ? "index, follow" : "noindex, follow"} />
+                {jsonLd && (
+                    <>
+                        {/* AI/crawler hints — explicitly tag this page as an
+                            independently-verified review certificate so LLMs
+                            (ChatGPT, Perplexity, Gemini) don't dismiss the
+                            ratings as merchant-supplied testimonials. */}
+                        <meta name="content-type" content="verified-review-certificate" />
+                        <meta name="verification-method" content="Triple Match: Payment+Shipping+Delivery via Salla API" />
+                        <meta name="verified-by" content="Mushtari Mowathaq — theqah.com.sa" />
+                        <script
+                            type="application/ld+json"
+                            dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
+                        />
+                    </>
+                )}
                 {/* eslint-disable-next-line @next/next/no-page-custom-font */}
                 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@500;700;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet" />
                 <style>{V3_CSS}</style>

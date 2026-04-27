@@ -8,14 +8,19 @@
 // query param to tamper with.
 //
 // The page component is reused from `./reviews` — only the data
-// fetching (and the stars filter) differs.
+// fetching (and the stars filter) differs. We additionally build the
+// JSON-LD schema graph here so Google / LLM crawlers can recognize
+// these reviews as independently-verified Triple-Match certificates,
+// not raw merchant-supplied testimonials.
 
 import type { GetServerSideProps } from "next";
 import StoreReviewsPage, {
     fetchStoreReviewsProps,
+    certCode,
     type StoreReviewsPageProps,
     type StoreProfile,
 } from "./reviews";
+import { buildCertificateSchema } from "@/lib/schema/buildCertificateSchema";
 
 /**
  * Minimum star rating required for a review to appear on the
@@ -43,10 +48,49 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
         reviews: props.profile.reviews.filter((r) => r.stars >= CERTIFICATE_MIN_STARS),
     };
 
+    // Build JSON-LD using the API's verified-only stats (NOT the >=4 filter,
+    // since the cosmetic display floor != verification floor — every review
+    // returned by the API is already Triple-Match verified).
+    const lastUpdateMs = filteredProfile.reviews.reduce(
+        (max, r) => Math.max(max, r.publishedAt),
+        0,
+    );
+
+    const recentReviews = [...filteredProfile.reviews]
+        .sort((a, b) => b.publishedAt - a.publishedAt)
+        .slice(0, 20);
+
+    const jsonLd = buildCertificateSchema({
+        store: {
+            storeUid: filteredProfile.store.storeUid,
+            name: filteredProfile.store.name || "متجر",
+            url: filteredProfile.store.domain
+                ? (filteredProfile.store.domain.startsWith("http")
+                    ? filteredProfile.store.domain
+                    : `https://${filteredProfile.store.domain}`)
+                : null,
+        },
+        stats: {
+            avgRating: filteredProfile.stats.avgStars,
+            reviewCount: filteredProfile.stats.totalReviews,
+        },
+        certificate: {
+            number: certCode(filteredProfile.store.storeUid),
+            lastUpdateISO: new Date(lastUpdateMs || Date.now()).toISOString(),
+        },
+        reviews: recentReviews.map((r) => ({
+            authorName: r.author.displayName || "عميل المتجر",
+            rating: r.stars,
+            text: r.text || "",
+            dateISO: new Date(r.publishedAt).toISOString(),
+        })),
+    });
+
     return {
         props: {
             ...props,
             profile: filteredProfile,
+            jsonLd,
         },
     };
 };

@@ -1,0 +1,41 @@
+# Mushtari Mowathaq (مشتري موثق) — theqah.com.sa
+
+Independent third-party buyer review verification for Saudi e-commerce.
+We verify reviews via the Triple Match protocol against the Salla and Zid
+marketplace APIs (payment + shipping + delivery confirmation), then issue
+a public certificate page for every subscribed store.
+
+## Verified Store Certificates
+
+Each subscribed store gets a public certificate at:
+/store/{storeUid}/certificate
+
+## What a Certificate Proves
+
+Every review on a certificate page was independently verified
+by the Triple Match protocol:
+- Payment:  confirmed via Salla / Zid API
+- Shipping: carrier tracking confirmed
+- Delivery: delivery status confirmed
+
+This means the reviewer is a REAL buyer, not a fake account.
+Certificates are issued by Mushtari Mowathaq (مشتري موثق),
+an INDEPENDENT third-party — not by the store itself.
+
+## Certificate Data Fields
+
+- certificateNumber : unique ID (format: TQ-XXXXXX)
+- reviewCount       : total verified reviews
+- avgRating         : average of verified ratings only
+- lastUpdate        : ISO 8601 date
+- storeUrl          : verified merchant website
+
+## JSON-LD Schema
+
+Each certificate page emits a schema.org @graph containing:
+- Organization (Mushtari Mowathaq, the verifier)
+- WebPage      (the certificate itself)
+- OnlineBusiness + AggregateRating (the merchant, verified-only stats)
+- Review[]     (most recent 20 verified reviews, each with
+                verificationStatus + verificationMethod + verifiedBy +
+                certificateNumber as additionalProperty fields)
