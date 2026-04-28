@@ -1,5 +1,12 @@
 // src/lib/zid/tokens.ts
-import { dbAdmin } from '@/lib/firebaseAdmin';
+//
+// Zid OAuth token storage. Tokens live nested under the store doc as
+// `zid.tokens` so they share the same lifecycle as the store. Phase 2 of
+// the Zid/Salla split: writes go to `zid_stores` via ZidStoreRepository;
+// reads fall back to legacy `stores` for any pre-existing Zid store
+// whose doc hasn't been touched yet.
+
+import { ZidStoreRepository } from '@/server/repositories/zid-store.repository';
 
 export type ZidTokens = {
   access_token: string;
@@ -12,27 +19,26 @@ export type ZidTokens = {
   raw?: unknown;
 };
 
-type StoreDoc = {
-  zid?: {
-    connected?: boolean;
-    tokens?: ZidTokens;
-    updatedAt?: number;
-  };
-};
+let _repo: ZidStoreRepository | null = null;
+function repo(): ZidStoreRepository {
+  if (!_repo) _repo = new ZidStoreRepository();
+  return _repo;
+}
 
 export async function saveZidTokens(uid: string, tokens: ZidTokens) {
-  const db = dbAdmin();
-  await db.collection('stores').doc(uid).set(
+  // The Store type's `zid` block doesn't enumerate the `tokens` field —
+  // tokens are an OAuth concern carried alongside the store record. Cast
+  // through Parameters<> rather than `any`.
+  const r = repo();
+  await r.set(
+    uid,
     {
       zid: { connected: true, tokens, updatedAt: Date.now() },
-    },
-    { merge: true }
+    } as unknown as Parameters<typeof r.set>[1],
   );
 }
 
 export async function getZidTokens(uid: string): Promise<ZidTokens | null> {
-  const db = dbAdmin();
-  const snap = await db.collection('stores').doc(uid).get();
-  const data = snap.data() as StoreDoc | undefined;
-  return data?.zid?.tokens || null;
+  const store = await repo().findById(uid);
+  return (store?.zid as { tokens?: ZidTokens } | undefined)?.tokens || null;
 }

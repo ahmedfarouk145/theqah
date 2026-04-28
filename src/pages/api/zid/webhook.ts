@@ -7,6 +7,9 @@ import crypto from "crypto";
 import { dbAdmin } from "@/lib/firebaseAdmin";
 import { ZidWebhookService } from "@/backend/server/services/zid-webhook.service";
 import type { ZidOrder } from "@/backend/server/services/zid-webhook.service";
+import { ZidStoreRepository } from "@/server/repositories/zid-store.repository";
+
+const zidStoreRepo = new ZidStoreRepository();
 
 export const config = { api: { bodyParser: false } };
 
@@ -138,11 +141,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       case "app.market.subscription.upgrade":
       case "app.market.subscription.renew":
         await svc.handleSubscriptionActive(storeUid, data as object);
-        // Capture merchant_email if available (ZID sends it in flat payload)
+        // Capture merchant_email if available (ZID sends it in flat payload).
+        // merchantEmail is a top-level Zid-only convention not enumerated on
+        // the Store type — cast through Parameters<>.
         if (storeUid && (data as Record<string, unknown>).merchant_email) {
-          await db.collection("stores").doc(storeUid).set(
-            { merchantEmail: String((data as Record<string, unknown>).merchant_email) },
-            { merge: true }
+          await zidStoreRepo.set(
+            storeUid,
+            {
+              merchantEmail: String((data as Record<string, unknown>).merchant_email),
+            } as unknown as Parameters<typeof zidStoreRepo.set>[1],
           );
         }
         break;

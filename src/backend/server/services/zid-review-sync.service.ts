@@ -7,6 +7,10 @@
 
 import { log } from '@/lib/logger';
 import { createHash } from 'crypto';
+import { ZidReviewRepository } from '@/server/repositories/zid-review.repository';
+
+// Module-level singleton — repos are stateless and safe to share.
+const zidReviewRepo = new ZidReviewRepository();
 
 const ZID_API_URL = process.env.ZID_API_URL || 'https://api.zid.sa/v1';
 
@@ -203,11 +207,11 @@ export class ZidReviewSyncService {
 
         const reviewDocId = `zid_${zidReview.id}`;
 
-        // Check if already saved
+        // Check if already saved (in either zid_reviews or legacy reviews)
         const { dbAdmin } = await import('@/lib/firebaseAdmin');
         const db = dbAdmin();
-        const existingDoc = await db.collection('reviews').doc(reviewDocId).get();
-        if (existingDoc.exists) {
+        const existing = await zidReviewRepo.findById(reviewDocId);
+        if (existing) {
             return false; // Already synced
         }
 
@@ -247,11 +251,14 @@ export class ZidReviewSyncService {
         const hasMatchingOrder = matchingOrderId !== '';
         const verified = withinSubscription && hasMatchingOrder;
 
-        // Map to internal Review format
-        await db.collection('reviews').doc(reviewDocId).set({
+        // Map to internal Review format and write to zid_reviews. Several
+        // fields below (zidCreatedAt, zidDomHash, images, reply, isAnonymous,
+        // syncedAt) are Zid-sync metadata not enumerated on the shared
+        // Review type — we cast the whole payload pragmatically.
+        const payload = {
             reviewId: reviewDocId,
             storeUid,
-            platform: 'zid',
+            platform: 'zid' as const,
             orderId: matchingOrderId,      // Link to the matched order (empty if no match)
             orderNumber: matchingOrderNumber,
             productId: zidReview.product.id,
@@ -278,9 +285,9 @@ export class ZidReviewSyncService {
             reply: zidReview.reply || null,
             isAnonymous: zidReview.is_anonymous || false,
             createdAt: reviewCreatedAt || Date.now(),
-            updatedAt: Date.now(),
             syncedAt: Date.now(),
-        });
+        };
+        await zidReviewRepo.set(reviewDocId, payload as unknown as Parameters<typeof zidReviewRepo.set>[1]);
 
         return true;
     }

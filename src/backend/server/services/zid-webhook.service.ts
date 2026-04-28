@@ -2,10 +2,20 @@
  * Zid Webhook Service - handles all Zid webhook events
  * SRP: Only responsible for processing Zid webhook events
  * DIP: Uses RepositoryFactory and other services via dependency injection
+ *
+ * Persistence: Phase 2 of Zid/Salla split — all store writes go through
+ * ZidStoreRepository so they land in `zid_stores`, isolated from Salla's
+ * `stores` collection. Reads continue to fall back to legacy `stores` for
+ * any pre-existing Zid data.
+ *
  * @module server/services/zid-webhook.service
  */
 
 import crypto from 'crypto';
+import { ZidStoreRepository } from '@/server/repositories/zid-store.repository';
+
+// Module-level singleton — repos are stateless and safe to share.
+const zidStoreRepo = new ZidStoreRepository();
 
 /** Zid order from webhook — supports both nested (API) and flat (webhook) formats */
 export interface ZidOrder {
@@ -71,9 +81,8 @@ export class ZidWebhookService {
         const db = dbAdmin();
         const auth = authAdmin();
 
-        // Check if store already exists
-        const existingStore = await db.collection('stores').doc(storeUid).get();
-        const isNew = !existingStore.exists;
+        // Check if store already exists (in either zid_stores or legacy stores)
+        const isNew = !(await zidStoreRepo.exists(storeUid));
 
         if (isNew && email) {
             // Auto-create Firebase user
@@ -107,37 +116,39 @@ export class ZidWebhookService {
                     }
                 }
 
-                // Link Firebase UID to store
-                await db.collection('stores').doc(storeUid).set(
-                    {
-                        ownerUid: firebaseUser.uid,
-                    },
-                    { merge: true }
+                // Link Firebase UID to store. ownerUid isn't enumerated on
+                // the Store type — cast through Parameters<>.
+                await zidStoreRepo.set(
+                    storeUid,
+                    { ownerUid: firebaseUser.uid } as unknown as Parameters<typeof zidStoreRepo.set>[1],
                 );
             } catch (authErr) {
                 console.error(`[ZID_WEBHOOK] ⚠️ Failed to create Firebase user:`, authErr);
             }
         }
 
-        // Save/update store data
-        await db.collection('stores').doc(storeUid).set(
-            {
-                uid: storeUid,
-                provider: 'zid',
-                name: storeName,
-                merchantEmail: email,
-                zid: {
-                    storeId: zidStoreId,
-                    connected: true,
-                    installed: true,
-                    domain: domain || null,
-                },
-                registrationMethod: isNew ? 'zid_app_market' : undefined,
-                registeredAt: isNew ? Date.now() : undefined,
-                updatedAt: Date.now(),
+        // Save/update store data. Several fields here (name, merchantEmail,
+        // registrationMethod, registeredAt) are Zid-flow-specific top-level
+        // attributes not enumerated on the shared Store type.
+        const storePayload = {
+            uid: storeUid,
+            provider: 'zid',
+            name: storeName,
+            merchantEmail: email,
+            zid: {
+                storeId: zidStoreId,
+                connected: true,
+                installed: true,
+                domain: domain || undefined,
             },
-            { merge: true }
-        );
+            ...(isNew
+                ? {
+                    registrationMethod: 'zid_app_market',
+                    registeredAt: Date.now(),
+                }
+                : {}),
+        };
+        await zidStoreRepo.set(storeUid, storePayload as unknown as Parameters<typeof zidStoreRepo.set>[1]);
 
         // Save domain mapping
         if (domain) {
@@ -178,17 +189,10 @@ export class ZidWebhookService {
      * Handle app installed event
      */
     async handleAppInstalled(storeUid: string): Promise<void> {
-        const { dbAdmin } = await import('@/lib/firebaseAdmin');
-        const db = dbAdmin();
-
-        await db.collection('stores').doc(storeUid).set(
-            {
-                zid: { installed: true },
-                updatedAt: Date.now(),
-            },
-            { merge: true }
+        await zidStoreRepo.set(
+            storeUid,
+            { zid: { installed: true } } as unknown as Parameters<typeof zidStoreRepo.set>[1],
         );
-
         console.log(`[ZID_WEBHOOK] App installed for ${storeUid}`);
     }
 
@@ -196,17 +200,10 @@ export class ZidWebhookService {
      * Handle app uninstalled event
      */
     async handleAppUninstalled(storeUid: string): Promise<void> {
-        const { dbAdmin } = await import('@/lib/firebaseAdmin');
-        const db = dbAdmin();
-
-        await db.collection('stores').doc(storeUid).set(
-            {
-                zid: { installed: false, connected: false },
-                updatedAt: Date.now(),
-            },
-            { merge: true }
+        await zidStoreRepo.set(
+            storeUid,
+            { zid: { installed: false, connected: false } } as unknown as Parameters<typeof zidStoreRepo.set>[1],
         );
-
         console.log(`[ZID_WEBHOOK] App uninstalled for ${storeUid}`);
     }
 
@@ -214,26 +211,15 @@ export class ZidWebhookService {
      * Handle subscription active event
      */
     async handleSubscriptionActive(storeUid: string, raw?: object): Promise<void> {
-        const { dbAdmin } = await import('@/lib/firebaseAdmin');
-        const db = dbAdmin();
-
-        await db.collection('stores').doc(storeUid).set(
-            {
-                subscription: {
-                    syncedAt: Date.now(),
-                    startedAt: Date.now(),
-                    raw: raw || null,
-                    updatedAt: Date.now(),
-                },
-                plan: {
-                    active: true,
-                    updatedAt: Date.now(),
-                },
-                updatedAt: Date.now(),
-            },
-            { merge: true }
+        // Zid's subscription webhook doesn't carry a planId or expiresAt;
+        // treat it as an "active TRIAL" until billing context arrives.
+        await zidStoreRepo.updateSubscription(
+            storeUid,
+            'TRIAL',
+            Date.now(),
+            null,
+            raw,
         );
-
         console.log(`[ZID_WEBHOOK] Subscription active for ${storeUid}`);
     }
 
@@ -241,26 +227,7 @@ export class ZidWebhookService {
      * Handle subscription suspended/expired event
      */
     async handleSubscriptionExpired(storeUid: string, raw?: object): Promise<void> {
-        const { dbAdmin } = await import('@/lib/firebaseAdmin');
-        const db = dbAdmin();
-
-        await db.collection('stores').doc(storeUid).set(
-            {
-                subscription: {
-                    expiredAt: Date.now(),
-                    raw: raw || null,
-                    updatedAt: Date.now(),
-                },
-                plan: {
-                    active: false,
-                    expiredAt: Date.now(),
-                    updatedAt: Date.now(),
-                },
-                updatedAt: Date.now(),
-            },
-            { merge: true }
-        );
-
+        await zidStoreRepo.deactivateSubscription(storeUid, raw);
         console.log(`[ZID_WEBHOOK] Subscription expired for ${storeUid}`);
     }
 
