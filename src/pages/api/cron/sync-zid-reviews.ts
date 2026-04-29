@@ -24,20 +24,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Find all connected Zid stores. Phase 3 of the Zid/Salla split:
         // post-cutover Zid stores live in `zid_stores`, while pre-cutover
-        // Zid stores still live in legacy `stores`. We query both and
-        // dedupe by doc.id so a lazy-migrated store isn't synced twice.
+        // Zid stores still live in legacy `stores`. We union both via a
+        // field-level merge so a partial lazy-migration write in
+        // `zid_stores` doesn't shadow fields that exist only in legacy.
+        //
+        // We deliberately drop the where("zid.connected", "==", true)
+        // predicate from the Firestore queries: the partial new doc can
+        // be missing `zid.connected` and would be wrongly excluded by a
+        // server-side filter. Instead we fetch the (small) candidate set
+        // and apply the predicate after merging.
         const [legacySnap, zidSnap] = await Promise.all([
             db.collection('stores').where('zid.connected', '==', true).get(),
-            db.collection('zid_stores').where('zid.connected', '==', true).get(),
+            db.collection('zid_stores').get(),
         ]);
 
-        // zid_stores first so it wins on conflict — its data is fresher.
-        const docsByUid = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
-        for (const doc of [...zidSnap.docs, ...legacySnap.docs]) {
-            if (!docsByUid.has(doc.id)) docsByUid.set(doc.id, doc);
+        type StoreData = {
+            zid?: { connected?: boolean; storeId?: string };
+            subscription?: { startedAt?: number };
+            [key: string]: unknown;
+        };
+        const merged = new Map<string, StoreData>();
+        for (const doc of legacySnap.docs) {
+            merged.set(doc.id, doc.data() as StoreData);
+        }
+        for (const doc of zidSnap.docs) {
+            const prev = merged.get(doc.id) || {};
+            const next = doc.data() as StoreData;
+            merged.set(doc.id, {
+                ...prev,
+                ...next,
+                // Deep-merge the `zid` block so a partial new doc with
+                // only `zid.installed` doesn't drop a legacy `zid.connected`.
+                zid: { ...(prev.zid || {}), ...(next.zid || {}) },
+            });
         }
 
-        if (docsByUid.size === 0) {
+        // Apply zid.connected filter post-merge.
+        const connected = Array.from(merged.entries()).filter(
+            ([, data]) => data.zid?.connected === true,
+        );
+
+        if (connected.length === 0) {
             console.log('[ZID_CRON] No connected Zid stores found');
             return res.status(200).json({ ok: true, stores: 0, message: 'No connected stores' });
         }
@@ -49,9 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let totalSynced = 0;
         let totalErrors = 0;
 
-        for (const storeDoc of docsByUid.values()) {
-            const storeData = storeDoc.data();
-            const storeUid = storeDoc.id;
+        for (const [storeUid, storeData] of connected) {
             const zidStoreId = storeData.zid?.storeId;
 
             if (!zidStoreId) {
@@ -96,13 +121,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const elapsed = Date.now() - startTime;
-        console.log(`[ZID_CRON] ✅ Done in ${elapsed}ms — ${docsByUid.size} stores, ${totalSynced} reviews synced, ${totalErrors} errors`);
+        console.log(`[ZID_CRON] ✅ Done in ${elapsed}ms — ${connected.length} stores, ${totalSynced} reviews synced, ${totalErrors} errors`);
 
         // Log sync run
         await db.collection('sync_logs').add({
             platform: 'zid',
             type: 'cron_review_sync',
-            stores: docsByUid.size,
+            stores: connected.length,
             totalSynced,
             totalErrors,
             results,
@@ -112,7 +137,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(200).json({
             ok: true,
-            stores: docsByUid.size,
+            stores: connected.length,
             totalSynced,
             totalErrors,
             durationMs: elapsed,

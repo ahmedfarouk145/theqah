@@ -163,18 +163,29 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
                 .get(),
         ]);
 
-        // Iterate zid_stores first so it wins on conflict during dedupe.
-        const seen = new Set<string>();
-        for (const doc of [...zidSnap.docs, ...legacySnap.docs]) {
-            if (seen.has(doc.id)) continue;
-            seen.add(doc.id);
+        // Field-level merge per storeUid — NOT "new doc wins entirely."
+        // The new zid_stores doc may be a partial lazy-migration write
+        // (e.g. only top-level zid.* fields after a webhook), missing
+        // plan.active that lives only in the legacy doc. Treating the
+        // partial new as canonical drops these stores from the sitemap.
+        // Layering: legacy first, then new on top — new fields override
+        // legacy, missing-in-new fields keep their legacy values.
+        type StoreFields = {
+            plan?: { active?: unknown };
+            subscription?: { expiresAt?: unknown };
+            updatedAt?: unknown;
+            lastReviewsSyncAt?: unknown;
+        };
+        const merged = new Map<string, StoreFields>();
+        for (const doc of legacySnap.docs) {
+            merged.set(doc.id, doc.data() as StoreFields);
+        }
+        for (const doc of zidSnap.docs) {
+            const prev = merged.get(doc.id) || {};
+            merged.set(doc.id, { ...prev, ...(doc.data() as StoreFields) });
+        }
 
-            const data = doc.data() as {
-                plan?: { active?: unknown };
-                subscription?: { expiresAt?: unknown };
-                updatedAt?: unknown;
-                lastReviewsSyncAt?: unknown;
-            };
+        for (const [uid, data] of merged) {
             if (!isSubscribed(data.plan, data.subscription, now)) continue;
 
             const lastTouchMs =
@@ -184,7 +195,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
                 ) || Date.now();
 
             certificateEntries.push({
-                loc: `${SITE_URL}/store/${encodeURIComponent(doc.id)}/certificate`,
+                loc: `${SITE_URL}/store/${encodeURIComponent(uid)}/certificate`,
                 lastmod: toW3CDate(new Date(lastTouchMs)),
                 changefreq: "weekly",
                 priority: 0.8,
