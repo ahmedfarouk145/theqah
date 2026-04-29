@@ -132,26 +132,43 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
 
     // 3. Subscribed stores → /store/{storeUid}/certificate.
     //
-    // We fetch the whole stores collection with a .select() projection (cheap
-    // — only 4 fields cross the wire) and filter in memory using plan.active.
-    // A direct Firestore where("subscription.expiresAt", ">", now) silently
-    // dropped every store that subscribed via the Salla/Zid marketplace
-    // webhook, since those code paths set plan.active without writing the
-    // numeric expiresAt field — Firestore inequality filters require the
-    // field to exist as a comparable type.
+    // We scan BOTH the legacy `stores` collection (Salla + pre-cutover Zid
+    // + easy:* registrations) and the new `zid_stores` collection (post-
+    // cutover Zid stores). Results are merged and deduped by doc.id with
+    // `zid_stores` winning on conflict — same precedence the read-fallback
+    // logic in ZidStoreRepository uses.
+    //
+    // We use .select() projection (only 4 fields cross the wire) and filter
+    // in memory using plan.active. A Firestore where("subscription.expiresAt",
+    // ">", now) silently dropped every store that subscribed via the
+    // marketplace webhooks — those set plan.active without writing the
+    // numeric expiresAt field, and inequality filters require the field to
+    // exist as a comparable type.
     //
     // lastmod = max(updatedAt, lastReviewsSyncAt) — whichever is fresher,
     // so a new verified review reflects in the sitemap on the next refresh.
     const certificateEntries: UrlEntry[] = [];
     try {
         const now = Date.now();
-        const snap = await db
-            .collection("stores")
-            .select("plan", "subscription", "updatedAt", "lastReviewsSyncAt")
-            .limit(10000)
-            .get();
+        const [legacySnap, zidSnap] = await Promise.all([
+            db
+                .collection("stores")
+                .select("plan", "subscription", "updatedAt", "lastReviewsSyncAt")
+                .limit(10000)
+                .get(),
+            db
+                .collection("zid_stores")
+                .select("plan", "subscription", "updatedAt", "lastReviewsSyncAt")
+                .limit(10000)
+                .get(),
+        ]);
 
-        for (const doc of snap.docs) {
+        // Iterate zid_stores first so it wins on conflict during dedupe.
+        const seen = new Set<string>();
+        for (const doc of [...zidSnap.docs, ...legacySnap.docs]) {
+            if (seen.has(doc.id)) continue;
+            seen.add(doc.id);
+
             const data = doc.data() as {
                 plan?: { active?: unknown };
                 subscription?: { expiresAt?: unknown };

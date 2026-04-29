@@ -22,13 +22,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         const db = dbAdmin();
 
-        // Find all connected Zid stores
-        const storesSnap = await db
-            .collection('stores')
-            .where('zid.connected', '==', true)
-            .get();
+        // Find all connected Zid stores. Phase 3 of the Zid/Salla split:
+        // post-cutover Zid stores live in `zid_stores`, while pre-cutover
+        // Zid stores still live in legacy `stores`. We query both and
+        // dedupe by doc.id so a lazy-migrated store isn't synced twice.
+        const [legacySnap, zidSnap] = await Promise.all([
+            db.collection('stores').where('zid.connected', '==', true).get(),
+            db.collection('zid_stores').where('zid.connected', '==', true).get(),
+        ]);
 
-        if (storesSnap.empty) {
+        // zid_stores first so it wins on conflict — its data is fresher.
+        const docsByUid = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+        for (const doc of [...zidSnap.docs, ...legacySnap.docs]) {
+            if (!docsByUid.has(doc.id)) docsByUid.set(doc.id, doc);
+        }
+
+        if (docsByUid.size === 0) {
             console.log('[ZID_CRON] No connected Zid stores found');
             return res.status(200).json({ ok: true, stores: 0, message: 'No connected stores' });
         }
@@ -40,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let totalSynced = 0;
         let totalErrors = 0;
 
-        for (const storeDoc of storesSnap.docs) {
+        for (const storeDoc of docsByUid.values()) {
             const storeData = storeDoc.data();
             const storeUid = storeDoc.id;
             const zidStoreId = storeData.zid?.storeId;
@@ -87,13 +96,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const elapsed = Date.now() - startTime;
-        console.log(`[ZID_CRON] ✅ Done in ${elapsed}ms — ${storesSnap.size} stores, ${totalSynced} reviews synced, ${totalErrors} errors`);
+        console.log(`[ZID_CRON] ✅ Done in ${elapsed}ms — ${docsByUid.size} stores, ${totalSynced} reviews synced, ${totalErrors} errors`);
 
         // Log sync run
         await db.collection('sync_logs').add({
             platform: 'zid',
             type: 'cron_review_sync',
-            stores: storesSnap.size,
+            stores: docsByUid.size,
             totalSynced,
             totalErrors,
             results,
@@ -103,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(200).json({
             ok: true,
-            stores: storesSnap.size,
+            stores: docsByUid.size,
             totalSynced,
             totalErrors,
             durationMs: elapsed,
