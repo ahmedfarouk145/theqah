@@ -4,11 +4,22 @@
  */
 
 import { RepositoryFactory } from '../repositories';
+import { ZidReviewRepository } from '../repositories/zid-review.repository';
 import { NotFoundError } from '../core/errors';
 import type { Review, PaginatedResult, PaginationOptions } from '../core/types';
 
+/**
+ * Phase 3 of Zid/Salla split: public-facing read methods route Zid
+ * storeUids to ZidReviewRepository (which unions `zid_reviews` and
+ * legacy `reviews`). Salla reads stay on the legacy fast-path.
+ */
+function isZidStoreUid(storeUid: string): boolean {
+    return typeof storeUid === 'string' && storeUid.startsWith('zid:');
+}
+
 export class ReviewService {
     private reviewRepo = RepositoryFactory.getReviewRepository();
+    private zidReviewRepo = new ZidReviewRepository();
     private auditRepo = RepositoryFactory.getAuditLogRepository();
 
     /**
@@ -74,13 +85,21 @@ export class ReviewService {
         storeUid: string,
         options?: PaginationOptions
     ): Promise<PaginatedResult<Review>> {
+        if (isZidStoreUid(storeUid)) {
+            return this.zidReviewRepo.findByStoreUid(storeUid, options);
+        }
         return this.reviewRepo.findByStoreUid(storeUid, options);
     }
 
     /**
-     * Get verified reviews (for widget API)
+     * Get verified reviews (for widget API + certificate page).
+     * Zid storeUids read from `zid_reviews` ∪ legacy `reviews` so
+     * post-cutover Zid syncs are visible on the public certificate.
      */
     async getVerifiedReviews(storeUid: string, productId?: string): Promise<Review[]> {
+        if (isZidStoreUid(storeUid)) {
+            return this.zidReviewRepo.findVerifiedByStore(storeUid, productId);
+        }
         return this.reviewRepo.findVerifiedByStore(storeUid, productId);
     }
 
@@ -88,6 +107,9 @@ export class ReviewService {
      * Get pending reviews for moderation
      */
     async getPendingReviews(storeUid: string): Promise<Review[]> {
+        if (isZidStoreUid(storeUid)) {
+            return this.zidReviewRepo.findPendingReviews(storeUid);
+        }
         return this.reviewRepo.findPendingReviews(storeUid);
     }
 
@@ -119,7 +141,9 @@ export class ReviewService {
         author: { displayName: string };
         images?: string[];
     }[]> {
-        const reviews = await this.reviewRepo.findPublishedByStore(storeUid, options);
+        const reviews = isZidStoreUid(storeUid)
+            ? await this.zidReviewRepo.findPublishedByStore(storeUid, options)
+            : await this.reviewRepo.findPublishedByStore(storeUid, options);
 
         return reviews.map(r => ({
             id: r.id || r.reviewId || '',
