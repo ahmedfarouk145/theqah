@@ -74,16 +74,25 @@ async function resolveStoreUid(firebaseUid: string, email?: string): Promise<str
     }
 
     try {
-      // Third: Look for email + zid.connected
-      const zidQuery = db.collection('stores')
-        .where('email', '==', email)
-        .where('zid.connected', '==', true)
-        .limit(1);
+      // Third: Look for email + zid.connected — query BOTH legacy `stores`
+      // and the new `zid_stores` collection (Phase 3d of Zid/Salla split).
+      // Prefer zid_stores on hit so a post-cutover Zid registration is
+      // resolved before any stale legacy doc.
+      const [zidNewSnap, zidLegacySnap] = await Promise.all([
+        db.collection('zid_stores')
+          .where('email', '==', email)
+          .where('zid.connected', '==', true)
+          .limit(1)
+          .get(),
+        db.collection('stores')
+          .where('email', '==', email)
+          .where('zid.connected', '==', true)
+          .limit(1)
+          .get(),
+      ]);
 
-      const snap = await zidQuery.get();
-      if (!snap.empty) {
-        return snap.docs[0].id;
-      }
+      if (!zidNewSnap.empty) return zidNewSnap.docs[0].id;
+      if (!zidLegacySnap.empty) return zidLegacySnap.docs[0].id;
     } catch {
       // Index might not exist
     }

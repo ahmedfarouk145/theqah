@@ -91,14 +91,25 @@ export class DomainResolverService {
                     break;
                 }
 
-                // Try zid.domain
-                const zidSnap = await db.collection('stores')
-                    .where('zid.domain', '==', variation)
-                    .where('zid.connected', '==', true)
-                    .limit(1).get();
+                // Try zid.domain — query BOTH zid_stores (Phase 3d) and
+                // legacy stores. Prefer zid_stores on hit.
+                const [zidNewSnap, zidLegacySnap] = await Promise.all([
+                    db.collection('zid_stores')
+                        .where('zid.domain', '==', variation)
+                        .where('zid.connected', '==', true)
+                        .limit(1).get(),
+                    db.collection('stores')
+                        .where('zid.domain', '==', variation)
+                        .where('zid.connected', '==', true)
+                        .limit(1).get(),
+                ]);
 
-                if (!zidSnap.empty) {
-                    doc = zidSnap.docs[0];
+                if (!zidNewSnap.empty) {
+                    doc = zidNewSnap.docs[0];
+                    break;
+                }
+                if (!zidLegacySnap.empty) {
+                    doc = zidLegacySnap.docs[0];
                     break;
                 }
 
@@ -247,12 +258,19 @@ export class DomainResolverService {
                 .limit(1).get();
             if (!sallaSnap.empty) return sallaSnap.docs[0];
 
-            // Try Zid stores
-            const zidSnap = await db.collection('stores')
-                .where('zid.domain', '==', v)
-                .where('zid.connected', '==', true)
-                .limit(1).get();
-            if (!zidSnap.empty) return zidSnap.docs[0];
+            // Try Zid stores — both zid_stores (Phase 3d) and legacy stores.
+            const [zidNewSnap, zidLegacySnap] = await Promise.all([
+                db.collection('zid_stores')
+                    .where('zid.domain', '==', v)
+                    .where('zid.connected', '==', true)
+                    .limit(1).get(),
+                db.collection('stores')
+                    .where('zid.domain', '==', v)
+                    .where('zid.connected', '==', true)
+                    .limit(1).get(),
+            ]);
+            if (!zidNewSnap.empty) return zidNewSnap.docs[0];
+            if (!zidLegacySnap.empty) return zidLegacySnap.docs[0];
 
             // Try generic domain.base
             const snapVarNew = await db.collection('stores')
@@ -282,12 +300,19 @@ export class DomainResolverService {
             .limit(1).get();
         if (!sallaStrSnap.empty) return sallaStrSnap.docs[0];
 
-        // Try Zid storeId
-        const zidSnap = await db.collection('stores')
-            .where('zid.storeId', '==', storeId)
-            .where('zid.connected', '==', true)
-            .limit(1).get();
-        if (!zidSnap.empty) return zidSnap.docs[0];
+        // Try Zid storeId — query both zid_stores (Phase 3d) and legacy stores.
+        const [zidIdNewSnap, zidIdLegacySnap] = await Promise.all([
+            db.collection('zid_stores')
+                .where('zid.storeId', '==', storeId)
+                .where('zid.connected', '==', true)
+                .limit(1).get(),
+            db.collection('stores')
+                .where('zid.storeId', '==', storeId)
+                .where('zid.connected', '==', true)
+                .limit(1).get(),
+        ]);
+        if (!zidIdNewSnap.empty) return zidIdNewSnap.docs[0];
+        if (!zidIdLegacySnap.empty) return zidIdLegacySnap.docs[0];
 
         // Try by uid with salla: prefix
         const sallaUidSnap = await db.collection('stores')
@@ -297,12 +322,19 @@ export class DomainResolverService {
             .limit(1).get();
         if (!sallaUidSnap.empty) return sallaUidSnap.docs[0];
 
-        // Try by uid with zid: prefix
-        const zidUidSnap = await db.collection('stores')
-            .where('uid', '==', `zid:${storeId}`)
-            .where('zid.connected', '==', true)
-            .limit(1).get();
-        if (!zidUidSnap.empty) return zidUidSnap.docs[0];
+        // Try by uid with zid: prefix — query both collections.
+        const [zidUidNewSnap, zidUidLegacySnap] = await Promise.all([
+            db.collection('zid_stores')
+                .where('uid', '==', `zid:${storeId}`)
+                .where('zid.connected', '==', true)
+                .limit(1).get(),
+            db.collection('stores')
+                .where('uid', '==', `zid:${storeId}`)
+                .where('zid.connected', '==', true)
+                .limit(1).get(),
+        ]);
+        if (!zidUidNewSnap.empty) return zidUidNewSnap.docs[0];
+        if (!zidUidLegacySnap.empty) return zidUidLegacySnap.docs[0];
 
         return null;
     }
