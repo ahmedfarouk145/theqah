@@ -19,7 +19,7 @@ import {
     SallaBackfillService,
     fetchSallaReviewsPage,
 } from '@/server/services/backfill/salla-backfill.service';
-import { getOwnerAccessToken } from '@/backend/lib/sallaClient';
+import { SallaTokenService } from '@/server/services/salla-token.service';
 import { RepositoryFactory } from '@/server/repositories';
 import { BACKFILL_MAX_PAGES } from '@/server/services/backfill/types';
 
@@ -54,9 +54,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 ? job.storeUid.slice('salla:'.length)
                 : job.storeUid;
 
+            const sallaTokenService = SallaTokenService.getInstance();
             const svc = new SallaBackfillService({
                 fetchPage: fetchSallaReviewsPage,
-                getAccessToken: (storeUid) => getOwnerAccessToken(db, storeUid),
+                // Use the auto-refreshing token service so stores with an
+                // expired access_token but a valid refresh_token still work.
+                // Stores without a refresh_token will return null here and
+                // the backfill service will fail the job with a clear error.
+                getAccessToken: (storeUid) => sallaTokenService.getValidAccessToken(storeUid),
                 getReviewByOrderAndProduct: async (orderId, productId) => {
                     const r = await reviewRepo.findByOrderAndProduct(orderId, productId);
                     return r ? { reviewId: r.reviewId } : null;
