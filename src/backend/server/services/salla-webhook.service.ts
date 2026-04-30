@@ -83,6 +83,21 @@ export class SallaWebhookService {
         rawPayload?: object
     ): Promise<void> {
         await this.storeRepo.updateSubscription(storeUid, planId, startedAt, expiresAt, rawPayload);
+
+        // Fire-and-forget historical review backfill enqueue. Idempotent —
+        // duplicate webhook calls won't create duplicate jobs. A failure
+        // here must NOT block subscription activation.
+        try {
+            const { dbAdmin } = await import('@/lib/firebaseAdmin');
+            const { BackfillJobService } = await import('./backfill/backfill-job.service');
+            await new BackfillJobService(dbAdmin()).enqueue({
+                storeUid,
+                platform: 'salla',
+                source: 'webhook',
+            });
+        } catch (err) {
+            console.error('[SallaWebhookService] backfill enqueue failed:', err);
+        }
     }
 
     /**
