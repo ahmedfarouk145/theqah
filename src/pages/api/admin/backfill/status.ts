@@ -10,7 +10,22 @@ import type { BackfillJob, BackfillJobStatus } from '@/server/services/backfill/
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        // TEMPORARY diagnostic — remove after debug
+        const got = req.headers.authorization || '';
+        const expected = `Bearer ${process.env.CRON_SECRET || ''}`;
+        return res.status(401).json({
+            error: 'Unauthorized',
+            debug: {
+                gotLen: got.length,
+                expectedLen: expected.length,
+                envSet: !!process.env.CRON_SECRET,
+                envLen: (process.env.CRON_SECRET || '').length,
+                gotPrefix: got.slice(0, 12),
+                expectedPrefix: expected.slice(0, 12),
+                gotSuffix: got.slice(-6),
+                expectedSuffix: expected.slice(-6),
+            },
+        });
     }
 
     const db = dbAdmin();
