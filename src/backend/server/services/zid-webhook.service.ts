@@ -221,6 +221,21 @@ export class ZidWebhookService {
             raw,
         );
         console.log(`[ZID_WEBHOOK] Subscription active for ${storeUid}`);
+
+        // Fire-and-forget historical review backfill enqueue. Idempotent —
+        // duplicate subscription_active webhooks won't create duplicate
+        // jobs. Enqueue failure must NOT block subscription activation.
+        try {
+            const { dbAdmin } = await import('@/lib/firebaseAdmin');
+            const { BackfillJobService } = await import('./backfill/backfill-job.service');
+            await new BackfillJobService(dbAdmin()).enqueue({
+                storeUid,
+                platform: 'zid',
+                source: 'webhook',
+            });
+        } catch (err) {
+            console.error('[ZidWebhookService] backfill enqueue failed:', err);
+        }
     }
 
     /**
