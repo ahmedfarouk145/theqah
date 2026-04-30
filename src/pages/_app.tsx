@@ -11,18 +11,24 @@ import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-V2FV8T4ER8';
+const TWITTER_PIXEL_ID = process.env.NEXT_PUBLIC_TWITTER_PIXEL_ID;
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
-  // تتبع تغييرات الصفحات في Google Analytics
+  // تتبع تغييرات الصفحات في Google Analytics + Twitter Pixel
   useEffect(() => {
     const handleRouteChange = (url: string) => {
-      const win = window as unknown as { gtag?: (...args: unknown[]) => void };
-      if (typeof window !== 'undefined' && win.gtag) {
-        win.gtag('config', GA_MEASUREMENT_ID, {
-          page_path: url,
-        });
+      const win = window as unknown as {
+        gtag?: (...args: unknown[]) => void;
+        twq?: (...args: unknown[]) => void;
+      };
+      if (typeof window === 'undefined') return;
+      if (win.gtag) {
+        win.gtag('config', GA_MEASUREMENT_ID, { page_path: url });
+      }
+      if (win.twq && TWITTER_PIXEL_ID) {
+        win.twq('track', 'PageView');
       }
     };
 
