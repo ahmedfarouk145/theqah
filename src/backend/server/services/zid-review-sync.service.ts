@@ -83,19 +83,40 @@ export class ZidReviewSyncService {
         storeUid: string,
         storeId: string,
         tokens: { access_token: string; authorization: string },
-        options?: { sinceDays?: number; subscriptionStart?: number }
+        options?: {
+            sinceDays?: number;
+            subscriptionStart?: number;
+            /** Pull all-time reviews; ignores sinceDays. Used by backfill. */
+            unbounded?: boolean;
+            /** Override page safety cap. Defaults to 50 (cron). */
+            maxPages?: number;
+            /** Resume from a specific page (used when retrying a backfill). */
+            startPage?: number;
+            /** Bypass paid-order verification — trust the platform's review status.
+             *  Used by historical backfill where pre-subscription orders aren't in our DB. */
+            trustPlatformStatus?: boolean;
+            /** Optional callback invoked after each page — used for cursor checkpointing. */
+            onPageComplete?: (page: number, pageStats: { synced: number; skipped: number }) => Promise<void>;
+        }
     ): Promise<ReviewSyncResult> {
         const result: ReviewSyncResult = { synced: 0, skipped: 0, errors: 0, details: [] };
+        const unbounded = options?.unbounded === true;
         const sinceDays = options?.sinceDays ?? 7;
-        const dateFrom = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000)
-            .toISOString().split('T')[0]; // YYYY-MM-DD
+        const dateFrom = unbounded
+            ? undefined
+            : new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000)
+                .toISOString().split('T')[0]; // YYYY-MM-DD
+
+        const maxPages = options?.maxPages ?? 50;
+        let page = options?.startPage ?? 1;
 
         try {
             // Fetch all approved reviews from the store (paginated)
-            let page = 1;
             let hasMore = true;
 
             while (hasMore) {
+                const pageStartSynced = result.synced;
+                const pageStartSkipped = result.skipped;
                 const reviewsResponse = await this.fetchReviewsPage(tokens, page, dateFrom);
 
                 if (!reviewsResponse || !reviewsResponse.reviews) {
@@ -109,7 +130,8 @@ export class ZidReviewSyncService {
                         const saved = await this.processReview(
                             zidReview,
                             storeUid,
-                            options?.subscriptionStart
+                            options?.subscriptionStart,
+                            options?.trustPlatformStatus === true,
                         );
                         if (saved) {
                             result.synced++;
@@ -122,13 +144,19 @@ export class ZidReviewSyncService {
                     }
                 }
 
-                // Check pagination
+                // Per-page checkpoint hook (used by backfill to save cursor)
+                if (options?.onPageComplete) {
+                    await options.onPageComplete(page, {
+                        synced: result.synced - pageStartSynced,
+                        skipped: result.skipped - pageStartSkipped,
+                    });
+                }
+
                 hasMore = reviewsResponse.pagination.next_page !== null;
                 page++;
 
-                // Safety limit
-                if (page > 50) {
-                    result.details.push('Reached page limit (50)');
+                if (page > maxPages) {
+                    result.details.push(`Reached page limit (${maxPages})`);
                     break;
                 }
             }
@@ -198,7 +226,8 @@ export class ZidReviewSyncService {
     private async processReview(
         zidReview: ZidApiReview,
         storeUid: string,
-        subscriptionStart?: number
+        subscriptionStart?: number,
+        trustPlatformStatus = false,
     ): Promise<boolean> {
         // Skip anonymous reviews — cannot generate a reliable DOM hash
         if (zidReview.is_anonymous) {
@@ -249,7 +278,12 @@ export class ZidReviewSyncService {
         }
 
         const hasMatchingOrder = matchingOrderId !== '';
-        const verified = withinSubscription && hasMatchingOrder;
+        // Backfill mode: trust the Zid platform's `approved`/`published`
+        // status as the verification signal — pre-subscription orders
+        // won't exist in our `orders` collection but the review is real.
+        const verified = trustPlatformStatus
+            ? true
+            : (withinSubscription && hasMatchingOrder);
 
         // Map to internal Review format and write to zid_reviews. Several
         // fields below (zidCreatedAt, zidDomHash, images, reply, isAnonymous,
@@ -276,6 +310,14 @@ export class ZidReviewSyncService {
             status: 'approved',
             trustedBuyer: hasMatchingOrder, // Based on actual matching paid order
             verified,
+            ...(trustPlatformStatus
+                ? {
+                    verificationMethod: 'platform-historical',
+                    verifiedBy: 'zid-platform-status',
+                    backfilledAt: Date.now(),
+                    source: 'zid_backfill',
+                }
+                : {}),
             publishedAt: reviewCreatedAt || Date.now(),
             needsSallaId: false,
             zidReviewId: zidReview.id,
