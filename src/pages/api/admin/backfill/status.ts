@@ -8,24 +8,18 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { dbAdmin } from '@/lib/firebaseAdmin';
 import type { BackfillJob, BackfillJobStatus } from '@/server/services/backfill/types';
 
+function extractBearerToken(header: string | undefined): string {
+    if (!header) return '';
+    // Tolerate multi-space / wrapped-paste artifacts: match "Bearer "
+    // followed by any whitespace, then capture the non-whitespace token.
+    const m = header.trim().match(/^Bearer\s+(\S+)\s*$/);
+    return m ? m[1] : '';
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
-        // TEMPORARY diagnostic — remove after debug
-        const got = req.headers.authorization || '';
-        const expected = `Bearer ${process.env.CRON_SECRET || ''}`;
-        return res.status(401).json({
-            error: 'Unauthorized',
-            debug: {
-                gotLen: got.length,
-                expectedLen: expected.length,
-                envSet: !!process.env.CRON_SECRET,
-                envLen: (process.env.CRON_SECRET || '').length,
-                gotPrefix: got.slice(0, 12),
-                expectedPrefix: expected.slice(0, 12),
-                gotSuffix: got.slice(-6),
-                expectedSuffix: expected.slice(-6),
-            },
-        });
+    const token = extractBearerToken(req.headers.authorization);
+    if (!token || token !== process.env.CRON_SECRET) {
+        return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const db = dbAdmin();

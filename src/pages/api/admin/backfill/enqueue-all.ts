@@ -14,8 +14,15 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { dbAdmin } from '@/lib/firebaseAdmin';
 import { BackfillJobService } from '@/server/services/backfill/backfill-job.service';
 
+function extractBearerToken(header: string | undefined): string {
+    if (!header) return '';
+    const m = header.trim().match(/^Bearer\s+(\S+)\s*$/);
+    return m ? m[1] : '';
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+    const token = extractBearerToken(req.headers.authorization);
+    if (!token || token !== process.env.CRON_SECRET) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     if (req.method !== 'POST') {
