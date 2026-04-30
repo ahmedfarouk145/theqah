@@ -77,12 +77,17 @@ export class BackfillJobService {
     /**
      * Claim the next available job. "Available" = pending, OR running
      * with an expired lock (worker crashed). Returns null if none.
+     *
+     * NOTE: We deliberately skip `orderBy('createdAt')` to avoid a
+     * Firestore composite index requirement on (status, createdAt).
+     * Backfill ordering doesn't matter for correctness — every job is
+     * idempotent and a strict FIFO would only be a "fairness" nicety.
+     * If you want fairness later, sort the candidate set in memory.
      */
     async claimNext(): Promise<BackfillJob | null> {
         const now = Date.now();
         const snap = await this.db.collection(COLLECTION)
             .where('status', 'in', ['pending', 'running'])
-            .orderBy('createdAt', 'asc')
             .limit(10)
             .get();
 
