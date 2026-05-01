@@ -22,40 +22,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const db = dbAdmin();
-    const snap = await db.collection('backfill_jobs').get();
+    try {
+        const db = dbAdmin();
+        const snap = await db.collection('backfill_jobs').get();
 
-    const counts: Record<BackfillJobStatus, number> = {
-        pending: 0,
-        running: 0,
-        complete: 0,
-        failed: 0,
-    };
-    const jobs: Array<Pick<
-        BackfillJob,
-        'jobId' | 'storeUid' | 'platform' | 'status' | 'written' | 'skipped'
-        | 'errors' | 'cursor' | 'createdAt' | 'finishedAt' | 'source'
-    >> = [];
+        const counts: Record<BackfillJobStatus, number> = {
+            pending: 0, running: 0, complete: 0, failed: 0,
+        };
+        // Per-status totals so we can see if Salla backfills actually wrote
+        // anything (vs all 0s = stale tokens / wrong endpoint / no reviews).
+        const totals = { written: 0, skipped: 0 };
+        const failed: Array<{ storeUid: string; firstError?: string }> = [];
+        const recent: Array<{ storeUid: string; status: BackfillJobStatus; written: number; skipped: number; cursor: BackfillJob['cursor'] }> = [];
 
-    for (const doc of snap.docs) {
-        const j = doc.data() as BackfillJob;
-        counts[j.status] = (counts[j.status] ?? 0) + 1;
-        jobs.push({
-            jobId: j.jobId,
-            storeUid: j.storeUid,
-            platform: j.platform,
-            status: j.status,
-            written: j.written,
-            skipped: j.skipped,
-            errors: j.errors,
-            cursor: j.cursor,
-            createdAt: j.createdAt,
-            finishedAt: j.finishedAt,
-            source: j.source,
+        for (const doc of snap.docs) {
+            const j = doc.data() as BackfillJob;
+            counts[j.status] = (counts[j.status] ?? 0) + 1;
+            totals.written += j.written || 0;
+            totals.skipped += j.skipped || 0;
+            if (j.status === 'failed') {
+                failed.push({
+                    storeUid: j.storeUid,
+                    firstError: j.errors?.[0]?.message?.slice(0, 200),
+                });
+            }
+            recent.push({
+                storeUid: j.storeUid,
+                status: j.status,
+                written: j.written || 0,
+                skipped: j.skipped || 0,
+                cursor: j.cursor,
+            });
+        }
+
+        // Detail flag — only return the heavy `recent` list when asked.
+        const detail = req.query.detail === '1';
+
+        return res.status(200).json({
+            counts,
+            totals,
+            failed: failed.slice(0, 30),
+            ...(detail ? { recent } : {}),
         });
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[BACKFILL_STATUS] error:', err);
+        return res.status(500).json({ error: 'status_failed', message: msg });
     }
-
-    jobs.sort((a, b) => b.createdAt - a.createdAt);
-
-    return res.status(200).json({ counts, jobs });
 }
