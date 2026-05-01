@@ -33,7 +33,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // anything (vs all 0s = stale tokens / wrong endpoint / no reviews).
         const totals = { written: 0, skipped: 0 };
         const failed: Array<{ storeUid: string; firstError?: string }> = [];
-        const recent: Array<{ storeUid: string; status: BackfillJobStatus; written: number; skipped: number; cursor: BackfillJob['cursor'] }> = [];
+        const recent: Array<{ storeUid: string; status: BackfillJobStatus; written: number; skipped: number; cursor: BackfillJob['cursor']; lastError?: string }> = [];
+        // Aggregated skip-reason histogram across every completed Salla job
+        // — quick way to see if the whole batch is being skipped for the
+        // same reason (e.g. all `no_product_id` ⇒ expanded= didn't help).
+        const aggregateSkipReasons: Record<string, number> = {};
 
         for (const doc of snap.docs) {
             const j = doc.data() as BackfillJob;
@@ -46,13 +50,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     firstError: j.errors?.[0]?.message?.slice(0, 200),
                 });
             }
+            // Pick the most recent error message (skipReasons string for
+            // completed jobs, real error for failed jobs).
+            const lastError = j.errors?.[j.errors.length - 1]?.message?.slice(0, 300);
             recent.push({
                 storeUid: j.storeUid,
                 status: j.status,
                 written: j.written || 0,
                 skipped: j.skipped || 0,
                 cursor: j.cursor,
+                lastError,
             });
+
+            // Parse skipReasons={...} from completed jobs and aggregate.
+            if (j.status === 'complete' && j.errors?.length) {
+                for (const e of j.errors) {
+                    const m = e.message?.match(/^skipReasons=(\{.*\})$/);
+                    if (!m) continue;
+                    try {
+                        const reasons = JSON.parse(m[1]) as Record<string, number>;
+                        for (const [k, v] of Object.entries(reasons)) {
+                            aggregateSkipReasons[k] = (aggregateSkipReasons[k] ?? 0) + (v || 0);
+                        }
+                    } catch { /* ignore parse errors */ }
+                }
+            }
         }
 
         // Detail flag — only return the heavy `recent` list when asked.
@@ -61,6 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({
             counts,
             totals,
+            aggregateSkipReasons,
             failed: failed.slice(0, 30),
             ...(detail ? { recent } : {}),
         });
