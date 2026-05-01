@@ -233,8 +233,31 @@
     return 'TQ-' + (hash.toString(36).toUpperCase() + '000000').slice(0, 6);
   }
 
+  // ——— Page gating: certificate only on home and product pages ———
+  // Zid product URLs are typically `/products/<slug>`; tolerate `/product/` and
+  // optional locale prefixes like `/ar` or `/en` at the start of the path.
+  function shouldShowCertificate() {
+    try {
+      const raw = (location.pathname || '/').replace(/\/+$/, '');
+      const p = raw === '' ? '/' : raw;
+      if (p === '/') return true;
+      if (/^\/[a-z]{2}$/i.test(p)) return true; // /ar, /en
+      if (/^(?:\/[a-z]{2})?\/products?\/[^/]+/i.test(p)) return true;
+      return false;
+    } catch { return false; }
+  }
+
+  function removeCertificateBadge() {
+    const el = document.querySelector('.theqah-zid-certificate');
+    if (el) el.remove();
+  }
+
   // ——— Certificate badge ———
   function insertCertificateBadge(storeUid, profile = null) {
+    if (!shouldShowCertificate()) {
+      removeCertificateBadge();
+      return;
+    }
     const existing = document.querySelector('.theqah-zid-certificate');
     if (existing) {
       if (existing.offsetParent === null) existing.remove();
@@ -555,8 +578,22 @@
     window.__THEQAH_ZID_OBS__ = true;
 
     const debouncedMain = debounce(() => {
+      if (!shouldShowCertificate()) { removeCertificateBadge(); return; }
       if (!document.querySelector('.theqah-zid-certificate')) main();
     }, 1000);
+
+    // SPA navigation: re-evaluate gating on URL changes.
+    const onNav = () => {
+      if (!shouldShowCertificate()) removeCertificateBadge();
+      else if (!document.querySelector('.theqah-zid-certificate') && G.storeUid) {
+        insertCertificateBadge(G.storeUid, G.storeProfile);
+      }
+    };
+    window.addEventListener('popstate', onNav);
+    const _push = history.pushState;
+    history.pushState = function () { const r = _push.apply(this, arguments); onNav(); return r; };
+    const _replace = history.replaceState;
+    history.replaceState = function () { const r = _replace.apply(this, arguments); onNav(); return r; };
 
     const obs = new MutationObserver((mutations) => {
       let certRemoved = false;

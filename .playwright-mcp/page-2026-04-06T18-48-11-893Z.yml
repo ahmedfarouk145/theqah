@@ -1,0 +1,177 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "انتقل إلى المحتوى الرئيسي" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - navigation "التنقل الرئيسي" [ref=e4]:
+      - link "الذهاب إلى الصفحة الرئيسية" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img "شعار ثقة" [ref=e7]
+        - generic [ref=e8]: مشتري موثّق
+      - generic [ref=e9]:
+        - link "المدونة" [ref=e10] [cursor=pointer]:
+          - /url: /blog
+        - link "الدعم" [ref=e11] [cursor=pointer]:
+          - /url: /support
+        - link "الشروط" [ref=e12] [cursor=pointer]:
+          - /url: /terms
+        - link "الخصوصية" [ref=e13] [cursor=pointer]:
+          - /url: /privacy-policy
+        - link "الإبلاغ" [ref=e14] [cursor=pointer]:
+          - /url: /report
+        - link "الأسئلة الشائعة" [ref=e15] [cursor=pointer]:
+          - /url: /faq
+        - button "تبديل الوضع الليلي" [ref=e16] [cursor=pointer]:
+          - img
+        - link "تسجيل الدخول" [ref=e17] [cursor=pointer]:
+          - /url: /login
+    - main [ref=e19]:
+      - generic [ref=e21]:
+        - img "شعار مشتري موثّق" [ref=e27]
+        - heading "ابنِ الثقة.. وضاعف مبيعاتك" [level=1] [ref=e28]:
+          - text: ابنِ الثقة..
+          - text: وضاعف مبيعاتك
+        - paragraph [ref=e29]: مع أول منصة سعودية تضمن مصداقية التقييم بربطه بـ (مشتري حقيقي)؛ عبر أتمتة كاملة لجمع التقييمات وعرضها كشهادة ثقة تدفع العميل للشراء فوراً.
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - generic [ref=e32]: ★
+            - generic [ref=e33]: ★
+            - generic [ref=e34]: ★
+            - generic [ref=e35]: ★
+            - generic [ref=e36]: ★
+          - generic [ref=e37]:
+            - img "موثّق" [ref=e38]
+            - img [ref=e40]
+        - paragraph [ref=e42]: حول شك عملائك إلى مبيعات.. وانضم لنخبة المتاجر التي تُهيكل تقييماتها تقنياً لتتصدر ترشيحات الذكاء الاصطناعي.
+        - link "تعرف أكثر" [ref=e44] [cursor=pointer]:
+          - /url: /faq
+          - button "تعرف أكثر" [ref=e45]
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - generic [ref=e49]: ابدأ في دقائق
+          - heading "حمّل التطبيق وشاهد الشرح" [level=2] [ref=e50]
+          - paragraph [ref=e51]: تطبيق مشتري موثّق متاح على متجر سلة — حمّله الآن وشاهد الفيديوهات التوضيحية
+        - link "حمّل التطبيق من متجر سلة وابدأ الآن" [ref=e53] [cursor=pointer]:
+          - /url: https://apps.salla.sa/ar/app/1180703836
+          - img [ref=e54]
+          - text: حمّل التطبيق من متجر سلة وابدأ الآن
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - heading "ماهو مشتري موثّق؟" [level=3] [ref=e58]
+            - iframe [ref=e60]:
+              - img [ref=f1e2]
+            - link "شاهد على يوتيوب" [ref=e61] [cursor=pointer]:
+              - /url: https://youtube.com/shorts/UqvdRG1ogN8?si=Qdo1Lpd9DMeE6TiP
+              - img [ref=e62]
+              - text: شاهد على يوتيوب
+          - generic [ref=e64]:
+            - heading "كيف تربط متجرك؟" [level=3] [ref=e65]
+            - iframe [ref=e67]:
+              - img [ref=f2e2]
+            - link "شاهد على يوتيوب" [ref=e68] [cursor=pointer]:
+              - /url: https://youtube.com/shorts/s6gBXoANREY?si=YNKmQ1CxPpFatRoU
+              - img [ref=e69]
+              - text: شاهد على يوتيوب
+      - generic [ref=e72]:
+        - generic [ref=e73]:
+          - generic [ref=e74]: لماذا نحن؟
+          - heading "لماذا مشتري موثّق = مبيعات أكثر" [level=2] [ref=e75]
+          - paragraph [ref=e76]: ضمان طرف ثالث محايد يُزيل تردد العميل ويحوّل الزوار إلى مشترين
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]: 🎯
+            - heading "حسم قرار الشراء" [level=3] [ref=e80]
+            - paragraph [ref=e81]: إزالة تردد العميل لحظة الدفع ورفع معدل التحويل فوراً
+            - generic [ref=e82]:
+              - generic [ref=e83]: +35%
+              - generic [ref=e84]: معدل التحويل
+          - generic [ref=e85]:
+            - generic [ref=e86]: 🛒
+            - heading "رفع قيمة السلة" [level=3] [ref=e87]
+            - paragraph [ref=e88]: منح العميل الجرأة والثقة لشراء منتجات أغلى وبكميات أكثر
+            - generic [ref=e89]:
+              - generic [ref=e90]: +28%
+              - generic [ref=e91]: قيمة الطلب
+          - generic [ref=e92]:
+            - generic [ref=e93]: 📈
+            - heading "مضاعفة نتائج الإعلانات" [level=3] [ref=e94]
+            - paragraph [ref=e95]: تحويل الزوار الجدد إلى مشترين بسرعة بفضل ضمان طرف ثالث محايد
+            - generic [ref=e96]:
+              - generic [ref=e97]: 2x
+              - generic [ref=e98]: ROI الإعلانات
+      - generic [ref=e100]:
+        - generic [ref=e101]:
+          - heading "كيف يعمل مشتري موثّق؟" [level=2] [ref=e102]
+          - paragraph [ref=e103]: خطوات بسيطة لبناء ثقة عملائك
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - generic [ref=e106]: "1"
+            - generic [ref=e107]: 🔗
+            - heading "فعّل التطبيق" [level=3] [ref=e108]
+            - paragraph [ref=e109]: اربط "مشتري موثّق" بمتجرك في سلة بضغطة زر واحدة، بدون إعدادات معقدة أو خبرة تقنية.
+          - generic [ref=e110]:
+            - generic [ref=e111]: "2"
+            - generic [ref=e112]: ⭐
+            - heading "العميل يقيّم كالمعتاد" [level=3] [ref=e113]
+            - paragraph [ref=e114]: يقيّم العميل مشترياته داخل متجرك مباشرة عبر روابط سلة الرسمية، دون أي إزعاج.
+          - generic [ref=e115]:
+            - generic [ref=e116]: "3"
+            - generic [ref=e117]: 🔒
+            - heading "التوثيق الفوري" [level=3] [ref=e118]
+            - paragraph [ref=e119]: نظامنا يتحقق آلياً من "شراء العميل الفعلي" و"اكتمال الطلب" فور وصول التقييم.
+          - generic [ref=e120]:
+            - generic [ref=e121]: "4"
+            - img "شعار مشتري موثّق" [ref=e124]
+            - heading "شارة الثقة تظهر" [level=3] [ref=e125]
+            - paragraph [ref=e126]: تظهر "شارة التوثيق" تلقائياً بجانب التقييمات الصادقة ليعرف زوارك أنها من مشترين حقيقيين.
+          - generic [ref=e127]:
+            - generic [ref=e128]: "5"
+            - img "شهادة توثيق التقييمات" [ref=e131]
+            - heading "شهادة توثيق التقييمات" [level=3] [ref=e132]
+            - paragraph [ref=e133]: يعرض الويدجت "شهادة توثيق" رسمية للتقييمات، مما يعزز مصداقية متجرك ويزيد ثقة العملاء.
+        - link "جرّب الآن" [ref=e135] [cursor=pointer]:
+          - /url: /signup
+          - button "جرّب الآن" [ref=e136]
+      - generic [ref=e138]:
+        - heading "جاهز لزيادة مبيعاتك؟" [level=2] [ref=e139]
+        - paragraph [ref=e140]: انضم الى العديد من المتاجر التي حسّنت ثقة عملائها مع مشتري موثّق
+        - link "ابدأ الآن" [ref=e141] [cursor=pointer]:
+          - /url: /signup
+          - button "ابدأ الآن" [ref=e142]
+      - generic [ref=e144]:
+        - generic [ref=e145]:
+          - img "مشتري موثّق" [ref=e146]
+          - generic [ref=e147]: مشتري موثّق
+        - navigation [ref=e148]:
+          - link "سياسة الخصوصية" [ref=e149] [cursor=pointer]:
+            - /url: /privacy-policy
+          - link "الشروط والأحكام" [ref=e150] [cursor=pointer]:
+            - /url: /terms
+          - link "الدعم والمساعدة" [ref=e151] [cursor=pointer]:
+            - /url: /support
+          - link "الأسئلة الشائعة" [ref=e152] [cursor=pointer]:
+            - /url: /faq
+        - generic [ref=e153]:
+          - link "جمعية قدوة" [ref=e154] [cursor=pointer]:
+            - /url: https://www.qudwa.org.sa
+            - img "جمعية قدوة" [ref=e155]
+          - link "التحقق الإلكتروني" [ref=e156] [cursor=pointer]:
+            - /url: https://eauthenticate.saudibusiness.gov.sa/certificate-details/0000203970
+            - img "التحقق الإلكتروني" [ref=e157]
+        - generic [ref=e158]:
+          - paragraph [ref=e159]: © 2026 مُشتري موثّق. جميع الحقوق محفوظة.
+          - link "النظام مسجّل ومحمي قانونيًا لدى الهيئة السعودية للملكية الفكرية" [ref=e160] [cursor=pointer]:
+            - /url: https://drive.google.com/file/d/1HTVS6PJeV5p9jOHFWq_8Kc_VC-gpQZVg/view?usp=drivesdk
+          - generic [ref=e161]:
+            - link "TikTok" [ref=e162] [cursor=pointer]:
+              - /url: https://www.tiktok.com/@theqahapp
+              - img [ref=e163]
+            - link "X (Twitter)" [ref=e165] [cursor=pointer]:
+              - /url: https://x.com/theqahapp
+              - img [ref=e166]
+            - link "Instagram" [ref=e168] [cursor=pointer]:
+              - /url: https://www.instagram.com/theqahapp
+              - img [ref=e169]
+    - button "إرسال ملاحظات" [ref=e171] [cursor=pointer]:
+      - img [ref=e172]
+      - generic [ref=e174]: ملاحظاتك
+  - alert [ref=e175]

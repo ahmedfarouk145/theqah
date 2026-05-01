@@ -97,6 +97,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
 
             if (result.reachedEnd) {
+                // Stash the skip-reason histogram on the job (via errors[])
+                // so /status surfaces *why* reviews were skipped instead of
+                // hiding the breakdown. Keeps using the existing field — no
+                // schema change.
+                await jobService.updateProgress(job.jobId, {
+                    appendError: {
+                        message: `skipReasons=${JSON.stringify(result.skipReasons)}`,
+                    },
+                });
                 await jobService.complete(job.jobId, {
                     written: writtenSoFar,
                     skipped: skippedSoFar,

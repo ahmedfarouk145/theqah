@@ -59,6 +59,7 @@ export interface SallaBackfillRunResult {
     skipped: number;
     lastPage: number;
     reachedEnd: boolean;
+    skipReasons: Record<string, number>;
 }
 
 export class SallaBackfillService {
@@ -83,6 +84,11 @@ export class SallaBackfillService {
         let skipped = 0;
         let reachedEnd = false;
         let lastPage = page - 1;
+        const skipReasons: Record<string, number> = {};
+        const bumpSkip = (reason: string) => {
+            skipped++;
+            skipReasons[reason] = (skipReasons[reason] ?? 0) + 1;
+        };
 
         while (page <= params.maxPages) {
             const pageStartWritten = written;
@@ -94,19 +100,18 @@ export class SallaBackfillService {
             for (const r of reviews) {
                 const type = String(r.type ?? 'rating').toLowerCase();
                 if (type !== 'rating') {
-                    skipped++;
+                    bumpSkip(`type_${type}`);
                     continue;
                 }
                 const productId = String(r.product?.id ?? '');
                 const orderId = String(r.order_id ?? '');
-                if (!productId || !orderId) {
-                    skipped++;
-                    continue;
-                }
+                if (!productId && !orderId) { bumpSkip('no_product_or_order'); continue; }
+                if (!productId) { bumpSkip('no_product_id'); continue; }
+                if (!orderId) { bumpSkip('no_order_id'); continue; }
 
                 const existing = await this.deps.getReviewByOrderAndProduct(orderId, productId);
                 if (existing) {
-                    skipped++;
+                    bumpSkip('already_exists');
                     continue;
                 }
 
@@ -162,7 +167,7 @@ export class SallaBackfillService {
             page++;
         }
 
-        return { written, skipped, lastPage, reachedEnd };
+        return { written, skipped, lastPage, reachedEnd, skipReasons };
     }
 }
 
@@ -174,6 +179,12 @@ export async function fetchSallaReviewsPage(
     const url = new URL(SALLA_REVIEWS_API);
     url.searchParams.set('page', String(page));
     url.searchParams.set('per_page', String(LIMITS.SALLA_REVIEWS_PER_PAGE));
+    // Salla's standard list endpoint does NOT inline product/customer by
+    // default — it returns only ids. Without `expanded=true` every review
+    // was getting skipped for missing productId. This makes Salla return
+    // the product object embedded so we can extract product.id/name and
+    // customer.name properly.
+    url.searchParams.set('expanded', 'true');
 
     const r = await fetchJsonWithTimeout<SallaApiResponse>(url.toString(), {
         headers: {

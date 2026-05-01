@@ -1,0 +1,644 @@
+- generic [ref=e3]:
+  - generic:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - link "متجر تطبيقات سلة متجر التطبيقات" [ref=e9] [cursor=pointer]:
+          - /url: /ar
+          - img "متجر تطبيقات سلة" [ref=e10]
+          - heading "متجر التطبيقات" [level=2] [ref=e11]
+        - generic [ref=e12] [cursor=pointer]: 
+      - generic [ref=e13]:
+        - list [ref=e14]:
+          - listitem [ref=e15]:
+            - generic [ref=e17]:
+              - text: التصنيفات
+              - generic [ref=e18]: 
+          - listitem [ref=e19]:
+            - link "اكتشف الآن" [ref=e20] [cursor=pointer]:
+              - /url: /ar/categories?feature=explore
+          - listitem [ref=e21]:
+            - link "الأسئلة الشائعة" [ref=e22] [cursor=pointer]:
+              - /url: /ar/faq
+          - listitem [ref=e23]:
+            - link "تواصل معنا" [ref=e24] [cursor=pointer]:
+              - /url: /ar/contact
+        - generic [ref=e26]:
+          - generic [ref=e27]: 
+          - text: English
+      - generic [ref=e28]:
+        - link "أنشئ متجرك مجاناُ" [ref=e30] [cursor=pointer]:
+          - /url: https://s.salla.sa/register?utm_source=apps&r=L2FyL2FwcC8xMTgwNzAzODM2
+        - link "سجل الدخول" [ref=e32] [cursor=pointer]:
+          - /url: https://s.salla.sa/login/login?utm_source=apps&r=L2FyL2FwcC8xMTgwNzAzODM2
+    - navigation [ref=e34]:
+      - generic [ref=e35]:
+        - link "متجر تطبيقات سلة متجر التطبيقات" [ref=e37] [cursor=pointer]:
+          - /url: /ar
+          - img "متجر تطبيقات سلة" [ref=e38]
+          - heading "متجر التطبيقات" [level=2] [ref=e39]
+        - list [ref=e40]:
+          - listitem [ref=e41]:
+            - generic [ref=e44] [cursor=pointer]:
+              - link "التصنيفات " [ref=e45]:
+                - /url: /ar/categories
+                - text: التصنيفات
+                - generic [ref=e46]: 
+              - text:             
+          - listitem [ref=e47]:
+            - generic [ref=e51]:
+              - generic [ref=e53]: 
+              - textbox "كلمة البحث..." [ref=e54]
+        - generic [ref=e55]:
+          - generic [ref=e58] [cursor=pointer]: 
+          - generic [ref=e59]:
+            - link "سجل الدخول" [ref=e61] [cursor=pointer]:
+              - /url: https://s.salla.sa/login/login?utm_source=apps&r=L2FyL2FwcC8xMTgwNzAzODM2
+            - link "أنشئ متجرك مجاناُ" [ref=e63] [cursor=pointer]:
+              - /url: https://s.salla.sa/register?utm_source=apps&r=L2FyL2FwcC8xMTgwNzAzODM2
+        - text:  
+  - generic [ref=e66]:
+    - generic [ref=e67]:
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - link "الرئيسية" [ref=e70] [cursor=pointer]:
+            - /url: /ar
+          - text: /
+          - link "تحسين الموقع" [ref=e71] [cursor=pointer]:
+            - /url: /ar/categories?slug=optimize
+          - text: /مشتري موثق
+        - generic [ref=e72]:
+          - generic [ref=e77]:
+            - heading "مشتري موثق" [level=1] [ref=e78]
+            - generic [ref=e79]:
+              - text: بواسطة
+              - link "محمد العوذة" [ref=e80] [cursor=pointer]:
+                - /url: /ar/company/361445820
+          - generic [ref=e81]:
+            - link "تثبيت" [ref=e82] [cursor=pointer]:
+              - /url: https://s.salla.sa/apps/install/1180703836?trial=1&&
+            - generic [ref=e83]: 20 ر.س / شهرياً (فترة تجريبية 7 أيام)
+            - generic [ref=e84]: السعر غير شامل ضريبة القيمة المضافة (15%)
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - generic [ref=e87]: 
+            - generic [ref=e88]: 
+            - generic [ref=e89]: 
+            - generic [ref=e90]: 
+            - generic [ref=e91]: 
+            - text: (3 تقييم)
+          - generic [ref=e92]:
+            - link "تحسين الموقع" [ref=e93] [cursor=pointer]:
+              - /url: /ar/categories?slug=optimize
+            - link "التحليل و الاحصاء" [ref=e94] [cursor=pointer]:
+              - /url: /ar/categories?slug=analytics
+        - generic [ref=e95]:
+          - region [ref=e99]:
+            - generic:
+              - button "Go to last slide" [ref=e100] [cursor=pointer]:
+                - img [ref=e101]
+              - button "Next slide" [ref=e103] [cursor=pointer]:
+                - img [ref=e104]
+            - generic [ref=e106]:
+              - tabpanel "1 of 5" [ref=e107]:
+                - link "مشتري موثق" [ref=e108] [cursor=pointer]:
+                  - /url: https://salla-dev-portal.s3.eu-central-1.amazonaws.com/uploads/ks1wKTGjGQ6R8AbSnsIkZGI8jAY7VnyOtPdRFZkd.png
+                  - img "مشتري موثق" [ref=e109]
+              - tabpanel [ref=e110]:
+                - link [ref=e111] [cursor=pointer]:
+                  - /url: https://salla-dev-portal.s3.eu-central-1.amazonaws.com/uploads/62ZcTzYvyEXVFDHK092Vj5YlEA4DL6qE6UqsRAhN.png
+                  - img [ref=e112]
+              - tabpanel [ref=e113]:
+                - link [ref=e114] [cursor=pointer]:
+                  - /url: https://salla-dev-portal.s3.eu-central-1.amazonaws.com/uploads/GIqG3V32GO8DbfgguELJ3Gd5m53NbMkqQ5vItP61.png
+                  - img [ref=e115]
+              - tabpanel [ref=e116]:
+                - link [ref=e117] [cursor=pointer]:
+                  - /url: https://salla-dev-portal.s3.eu-central-1.amazonaws.com/uploads/hr4yuRcxs2KIesoCJXeLTI0JLrjnnvu45EKsF7cK.png
+                  - img [ref=e118]
+              - tabpanel [ref=e119]:
+                - link [ref=e120] [cursor=pointer]:
+                  - /url: https://salla-dev-portal.s3.eu-central-1.amazonaws.com/uploads/PAmCR6elni3N9TI703KoGL5JSh6b4JIvJlkB8Z5G.png
+                  - img [ref=e121]
+            - tablist "Select a slide to show":
+              - tab "Go to slide 1" [selected] [ref=e122] [cursor=pointer]
+              - tab "Go to slide 2" [ref=e123] [cursor=pointer]
+              - tab "Go to slide 3" [ref=e124] [cursor=pointer]
+              - tab "Go to slide 4" [ref=e125] [cursor=pointer]
+              - tab "Go to slide 5" [ref=e126] [cursor=pointer]
+          - generic [ref=e127]:
+            - generic [ref=e128]:
+              - heading "الموقع الإلكتروني" [level=6] [ref=e129]
+              - generic [ref=e131]:
+                - generic [ref=e132]: 
+                - link "الصفحة الرئيسية" [ref=e133] [cursor=pointer]:
+                  - /url: https://theqah.com.sa
+            - generic [ref=e134]:
+              - heading "الدعم" [level=6] [ref=e135]
+              - generic [ref=e137]:
+                - generic [ref=e138]: 
+                - link:
+                  - /url: "0561916780"
+                - link "0561916780" [ref=e139] [cursor=pointer]:
+                  - /url: tel:0561916780
+              - generic [ref=e141]:
+                - generic [ref=e142]: 
+                - link:
+                  - /url: reviews@theqah.com.sa
+                - link "reviews@theqah.com.sa" [ref=e143] [cursor=pointer]:
+                  - /url: mailto:reviews@theqah.com.sa
+              - generic [ref=e145]:
+                - generic [ref=e146]: 
+                - link "سياسة الخصوصية" [ref=e147] [cursor=pointer]:
+                  - /url: https://www.theqah.com.sa/privacy-policy
+              - generic [ref=e149]:
+                - generic [ref=e150]: 
+                - link "الأسئلة الأكثر شيوعا" [ref=e151] [cursor=pointer]:
+                  - /url: https://www.theqah.com.sa/faq
+      - generic [ref=e153]:
+        - generic [ref=e154]:
+          - article [ref=e155]:
+            - paragraph [ref=e156]: "تخيل عميلك واقف في محلك، ماسك المنتج بيده وعاجبه.. بس \"يتلفت\" يمين ويسار ويسأل المتسوقين:"
+            - paragraph [ref=e157]: "\"يا إخوان.. أحد جرب هذا من قبل؟ تنصحوني فيه؟\" 🤔"
+            - paragraph [ref=e158]: هو يبي يشتري، وفلوسه جاهزة، بس خايف "يتورط" ويحتاج شخص يطمنه.
+            - paragraph [ref=e159]: في متجرك الإلكتروني، هذا المشهد يتكرر كل دقيقة!
+            - paragraph [ref=e160]: العميل يقرأ الوصف والنجو...
+          - article
+        - button "Read More" [ref=e162] [cursor=pointer]: اقرأ التفاصيل
+    - generic [ref=e167]:
+      - generic [ref=e168]:
+        - heading "مشتري موثق يعزز ثقة متجرك." [level=6] [ref=e170]
+        - generic [ref=e171]: امنح متجرك ميزة تنافسية قوية أمام عملائك، وابرز سمعتك الموثوقة بين المتاجر المنافسة.
+      - generic [ref=e172]:
+        - heading "نظام ذكي لجمع ونشر التقييمات" [level=6] [ref=e174]
+        - generic [ref=e175]: نظام طرف ثالث يوثق تقييماتك تلقائياً بمطابقتها مع الطلبات الفعلية، ويمنحها شارة 'مشتري موثّق' فوراً.
+      - generic [ref=e176]:
+        - heading "شارات توثيق احترافية" [level=6] [ref=e178]
+        - generic [ref=e179]: علامات بصرية جذابة بجانب التقييمات لتفعيل استراتيجية "الدليل الاجتماعي" كأقوى أداة تسويقية لرفع ثقة الزوار وتحفيزهم على الشراء.
+    - generic [ref=e181]:
+      - heading "صلاحيات التطبيق" [level=4] [ref=e182]
+      - generic [ref=e183]:
+        - generic [ref=e184]:
+          - generic [ref=e186]: 
+          - generic [ref=e187]:
+            - heading "البيانات الأساسية" [level=5] [ref=e188]
+            - text: قراءة فقط
+        - generic [ref=e189]:
+          - generic [ref=e191]: 
+          - generic [ref=e192]:
+            - heading "الطلبات" [level=5] [ref=e193]
+            - text: قراءة فقط
+        - generic [ref=e194]:
+          - generic [ref=e196]: 
+          - generic [ref=e197]:
+            - heading "المنتجات" [level=5] [ref=e198]
+            - text: قراءة فقط
+        - generic [ref=e199]:
+          - generic [ref=e201]: 
+          - generic [ref=e202]:
+            - heading "ويب هوك" [level=5] [ref=e203]
+            - text: قراءة وكتابة
+        - generic [ref=e204]:
+          - generic [ref=e206]: 
+          - generic [ref=e207]:
+            - heading "الأسئلة و التقييمات" [level=5] [ref=e208]
+            - text: قراءة فقط
+    - generic [ref=e209]:
+      - generic [ref=e210]:
+        - heading "تسعير بسيط وشفاف" [level=2] [ref=e211]
+        - paragraph [ref=e212]: لا عقود. لا توجد رسوم مفاجئة
+        - generic [ref=e214]:
+          - button "شهرياً" [ref=e215] [cursor=pointer]
+          - button "سنوياً" [ref=e216] [cursor=pointer]
+        - generic [ref=e217]:
+          - generic [ref=e220]:
+            - generic [ref=e221]:
+              - generic [ref=e222]:
+                - generic [ref=e223]: باقة النمو اللامحدودة
+                - generic [ref=e224]:
+                  - generic [ref=e225]:
+                    - paragraph [ref=e226]: 40 ريال
+                    - text: 50% خصم
+                  - heading "20 ر.س / شهرياً" [level=2] [ref=e227]
+              - generic [ref=e228]:
+                - generic [ref=e229]: المميزات
+                - list [ref=e230]:
+                  - listitem [ref=e231]:
+                    - generic [ref=e232]: 
+                    - generic [ref=e233]: توثيق عدد لا نهائي من التقييمات
+                  - listitem [ref=e234]:
+                    - generic [ref=e235]: 
+                    - generic [ref=e236]: حماية آلية بالذكاء الاصطناعي على مدار الساعة
+                  - listitem [ref=e237]:
+                    - generic [ref=e238]: 
+                    - generic [ref=e239]: ظهور فوري لشارة مشتري موثق
+                  - listitem [ref=e240]:
+                    - generic [ref=e241]: 
+                    - generic [ref=e242]: لوحة تحكم شاملة لفهم العملاء
+                  - listitem [ref=e243]:
+                    - generic [ref=e244]: 
+                    - generic [ref=e245]: تفعيل فوري للخدمة
+            - generic [ref=e248] [cursor=pointer]: اختر الخطة
+          - table [ref=e251]:
+            - rowgroup [ref=e252]:
+              - row "المميزات باقة النمو اللامحدودة باقة التأسيس السنوية" [ref=e253]:
+                - columnheader "المميزات" [ref=e254]
+                - columnheader "باقة النمو اللامحدودة" [ref=e255]
+                - columnheader "باقة التأسيس السنوية" [ref=e256]
+            - rowgroup [ref=e257]:
+              - row "توثيق عدد لا نهائي من التقييمات  " [ref=e258]:
+                - cell "توثيق عدد لا نهائي من التقييمات" [ref=e259]
+                - cell "" [ref=e260]:
+                  - generic [ref=e263]: 
+                - cell "" [ref=e264]:
+                  - generic [ref=e267]: 
+              - row "حماية آلية بالذكاء الاصطناعي على مدار الساعة  " [ref=e268]:
+                - cell "حماية آلية بالذكاء الاصطناعي على مدار الساعة" [ref=e269]
+                - cell "" [ref=e270]:
+                  - generic [ref=e273]: 
+                - cell "" [ref=e274]:
+                  - generic [ref=e277]: 
+              - row "ظهور فوري لشارة مشتري موثق  " [ref=e278]:
+                - cell "ظهور فوري لشارة مشتري موثق" [ref=e279]
+                - cell "" [ref=e280]:
+                  - generic [ref=e283]: 
+                - cell "" [ref=e284]:
+                  - generic [ref=e287]: 
+              - row "لوحة تحكم شاملة لفهم العملاء  " [ref=e288]:
+                - cell "لوحة تحكم شاملة لفهم العملاء" [ref=e289]
+                - cell "" [ref=e290]:
+                  - generic [ref=e293]: 
+                - cell "" [ref=e294]:
+                  - generic [ref=e297]: 
+              - row "تفعيل فوري للخدمة  " [ref=e298]:
+                - cell "تفعيل فوري للخدمة" [ref=e299]
+                - cell "" [ref=e300]:
+                  - generic [ref=e303]: 
+                - cell "" [ref=e304]:
+                  - generic [ref=e307]: 
+              - row "أولوية دعم للمشتركين الأوائل - " [ref=e308]:
+                - cell "أولوية دعم للمشتركين الأوائل" [ref=e309]
+                - cell "-" [ref=e310]:
+                  - paragraph [ref=e312]: "-"
+                - cell "" [ref=e313]:
+                  - generic [ref=e316]: 
+              - row "تثبيت السعر للمشترك المؤسس - " [ref=e317]:
+                - cell "تثبيت السعر للمشترك المؤسس" [ref=e318]
+                - cell "-" [ref=e319]:
+                  - paragraph [ref=e321]: "-"
+                - cell "" [ref=e322]:
+                  - generic [ref=e325]: 
+      - generic [ref=e327]: السعر غير شامل ضريبة القيمة المضافة (15%)
+    - generic [ref=e329]:
+      - generic [ref=e330]:
+        - heading "الباقات المذكورة أعلاه لم تعد مناسبة لعملك؟" [level=4] [ref=e331]
+        - paragraph [ref=e332]: تواصل مع المطور وخصص حزمة لمتجرك تزيد مبيعاتك ورضا العملاء.
+      - link "تواصل مع المطور" [ref=e334] [cursor=pointer]:
+        - /url: mailto:reviews@theqah.com.sa
+        - generic [ref=e335]: تواصل مع المطور
+    - generic [ref=e337]:
+      - generic [ref=e339]:
+        - generic [ref=e340]:
+          - generic [ref=e341]:
+            - generic [ref=e342]:
+              - generic [ref=e343]: "5"
+              - generic [ref=e344]: نجوم
+            - generic [ref=e347]:
+              - generic [ref=e348]:
+                - generic [ref=e350]: 
+                - generic [ref=e352]: 
+                - generic [ref=e354]: 
+                - generic [ref=e356]: 
+                - generic [ref=e358]: 
+              - generic [ref=e359]:
+                - text: (3
+                - generic [ref=e360]: تقييم
+                - text: )
+          - generic [ref=e361]:
+            - generic [ref=e362]:
+              - generic [ref=e363]: "4"
+              - generic [ref=e364]: نجوم
+            - generic [ref=e366]:
+              - generic [ref=e367]:
+                - generic [ref=e369]: 
+                - generic [ref=e371]: 
+                - generic [ref=e373]: 
+                - generic [ref=e375]: 
+                - generic [ref=e377]: 
+              - generic [ref=e378]:
+                - text: (0
+                - generic [ref=e379]: تقييم
+                - text: )
+          - generic [ref=e380]:
+            - generic [ref=e381]:
+              - generic [ref=e382]: "3"
+              - generic [ref=e383]: نجوم
+            - generic [ref=e385]:
+              - generic [ref=e386]:
+                - generic [ref=e388]: 
+                - generic [ref=e390]: 
+                - generic [ref=e392]: 
+                - generic [ref=e394]: 
+                - generic [ref=e396]: 
+              - generic [ref=e397]:
+                - text: (0
+                - generic [ref=e398]: تقييم
+                - text: )
+          - generic [ref=e399]:
+            - generic [ref=e400]:
+              - generic [ref=e401]: "2"
+              - generic [ref=e402]: نجوم
+            - generic [ref=e404]:
+              - generic [ref=e405]:
+                - generic [ref=e407]: 
+                - generic [ref=e409]: 
+                - generic [ref=e411]: 
+                - generic [ref=e413]: 
+                - generic [ref=e415]: 
+              - generic [ref=e416]:
+                - text: (0
+                - generic [ref=e417]: تقييم
+                - text: )
+          - generic [ref=e418]:
+            - generic [ref=e419]:
+              - generic [ref=e420]: "1"
+              - generic [ref=e421]: نجوم
+            - generic [ref=e423]:
+              - generic [ref=e424]:
+                - generic [ref=e426]: 
+                - generic [ref=e428]: 
+                - generic [ref=e430]: 
+                - generic [ref=e432]: 
+                - generic [ref=e434]: 
+              - generic [ref=e435]:
+                - text: (0
+                - generic [ref=e436]: تقييم
+                - text: )
+        - generic [ref=e437]:
+          - heading "تقييم العملاء" [level=5] [ref=e438]
+          - generic [ref=e439]:
+            - generic [ref=e440]:
+              - generic [ref=e442]: 
+              - generic [ref=e444]: 
+              - generic [ref=e446]: 
+              - generic [ref=e448]: 
+              - generic [ref=e450]: 
+            - generic [ref=e451]: 5 من 5
+          - generic [ref=e452]: 3 تقييم للعملاء
+      - generic [ref=e454]:
+        - heading "التقييمات (3)" [level=3] [ref=e455]
+        - generic [ref=e457]:
+          - generic [ref=e460]:
+            - img "STORE NGLR" [ref=e461]
+            - generic [ref=e462]:
+              - heading "STORE NGLR" [level=6] [ref=e463]
+              - generic [ref=e464]: منذ ٥ أيام
+              - paragraph [ref=e465]: من افضل التطبيقات بلا شك ولا يردني فيه ولا شك ماشاء الله تبارك الله انصح فيه
+            - generic [ref=e466]:
+              - generic [ref=e467]: 
+              - generic [ref=e468]: 
+              - generic [ref=e469]: 
+              - generic [ref=e470]: 
+              - generic [ref=e471]: 
+          - generic [ref=e474]:
+            - img "بيت القهوة الشدوية" [ref=e475]
+            - generic [ref=e476]:
+              - heading "بيت القهوة الشدوية" [level=6] [ref=e477]
+              - generic [ref=e478]: منذ ٦ أيام
+              - paragraph [ref=e479]: التطبيق ممتاز بعد التثبيت والاشتراك في الخدمة فرق معي في المبيعات وزادت ثقة العملاء والتعامل راقي في الدعم الفني .
+            - generic [ref=e480]:
+              - generic [ref=e481]: 
+              - generic [ref=e482]: 
+              - generic [ref=e483]: 
+              - generic [ref=e484]: 
+              - generic [ref=e485]: 
+          - generic [ref=e488]:
+            - img "متجر الهدف التكتيكي" [ref=e489]
+            - generic [ref=e490]:
+              - heading "متجر الهدف التكتيكي" [level=6] [ref=e491]
+              - generic [ref=e492]: منذ شهرين
+              - paragraph [ref=e493]: التطبيق يساعد العميل علي عملية الثقة بتقيم العملاء ويرفع المبيعات
+            - generic [ref=e494]:
+              - generic [ref=e495]: 
+              - generic [ref=e496]: 
+              - generic [ref=e497]: 
+              - generic [ref=e498]: 
+              - generic [ref=e499]: 
+    - generic [ref=e502]:
+      - generic [ref=e503]:
+        - heading "تطبيقات مماثلة" [level=3] [ref=e504]
+        - paragraph [ref=e505]: تطبيقات قد تنال إعجابك
+      - generic [ref=e506]:
+        - generic [ref=e508]:
+          - generic [ref=e510]:
+            - link "اوتو تاغ - ميز عملائك" [ref=e513] [cursor=pointer]:
+              - /url: /ar/app/2052197509?category=optimize
+            - generic [ref=e514]:
+              - heading "اوتو تاغ - ميز عملائك" [level=2] [ref=e515]:
+                - link "اوتو تاغ - ميز عملائك" [ref=e516] [cursor=pointer]:
+                  - /url: /ar/app/2052197509?category=optimize
+              - link "lavan Solutions" [ref=e517] [cursor=pointer]:
+                - /url: /ar/company/163417351
+          - generic [ref=e520]: مجاني / باقة مدفوعة
+          - generic [ref=e522]:
+            - generic [ref=e523]:
+              - generic [ref=e524]: 
+              - generic [ref=e525]: 
+              - generic [ref=e526]: 
+              - generic [ref=e527]: 
+              - generic [ref=e528]: 
+            - generic [ref=e529]: (2 تقييم)
+          - paragraph [ref=e530]: اوتو تاغ هي اداة تقييم العملاء ووضع وسوم على طلب بناء على السلوك الشرائي والطلبات السابقة بحيث يمكن تمميز العملاء
+          - generic [ref=e531]:
+            - link "التسويق" [ref=e532] [cursor=pointer]:
+              - /url: /ar/categories?slug=marketing
+              - generic [ref=e533]: التسويق
+            - link "تحسين الموقع" [ref=e534] [cursor=pointer]:
+              - /url: /ar/categories?slug=optimize
+              - generic [ref=e535]: تحسين الموقع
+            - link "التحليل و الاحصاء" [ref=e536] [cursor=pointer]:
+              - /url: /ar/categories?slug=analytics
+              - generic [ref=e537]: التحليل و الاحصاء
+        - generic [ref=e539]:
+          - generic [ref=e541]:
+            - link "قصص Smartarget" [ref=e544] [cursor=pointer]:
+              - /url: /ar/app/299275781?category=optimize
+            - generic [ref=e545]:
+              - heading "قصص Smartarget" [level=2] [ref=e546]:
+                - link "قصص Smartarget" [ref=e547] [cursor=pointer]:
+                  - /url: /ar/app/299275781?category=optimize
+              - link "TopSoft UG" [ref=e548] [cursor=pointer]:
+                - /url: /ar/company/1147360781
+          - generic [ref=e550]: يبدأ من 36 ر.س / شهرياً
+          - generic [ref=e552]:
+            - generic [ref=e553]:
+              - generic [ref=e554]: 
+              - generic [ref=e555]: 
+              - generic [ref=e556]: 
+              - generic [ref=e557]: 
+              - generic [ref=e558]: 
+            - generic [ref=e559]: (5 تقييم)
+          - paragraph [ref=e560]: "قصص Smartarget : زيادة التفاعل. زيادة المبيعات. زيادة العلامة التجارية."
+          - link "تحسين الموقع" [ref=e562] [cursor=pointer]:
+            - /url: /ar/categories?slug=optimize
+            - generic [ref=e563]: تحسين الموقع
+        - generic [ref=e565]:
+          - generic [ref=e567]:
+            - link "نوتي موني" [ref=e570] [cursor=pointer]:
+              - /url: /ar/app/939200655?category=optimize
+            - generic [ref=e571]:
+              - heading "نوتي موني" [level=2] [ref=e572]:
+                - link "نوتي موني" [ref=e573] [cursor=pointer]:
+                  - /url: /ar/app/939200655?category=optimize
+              - link "وادي بلسم لتقنية المعلومات" [ref=e574] [cursor=pointer]:
+                - /url: /ar/company/997551250
+          - generic [ref=e576]: يبدأ من 20 ر.س / شهرياً
+          - generic [ref=e578]:
+            - generic [ref=e579]:
+              - generic [ref=e580]: 
+              - generic [ref=e581]: 
+              - generic [ref=e582]: 
+              - generic [ref=e583]: 
+              - generic [ref=e584]: 
+            - generic [ref=e585]: (276 تقييم)
+          - paragraph [ref=e586]: تطبيق نوتي موني يساعدك في رفع مبيعاتك متجرك من خلال التسويق النفسي لزوار متجرك عبر إرسال اشعارات لزوار متجرك يساعدهم في سرعة اتخاذ القرار لديهم بالشراء ومعرفة عروضك الخاصة
+          - generic [ref=e587]:
+            - link "التسويق" [ref=e588] [cursor=pointer]:
+              - /url: /ar/categories?slug=marketing
+              - generic [ref=e589]: التسويق
+            - link "أخرى" [ref=e590] [cursor=pointer]:
+              - /url: /ar/categories?slug=others
+              - generic [ref=e591]: أخرى
+            - link "المحادثة" [ref=e592] [cursor=pointer]:
+              - /url: /ar/categories?slug=chat
+              - generic [ref=e593]: المحادثة
+            - link "التحليل و الاحصاء" [ref=e594] [cursor=pointer]:
+              - /url: /ar/categories?slug=analytics
+              - generic [ref=e595]: التحليل و الاحصاء
+        - generic [ref=e597]:
+          - generic [ref=e599]:
+            - link "لايف غولد (تحديث اسعار الذهب)" [ref=e602] [cursor=pointer]:
+              - /url: /ar/app/1159645041?category=optimize
+            - generic [ref=e603]:
+              - heading "لايف غولد (تحديث اسعار الذهب)" [level=2] [ref=e604]:
+                - link "لايف غولد (تحديث اسعار الذهب)" [ref=e605] [cursor=pointer]:
+                  - /url: /ar/app/1159645041?category=optimize
+              - link "شركة لايف جولد لتقنية المعلومات" [ref=e606] [cursor=pointer]:
+                - /url: /ar/company/800986321
+          - generic [ref=e609]: مجاني / باقة مدفوعة
+          - generic [ref=e611]:
+            - generic [ref=e612]:
+              - generic [ref=e613]: 
+              - generic [ref=e614]: 
+              - generic [ref=e615]: 
+              - generic [ref=e616]: 
+              - generic [ref=e617]: 
+            - generic [ref=e618]: (15 تقييم)
+          - paragraph [ref=e619]: تحديث أسعار الذهب و الفضة آلياً و بشكل لحظي حسب السعر العالمي متناسب مع مواقع المجوهرات على منصة سلة
+          - generic [ref=e620]:
+            - link "دعم العميل" [ref=e621] [cursor=pointer]:
+              - /url: /ar/categories?slug=support
+              - generic [ref=e622]: دعم العميل
+            - link "تحسين الموقع" [ref=e623] [cursor=pointer]:
+              - /url: /ar/categories?slug=optimize
+              - generic [ref=e624]: تحسين الموقع
+  - contentinfo [ref=e626]:
+    - generic [ref=e628]:
+      - generic [ref=e630]:
+        - generic [ref=e631]: 
+        - generic [ref=e632]: ضمان استعادة الأموال لمدة 7 أيام
+      - generic [ref=e634]:
+        - generic [ref=e635]: 
+        - generic [ref=e636]: دعم فوري متوفر 24 ساعة
+      - generic [ref=e638]:
+        - generic [ref=e639]: 
+        - generic [ref=e640]: دفع آمن ومأمون عبر منصة سلة
+    - generic [ref=e641]:
+      - generic [ref=e643]:
+        - generic [ref=e644]:
+          - link "متجر تطبيقات سلة متجر التطبيقات" [ref=e645] [cursor=pointer]:
+            - /url: /ar
+            - img "متجر تطبيقات سلة" [ref=e646]
+            - heading "متجر التطبيقات" [level=4] [ref=e647]
+          - generic [ref=e648]:
+            - link "Play Store" [ref=e649] [cursor=pointer]:
+              - /url: https://apps.apple.com/us/app/%D8%B3%D9%84%D8%A9/id1148458340
+              - img "Play Store" [ref=e650]
+            - link "Play Store" [ref=e651] [cursor=pointer]:
+              - /url: https://play.google.com/store/apps/details?id=com.emoney.sallacp&hl=en&gl=US
+              - img "Play Store" [ref=e652]
+          - list [ref=e653]:
+            - listitem [ref=e654]:
+              - link "twitter-x" [ref=e655] [cursor=pointer]:
+                - /url: https://x.com/SallaPartners
+                - generic [ref=e656]: 
+            - listitem [ref=e657]:
+              - link "tiktok" [ref=e658] [cursor=pointer]:
+                - /url: https://www.tiktok.com/@sallaapp
+                - generic [ref=e659]: 
+            - listitem [ref=e660]:
+              - link "youtube" [ref=e661] [cursor=pointer]:
+                - /url: https://www.youtube.com/SallaApp
+                - generic [ref=e662]: 
+            - listitem [ref=e663]:
+              - link "instagram" [ref=e664] [cursor=pointer]:
+                - /url: https://www.instagram.com/SallaPartners
+                - generic [ref=e665]: 
+        - generic [ref=e666]:
+          - heading "متجر التطبيقات" [level=2] [ref=e667]
+          - list [ref=e668]:
+            - listitem [ref=e669]:
+              - link "اقترح تطبيقًا" [ref=e670] [cursor=pointer]:
+                - /url: https://features.salla.sa/?category=7038908359232402800
+            - listitem [ref=e671]:
+              - link "انضم إلى فريق مطوري سلة" [ref=e672] [cursor=pointer]:
+                - /url: https://apply.workable.com/salla/
+            - listitem [ref=e673]:
+              - link "سياسة الاستخدام" [ref=e674] [cursor=pointer]:
+                - /url: https://salla.com/terms/
+            - listitem [ref=e675]:
+              - link "سياسة متجر التطبيقات" [ref=e676] [cursor=pointer]:
+                - /url: /ar/general-policy
+        - generic [ref=e677]:
+          - heading "منتجات سلة" [level=2] [ref=e678]
+          - list [ref=e679]:
+            - listitem [ref=e680]:
+              - link "ثيمات سلة" [ref=e681] [cursor=pointer]:
+                - /url: https://s.salla.sa/marketplace/themes
+            - listitem [ref=e682]:
+              - link "صانع التطبيقات" [ref=e683] [cursor=pointer]:
+                - /url: https://app-maker.salla.sa/
+            - listitem [ref=e684]:
+              - link "باقة سلة الخاصة" [ref=e685] [cursor=pointer]:
+                - /url: https://salla.com/special/
+        - generic [ref=e686]:
+          - heading "كن شريكًا لسلة" [level=2] [ref=e687]
+          - list [ref=e688]:
+            - listitem [ref=e689]:
+              - link "أنشئ تطبيقك الأول" [ref=e690] [cursor=pointer]:
+                - /url: https://salla.partners/login
+            - listitem [ref=e691]:
+              - link "كيف تنشئ تطبيقك الأول" [ref=e692] [cursor=pointer]:
+                - /url: https://salla.dev/blog/create-your-first-app-on-salla-developer-portal/
+            - listitem [ref=e693]:
+              - link "مدونة شركاء سلة" [ref=e694] [cursor=pointer]:
+                - /url: https://salla.dev/blog/
+      - separator [ref=e695]
+      - generic [ref=e696]:
+        - list [ref=e698]:
+          - listitem [ref=e699]:
+            - generic [ref=e700]: 
+            - generic [ref=e701]: "920031659"
+          - listitem [ref=e702]:
+            - generic [ref=e703]: 
+            - generic [ref=e704]: مكة، المملكة العربية السعودية
+          - listitem [ref=e705]:
+            - generic [ref=e706]: 
+            - generic [ref=e707]: info@salla.dev
+          - listitem [ref=e708]:
+            - 'img "Tax Number: 546987552" [ref=e709]'
+            - generic [ref=e710]: "الرقم الضريبي: 546987552"
+        - paragraph [ref=e711]:
+          - text: © 2026
+          - link "سلة" [ref=e712] [cursor=pointer]:
+            - /url: https://salla.com
+          - text: . جميع الحقوق محفوظة.
