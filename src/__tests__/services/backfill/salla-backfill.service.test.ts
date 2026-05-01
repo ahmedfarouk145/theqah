@@ -27,7 +27,7 @@ describe('SallaBackfillService', () => {
         const svc = new SallaBackfillService({
             fetchPage: async () => pages.shift()!,
             getAccessToken: async () => 'tok',
-            getReviewByOrderAndProduct: async () => null,
+            getReviewBySallaId: async () => null,
             writeReview: async (id, doc) => { writes.push({ id, doc }); },
             getStoreSubscriptionStart: async () => 0,
         });
@@ -49,7 +49,7 @@ describe('SallaBackfillService', () => {
         expect(result.reachedEnd).toBe(true);
     });
 
-    it('dedupes against existing review docs by orderId + productId', async () => {
+    it('dedupes against existing review docs by sallaReviewId', async () => {
         const writes: Array<{ id: string; doc: Record<string, unknown> }> = [];
         const svc = new SallaBackfillService({
             fetchPage: async () => ({
@@ -64,7 +64,7 @@ describe('SallaBackfillService', () => {
                 pagination: { totalPages: 1, links: { next: null } },
             }),
             getAccessToken: async () => 'tok',
-            getReviewByOrderAndProduct: async () => ({ reviewId: 'existing' }),
+            getReviewBySallaId: async () => ({ reviewId: 'existing' }),
             writeReview: async (id, doc) => { writes.push({ id, doc }); },
             getStoreSubscriptionStart: async () => 0,
         });
@@ -107,7 +107,7 @@ describe('SallaBackfillService', () => {
                 };
             },
             getAccessToken: async () => 'tok',
-            getReviewByOrderAndProduct: async () => null,
+            getReviewBySallaId: async () => null,
             writeReview: async (id, doc) => { writes.push({ id, doc }); },
             getStoreSubscriptionStart: async () => 0,
         });

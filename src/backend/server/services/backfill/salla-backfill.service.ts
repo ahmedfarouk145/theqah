@@ -33,6 +33,12 @@ export interface SallaApiReview {
         email?: string;
         mobile?: string;
     };
+    /**
+     * Salla returns `created_at` as a top-level string ("YYYY-MM-DD HH:mm:ss"
+     * or ISO). The legacy `date: { date }` shape was a guess from earlier
+     * docs and isn't actually returned. We accept both for compatibility.
+     */
+    created_at?: string;
     date?: { date?: string };
     images?: unknown[];
 }
@@ -49,7 +55,14 @@ export interface SallaApiResponse {
 export interface SallaBackfillDeps {
     fetchPage: (accessToken: string, page: number) => Promise<SallaApiResponse>;
     getAccessToken: (storeUid: string) => Promise<string | null>;
-    getReviewByOrderAndProduct: (orderId: string, productId: string) => Promise<{ reviewId: string } | null>;
+    /** @deprecated kept for tests — backfill now uses sallaReviewId for dedupe */
+    getReviewByOrderAndProduct?: (orderId: string, productId: string) => Promise<{ reviewId: string } | null>;
+    /**
+     * Dedupe by Salla's globally-unique review id. Implementations should
+     * query both `sallaReviewId == id` AND the deterministic backfill doc
+     * id (`salla_backfill_<id>`) to catch already-imported rows.
+     */
+    getReviewBySallaId?: (sallaReviewId: string) => Promise<{ reviewId: string } | null>;
     writeReview: (reviewId: string, doc: Record<string, unknown>) => Promise<void>;
     getStoreSubscriptionStart: (storeUid: string) => Promise<number>;
 }
@@ -103,20 +116,25 @@ export class SallaBackfillService {
                     bumpSkip(`type_${type}`);
                     continue;
                 }
-                const productId = String(r.product?.id ?? '');
-                const orderId = String(r.order_id ?? '');
-                if (!productId && !orderId) { bumpSkip('no_product_or_order'); continue; }
-                if (!productId) { bumpSkip('no_product_id'); continue; }
-                if (!orderId) { bumpSkip('no_order_id'); continue; }
+                const sallaReviewId = String(r.id ?? '');
+                if (!sallaReviewId) { bumpSkip('no_review_id'); continue; }
 
-                const existing = await this.deps.getReviewByOrderAndProduct(orderId, productId);
-                if (existing) {
-                    bumpSkip('already_exists');
-                    continue;
+                // Salla's bulk reviews endpoint does NOT return product info
+                // inline. We use sallaReviewId (globally unique) as the dedupe
+                // key instead of orderId+productId. productId stays empty —
+                // the cert page reads the product name from sallaReviewId on
+                // demand if needed.
+                const orderId = String(r.order_id ?? '');
+                const productId = '';
+
+                if (this.deps.getReviewBySallaId) {
+                    const existing = await this.deps.getReviewBySallaId(sallaReviewId);
+                    if (existing) { bumpSkip('already_exists'); continue; }
                 }
 
-                const docId = `salla_${params.merchantId}_order_${orderId}_product_${productId}`;
-                const orderDateMs = r.date?.date ? new Date(r.date.date).getTime() : Date.now();
+                const docId = `salla_backfill_${sallaReviewId}`;
+                const createdAtRaw = r.created_at || r.date?.date;
+                const orderDateMs = createdAtRaw ? new Date(createdAtRaw).getTime() : Date.now();
 
                 const displayName = r.customer?.name
                     || [r.customer?.first_name, r.customer?.last_name].filter(Boolean).join(' ')
@@ -179,12 +197,12 @@ export async function fetchSallaReviewsPage(
     const url = new URL(SALLA_REVIEWS_API);
     url.searchParams.set('page', String(page));
     url.searchParams.set('per_page', String(LIMITS.SALLA_REVIEWS_PER_PAGE));
-    // Salla's standard list endpoint does NOT inline product/customer by
-    // default — it returns only ids. Without `expanded=true` every review
-    // was getting skipped for missing productId. This makes Salla return
-    // the product object embedded so we can extract product.id/name and
-    // customer.name properly.
-    url.searchParams.set('expanded', 'true');
+    // Critical: without type=rating, Salla returns `type=ask` records
+    // (customer questions) which we'd skip 100% of. type=rating is what
+    // gets us actual product reviews. Verified against /admin/v2/reviews
+    // probe — same store: type=ask returned 352 questions, type=rating
+    // returned 119 product reviews.
+    url.searchParams.set('type', 'rating');
 
     const r = await fetchJsonWithTimeout<SallaApiResponse>(url.toString(), {
         headers: {

@@ -62,9 +62,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 // Stores without a refresh_token will return null here and
                 // the backfill service will fail the job with a clear error.
                 getAccessToken: (storeUid) => sallaTokenService.getValidAccessToken(storeUid),
-                getReviewByOrderAndProduct: async (orderId, productId) => {
-                    const r = await reviewRepo.findByOrderAndProduct(orderId, productId);
-                    return r ? { reviewId: r.reviewId } : null;
+                getReviewBySallaId: async (sallaReviewId) => {
+                    // First check the deterministic backfill doc id.
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const direct = await (reviewRepo as any).findById(`salla_backfill_${sallaReviewId}`);
+                    if (direct) return { reviewId: direct.reviewId };
+                    // Fallback: a realtime-captured doc may carry sallaReviewId.
+                    const { dbAdmin } = await import('@/lib/firebaseAdmin');
+                    const snap = await dbAdmin().collection('reviews')
+                        .where('sallaReviewId', '==', sallaReviewId)
+                        .limit(1).get();
+                    if (snap.empty) return null;
+                    return { reviewId: snap.docs[0].id };
                 },
                 writeReview: async (id, doc) => {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
