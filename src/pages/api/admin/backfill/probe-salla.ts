@@ -35,6 +35,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     url.searchParams.set('page', page);
     url.searchParams.set('per_page', '5');
     if (expanded) url.searchParams.set('expanded', 'true');
+    // Optional: scope to one product to test the per-product flow.
+    const productId = String(req.query.product || '');
+    if (productId) url.searchParams.append('products[]', productId);
+    // Optional: filter by type (rating | ask | testimonial).
+    const typeFilter = String(req.query.type || '');
+    if (typeFilter) url.searchParams.set('type', typeFilter);
 
     const r = await fetch(url.toString(), {
         headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
