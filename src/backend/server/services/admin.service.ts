@@ -649,6 +649,29 @@ export class AdminService {
         if (params.stars !== undefined) q = q.where('stars', '==', params.stars);
         if (params.status) q = q.where('status', '==', params.status);
 
+        // Aggregate counts over the SAME filter set (without orderBy/limit
+        // since count() ignores those). Three parallel COUNT queries:
+        //   - allCount     ⇒ total matching docs (full collection size)
+        //   - publishedCnt ⇒ verified=true AND status=approved
+        //   - pendingCnt   ⇒ status=pending_review
+        // Without these, total/published/pending were derived from the
+        // current page slice (limit=500 ⇒ stuck at 501). See incident
+        // 2026-05: dashboard showed 501 reviews when DB had 1600+.
+        const baseFilteredQuery = q;
+        const publishedQuery = baseFilteredQuery
+            .where('verified', '==', true)
+            .where('status', '==', 'approved');
+        const pendingQuery = baseFilteredQuery.where('status', '==', 'pending_review');
+
+        const [allCountSnap, publishedCountSnap, pendingCountSnap] = await Promise.all([
+            baseFilteredQuery.count().get(),
+            publishedQuery.count().get(),
+            pendingQuery.count().get(),
+        ]);
+        const allCount = allCountSnap.data().count;
+        const publishedCount = publishedCountSnap.data().count;
+        const pendingCount = pendingCountSnap.data().count;
+
         q = q.orderBy(querySortField, sortDirection);
         if (querySortField !== 'createdAt') q = q.orderBy('createdAt', 'desc');
         q = q.limit(limitNum + 1);
@@ -711,15 +734,28 @@ export class AdminService {
             });
         }
 
-        const total = reviews.length;
-        const publishedCount = reviews.filter((r: Record<string, unknown>) => r.published).length;
-        const pendingCount = total - publishedCount;
-        const avg = total ? Math.round((reviews.reduce((s: number, r: Record<string, unknown>) => s + (Number(r.stars) || 0), 0) / total) * 10) / 10 : 0;
-        const hasMore = total > limitNum || snap.docs.length > limitNum;
+        // Per-page average — sample of the current page, NOT the whole
+        // collection. Computing a true global average would require a
+        // SUM aggregation over `stars`. Acceptable approximation for UI.
+        const pageTotal = reviews.length;
+        const avg = pageTotal
+            ? Math.round((reviews.reduce((s: number, r: Record<string, unknown>) => s + (Number(r.stars) || 0), 0) / pageTotal) * 10) / 10
+            : 0;
+        const hasMore = snap.docs.length > limitNum;
         const nextCursor = hasMore ? snap.docs[limitNum]?.id ?? null : null;
 
         reviews = reviews.slice(0, limitNum);
 
-        return { reviews, total, published: publishedCount, pending: pendingCount, averageRating: avg, hasMore, nextCursor };
+        // total/published/pending come from COUNT aggregations above
+        // and reflect the WHOLE collection under the active filter set.
+        return {
+            reviews,
+            total: allCount,
+            published: publishedCount,
+            pending: pendingCount,
+            averageRating: avg,
+            hasMore,
+            nextCursor,
+        };
     }
 }
