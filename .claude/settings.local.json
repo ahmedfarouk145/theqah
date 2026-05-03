@@ -80,7 +80,9 @@
       "Read(//c/Users/Hp/AppData/Local/Temp/**)",
       "Bash(echo \"exit=$?\")",
       "Bash(grep -o '\"message\":\"[^\"]\\\\{0,300\\\\}\"' \"c:\\\\Users\\\\Hp\\\\Downloads\\\\theqah-7hn7-log-export-2026-04-30T22-07-02.json\")",
-      "Bash(grep -o '\"message\":\"\\\\[[A-Z_]*\\\\][^\"]\\\\{0,250\\\\}\"' \"c:\\\\Users\\\\Hp\\\\Downloads\\\\theqah-7hn7-log-export-2026-04-30T22-07-02.json\")"
+      "Bash(grep -o '\"message\":\"\\\\[[A-Z_]*\\\\][^\"]\\\\{0,250\\\\}\"' \"c:\\\\Users\\\\Hp\\\\Downloads\\\\theqah-7hn7-log-export-2026-04-30T22-07-02.json\")",
+      "WebFetch(domain:docs.salla.dev)",
+      "mcp__plugin_firebase_firebase__firebase_get_environment"
     ]
   }
 }

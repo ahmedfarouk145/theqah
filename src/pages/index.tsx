@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import type { InferGetStaticPropsType, GetStaticProps } from 'next';
 
 import NavbarLanding from '@/components/NavbarLanding';
+import ScannerSection from '@/components/ScannerSection';
 import { URLS } from '@/config/constants';
 
 function YouTubeFacade({ videoId, title }: { videoId: string; title: string }) {
@@ -605,6 +606,9 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
             <p className="text-gray-600 mb-8 text-lg">انضم الى العديد من المتاجر التي حسنت ثقة عملائها مع مشتري موثق</p>
           </div>
         </section>
+
+        {/* AI-readiness scanner — public marketing tool */}
+        <ScannerSection />
 
         {/* Footer */}
         {/* Footer */}
