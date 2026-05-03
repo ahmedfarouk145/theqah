@@ -95,12 +95,38 @@ export class ReviewService {
      * Get verified reviews (for widget API + certificate page).
      * Zid storeUids read from `zid_reviews` ∪ legacy `reviews` so
      * post-cutover Zid syncs are visible on the public certificate.
+     *
+     * `limit` caps the page size — used by the certificate page to
+     * avoid serializing 1000+ reviews on every render. Use
+     * `countVerifiedReviews` for the true total.
      */
-    async getVerifiedReviews(storeUid: string, productId?: string): Promise<Review[]> {
+    async getVerifiedReviews(
+        storeUid: string,
+        productId?: string,
+        limit?: number,
+    ): Promise<Review[]> {
         if (isZidStoreUid(storeUid)) {
+            // Zid repo's findVerifiedByStore doesn't take a limit — Zid
+            // backfill writes far fewer reviews so the unbounded fetch
+            // is acceptable in practice.
             return this.zidReviewRepo.findVerifiedByStore(storeUid, productId);
         }
-        return this.reviewRepo.findVerifiedByStore(storeUid, productId);
+        return this.reviewRepo.findVerifiedByStore(storeUid, productId, limit);
+    }
+
+    /**
+     * True total of verified reviews via Firestore COUNT aggregation
+     * — does not read documents. Use for badge counts so the number
+     * stays accurate even when getVerifiedReviews is page-limited.
+     */
+    async countVerifiedReviews(storeUid: string, productId?: string): Promise<number> {
+        if (isZidStoreUid(storeUid)) {
+            // Zid path lacks an aggregation helper today — fall back to
+            // the doc scan (small N for Zid stores).
+            const all = await this.zidReviewRepo.findVerifiedByStore(storeUid, productId);
+            return all.length;
+        }
+        return this.reviewRepo.countVerifiedByStore(storeUid, productId);
     }
 
     /**

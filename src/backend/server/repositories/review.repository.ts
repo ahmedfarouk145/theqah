@@ -30,9 +30,20 @@ export class ReviewRepository extends BaseRepository<Review> {
     }
 
     /**
-     * Find verified reviews for a store (for widget API)
+     * Find verified reviews for a store (for widget API).
+     *
+     * Performance note: stores with thousands of verified reviews
+     * (e.g. backfilled merchants) made the unbounded variant of this
+     * call serialize ~1600 docs over the wire on every page render.
+     * `limit` caps the page size; the caller should use
+     * `countVerifiedByStore` for the true total when displaying
+     * "X verified reviews" badges.
      */
-    async findVerifiedByStore(storeUid: string, productId?: string): Promise<Review[]> {
+    async findVerifiedByStore(
+        storeUid: string,
+        productId?: string,
+        limit?: number,
+    ): Promise<Review[]> {
         let query = this.query()
             .where('storeUid', '==', storeUid)
             .where('verified', '==', true)
@@ -42,7 +53,27 @@ export class ReviewRepository extends BaseRepository<Review> {
             query = query.where('productId', '==', productId);
         }
 
+        if (limit !== undefined) {
+            query = query.limit(limit);
+        }
+
         return query.getAll();
+    }
+
+    /**
+     * Count verified reviews for a store via Firestore aggregation
+     * — does not read documents, fast even for thousands of reviews.
+     */
+    async countVerifiedByStore(storeUid: string, productId?: string): Promise<number> {
+        const { dbAdmin } = await import('@/lib/firebaseAdmin');
+        const db = dbAdmin();
+        let q: FirebaseFirestore.Query = db.collection(this.collectionName)
+            .where('storeUid', '==', storeUid)
+            .where('verified', '==', true)
+            .where('status', '==', 'approved');
+        if (productId) q = q.where('productId', '==', productId);
+        const snap = await q.count().get();
+        return snap.data().count;
     }
 
     /**

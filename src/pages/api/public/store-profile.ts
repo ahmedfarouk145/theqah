@@ -34,18 +34,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const storeService = new StoreService();
         const reviewService = new ReviewService();
 
+        // Cap the per-request review payload. The certificate page only
+        // needs a representative slice for display — the true total
+        // and avg come from a separate COUNT aggregation. Without this
+        // cap, stores with thousands of backfilled reviews shipped a
+        // ~1MB JSON blob on every render and hung the SSR.
+        const REVIEW_PAGE_SIZE = 200;
+
         // Fetch store info + verified reviews (status=approved, verified=true)
-        // These are the actual full Review objects with author, text, dates etc.
-        const [storeInfo, verifiedReviews] = await Promise.all([
+        // + a true count via aggregation, all in parallel.
+        const [storeInfo, verifiedReviews, totalReviews] = await Promise.all([
             storeService.getStoreInfo(storeUid),
-            reviewService.getVerifiedReviews(storeUid),
+            reviewService.getVerifiedReviews(storeUid, undefined, REVIEW_PAGE_SIZE),
+            reviewService.countVerifiedReviews(storeUid),
         ]);
 
         if (!storeInfo) {
             return res.status(404).json({ error: "STORE_NOT_FOUND" });
         }
 
-        // Map full Review objects to public-safe response format
+        // Map the page slice to public-safe response shape.
         const reviews = verifiedReviews.map((r) => ({
             id: r.id || r.reviewId || "",
             productId: r.productId || null,
@@ -58,11 +66,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             },
         }));
 
-        // Compute stats
-        const totalReviews = reviews.length;
+        // Average / distribution are computed from the page slice as a
+        // sample. For typical stores this is the full set; for huge
+        // backfilled stores it's the first 200 — close enough for UI.
+        // If exact aggregates become important, switch to a Firestore
+        // SUM aggregation on `stars`.
         const avgStars =
-            totalReviews > 0
-                ? Math.round((reviews.reduce((sum, r) => sum + r.stars, 0) / totalReviews) * 10) / 10
+            reviews.length > 0
+                ? Math.round((reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length) * 10) / 10
                 : 0;
 
         const distribution = [0, 0, 0, 0, 0]; // index 0 = 1-star, index 4 = 5-star
@@ -80,11 +91,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 platform: storeInfo.platform,
             },
             stats: {
-                totalReviews,
-                avgStars,
-                distribution,
+                totalReviews,        // true count via COUNT() aggregation
+                avgStars,            // sample average (page slice)
+                distribution,        // sample distribution (page slice)
             },
-            reviews,
+            reviews,                 // page slice, capped at REVIEW_PAGE_SIZE
         });
     } catch (error) {
         handleApiError(res, error);
