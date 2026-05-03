@@ -104,14 +104,18 @@ export class ReviewService {
         storeUid: string,
         productId?: string,
         limit?: number,
+        offset?: number,
     ): Promise<Review[]> {
         if (isZidStoreUid(storeUid)) {
-            // Zid repo's findVerifiedByStore doesn't take a limit — Zid
-            // backfill writes far fewer reviews so the unbounded fetch
-            // is acceptable in practice.
-            return this.zidReviewRepo.findVerifiedByStore(storeUid, productId);
+            // Zid repo's findVerifiedByStore doesn't take a limit/offset
+            // — Zid backfill writes far fewer reviews so an unbounded
+            // fetch + in-memory slice is acceptable.
+            const all = await this.zidReviewRepo.findVerifiedByStore(storeUid, productId);
+            const start = offset ?? 0;
+            const end = limit !== undefined ? start + limit : undefined;
+            return all.slice(start, end);
         }
-        return this.reviewRepo.findVerifiedByStore(storeUid, productId, limit);
+        return this.reviewRepo.findVerifiedByStore(storeUid, productId, limit, offset);
     }
 
     /**

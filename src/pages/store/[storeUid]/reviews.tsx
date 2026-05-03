@@ -31,6 +31,12 @@ export interface StoreProfile {
         distribution: number[]; // [1★, 2★, 3★, 4★, 5★]
     };
     reviews: ReviewItem[];
+    pagination?: {
+        page: number;
+        pageSize: number;
+        totalPages: number;
+        hasMore: boolean;
+    };
 }
 
 export type StoreReviewsPageProps = {
@@ -67,6 +73,9 @@ export async function fetchStoreReviewsProps(
     if (trackingRef) {
         const params = new URLSearchParams();
         if (focusedReviewId) params.set("review", focusedReviewId);
+        // Preserve pagination across the tracking-ref redirect.
+        const pageParam = typeof ctx.query.page === "string" ? ctx.query.page : "";
+        if (pageParam && pageParam !== "1") params.set("page", pageParam);
 
         return {
             redirect: {
@@ -76,9 +85,13 @@ export async function fetchStoreReviewsProps(
         };
     }
 
+    // Pagination — pass `?page=N` through to the API. Default to 1.
+    const pageRaw = typeof ctx.query.page === "string" ? ctx.query.page : "1";
+    const pageNum = Math.max(1, parseInt(pageRaw, 10) || 1);
+
     try {
         const base = process.env.NEXT_PUBLIC_BASE_URL?.trim() || `http://localhost:${process.env.PORT || 3000}`;
-        const url = `${base}/api/public/store-profile?storeUid=${encodeURIComponent(storeUid)}`;
+        const url = `${base}/api/public/store-profile?storeUid=${encodeURIComponent(storeUid)}&page=${pageNum}&pageSize=30`;
         const res = await fetch(url, { headers: { "x-internal": "1" } });
 
         if (!res.ok) {
@@ -590,6 +603,40 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
                             ))}
                         </div>
                     )}
+
+                    {/*
+                      Pagination — server-side via ?page=N. Hidden when:
+                      - viewing a single focused review
+                      - the page filter (5★/low) trims the slice (we paginate
+                        over the API's full page, not the filter's subset)
+                      - the API didn't return pagination info (older clients)
+                      - there's only one page total
+                    */}
+                    {!showingFocusedOnly && filter === "all" && profile.pagination && profile.pagination.totalPages > 1 && (
+                        <nav className="pagination" aria-label="تصفّح التقييمات">
+                            {profile.pagination.page > 1 && (
+                                <a
+                                    className="pgbtn"
+                                    href={`?page=${profile.pagination.page - 1}`}
+                                    rel="prev"
+                                >
+                                    ← السابق
+                                </a>
+                            )}
+                            <span className="pginfo">
+                                صفحة {profile.pagination.page} من {profile.pagination.totalPages}
+                            </span>
+                            {profile.pagination.hasMore && (
+                                <a
+                                    className="pgbtn"
+                                    href={`?page=${profile.pagination.page + 1}`}
+                                    rel="next"
+                                >
+                                    التالي →
+                                </a>
+                            )}
+                        </nav>
+                    )}
                 </section>
 
                 <div className="stage-foot">
@@ -794,6 +841,11 @@ const V3_CSS = `
 .v3-root .fbtn:last-child{border-left:0}
 .v3-root .fbtn:hover{color:var(--gold-2)}
 .v3-root .fbtn.active{background:var(--gold);color:var(--ink);font-weight:700}
+
+.v3-root .pagination{display:flex;justify-content:center;align-items:center;gap:18px;margin-top:32px;padding:18px 0;border-top:1px solid rgba(200,155,74,.25);flex-wrap:wrap}
+.v3-root .pgbtn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(180deg,var(--gold),var(--gold-deep));color:var(--ink);padding:10px 22px;font-family:'Tajawal',sans-serif;font-weight:700;font-size:13px;text-decoration:none;border:1px solid var(--gold-deep);box-shadow:0 2px 6px rgba(0,0,0,.25);transition:transform .15s,box-shadow .15s}
+.v3-root .pgbtn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.35)}
+.v3-root .pginfo{font-family:'Tajawal',sans-serif;font-weight:600;font-size:13px;color:rgba(245,236,214,.85);letter-spacing:.5px}
 
 .v3-root .review-list{display:flex;flex-direction:column;gap:14px}
 .v3-root .review{background:var(--parchment);border:1px solid rgba(200,155,74,.4);padding:24px 28px;position:relative;box-shadow:0 4px 16px rgba(0,0,0,.25);scroll-margin-top:96px;animation:fadeUp .5s both}

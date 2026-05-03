@@ -43,21 +43,26 @@ export class ReviewRepository extends BaseRepository<Review> {
         storeUid: string,
         productId?: string,
         limit?: number,
+        offset?: number,
     ): Promise<Review[]> {
-        let query = this.query()
+        // Bypass the FirestoreQueryBuilder for offset support — the
+        // builder doesn't expose .offset() and we don't want to expand
+        // its surface area for one caller. Direct Admin SDK query.
+        const { dbAdmin } = await import('@/lib/firebaseAdmin');
+        const db = dbAdmin();
+        let q: FirebaseFirestore.Query = db.collection(this.collectionName)
             .where('storeUid', '==', storeUid)
             .where('verified', '==', true)
             .where('status', '==', 'approved');
+        if (productId) q = q.where('productId', '==', productId);
+        if (offset !== undefined && offset > 0) q = q.offset(offset);
+        if (limit !== undefined) q = q.limit(limit);
 
-        if (productId) {
-            query = query.where('productId', '==', productId);
-        }
-
-        if (limit !== undefined) {
-            query = query.limit(limit);
-        }
-
-        return query.getAll();
+        const snap = await q.get();
+        return snap.docs.map((doc) => {
+            const data = doc.data() as Record<string, unknown>;
+            return { ...(data as object), id: doc.id, [this.idField]: doc.id } as unknown as Review;
+        });
     }
 
     /**

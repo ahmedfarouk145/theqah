@@ -34,18 +34,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const storeService = new StoreService();
         const reviewService = new ReviewService();
 
-        // Cap the per-request review payload. The certificate page only
-        // needs a representative slice for display — the true total
-        // and avg come from a separate COUNT aggregation. Without this
-        // cap, stores with thousands of backfilled reviews shipped a
-        // ~1MB JSON blob on every render and hung the SSR.
-        const REVIEW_PAGE_SIZE = 200;
+        // Pagination: ?page=N&pageSize=30 (defaults). Page 1 = first 30
+        // verified reviews. pageSize is clamped to 100 to bound payload.
+        const pageRaw = parseInt(String(req.query.page ?? '1'), 10);
+        const pageSizeRaw = parseInt(String(req.query.pageSize ?? '30'), 10);
+        const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+        const pageSize = Math.min(100, Math.max(1, Number.isFinite(pageSizeRaw) ? pageSizeRaw : 30));
+        const offset = (page - 1) * pageSize;
 
-        // Fetch store info + verified reviews (status=approved, verified=true)
-        // + a true count via aggregation, all in parallel.
+        // Fetch store info + this page's verified reviews + true total
+        // via aggregation, all in parallel.
         const [storeInfo, verifiedReviews, totalReviews] = await Promise.all([
             storeService.getStoreInfo(storeUid),
-            reviewService.getVerifiedReviews(storeUid, undefined, REVIEW_PAGE_SIZE),
+            reviewService.getVerifiedReviews(storeUid, undefined, pageSize, offset),
             reviewService.countVerifiedReviews(storeUid),
         ]);
 
@@ -82,6 +83,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             distribution[idx]++;
         }
 
+        const totalPages = totalReviews > 0 ? Math.ceil(totalReviews / pageSize) : 1;
+
         res.setHeader("Cache-Control", "public, max-age=120, s-maxage=600");
         return res.status(200).json({
             store: {
@@ -95,7 +98,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 avgStars,            // sample average (page slice)
                 distribution,        // sample distribution (page slice)
             },
-            reviews,                 // page slice, capped at REVIEW_PAGE_SIZE
+            reviews,                 // current page slice
+            pagination: {
+                page,
+                pageSize,
+                totalPages,
+                hasMore: page < totalPages,
+            },
         });
     } catch (error) {
         handleApiError(res, error);
