@@ -10,7 +10,7 @@
 // In addition to the honest 5-dimension audit, the response includes a
 // `subscriber` block that flips the on-page result panel from a generic
 // "your reviews aren't independently verified" warning to a "✓ متجرك
-// يستخدم ثقة" badge when the scanned domain matches an active store
+// يستخدم مشتري موثق" badge when the scanned domain matches an active store
 // in our `stores`/`zid_stores` collections.
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -311,7 +311,7 @@ function scoreReviews(schemas: JsonObj[], html: string, subscriber?: SubscriberI
     if (subscriber?.isSubscriber) {
         score = 100;
         hasVerified = true;
-        checks.push({ ok: true, text: 'تقييمات هذا المتجر موثّقة عبر بروتوكول التحقق الثلاثي من ثقة' });
+        checks.push({ ok: true, text: 'تقييمات هذا المتجر موثّقة عبر بروتوكول التحقق الثلاثي من مشتري موثق' });
         if (subscriber.certificateUrl) {
             checks.push({ ok: true, text: 'يمكن للعملاء التحقق من التقييمات عبر شهادة عامة' });
         }
@@ -522,10 +522,10 @@ function buildAlerts(args: {
         alerts.push('ملف robots.txt غير موجود — قد يؤثر سلبًا على الزحف والفهرسة.');
     }
     if (!args.reviewsResult.hasVerified && args.reviewsResult.score < 40) {
-        alerts.push('يوجد خلل أو ضعف في موثوقية التقييمات ويُنصح بتوثيقها بشكل أعلى. خدمة "مشتري موثّق" من ثقة تحل هذه المشكلة مباشرة.');
+        alerts.push('يوجد خلل أو ضعف في موثوقية التقييمات ويُنصح بتوثيقها بشكل أعلى. خدمة "مشتري موثق" تحل هذه المشكلة مباشرة.');
     }
     if (args.staticHtmlMissingReviews) {
-        alerts.push('ملاحظة: تقييماتك موثّقة عبر ثقة لكن JSON-LD يُحقن عبر JavaScript فقط — قد لا تكتشفه بعض محركات البحث الأقدم. تأكد أن ودجت ثقة محمّلة على كل صفحات متجرك.');
+        alerts.push('ملاحظة: تقييماتك موثّقة عبر مشتري موثق لكن JSON-LD يُحقن عبر JavaScript فقط — قد لا تكتشفه بعض محركات البحث الأقدم. تأكد أن ودجت مشتري موثق محمّلة على كل صفحات متجرك.');
     }
     if (args.schemaResult.score < 30) {
         alerts.push('البيانات المنظمة Schema.org شبه غائبة — هذا يجعل المتجر غير مرئي بشكل كافٍ لمحركات الذكاء الاصطناعي.');
@@ -759,7 +759,7 @@ function buildEmailHtml(storeUrl: string, r: ScanReport, subscriber: SubscriberI
     const subscriberBlock = subscriber.isSubscriber
         ? `<tr><td style="padding:0 24px 24px;">
             <div style="background:#ecfdf5;border:1px solid #10b981;border-radius:8px;padding:16px 18px;text-align:right;">
-              <div style="font-weight:700;color:#065f46;font-size:15px;margin-bottom:4px;">✓ متجرك يستخدم ثقة بالفعل</div>
+              <div style="font-weight:700;color:#065f46;font-size:15px;margin-bottom:4px;">✓ متجرك يستخدم مشتري موثق بالفعل</div>
               <div style="font-size:13px;color:#047857;">تقييماتك موثّقة عبر بروتوكول التحقق الثلاثي. <a href="${subscriber.certificateUrl}" style="color:#065f46;font-weight:700;">عرض الشهادة العامة</a></div>
             </div>
           </td></tr>`
@@ -776,7 +776,7 @@ function buildEmailHtml(storeUrl: string, r: ScanReport, subscriber: SubscriberI
 <body style="margin:0;padding:0;background:#f8fafc;font-family:'Segoe UI',Tahoma,sans-serif;direction:rtl;">
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
     <tr><td style="background:linear-gradient(135deg,#0d1b2a,#1a3d5c);padding:32px 24px;text-align:center;">
-      <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;">ثقة · Theqah</div>
+      <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;">مشتري موثق · Theqah</div>
       <div style="color:#94a3b8;font-size:14px;margin-top:6px;">تقرير جاهزية المتجر لمحركات الذكاء الاصطناعي</div>
     </td></tr>
     <tr><td style="padding:32px 24px;text-align:center;">

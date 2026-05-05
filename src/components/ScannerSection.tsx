@@ -5,7 +5,7 @@
 // When the scanned domain isn't an active theqah subscriber, the result
 // panel surfaces a prominent "reviews not independently verified" warning
 // + Salla install CTA. When it IS an active subscriber, the panel shows
-// a positive "متجرك يستخدم ثقة" badge + link to the public certificate.
+// a positive "متجرك يستخدم مشتري موثق" badge + link to the public certificate.
 
 'use client';
 
@@ -193,7 +193,7 @@ export default function ScannerSection() {
                         {/* Subscriber badge / warning */}
                         {result.subscriber?.isSubscriber ? (
                             <div className="mt-6 rounded-xl bg-emerald-50 border border-emerald-300 p-4">
-                                <div className="font-bold text-emerald-800 mb-1">✓ متجرك يستخدم ثقة بالفعل</div>
+                                <div className="font-bold text-emerald-800 mb-1">✓ متجرك يستخدم مشتري موثق بالفعل</div>
                                 <div className="text-sm text-emerald-700">
                                     تقييماتك موثّقة عبر بروتوكول التحقق الثلاثي.{' '}
                                     {result.subscriber.certificateUrl && (
