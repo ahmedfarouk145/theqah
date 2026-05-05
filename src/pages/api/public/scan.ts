@@ -61,6 +61,11 @@ interface SubscriberInfo {
     isSubscriber: boolean;
     storeUid?: string;
     certificateUrl?: string;
+    /** True when the scanned domain IS the مشتري موثق platform itself
+     *  (theqah.com.sa). The on-page panel uses this to suppress the
+     *  "not subscribed" warning since the parent platform isn't a
+     *  customer store. */
+    isPlatform?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -553,7 +558,16 @@ function extractJsonLd(html: string): JsonObj[] {
     const regex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
     const matches = html.matchAll(regex);
     for (const m of matches) {
-        try { out.push(JSON.parse(m[1].trim())); } catch { /* ignore malformed */ }
+        try {
+            const parsed = JSON.parse(m[1].trim());
+            // A single <script> may contain a TOP-LEVEL ARRAY of schemas
+            // (theqah.com.sa's home page does this — `JSON.stringify([...])`).
+            // Without this branch the whole array is pushed as one opaque
+            // entry that has no `@type`, and every contained schema becomes
+            // invisible to scoring. Spread arrays here, normalize objects.
+            if (Array.isArray(parsed)) out.push(...parsed.filter((x) => x && typeof x === 'object'));
+            else if (parsed && typeof parsed === 'object') out.push(parsed);
+        } catch { /* ignore malformed */ }
     }
     return out;
 }
@@ -707,6 +721,15 @@ async function detectSubscriber(
     db: FirebaseFirestore.Firestore,
     storeUrl: string,
 ): Promise<SubscriberInfo> {
+    // Self-detection — when the scanner is fed مشتري موثق's own domain
+    // there's no customer store to resolve. Flag it as platform so the
+    // result panel suppresses the "not subscribed" warning instead of
+    // displaying it on our own marketing site.
+    const host = extractDomain(storeUrl);
+    if (host === 'theqah.com.sa' || host.endsWith('.theqah.com.sa')) {
+        return { isSubscriber: false, isPlatform: true };
+    }
+
     try {
         const resolver = new DomainResolverService();
         const resolved = await resolver.resolveStoreUid({ href: storeUrl });
@@ -760,17 +783,21 @@ function buildEmailHtml(storeUrl: string, r: ScanReport, subscriber: SubscriberI
         .map((a) => `<li style="margin:6px 0;padding:8px 12px;background:#fef3c7;border-right:3px solid #f59e0b;border-radius:4px;font-size:13px;">${escapeHtml(a)}</li>`)
         .join('');
 
-    const subscriberBlock = subscriber.isSubscriber
-        ? `<tr><td style="padding:0 24px 24px;">
+    // On the مشتري موثق platform itself we don't render either block —
+    // it's not a customer store, the warning is misleading.
+    const subscriberBlock = subscriber.isPlatform
+        ? ''
+        : subscriber.isSubscriber
+            ? `<tr><td style="padding:0 24px 24px;">
             <div style="background:#ecfdf5;border:1px solid #10b981;border-radius:8px;padding:16px 18px;text-align:right;">
               <div style="font-weight:700;color:#065f46;font-size:15px;margin-bottom:4px;">✓ متجرك يستخدم مشتري موثق بالفعل</div>
               <div style="font-size:13px;color:#047857;">تقييماتك موثّقة عبر بروتوكول التحقق الثلاثي. <a href="${subscriber.certificateUrl}" style="color:#065f46;font-weight:700;">عرض الشهادة العامة</a></div>
             </div>
           </td></tr>`
-        : `<tr><td style="padding:0 24px 24px;">
+            : `<tr><td style="padding:0 24px 24px;">
             <div style="background:#fef2f2;border:1px solid #ef4444;border-radius:8px;padding:16px 18px;text-align:right;">
               <div style="font-weight:700;color:#991b1b;font-size:15px;margin-bottom:4px;">⚠️ تقييمات متجرك غير موثّقة من جهة مستقلة</div>
-              <div style="font-size:13px;color:#b91c1c;">عملاؤك لا يستطيعون التحقق من صحة التقييمات. ثبّت تطبيق "مشتري موثّق" من سلة لتفعيل التحقق الفوري.</div>
+              <div style="font-size:13px;color:#b91c1c;">عملاؤك لا يستطيعون التحقق من صحة التقييمات. ثبّت تطبيق "مشتري موثق" من سلة لتفعيل التحقق الفوري.</div>
             </div>
           </td></tr>`;
 
@@ -804,8 +831,8 @@ function buildEmailHtml(storeUrl: string, r: ScanReport, subscriber: SubscriberI
       </table>
     </td></tr>
     ${alertsHtml ? `<tr><td style="padding:0 24px 24px;"><div style="font-weight:700;font-size:15px;margin-bottom:12px;color:#0d1b2a;">⚠️ تنبيهات</div><ul style="list-style:none;margin:0;padding:0;">${alertsHtml}</ul></td></tr>` : ''}
-    ${subscriber.isSubscriber ? '' : `<tr><td style="padding:24px;background:#f8fafc;text-align:center;border-top:1px solid #e2e8f0;">
-      <a href="https://apps.salla.sa/ar/app/1180703836" style="display:inline-block;padding:12px 28px;background:#10b981;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;">اشترك في مشتري موثّق</a>
+    ${subscriber.isSubscriber || subscriber.isPlatform ? '' : `<tr><td style="padding:24px;background:#f8fafc;text-align:center;border-top:1px solid #e2e8f0;">
+      <a href="https://apps.salla.sa/ar/app/1180703836" style="display:inline-block;padding:12px 28px;background:#10b981;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;">اشترك في مشتري موثق</a>
       <div style="margin-top:16px;font-size:12px;color:#94a3b8;">theqah.com.sa · جميع الحقوق محفوظة</div>
     </td></tr>`}
   </table>

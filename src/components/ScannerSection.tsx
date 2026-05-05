@@ -22,6 +22,7 @@ interface SubscriberInfo {
     isSubscriber: boolean;
     storeUid?: string;
     certificateUrl?: string;
+    isPlatform?: boolean;
 }
 
 interface ScanResponse {
@@ -190,8 +191,10 @@ export default function ScannerSection() {
                             </div>
                         </div>
 
-                        {/* Subscriber badge / warning */}
-                        {result.subscriber?.isSubscriber ? (
+                        {/* Subscriber badge / warning — suppressed on the
+                            مشتري موثق platform itself (theqah.com.sa) since
+                            the parent platform isn't a customer store. */}
+                        {result.subscriber?.isPlatform ? null : result.subscriber?.isSubscriber ? (
                             <div className="mt-6 rounded-xl bg-emerald-50 border border-emerald-300 p-4">
                                 <div className="font-bold text-emerald-800 mb-1">✓ متجرك يستخدم مشتري موثق بالفعل</div>
                                 <div className="text-sm text-emerald-700">
@@ -212,7 +215,7 @@ export default function ScannerSection() {
                             <div className="mt-6 rounded-xl bg-red-50 border border-red-300 p-4">
                                 <div className="font-bold text-red-800 mb-1">⚠️ تقييمات متجرك غير موثّقة من جهة مستقلة</div>
                                 <div className="text-sm text-red-700 mb-3">
-                                    عملاؤك لا يستطيعون التحقق من صحة التقييمات. ثبّت تطبيق &quot;مشتري موثّق&quot; لتفعيل التحقق الفوري.
+                                    عملاؤك لا يستطيعون التحقق من صحة التقييمات. ثبّت تطبيق &quot;مشتري موثق&quot; لتفعيل التحقق الفوري.
                                 </div>
                                 <a
                                     href={SALLA_INSTALL_URL}
@@ -220,7 +223,7 @@ export default function ScannerSection() {
                                     rel="noopener noreferrer"
                                     className="inline-block px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-colors"
                                 >
-                                    ثبّت &quot;مشتري موثّق&quot; على سلة ←
+                                    ثبّت &quot;مشتري موثق&quot; على سلة ←
                                 </a>
                             </div>
                         )}
