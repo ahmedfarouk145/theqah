@@ -115,23 +115,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const db = dbAdmin();
     const domain = extractDomain(storeUrl);
 
+    // Subscriber check first — needed both for the cache decision (cached
+    // scans are stamped with the subscriber status at the time they were
+    // generated; we re-fetch since plan.active flips during a customer's
+    // billing lifecycle) and as an input to scoreReviews below.
+    const subscriber = await detectSubscriber(db, storeUrl);
+
+    // ?fresh=1 bypasses the 1h same-domain cache. Useful right after
+    // deploying scoring/widget changes so the user can verify a real
+    // re-scan without waiting for TTL expiry.
+    const bypassCache = req.query.fresh === '1' || req.query.fresh === 'true';
+
     // Same-domain cache: if an identical scan completed within the last hour
     // return it immediately. Cheap, makes the score feel stable, prevents
     // refresh-spam abuse. We still send the email if requested.
-    const cachedReport = await readCachedScan(db, domain);
+    const cachedReport = bypassCache ? null : await readCachedScan(db, domain);
     if (cachedReport && !email) {
         return res.status(200).json({
             ok: true,
             cached: true,
             url: storeUrl,
             ...cachedReport,
+            subscriber,
         });
     }
 
-    // ── Run the scan + subscriber check in parallel ─────────────────────────
+    // ── Run the scan ────────────────────────────────────────────────────────
     let report: ScanReport;
     try {
-        report = cachedReport ?? (await runScan(storeUrl));
+        report = cachedReport ?? (await runScan(storeUrl, subscriber));
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         // Persist the failed attempt so we can see what's failing.
@@ -151,8 +163,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             error: 'تعذّر الوصول إلى المتجر أو انتهت مهلة الطلب. تأكد من أن الرابط يعمل.',
         });
     }
-
-    const subscriber = await detectSubscriber(db, storeUrl);
 
     // Persist the full result.
     const doc: JsonObj = {
@@ -199,7 +209,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 // SCAN ENGINE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-async function runScan(storeUrl: string): Promise<ScanReport> {
+async function runScan(storeUrl: string, subscriber: SubscriberInfo): Promise<ScanReport> {
     const domain = extractDomain(storeUrl);
 
     const [mainHtml, robotsTxt, llmsTxt] = await Promise.all([
@@ -219,7 +229,15 @@ async function runScan(storeUrl: string): Promise<ScanReport> {
     const headings = countHeadings(html);
     const storeType = detectStoreType(html, domain);
 
-    const reviewsResult = scoreReviews(schemas, html);
+    // Pass subscriber status into scoreReviews so we can credit theqah
+    // customers for reviews we KNOW exist in our DB even when they're
+    // injected via JS (and thus invisible to the static HTML scan). This
+    // keeps the scoring honest in both directions:
+    //   - non-subscribers: scored purely on what the static HTML exposes
+    //   - subscribers:     full credit because the reviews are verified
+    //                      via Triple Match in our DB; an alert flags
+    //                      the JS-only-render gap if it applies.
+    const reviewsResult = scoreReviews(schemas, html, subscriber);
     const trustResult = scoreTrust(schemas, html);
     const readabilityResult = scoreReadability(robotsContent, llmsContent, html);
     const schemaResult = scoreSchema(schemas);
@@ -233,9 +251,22 @@ async function runScan(storeUrl: string): Promise<ScanReport> {
         (contentResult.score / 100) * WEIGHTS.content,
     );
 
+    // If the store is a theqah subscriber but our static fetch didn't see
+    // any Schema.org Review markup or "مشتري موثق" badge text, that means
+    // the widget injected the JSON-LD via JS — visible to JS-executing
+    // crawlers (ChatGPT browsing, modern Googlebot) but not to static
+    // scrapers. Surface that as an honest alert so the merchant knows.
+    const staticHtmlMissingReviews =
+        subscriber.isSubscriber &&
+        !flattenSchemas(schemas).some((s) => s['@type'] === 'Review') &&
+        !html.includes('مشتري موثق') &&
+        !html.includes('مشتري موثّق') &&
+        !html.includes('theqah');
+
     const alerts = buildAlerts({
         reviewsResult, trustResult, readabilityResult, schemaResult, contentResult,
         llmsContent, robotsContent,
+        staticHtmlMissingReviews,
     });
 
     return {
@@ -266,10 +297,27 @@ async function runScan(storeUrl: string): Promise<ScanReport> {
 // SCORING (ported 1:1 from scan.js)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function scoreReviews(schemas: JsonObj[], html: string): CategoryResult {
+function scoreReviews(schemas: JsonObj[], html: string, subscriber?: SubscriberInfo): CategoryResult {
     let score = 0;
     const checks: CategoryCheck[] = [];
     let hasVerified = false;
+
+    // Subscriber path — when the scanned domain is an active theqah
+    // customer we can VERIFY (via the existing /api/public/store-profile
+    // round-trip the front-end uses) that this store has Triple-Match
+    // verified reviews in our DB. Credit it accordingly. Static-HTML
+    // checks below still run so we can flag if the widget JSON-LD
+    // injection isn't visible (e.g. JS blocked, widget not loaded yet).
+    if (subscriber?.isSubscriber) {
+        score = 100;
+        hasVerified = true;
+        checks.push({ ok: true, text: 'تقييمات هذا المتجر موثّقة عبر بروتوكول التحقق الثلاثي من ثقة' });
+        if (subscriber.certificateUrl) {
+            checks.push({ ok: true, text: 'يمكن للعملاء التحقق من التقييمات عبر شهادة عامة' });
+        }
+        // Keep walking so the per-check signals still appear, but we won't
+        // override the 100 score below.
+    }
 
     const flat = flattenSchemas(schemas);
     const reviewSchemas = flat.filter((s) => s['@type'] === 'Review');
@@ -463,6 +511,7 @@ function buildAlerts(args: {
     contentResult: CategoryResult;
     llmsContent: string | null;
     robotsContent: string | null;
+    staticHtmlMissingReviews?: boolean;
 }): string[] {
     const alerts: string[] = [];
 
@@ -474,6 +523,9 @@ function buildAlerts(args: {
     }
     if (!args.reviewsResult.hasVerified && args.reviewsResult.score < 40) {
         alerts.push('يوجد خلل أو ضعف في موثوقية التقييمات ويُنصح بتوثيقها بشكل أعلى. خدمة "مشتري موثّق" من ثقة تحل هذه المشكلة مباشرة.');
+    }
+    if (args.staticHtmlMissingReviews) {
+        alerts.push('ملاحظة: تقييماتك موثّقة عبر ثقة لكن JSON-LD يُحقن عبر JavaScript فقط — قد لا تكتشفه بعض محركات البحث الأقدم. تأكد أن ودجت ثقة محمّلة على كل صفحات متجرك.');
     }
     if (args.schemaResult.score < 30) {
         alerts.push('البيانات المنظمة Schema.org شبه غائبة — هذا يجعل المتجر غير مرئي بشكل كافٍ لمحركات الذكاء الاصطناعي.');
