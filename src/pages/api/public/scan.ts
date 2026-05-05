@@ -283,12 +283,16 @@ async function runScan(storeUrl: string, subscriber: SubscriberInfo): Promise<Sc
         hasSchemaOrg: schemas.length > 0,
         hasVerifiedReviews: reviewsResult.hasVerified === true,
         alerts,
+        // Display order: reviews moves to LAST so the strongest subscriber
+        // signal is the closing impression. Object.values iterates in
+        // insertion order — both the on-page panel and the email table
+        // pick up this order automatically.
         categories: {
-            reviews: { ...reviewsResult, label: 'موثوقية التقييمات', weight: WEIGHTS.reviews },
             trust: { ...trustResult, label: 'الثقة التجارية', weight: WEIGHTS.trust },
             readability: { ...readabilityResult, label: 'قابلية القراءة الآلية', weight: WEIGHTS.readability },
             schema: { ...schemaResult, label: 'البيانات المنظمة', weight: WEIGHTS.schema },
             content: { ...contentResult, label: 'وضوح المحتوى وجاهزيته للذكاء الاصطناعي', weight: WEIGHTS.content },
+            reviews: { ...reviewsResult, label: 'موثوقية التقييمات', weight: WEIGHTS.reviews },
         },
     };
 }
