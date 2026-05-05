@@ -191,7 +191,9 @@
   // ——— Fetch store profile (name + verified count) ———
   async function fetchStoreProfile(storeUid) {
     try {
-      const url = `${SCRIPT_ORIGIN}/api/public/store-profile?storeUid=${encodeURIComponent(storeUid)}`;
+      // pageSize=20 — keep the per-page payload small but include enough
+      // reviews to give AI crawlers a representative sample of the JSON-LD.
+      const url = `${SCRIPT_ORIGIN}/api/public/store-profile?storeUid=${encodeURIComponent(storeUid)}&pageSize=20`;
       const res = await fetch(url, {
         cache: 'default',
         signal: AbortSignal.timeout(5000)
@@ -200,11 +202,110 @@
       const data = await res.json();
       return {
         storeName: data?.store?.name || null,
+        storeDomain: data?.store?.domain || null,
         verifiedCount: Number.isFinite(data?.stats?.totalReviews) ? data.stats.totalReviews : 0,
+        avgStars: Number.isFinite(data?.stats?.avgStars) ? data.stats.avgStars : 0,
+        // Mapped to the shape `injectStoreWideJsonLd` and the existing
+        // product-scoped injection both consume.
+        reviews: Array.isArray(data?.reviews) ? data.reviews.map(r => ({
+          stars: Number(r?.stars) || 0,
+          text: String(r?.text || ''),
+          authorName: r?.author?.displayName || 'عميل',
+          publishedAt: r?.publishedAt || null,
+          productName: null,
+        })).filter(r => r.stars > 0) : [],
       };
     } catch {
       return null;
     }
+  }
+
+  // ——— Store-wide JSON-LD injection (runs on every page load) ———
+  //
+  // The existing `injectReviewSchemaJsonLd` only fires on product pages
+  // (it's gated behind `extractProductId()` + per-product API call).
+  // Most stores have many *non*-product pages — home, categories,
+  // about, contact — and AI crawlers visit those too. Without a
+  // server-rendered Schema.org graph there, crawlers like Perplexity
+  // and the lighter Google AI Overviews indexer never see the verified
+  // reviews even though they exist in our DB.
+  //
+  // This injection runs once per page load, emitting a LocalBusiness
+  // schema with aggregateRating + a sample of recent reviews. It uses
+  // a separate DOM id (`theqah-store-jsonld`) so it doesn't collide
+  // with the product-page graph — both can coexist on a product page.
+  function injectStoreWideJsonLd(profile, storeUid) {
+    if (!profile || !Array.isArray(profile.reviews) || profile.reviews.length === 0) return;
+    if (document.getElementById('theqah-store-jsonld')) return; // already injected
+
+    const validReviews = profile.reviews
+      .filter(r => r && r.stars && r.authorName)
+      .slice(0, 20);
+    if (validReviews.length === 0) return;
+
+    const certificateUrl = buildStoreCertificateUrl(storeUid);
+    const businessName = profile.storeName || (profile.storeDomain ? profile.storeDomain : 'متجر');
+    const businessUrl = profile.storeDomain
+      ? (/^https?:\/\//i.test(profile.storeDomain) ? profile.storeDomain : `https://${profile.storeDomain}`)
+      : location.origin;
+
+    const reviewSchema = validReviews.map(r => {
+      const review = {
+        '@type': 'Review',
+        'author': { '@type': 'Person', 'name': r.authorName },
+        'reviewRating': {
+          '@type': 'Rating',
+          'ratingValue': r.stars,
+          'bestRating': 5,
+          'worstRating': 1,
+        },
+        'publisher': {
+          '@type': 'Organization',
+          'name': 'مشتري موثق - Theqah',
+          'url': SCRIPT_ORIGIN,
+        },
+      };
+      if (r.text) review.reviewBody = r.text;
+      if (r.publishedAt) {
+        try { review.datePublished = new Date(r.publishedAt).toISOString().split('T')[0]; }
+        catch { /* ignore invalid date */ }
+      }
+      return review;
+    });
+
+    const total = profile.verifiedCount || validReviews.length;
+    const avg = (profile.avgStars && profile.avgStars > 0)
+      ? Number(profile.avgStars).toFixed(1)
+      : (validReviews.reduce((s, r) => s + r.stars, 0) / validReviews.length).toFixed(1);
+
+    const schema = {
+      '@context': 'https://schema.org',
+      '@type': 'LocalBusiness',
+      'name': businessName,
+      'url': businessUrl,
+      'aggregateRating': {
+        '@type': 'AggregateRating',
+        'ratingValue': avg,
+        'reviewCount': total,
+        'bestRating': 5,
+        'worstRating': 1,
+      },
+      'review': reviewSchema,
+      // Cross-link to the public certificate so crawlers can verify
+      // independently — same pattern theqah's own /certificate JSON-LD
+      // uses to anchor authority for the reviews.
+      'subjectOf': {
+        '@type': 'WebPage',
+        'url': certificateUrl,
+        'name': 'شهادة التحقق من التقييمات - مشتري موثق',
+      },
+    };
+
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id = 'theqah-store-jsonld';
+    script.textContent = JSON.stringify(schema);
+    document.head.appendChild(script);
   }
 
   // ——— Check verified reviews ———
@@ -1052,10 +1153,26 @@
       }
     }
 
+    // Store-wide JSON-LD: inject on EVERY page (home, category, about,
+    // product) the moment we know the storeUid — independent of whether
+    // the certificate badge mounts. AI crawlers find verified reviews
+    // even on non-product pages this way. Cached response, ≤5s timeout.
+    if (store && !document.getElementById('theqah-store-jsonld')) {
+      try {
+        const profile = G.storeProfileFull?._storeUid === store
+          ? G.storeProfileFull
+          : await fetchStoreProfile(store);
+        if (profile) {
+          G.storeProfileFull = { ...profile, _storeUid: store };
+          injectStoreWideJsonLd(profile, store);
+        }
+      } catch { /* never block widget mount on JSON-LD */ }
+    }
+
     const host = existingHost || ensureHostUnderProduct();
 
     if (!host) {
-      // Not a product page - widget skipped
+      // Not a product page - widget skipped (JSON-LD already injected above)
       return;
     }
 
