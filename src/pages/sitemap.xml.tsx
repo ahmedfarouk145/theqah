@@ -20,6 +20,9 @@ const SITE_URL = URLS.CANONICAL_ORIGIN;
 // budget attention.
 const STATIC_PAGES: { path: string; priority: number; changefreq: string }[] = [
     { path: "/", priority: 1.0, changefreq: "weekly" },
+    // Free AI-readiness scanner — primary acquisition page. High
+    // priority so it surfaces for AI-store discovery search queries.
+    { path: "/scanner", priority: 0.9, changefreq: "weekly" },
     { path: "/blog", priority: 0.9, changefreq: "daily" },
     { path: "/faq", priority: 0.7, changefreq: "monthly" },
     { path: "/privacy-policy", priority: 0.3, changefreq: "yearly" },

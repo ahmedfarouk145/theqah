@@ -7,7 +7,6 @@ import dynamic from 'next/dynamic';
 import type { InferGetStaticPropsType, GetStaticProps } from 'next';
 
 import NavbarLanding from '@/components/NavbarLanding';
-import ScannerSection from '@/components/ScannerSection';
 import { URLS } from '@/config/constants';
 
 function YouTubeFacade({ videoId, title }: { videoId: string; title: string }) {
@@ -325,11 +324,15 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                   حمل التطبيق من متجر سلة
                 </button>
               </a>
-              <a href="#install-section">
+              {/* Hero CTA: free AI-readiness scanner. Lives on its own
+                  indexable route (/scanner) so it can rank for AI-store
+                  discovery queries and so the home page stays focused
+                  on the install funnel. */}
+              <Link href="/scanner">
                 <button className="bg-white text-green-700 border-2 border-green-200 px-6 sm:px-8 py-3.5 sm:py-4 rounded-full text-lg font-semibold hover:bg-green-50 hover:border-green-300 transition-all duration-300">
-                  تعرف أكثر
+                  افحص متجرك مجاناً
                 </button>
-              </a>
+              </Link>
             </div>
           </div>
         </section>
@@ -606,9 +609,6 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
             <p className="text-gray-600 mb-8 text-lg">انضم الى العديد من المتاجر التي حسنت ثقة عملائها مع مشتري موثق</p>
           </div>
         </section>
-
-        {/* AI-readiness scanner — public marketing tool */}
-        <ScannerSection />
 
         {/* Footer */}
         {/* Footer */}
