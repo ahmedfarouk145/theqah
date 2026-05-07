@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useRef, useEffect } from 'react';
 
 interface CategoryReport {
     label: string;
@@ -48,35 +48,101 @@ function gradeFor(score: number): { label: string; color: string; bg: string } {
     return { label: 'ضعيف', color: '#b91c1c', bg: '#fef2f2' };
 }
 
+interface PhaseEvent {
+    index: number;
+    total: number;
+    text: string;
+    percent: number;
+}
+
 export default function ScannerSection() {
     const [url, setUrl] = useState('');
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
+    const [phase, setPhase] = useState<PhaseEvent | null>(null);
+    const [completedPhases, setCompletedPhases] = useState<string[]>([]);
     const [result, setResult] = useState<ScanResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const resultRef = useRef<HTMLDivElement | null>(null);
+
+    // Auto-scroll to result when it lands so the user never wonders
+    // "did anything happen?" — happens once, on the transition from
+    // null to a populated result.
+    useEffect(() => {
+        if (result && resultRef.current) {
+            resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [result]);
 
     async function onSubmit(e: FormEvent) {
         e.preventDefault();
         setError(null);
         setResult(null);
+        setPhase(null);
+        setCompletedPhases([]);
         setLoading(true);
+
         try {
-            const res = await fetch('/api/public/scan', {
+            // Streaming mode: server sends paced "phase" events for ~40s
+            // while running the real scan in parallel, then a final
+            // "result" or "error" event. We consume the stream with a
+            // ReadableStream reader and parse the SSE-style frames.
+            const res = await fetch('/api/public/scan?stream=1', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url: url.trim(), email: email.trim() || undefined }),
             });
-            const data: ScanResponse = await res.json();
-            if (!res.ok || !data.ok) {
-                setError(data.error || 'حدث خطأ أثناء الفحص. حاول مرة أخرى.');
-                setResult(null);
-            } else {
-                setResult(data);
+            if (!res.ok || !res.body) {
+                const fallback = await res.json().catch(() => null);
+                setError(fallback?.error || 'حدث خطأ أثناء الفحص. حاول مرة أخرى.');
+                setLoading(false);
+                return;
+            }
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            const seenTexts: string[] = [];
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+
+                // Each SSE frame ends with a blank line (\n\n).
+                const frames = buffer.split('\n\n');
+                buffer = frames.pop() ?? '';
+                for (const frame of frames) {
+                    const line = frame.trim();
+                    if (!line.startsWith('data: ')) continue;
+                    const json = line.slice(6);
+                    let evt: { type: string; [k: string]: unknown };
+                    try { evt = JSON.parse(json); } catch { continue; }
+
+                    if (evt.type === 'phase') {
+                        const p = evt as unknown as PhaseEvent & { type: string };
+                        // Promote previous phase to completed list.
+                        if (p.index > 1 && seenTexts[p.index - 2]) {
+                            setCompletedPhases((prev) => [...prev, seenTexts[p.index - 2]!]);
+                        }
+                        seenTexts[p.index - 1] = p.text;
+                        setPhase({ index: p.index, total: p.total, text: p.text, percent: p.percent });
+                    } else if (evt.type === 'result') {
+                        setResult(evt as unknown as ScanResponse);
+                        // Mark final phase complete.
+                        if (seenTexts.length > 0) {
+                            setCompletedPhases((prev) => [...prev, seenTexts[seenTexts.length - 1]!]);
+                        }
+                    } else if (evt.type === 'error') {
+                        setError(String(evt.error || 'حدث خطأ أثناء الفحص.'));
+                    }
+                }
             }
         } catch {
             setError('تعذّر الاتصال بالخادم. تحقّق من اتصالك بالإنترنت.');
         } finally {
             setLoading(false);
+            setPhase(null);
         }
     }
 
@@ -158,6 +224,14 @@ export default function ScannerSection() {
                         )}
                     </button>
 
+                    {/* "Estimated time" hint shown before scan starts so
+                        the 40-second wait is opted into knowingly. */}
+                    {!loading && !result && !error && (
+                        <p className="text-xs text-slate-500 text-center">
+                            الفحص يستغرق حوالي ٤٠ ثانية — نفحص متجرك على ١٥ نقطة.
+                        </p>
+                    )}
+
                     {error && (
                         <div className="rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3 text-right">
                             {error}
@@ -165,7 +239,49 @@ export default function ScannerSection() {
                     )}
                 </form>
 
+                {/* Live progress panel — visible only while scanning.
+                    Shows current phase prominently + a progress bar +
+                    a fading list of completed phases for context. */}
+                {loading && phase && (
+                    <div className="mt-6 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                        <div className="flex items-center justify-between mb-4 text-xs text-slate-500">
+                            <span>الخطوة {phase.index} من {phase.total}</span>
+                            <span className="font-bold text-emerald-700">{phase.percent}٪</span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-5">
+                            <div
+                                className="h-full bg-gradient-to-l from-emerald-500 to-emerald-600 transition-all duration-500 ease-out"
+                                style={{ width: `${phase.percent}%` }}
+                            />
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <span className="inline-block mt-1 w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-600 rounded-full animate-spin shrink-0" />
+                            <div className="flex-1 text-right">
+                                <div className="font-bold text-slate-900 text-base leading-relaxed">{phase.text}</div>
+                            </div>
+                        </div>
+
+                        {/* Completed steps — last 4, faded. Gives the user
+                            evidence the scan is doing real work without
+                            overwhelming the panel. */}
+                        {completedPhases.length > 0 && (
+                            <ul className="mt-5 space-y-1.5">
+                                {completedPhases.slice(-4).map((t, i) => (
+                                    <li
+                                        key={`${t}-${i}`}
+                                        className="text-xs text-slate-400 flex items-center gap-2 text-right"
+                                    >
+                                        <span className="text-emerald-500">✓</span>
+                                        <span className="truncate">{t}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )}
+
                 {/* Result panel */}
+                <div ref={resultRef} />
                 {result && result.scoreTotal !== undefined && (
                     <div className="mt-8 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
                         {/* Domain + score */}

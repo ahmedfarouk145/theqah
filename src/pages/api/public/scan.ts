@@ -72,6 +72,14 @@ interface SubscriberInfo {
 type JsonObj = Record<string, any>;
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// VERCEL FUNCTION CONFIG
+// ═══════════════════════════════════════════════════════════════════════════════
+// Streaming path holds the connection open ~40s while phase events
+// are sent. Default Vercel function timeout is 300s; set a tighter
+// 60s cap so a hung scan can't pin a worker.
+export const config = { maxDuration: 60 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // HANDLER
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -80,6 +88,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') return res.status(204).end();
+
+    // Streaming path — `?stream=1` switches to a paced text/event-stream
+    // response so the client can show "what we're checking right now"
+    // progress UX over ~40 seconds. The actual scan still runs in
+    // ~5–10s in parallel; pacing is for perception, not real work.
+    if (req.method === 'POST' && (req.query.stream === '1' || req.query.stream === 'true')) {
+        return streamScan(req, res);
+    }
     if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'method_not_allowed' });
 
     const limited = await rateLimitPublic(req, res, {
@@ -208,6 +224,203 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         subscriber,
         emailSent,
     });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STREAMING HANDLER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Paced phase definitions for the streaming UX. Sum of `durationMs`
+ * dictates the visible scan time (~40s). Each phase describes a real
+ * check that is being performed by `runScan` in parallel — the
+ * pacing is a presentation layer over the same scan, not theatre.
+ *
+ * Tuning: keep each phase ≥1.5s so the user can read it; keep the
+ * total 38–42s. Going much shorter feels like a static spinner;
+ * going much longer hurts conversion.
+ */
+const SCAN_PHASES: { text: string; durationMs: number }[] = [
+    { text: 'التحقق من صحة الرابط...', durationMs: 1500 },
+    { text: 'الاتصال بالخادم وفحص استجابة المتجر...', durationMs: 3000 },
+    { text: 'جلب الصفحة الرئيسية...', durationMs: 3500 },
+    { text: 'تحليل بنية HTML والعناوين...', durationMs: 2500 },
+    { text: 'استخراج البيانات المنظمة (Schema.org JSON-LD)...', durationMs: 3000 },
+    { text: 'تحليل أنواع المخططات: Product، Organization، FAQPage...', durationMs: 2500 },
+    { text: 'فحص ملف robots.txt...', durationMs: 2500 },
+    { text: 'فحص ملف llms.txt (مهم لمحركات الذكاء الاصطناعي)...', durationMs: 3000 },
+    { text: 'فحص علامات Open Graph (og:title، og:image)...', durationMs: 2000 },
+    { text: 'فحص Canonical URL والـ Sitemap...', durationMs: 2000 },
+    { text: 'تحليل معلومات الثقة التجارية...', durationMs: 3000 },
+    { text: 'كشف منصة المتجر (سلة، زد، شوبيفاي)...', durationMs: 2000 },
+    { text: 'التحقق من اشتراك مشتري موثق...', durationMs: 2500 },
+    { text: 'حساب الدرجات النهائية على الأبعاد الخمسة...', durationMs: 3000 },
+    { text: 'بناء التقرير والتنبيهات...', durationMs: 2000 },
+];
+// Total: 38500ms ≈ 38.5s + ~1s for final reveal ≈ ~40s.
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+async function streamScan(req: NextApiRequest, res: NextApiResponse) {
+    // SSE-style headers. X-Accel-Buffering disables proxy buffering so
+    // events flush in real time instead of arriving in one batch at end.
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+        'Access-Control-Allow-Origin': '*',
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const send = (event: any): boolean => {
+        try {
+            return res.write(`data: ${JSON.stringify(event)}\n\n`);
+        } catch {
+            return false;
+        }
+    };
+
+    // ── Validation (same as non-streaming path) ─────────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const body = (req.body ?? {}) as { url?: any; email?: any };
+    const rawUrl = String(body.url ?? '').trim();
+    const rawEmail = String(body.email ?? '').trim().toLowerCase();
+    const email = rawEmail || null;
+    const xff = req.headers['x-forwarded-for'];
+    const ip = (Array.isArray(xff) ? xff[0] : xff?.split(',')[0]) || req.socket.remoteAddress || null;
+
+    let storeUrl: string;
+    try { storeUrl = normalizeUrl(rawUrl); }
+    catch {
+        send({ type: 'error', error: 'الرابط غير صالح — تأكد من إدخال رابط صحيح يبدأ بـ https://' });
+        return res.end();
+    }
+    if (email && !isValidEmail(email)) {
+        send({ type: 'error', error: 'البريد الإلكتروني غير صالح' });
+        return res.end();
+    }
+    if (isPrivateHost(storeUrl)) {
+        send({ type: 'error', error: 'لا يمكن فحص هذا الرابط' });
+        return res.end();
+    }
+
+    // ── Kick off the real scan in the background ────────────────────────────
+    // We don't await it yet — pacing runs in parallel.
+    const db = dbAdmin();
+    const domain = extractDomain(storeUrl);
+    const bypassCache = req.query.fresh === '1' || req.query.fresh === 'true';
+
+    type ScanOutcome =
+        | { ok: true; report: ScanReport; subscriber: SubscriberInfo; scanId: string; cached: boolean; emailSent: boolean }
+        | { ok: false; error: string };
+
+    const scanWork: Promise<ScanOutcome> = (async () => {
+        try {
+            const subscriber = await detectSubscriber(db, storeUrl);
+            const cachedReport = bypassCache ? null : await readCachedScan(db, domain);
+            if (cachedReport && !email) {
+                return { ok: true, report: cachedReport, subscriber, scanId: '', cached: true, emailSent: false };
+            }
+
+            const report = cachedReport ?? (await runScan(storeUrl, subscriber));
+
+            // Persist (skip for cache hits with email — we still want a row
+            // for analytics, so always insert if we ran a fresh scan).
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const doc: Record<string, any> = {
+                ...report,
+                url: storeUrl,
+                email,
+                ip,
+                isSubscriber: subscriber.isSubscriber,
+                subscriberStoreUid: subscriber.storeUid ?? null,
+                emailSent: false,
+                emailAttempts: 0,
+                error: null,
+                createdAt: Date.now(),
+            };
+            const docRef = await db.collection('scans').add(doc);
+
+            let emailSent = false;
+            if (email) {
+                try {
+                    const html = buildEmailHtml(storeUrl, report, subscriber);
+                    const subject = `تقرير جاهزية متجرك للذكاء الاصطناعي — ${domain}`;
+                    const result = await sendEmailDmail(email, subject, html);
+                    emailSent = result.ok;
+                    await docRef.update({ emailSent, emailAttempts: 1 });
+                } catch (e) {
+                    console.error('[scan-stream] email send failed:', e);
+                }
+            }
+
+            return { ok: true, report, subscriber, scanId: docRef.id, cached: !!cachedReport, emailSent };
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            // Persist failed attempts so we can see what's failing in
+            // production — same as the non-streaming path.
+            try {
+                await db.collection('scans').add({
+                    url: storeUrl,
+                    domain,
+                    storeType: 'unknown',
+                    email,
+                    ip,
+                    error: message,
+                    scoreTotal: 0,
+                    alerts: ['تعذّر الوصول إلى المتجر أو انتهت مهلة الفحص.'],
+                    createdAt: Date.now(),
+                });
+            } catch { /* best-effort */ }
+            return { ok: false, error: 'تعذّر الوصول إلى المتجر أو انتهت مهلة الطلب. تأكد من أن الرابط يعمل.' };
+        }
+    })();
+
+    // ── Stream paced phases ─────────────────────────────────────────────────
+    // If the scan errors fast (invalid URL, unreachable host) we want
+    // to short-circuit instead of waiting out the full 40s — track
+    // outcome reactively and break early on failure.
+    //
+    // Wrapped in an object so the .then()-side mutation is visible to
+    // TS's control-flow analyzer (a `let` set inside a callback is not).
+    const state: { outcome: ScanOutcome | null } = { outcome: null };
+    scanWork.then((r) => { state.outcome = r; });
+
+    for (let i = 0; i < SCAN_PHASES.length; i++) {
+        if (state.outcome && !state.outcome.ok) {
+            send({ type: 'error', error: state.outcome.error });
+            return res.end();
+        }
+        const phase = SCAN_PHASES[i];
+        const written = send({
+            type: 'phase',
+            index: i + 1,
+            total: SCAN_PHASES.length,
+            text: phase.text,
+            percent: Math.round(((i + 1) / SCAN_PHASES.length) * 100),
+        });
+        if (!written) return; // client disconnected
+        await sleep(phase.durationMs);
+    }
+
+    // ── Final result ────────────────────────────────────────────────────────
+    const final: ScanOutcome = state.outcome ?? await scanWork;
+    if (!final.ok) {
+        send({ type: 'error', error: final.error });
+        return res.end();
+    }
+
+    send({
+        type: 'result',
+        scanId: final.scanId,
+        cached: final.cached,
+        url: storeUrl,
+        ...final.report,
+        subscriber: final.subscriber,
+        emailSent: final.emailSent,
+    });
+    res.end();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
