@@ -55,6 +55,45 @@ interface PhaseEvent {
     percent: number;
 }
 
+// Tooltip explainers for each category. Mapped by label so we don't
+// have to know the API key ('reviews', 'trust', etc.) on the client.
+const CATEGORY_EXPLAINERS: Record<string, string> = {
+    'موثوقية التقييمات':
+        'وجود تقييمات Schema.org بصيغة منظمة، أسماء المُقيّمين، تواريخ النشر، التقييم الإجمالي (aggregateRating)، وشارة "مشتري موثق".',
+    'الثقة التجارية':
+        'بيانات Organization في Schema.org، صفحة "من نحن"، معلومات تواصل واضحة، سياسة إرجاع.',
+    'قابلية القراءة الآلية':
+        'وجود ملفي robots.txt و llms.txt، Canonical Tag، و Sitemap. ملف llms.txt مهم بشكل خاص لمحركات الذكاء الاصطناعي.',
+    'البيانات المنظمة':
+        'بيانات Schema.org من نوع Product و Organization و FAQPage و BreadcrumbList و WebSite.',
+    'وضوح المحتوى وجاهزيته للذكاء الاصطناعي':
+        'ترتيب العناوين (H1، H2، H3)، meta description، Open Graph tags، ووجود قسم أسئلة شائعة.',
+};
+
+// Animated number counter — eases from 0 to `target` over `durationMs`
+// using requestAnimationFrame. Used for the big score reveal.
+function useAnimatedNumber(target: number, durationMs: number = 1200): number {
+    const [value, setValue] = useState(0);
+    useEffect(() => {
+        if (!target) {
+            setValue(0);
+            return;
+        }
+        let raf = 0;
+        const start = performance.now();
+        const tick = (now: number) => {
+            const p = Math.min((now - start) / durationMs, 1);
+            // ease-out-cubic — fast at start, settles at the end
+            const eased = 1 - Math.pow(1 - p, 3);
+            setValue(Math.round(target * eased));
+            if (p < 1) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+    }, [target, durationMs]);
+    return value;
+}
+
 export default function ScannerSection() {
     const [url, setUrl] = useState('');
     const [email, setEmail] = useState('');
@@ -148,6 +187,9 @@ export default function ScannerSection() {
 
     const score = result?.scoreTotal ?? 0;
     const grade = gradeFor(score);
+    // Animated counter — eases from 0 to the final score over ~1.2s
+    // when the result first lands. Re-runs if the result changes.
+    const animatedScore = useAnimatedNumber(score);
 
     return (
         <section
@@ -161,9 +203,10 @@ export default function ScannerSection() {
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold mb-4 border border-emerald-200">
                         ⚡ أداة مجانية
                     </div>
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-3 leading-tight">
+                    {/* H1 — primary heading for the /scanner page. */}
+                    <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-3 leading-tight">
                         هل ستجدك محركات الذكاء الاصطناعي؟
-                    </h2>
+                    </h1>
                     <p className="text-slate-600 text-base md:text-lg max-w-xl mx-auto">
                         أدخل رابط متجرك وسنفحص مدى جاهزيته للظهور في ChatGPT و Perplexity و Google AI Overviews.
                     </p>
@@ -294,7 +337,7 @@ export default function ScannerSection() {
                             >
                                 <div className="text-center">
                                     <div className="text-4xl font-black" style={{ color: grade.color }}>
-                                        {result.scoreTotal}
+                                        {animatedScore}
                                     </div>
                                     <div className="text-xs text-slate-500">من 100</div>
                                 </div>
@@ -344,21 +387,59 @@ export default function ScannerSection() {
                             </div>
                         )}
 
-                        {/* Category breakdown */}
+                        {/* Category breakdown — each row has:
+                            - Label + weight + tooltip (?)
+                            - Score number (color-graded)
+                            - Horizontal progress bar (0-100% fill)
+                            The native <details> for tooltips works
+                            without JS and is keyboard-accessible. */}
                         {result.categories && (
                             <div className="mt-6">
                                 <div className="font-bold text-slate-900 text-sm mb-3">تفاصيل التقييم</div>
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     {Object.values(result.categories).map((cat) => {
                                         const catGrade = gradeFor(cat.score);
+                                        const explainer = CATEGORY_EXPLAINERS[cat.label];
                                         return (
-                                            <div key={cat.label} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-100">
-                                                <div className="flex-1 text-right">
-                                                    <div className="font-bold text-sm text-slate-900">{cat.label}</div>
-                                                    <div className="text-xs text-slate-500">الوزن: {cat.weight}%</div>
+                                            <div
+                                                key={cat.label}
+                                                className="p-4 rounded-lg bg-slate-50 border border-slate-100"
+                                            >
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex-1 text-right">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            {explainer && (
+                                                                <details className="group inline-block relative">
+                                                                    <summary className="list-none cursor-pointer text-slate-400 hover:text-emerald-600 text-xs select-none">
+                                                                        ⓘ
+                                                                    </summary>
+                                                                    <div className="absolute z-10 right-0 top-5 w-64 p-3 bg-slate-900 text-white text-xs rounded-lg shadow-lg leading-relaxed text-right">
+                                                                        {explainer}
+                                                                    </div>
+                                                                </details>
+                                                            )}
+                                                            <span className="font-bold text-sm text-slate-900">
+                                                                {cat.label}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs text-slate-500 mt-0.5">
+                                                            الوزن: {cat.weight}%
+                                                        </div>
+                                                    </div>
+                                                    <div className="font-black text-lg" style={{ color: catGrade.color }}>
+                                                        {cat.score}/100
+                                                    </div>
                                                 </div>
-                                                <div className="font-black text-lg" style={{ color: catGrade.color }}>
-                                                    {cat.score}/100
+                                                {/* Progress bar — fills to cat.score% with the
+                                                    same color the score number uses. */}
+                                                <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full transition-all duration-1000 ease-out"
+                                                        style={{
+                                                            width: `${Math.max(0, Math.min(100, cat.score))}%`,
+                                                            background: catGrade.color,
+                                                        }}
+                                                    />
                                                 </div>
                                             </div>
                                         );
