@@ -329,8 +329,8 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                   discovery queries and so the home page stays focused
                   on the install funnel. */}
               <Link href="/scanner">
-                <button className="bg-white text-green-700 border-2 border-green-200 px-6 sm:px-8 py-3.5 sm:py-4 rounded-full text-lg font-semibold hover:bg-green-50 hover:border-green-300 transition-all duration-300">
-                  افحص متجرك مجاناً
+                <button className="bg-white text-green-700 border-2 border-green-200 px-5 sm:px-8 py-3.5 sm:py-4 rounded-full text-base sm:text-lg font-semibold hover:bg-green-50 hover:border-green-300 transition-all duration-300">
+                  افحص قابلية ظهور متجرك للذكاء الاصطناعي
                 </button>
               </Link>
             </div>
