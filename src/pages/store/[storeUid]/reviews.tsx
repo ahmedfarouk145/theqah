@@ -518,7 +518,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
 
                         {showDist && (
                             <div className="dist">
-                                <div className="dist-h">— توزيع التقييمات —</div>
+                                <h3 className="dist-h">— توزيع التقييمات —</h3>
                                 {[5, 4, 3, 2, 1].map((n) => {
                                     const count = dist[n - 1] || 0;
                                     const w = pct(count);
@@ -580,7 +580,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
 
                 <section className="reviews">
                     <div className="reviews-h">
-                        <div className="reviews-t">المراجعات الموثقة</div>
+                        <h2 className="reviews-t">المراجعات الموثقة</h2>
                         <div className="reviews-c">{stats.totalReviews} تقييم</div>
                     </div>
 
@@ -639,9 +639,40 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
                     )}
                 </section>
 
-                <div className="stage-foot">
-                    تقييمات مُدققة بواسطة <a href={URLS.CANONICAL_ORIGIN} target="_blank" rel="noopener noreferrer">مشتري موثق</a>
-                </div>
+                <section className="faq-section" aria-labelledby="faq-h">
+                    <h2 id="faq-h" className="faq-h">الأسئلة الشائعة</h2>
+                    <div className="faq-list">
+                        {[
+                            { q: "ما هو نظام Triple Match؟", a: "Triple Match هو بروتوكول التحقق المستخدم في مشتري موثق لضمان صحة كل تقييم. يتم مطابقة ثلاث إشارات مستقلة: تأكيد الدفع، تأكيد الشحن، وتأكيد الاستلام. لا يُنشر أي تقييم ما لم تكتمل الإشارات الثلاث." },
+                            { q: "كيف يتم توثيق التقييمات؟", a: "تُوثَّق التقييمات تلقائياً عبر التكامل المباشر مع منصات سلة وزد. نتحقق من أن المُقيِّم اشترى المنتج فعلياً، ودفع ثمنه، واستلمه قبل أن يُتاح له ترك تقييم. لا يستطيع التاجر إضافة تقييم يدوياً." },
+                            { q: "هل يستطيع التاجر التلاعب بالتقييمات؟", a: "لا. لا يستطيع التاجر إضافة تقييمات وهمية أو حذف تقييمات حقيقية. تأتي جميع التقييمات من مشترين حقيقيين عبر روابط فريدة تُرسل بعد تأكيد الاستلام، وتُخزَّن لدى مشتري موثق كطرف ثالث مستقل عن المتجر." },
+                            { q: "ماذا يعني رقم الشهادة؟", a: "رقم الشهادة بصيغة TQ-XXXXXX هو معرّف فريد ودائم للمتجر في سجل مشتري موثق. يمكن استخدامه للتحقق المستقل من صحة الشهادة في أي وقت عبر هذه الصفحة." },
+                            { q: "هل بيانات الشهادة محدثة؟", a: "نعم. تُحدَّث الشهادة تلقائياً مع كل تقييم موثق جديد. يظهر تاريخ آخر تحديث على الشهادة، وتعكس الإحصائيات (المتوسط وعدد التقييمات) الحالة الفعلية لحظة عرضها." },
+                        ].map(({ q, a }) => (
+                            <details key={q} className="faq-item">
+                                <summary className="faq-q">{q}</summary>
+                                <p className="faq-a">{a}</p>
+                            </details>
+                        ))}
+                    </div>
+                </section>
+
+                <footer className="stage-foot" aria-label="معلومات التواصل والسياسات">
+                    <nav className="foot-links" aria-label="روابط مشتري موثق">
+                        <a href={`${URLS.CANONICAL_ORIGIN}/#about`}>من نحن</a>
+                        <span className="foot-sep">·</span>
+                        <a href="mailto:reviews@theqah.com.sa">تواصل معنا: reviews@theqah.com.sa</a>
+                        <span className="foot-sep">·</span>
+                        <a href="/privacy-policy">سياسة الخصوصية</a>
+                        <span className="foot-sep">·</span>
+                        <a href="/terms">الشروط وسياسة الإرجاع</a>
+                        <span className="foot-sep">·</span>
+                        <a href="/sitemap.xml">خريطة الموقع</a>
+                    </nav>
+                    <div className="foot-credit">
+                        تقييمات مُدققة بواسطة <a href={URLS.CANONICAL_ORIGIN} target="_blank" rel="noopener noreferrer">مشتري موثق</a>
+                    </div>
+                </footer>
             </main>
 
             <div className="toast" id="v3-toast"><span id="v3-toast-msg" /></div>
@@ -876,8 +907,26 @@ const V3_CSS = `
 
 .v3-root .empty{text-align:center;padding:48px 24px;color:rgba(245,236,214,.55);font-family:'Amiri',serif;font-size:16px}
 
-.v3-root .stage-foot{margin-top:64px;text-align:center;color:var(--gold-deep);font-family:'Amiri',serif;font-style:italic;font-size:14px;letter-spacing:.5px}
-.v3-root .stage-foot a{color:var(--gold-2);text-decoration:none;font-weight:700;border-bottom:1px solid var(--gold)}
+.v3-root .faq-section{margin-top:64px;animation:fadeUp .6s .2s ease both}
+.v3-root .faq-h{font-family:'Amiri',serif;font-weight:700;font-size:30px;color:var(--gold-2);letter-spacing:-.3px;margin-bottom:18px;display:flex;align-items:center;gap:14px}
+.v3-root .faq-h::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--gold),transparent);min-width:40px}
+.v3-root .faq-list{display:flex;flex-direction:column;gap:10px}
+.v3-root .faq-item{background:var(--parchment);border:1px solid rgba(200,155,74,.4);padding:0;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.v3-root .faq-item[open]{box-shadow:0 4px 14px rgba(0,0,0,.28)}
+.v3-root .faq-q{cursor:pointer;font-family:'Tajawal',sans-serif;font-weight:700;font-size:15px;color:var(--ink);padding:16px 22px;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:14px;transition:background .15s}
+.v3-root .faq-q::-webkit-details-marker{display:none}
+.v3-root .faq-q::after{content:'+';color:var(--gold-deep);font-weight:900;font-size:20px;flex-shrink:0;transition:transform .2s}
+.v3-root .faq-item[open] .faq-q::after{content:'−';transform:rotate(0)}
+.v3-root .faq-q:hover{background:rgba(200,155,74,.06)}
+.v3-root .faq-a{padding:0 22px 18px;font-family:'Amiri',serif;font-size:16px;line-height:1.85;color:var(--ink-2);margin:0}
+
+.v3-root .stage-foot{margin-top:48px;padding-top:24px;border-top:1px solid rgba(200,155,74,.25);text-align:center}
+.v3-root .foot-links{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 6px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;margin-bottom:14px}
+.v3-root .foot-links a{color:var(--gold-2);text-decoration:none;padding:4px 6px;border-bottom:1px solid transparent;transition:border-color .15s,color .15s}
+.v3-root .foot-links a:hover{color:#fff;border-bottom-color:var(--gold)}
+.v3-root .foot-sep{color:rgba(200,155,74,.5);font-size:12px;display:inline-flex;align-items:center}
+.v3-root .foot-credit{color:var(--gold-deep);font-family:'Amiri',serif;font-style:italic;font-size:14px;letter-spacing:.5px}
+.v3-root .foot-credit a{color:var(--gold-2);text-decoration:none;font-weight:700;border-bottom:1px solid var(--gold)}
 
 .v3-root .toast{position:fixed;bottom:32px;right:50%;transform:translateX(50%) translateY(60px);background:var(--bg-deep);color:var(--gold-2);padding:14px 24px;font-family:'Tajawal',sans-serif;font-weight:600;font-size:13px;letter-spacing:.5px;border:1px solid var(--gold);z-index:100;opacity:0;transition:all .35s cubic-bezier(.4,0,.2,1);pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.6)}
 .v3-root .toast.show{opacity:1;transform:translateX(50%) translateY(0)}
