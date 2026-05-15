@@ -66,6 +66,92 @@ export class ReviewRepository extends BaseRepository<Review> {
     }
 
     /**
+     * Find the best published 5-star customer reviews across ALL stores
+     * (independent of whether the store reviewed the app itself on Salla).
+     * Used by the landing page's "real customer reviews" marquee.
+     *
+     * Diversity strategy: caps at `perStoreCap` reviews per store so no single
+     * busy store can crowd out the wall. After sorting by recency and applying
+     * the cap, the result represents the broadest cross-section of stores that
+     * a 20-card marquee can show.
+     *
+     * Index strategy: only `status === 'approved'` is server-filtered
+     * (single-field auto-index). Stars/verified/text and the per-store cap are
+     * applied in-memory, which avoids needing a composite index.
+     */
+    async findTopReviews(limit: number = 20, perStoreCap: number = 2): Promise<Review[]> {
+        // Fetch ALL approved reviews so every store using the app gets a fair
+        // shot at the marquee. Also pre-fetch the set of currently-active
+        // subscribed stores so we only feature reviews from stores that are
+        // *still* using the app — lapsed/inactive stores don't belong in our
+        // marketing wall.
+        //
+        // Both queries run in parallel. Safety ceiling of 10k prevents a
+        // runaway scan if the dataset ever grows huge.
+        const { dbAdmin } = await import('@/lib/firebaseAdmin');
+        const { isStoreSubscriptionActive } = await import('../services/admin.service');
+        const db = dbAdmin();
+        const safetyCeiling = 10000;
+
+        const [reviewsSnap, activeStoresSnap] = await Promise.all([
+            this.collection.where('status', '==', 'approved').limit(safetyCeiling).get(),
+            db.collection('stores').where('plan.active', '==', true).get(),
+        ]);
+
+        // Filter out stores whose subscription is technically expired even
+        // though `plan.active` is still true (stale data from missed
+        // deactivation webhooks).
+        const activeStoreUids = new Set(
+            activeStoresSnap.docs
+                .filter((d) => isStoreSubscriptionActive(d.data() as Record<string, unknown>))
+                .map((d) => d.id)
+        );
+
+        const rows = reviewsSnap.docs
+            .map((doc) => this.mapDoc(doc))
+            .filter((r) =>
+                r.verified === true &&
+                r.stars === 5 &&
+                !!r.text && r.text.trim().length > 0 &&
+                activeStoreUids.has(r.storeUid)
+            );
+
+        // Sort by recency so each store's freshest reviews bubble to the top
+        // before the per-store cap kicks in.
+        rows.sort((a, b) => (b.publishedAt || b.createdAt || 0) - (a.publishedAt || a.createdAt || 0));
+
+        // Per-store cap: walk the sorted list, keep ≤ perStoreCap from each
+        // store. NO backfill — if only a few stores have qualifying reviews,
+        // the marquee will simply be shorter. Strict cap > artificial padding.
+        const perStoreSeen: Record<string, number> = {};
+        const picked: Review[] = [];
+        for (const r of rows) {
+            const count = perStoreSeen[r.storeUid] || 0;
+            if (count >= perStoreCap) continue;
+            perStoreSeen[r.storeUid] = count + 1;
+            picked.push(r);
+            if (picked.length >= limit) break;
+        }
+
+        return picked;
+    }
+
+    /**
+     * Count all verified, approved reviews across every store using the app.
+     * Used by the landing page social-proof strip to show the running total.
+     * Server-side count aggregate — no documents are read.
+     */
+    async countAllVerified(): Promise<number> {
+        const { dbAdmin } = await import('@/lib/firebaseAdmin');
+        const db = dbAdmin();
+        const snap = await db.collection(this.collectionName)
+            .where('verified', '==', true)
+            .where('status', '==', 'approved')
+            .count().get();
+        return snap.data().count;
+    }
+
+    /**
      * Count verified reviews for a store via Firestore aggregation
      * — does not read documents, fast even for thousands of reviews.
      */

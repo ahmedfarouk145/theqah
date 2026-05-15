@@ -61,50 +61,167 @@ interface AppReviewItem {
   storeName: string;
   stars: number;
   text: string;
+  /** Store logo (Salla CDN URL) — populated by the daily cron from Salla's marketplace API. */
+  avatar?: string | null;
+  /** Public URL of the reviewing store — resolved at sync time by matching the
+   *  reviewer's merchant name against installed stores in Firestore. */
+  storeUrl?: string | null;
+  /** Short bold headline shown above the review body (Judge.me-style). Not
+   *  stored in Firestore — applied at render time from REVIEW_TITLES below. */
+  title?: string | null;
 }
 
-// Hardcoded fallback reviews (used if Firestore has none yet)
+/** Human-edited title for each known reviewer. Keyed by a substring of the
+ *  storeName so we match flexibly even when Salla returns slight variations
+ *  (e.g. "بصريات السقاف saggafoptics"). Update this map directly when you want
+ *  to change a headline. */
+const REVIEW_TITLES: Array<{ match: string; title: string }> = [
+  { match: 'saggafoptics', title: 'يعزز الظهور على جوجل' },
+  { match: 'بصريات السقاف', title: 'يعزز الظهور على جوجل' },
+  { match: 'ذكرى', title: 'يستحق خمس نجوم' },
+  { match: 'StuffRBLX', title: 'تدقيق صارم ورفع المبيعات' },
+  { match: 'N5BH', title: 'يبني ثقة مع العملاء' },
+  { match: 'نخبه', title: 'يبني ثقة مع العملاء' },
+  { match: 'NGLR', title: 'الأفضل على الإطلاق' },
+  { match: 'القهوة الشدوية', title: 'دعم فني راقي ومبيعات' },
+  { match: 'الهدف التكتيكي', title: 'ثقة ومبيعات وتقييمات موثقة' },
+];
+
+function findReviewTitle(storeName: string): string | null {
+  const n = storeName?.toLowerCase() || '';
+  for (const entry of REVIEW_TITLES) {
+    if (n.includes(entry.match.toLowerCase())) return entry.title;
+  }
+  return null;
+}
+
+interface TopReviewItem {
+  text: string;
+  stars: number;
+  authorName: string;
+  storeName: string;
+  storeUrl: string | null;
+  /** Product the customer bought — shown as a small subtitle under the name. */
+  productName?: string | null;
+}
+
+/** Fallback URL when a review has no matched storeUrl — sends users to the
+ *  Salla marketplace page where the original review lives. */
+const SALLA_APP_PAGE = 'https://apps.salla.sa/ar/app/1180703836';
+
+// Hardcoded reviews for the 3 older stores that Salla's marketplace API
+// doesn't return (it caps `latest_reviews` at the 4 most recent). These are
+// merged with the API-sourced reviews in getStaticProps to display all 7.
+// Avatars come straight from each store's Salla logo CDN URL.
 const FALLBACK_REVIEWS: AppReviewItem[] = [
   {
     stars: 5,
     text: 'من افضل التطبيقات بلا شك ولا يردني فيه ولا شك ماشاء الله تبارك الله انصح فيه',
     storeName: 'STORE NGLR',
+    avatar: 'https://cdn.salla.sa/Ovbya/4TN3pa5rrHPClqwpxxD7RXoqHFN5ffIoLqhZoewH.png',
+    storeUrl: 'https://nglr7.com',
+    title: 'الأفضل على الإطلاق',
   },
   {
     stars: 5,
     text: 'التطبيق ممتاز بعد التثبيت والاشتراك في الخدمة فرق معي في المبيعات وزادت ثقة العملاء والتعامل راقي في الدعم الفني.',
     storeName: 'بيت القهوة الشدوية',
+    avatar: 'https://cdn.salla.sa/obngz/UN2uXGARdYCouUlSvmaPCf9XHHny0zpCJqWPYX3y.png',
+    storeUrl: 'https://shdacoffee.com',
+    title: 'دعم فني راقي ومبيعات',
   },
   {
     stars: 5,
     text: 'التطبيق يساعد العميل علي عملية الثقة بتقيم العملاء ويرفع المبيعات',
     storeName: 'متجر الهدف التكتيكي',
+    avatar: 'https://cdn.salla.sa/zYqZg/tBIOHGwv374tlRRkLD8y9LfHIo4ncB5E13kN4A4o.png',
+    storeUrl: 'https://tactical-ksa.com',
+    title: 'ثقة ومبيعات وتقييمات موثقة',
   },
 ];
 
-export const getStaticProps: GetStaticProps<{ appReviews: AppReviewItem[] }> = async () => {
-  let appReviews: AppReviewItem[] = FALLBACK_REVIEWS;
+export const getStaticProps: GetStaticProps<{ appReviews: AppReviewItem[]; verifiedReviewsCount: number; topReviews: TopReviewItem[] }> = async () => {
+  // Salla's marketplace API caps `latest_reviews` at 4 even though the store has 7.
+  // We MERGE the live Salla data with the 3 older reviews kept in FALLBACK_REVIEWS,
+  // de-duplicating by storeName so a manual entry can't double-show if it ever
+  // appears in `latest_reviews` again.
+  //
+  // We call the repository directly (not the public API endpoint) to avoid Next.js's
+  // server-side fetch cache, which was holding a stale snapshot across dev restarts.
+  let sallaReviews: AppReviewItem[] = [];
+  let verifiedReviewsCount = 0;
+  let topReviews: TopReviewItem[] = [];
 
+  const { RepositoryFactory } = await import('@/server/repositories');
+  const { resolveStoreDisplayName, resolveStoreDomainValue } = await import('@/server/services/admin.service');
+  const appReviewRepo = RepositoryFactory.getAppReviewRepository();
+  const reviewRepo = RepositoryFactory.getReviewRepository();
+  const storeRepo = RepositoryFactory.getStoreRepository();
+
+  // Split into independent try/catches so one broken query doesn't zero out the others.
   try {
-    const base = process.env.NEXT_PUBLIC_BASE_URL?.trim() || `http://localhost:${process.env.PORT || 3000}`;
-    const res = await fetch(`${base}/api/public/app-reviews`, { headers: { 'x-internal': '1' } });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data.reviews) && data.reviews.length > 0) {
-        appReviews = data.reviews;
-      }
-    }
-  } catch {
-    // Use fallback
+    const rows = await appReviewRepo.findAllActive();
+    sallaReviews = rows.map((r) => ({
+      storeName: r.storeName,
+      stars: r.stars,
+      text: r.text,
+      avatar: r.avatar ?? null,
+      storeUrl: r.storeUrl ?? null,
+      title: findReviewTitle(r.storeName),
+    }));
+  } catch (e) {
+    console.error('[getStaticProps] appReviewRepo.findAllActive failed:', e);
   }
 
+  try {
+    verifiedReviewsCount = await reviewRepo.countAllVerified();
+  } catch (e) {
+    console.error('[getStaticProps] reviewRepo.countAllVerified failed:', e);
+  }
+
+  try {
+    // Show the best 10 reviews overall: up to 2 per store (so 5 different
+    // stores can each contribute 2 cards). Strict cap prevents any one store
+    // from dominating the small slot.
+    const topRaw = await reviewRepo.findTopReviews(10, 2);
+    const uniqueStoreUids = [...new Set(topRaw.map((r) => r.storeUid))];
+    const storeRecords = await Promise.all(uniqueStoreUids.map((uid) => storeRepo.findById(uid)));
+    const storeMap = new Map<string, { storeName: string; storeUrl: string | null }>();
+    storeRecords.forEach((store, i) => {
+      const uid = uniqueStoreUids[i];
+      if (!store) return;
+      const data = store as unknown as Record<string, unknown>;
+      const name = resolveStoreDisplayName(data) || 'متجر';
+      const domain = resolveStoreDomainValue(data);
+      const url = domain ? (/^https?:\/\//i.test(domain) ? domain : `https://${domain}`) : null;
+      storeMap.set(uid, { storeName: name, storeUrl: url });
+    });
+    topReviews = topRaw.map((r) => {
+      const meta = storeMap.get(r.storeUid);
+      return {
+        text: r.text,
+        stars: r.stars,
+        authorName: r.author?.displayName?.trim() || 'عميل',
+        storeName: meta?.storeName || 'متجر',
+        storeUrl: meta?.storeUrl || null,
+        productName: r.productName?.trim() || null,
+      };
+    });
+  } catch (e) {
+    console.error('[getStaticProps] reviewRepo.findTopReviews failed:', e);
+  }
+
+  const seenNames = new Set(sallaReviews.map((r) => r.storeName?.trim().toLowerCase()));
+  const extras = FALLBACK_REVIEWS.filter((r) => !seenNames.has(r.storeName?.trim().toLowerCase()));
+  const appReviews = [...sallaReviews, ...extras];
+
   return {
-    props: { appReviews },
+    props: { appReviews, verifiedReviewsCount, topReviews },
     revalidate: 21600, // Re-generate every 6 hours
   };
 };
 
-export default function LandingPage({ appReviews }: InferGetStaticPropsType<typeof getStaticProps>) {
+export default function LandingPage({ appReviews, verifiedReviewsCount, topReviews }: InferGetStaticPropsType<typeof getStaticProps>) {
   return (
     <>
       <Head>
@@ -278,14 +395,14 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
 
             {/* Headline */}
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-green-900">
-              توثيق التقييمات بنظام Triple Match ورفع الظهور في GEO
+              التطبيق الأول لتوثيق التقييمات في سلة
               <br />
               <span className="text-green-700">مشتري موثق</span>
             </h1>
 
             {/* Subtitle */}
             <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto">
-              مع أول منصة سعودية تضمن مصداقية التقييم بربطه بـ (مشتري حقيقي)؛ عبر أتمتة كاملة لجمع التقييمات وعرضها كشهادة ثقة تدفع العميل للشراء فوراً.
+              اجمع تقييمات موثقة، اعرضها بثقة، وضاعف مبيعاتك — في كل مراحل نمو متجرك.
             </p>
 
             {/* Rating Widget */}
@@ -337,6 +454,276 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
           </div>
         </section>
 
+        {/* Social-Proof Strip — truthful numbers tied to Salla's public stats */}
+        <section className="bg-green-50/60 py-8 sm:py-10 border-y border-green-100" aria-label="إحصائيات الثقة">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-3 gap-3 sm:gap-8 text-center">
+              <div className="flex flex-col items-center gap-1">
+                <div className="text-2xl sm:text-3xl">⭐</div>
+                <div className="text-xl sm:text-2xl font-extrabold text-green-900">5.0/5</div>
+                <div className="text-[11px] sm:text-sm text-gray-600 leading-tight">تقييم التطبيق في سلة</div>
+              </div>
+              <div className="flex flex-col items-center gap-1 border-x border-green-100">
+                <div className="text-2xl sm:text-3xl">🛍️</div>
+                <div className="text-xl sm:text-2xl font-extrabold text-green-900">{verifiedReviewsCount.toLocaleString('ar')}</div>
+                <div className="text-[11px] sm:text-sm text-gray-600 leading-tight">تقييم موثق تم جمعه</div>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="text-2xl sm:text-3xl">✅</div>
+                <div className="text-xl sm:text-2xl font-extrabold text-green-900">100%</div>
+                <div className="text-[11px] sm:text-sm text-gray-600 leading-tight">نسبة التقييمات الإيجابية</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Moving Reviews Bar (Part 2-B: scrolling marquee of store reviews) */}
+        <section className="py-16 sm:py-24 bg-white overflow-hidden" aria-label="آراء المتاجر">
+          {/* Heading — Judge.me style: large, two-tone, with honest count */}
+          <div className="text-center mb-10 sm:mb-14 px-4 max-w-3xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight">
+              <span className="text-green-900">قالوا عن </span>
+              <span className="text-green-600">مشتري موثق</span>
+            </h2>
+          </div>
+
+          {/* dir="ltr" so the marquee-track positions itself at the LEFT edge
+              of this wrapper (the parent section is rtl, which would otherwise
+              right-align the wider-than-viewport strip and translateX(-50%)
+              would push it entirely off-screen left). */}
+          <div dir="ltr" className="relative">
+            {/* Edge fades so cards don't appear to "pop in" */}
+            <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
+            <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
+
+            {/* Flex spacing uses margin-inline-end on each card instead of `gap`
+                so the strip total width = 14 × (cardWidth + gap). That makes
+                translateX(-50%) land seamlessly at the start of the second copy
+                — `gap` would leave a half-gap mismatch at the loop point.
+                dir="ltr" overrides the document's rtl so the strip lays out
+                left-to-right; without this, RTL flex stacks cards to the LEFT
+                of the viewport and translateX(-50%) creates empty space on the
+                right. Each card re-asserts dir="rtl" so its Arabic text aligns
+                correctly. */}
+            <div dir="ltr" className="marquee-track flex px-4 sm:px-6" style={{ width: 'max-content' }}>
+              {[...appReviews, ...appReviews].map((item, i) => {
+                // Every card is clickable: prefer the matched store URL,
+                // fall back to the Salla marketplace page so no card is dead.
+                const href = item.storeUrl || SALLA_APP_PAGE;
+                const isMatched = !!item.storeUrl;
+                // For the bottom footer, show the store's hostname in uppercase
+                // (Judge.me style). Fall back to a "view on Salla" prompt.
+                let footerLabel = 'عرض على متجر سلة ←';
+                if (isMatched) {
+                  try {
+                    footerLabel = new URL(item.storeUrl as string).hostname.replace(/^www\./, '').toUpperCase();
+                  } catch {
+                    footerLabel = item.storeName.toUpperCase();
+                  }
+                }
+
+                return (
+                  <a
+                    key={i}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`تقييم من ${item.storeName}`}
+                    dir="rtl"
+                    className="block w-[300px] sm:w-[380px] h-[280px] sm:h-[340px] flex-shrink-0 me-5 sm:me-7 group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 rounded-2xl"
+                  >
+                    <article className="h-full bg-white rounded-2xl border border-gray-100 shadow-sm group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-300 p-6 sm:p-8 flex flex-col">
+                      {/* Avatar (Salla CDN) → fallback to bold wordmark when no avatar.
+                          Uses native <img> instead of next/image because next/image's
+                          IntersectionObserver-based lazy loading misfires inside the
+                          translateX marquee animation. */}
+                      <div className="mb-4 sm:mb-5 flex items-center gap-3 min-h-[40px] sm:min-h-[48px]">
+                        {item.avatar ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={item.avatar}
+                              alt={`شعار ${item.storeName}`}
+                              width={48}
+                              height={48}
+                              loading="lazy"
+                              decoding="async"
+                              referrerPolicy="no-referrer"
+                              className="rounded-full object-cover h-10 w-10 sm:h-12 sm:w-12 shrink-0 ring-1 ring-gray-100 bg-gray-50"
+                            />
+                            <h3 className="text-base sm:text-lg font-bold text-gray-900 truncate flex-1">
+                              {item.storeName}
+                            </h3>
+                          </>
+                        ) : (
+                          <h3 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight truncate">
+                            {item.storeName}
+                          </h3>
+                        )}
+                      </div>
+
+                      {/* Stars — teal to match Judge.me */}
+                      <div className="flex gap-0.5 mb-3 sm:mb-4" aria-label={`${item.stars} من 5 نجوم`}>
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <span
+                            key={s}
+                            className={`text-xl sm:text-2xl ${s <= item.stars ? 'text-emerald-500' : 'text-gray-200'}`}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Bold headline — Judge.me-style review title */}
+                      {item.title && (
+                        <h4 className="text-base sm:text-lg font-extrabold text-gray-900 mb-2 leading-snug">
+                          {item.title}
+                        </h4>
+                      )}
+
+                      {/* Review text — grows to fill, line-clamped to keep card height stable.
+                          Tighter clamp when a title is present to leave room for it. */}
+                      <p className={`text-gray-700 text-[13.5px] sm:text-sm leading-relaxed flex-1 ${item.title ? 'line-clamp-3' : 'line-clamp-4'}`}>
+                        {item.text}
+                      </p>
+
+                      {/* Footer — hostname (uppercase, wide tracking) or Salla fallback prompt */}
+                      <p className={`mt-4 sm:mt-6 text-xs sm:text-sm font-bold tracking-widest uppercase ${isMatched ? 'text-gray-700 group-hover:text-emerald-700' : 'text-emerald-700/80 group-hover:text-emerald-700'} transition-colors`}>
+                        {footerLabel}
+                      </p>
+                    </article>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+
+          <style jsx>{`
+            @keyframes marquee {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            .marquee-track {
+              animation: marquee 50s linear infinite;
+              will-change: transform;
+            }
+            .marquee-track:hover {
+              animation-play-state: paused;
+            }
+            @media (prefers-reduced-motion: reduce) {
+              .marquee-track {
+                animation: none;
+              }
+            }
+          `}</style>
+        </section>
+
+        {/* Customer Reviews Marquee — top 20 published, verified, 5-star reviews
+            collected through the app, with each card linking to the store that
+            collected the review. */}
+        {topReviews.length > 0 && (
+          <section className="py-10 sm:py-16 bg-green-50/40 overflow-hidden" aria-label="آراء عملاء المتاجر">
+            <div className="text-center mb-8 sm:mb-12 px-4 max-w-3xl mx-auto">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold leading-tight">
+                <span className="text-green-900">قالوا عن </span>
+                <span className="text-green-600">عملائنا</span>
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 mt-3">
+                تقييمات موثقة بنظام Triple Match — من عملاء حقيقيين اشتروا فعلاً
+              </p>
+            </div>
+
+            <div dir="ltr" className="relative">
+              <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-32 bg-gradient-to-l from-green-50/40 to-transparent z-10 pointer-events-none" />
+              <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-32 bg-gradient-to-r from-green-50/40 to-transparent z-10 pointer-events-none" />
+
+              <div dir="ltr" className="customer-marquee-track flex px-4 sm:px-6" style={{ width: 'max-content' }}>
+                {[...topReviews, ...topReviews].map((item, i) => {
+                  const href = item.storeUrl || SALLA_APP_PAGE;
+                  const initial = item.authorName?.trim()?.[0] || '?';
+                  let domainLabel = 'عرض المتجر ←';
+                  if (item.storeUrl) {
+                    try {
+                      domainLabel = new URL(item.storeUrl).hostname.replace(/^www\./, '').toUpperCase();
+                    } catch {
+                      domainLabel = item.storeName.toUpperCase();
+                    }
+                  }
+                  return (
+                    <a
+                      key={i}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`تقييم من ${item.authorName} لمتجر ${item.storeName}`}
+                      dir="rtl"
+                      className="block w-[280px] sm:w-[340px] h-[260px] sm:h-[300px] flex-shrink-0 me-5 sm:me-6 group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 rounded-2xl"
+                    >
+                      <article className="h-full bg-white rounded-2xl border border-gray-100 shadow-sm group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-300 p-5 sm:p-6 flex flex-col">
+                        {/* Customer header — initial avatar + name + product */}
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-white font-bold flex items-center justify-center text-base shadow-sm shrink-0">
+                            {initial}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate leading-tight">
+                              {item.authorName}
+                            </h3>
+                            {item.productName && (
+                              <p className="text-[11px] sm:text-xs text-gray-500 truncate leading-tight mt-0.5">
+                                اشترى: {item.productName}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Stars — always 5/5 (enforced by query filter) */}
+                        <div className="flex gap-0.5 mb-3" aria-label="5 من 5 نجوم">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <span key={s} className="text-lg sm:text-xl text-emerald-500">★</span>
+                          ))}
+                        </div>
+
+                        {/* Review text */}
+                        <p className="text-gray-700 text-[13.5px] sm:text-sm leading-relaxed line-clamp-4 flex-1">
+                          {item.text}
+                        </p>
+
+                        {/* Footer — store name + domain */}
+                        <div className="mt-4 pt-3 border-t border-gray-100">
+                          <p className="text-[11px] sm:text-xs text-gray-500 mb-0.5">من متجر</p>
+                          <p className="text-xs sm:text-sm font-bold tracking-wider uppercase text-gray-700 group-hover:text-emerald-700 transition-colors truncate">
+                            {domainLabel}
+                          </p>
+                        </div>
+                      </article>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+
+            <style jsx>{`
+              @keyframes customer-marquee {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(-50%); }
+              }
+              .customer-marquee-track {
+                animation: customer-marquee 90s linear infinite;
+                will-change: transform;
+              }
+              .customer-marquee-track:hover {
+                animation-play-state: paused;
+              }
+              @media (prefers-reduced-motion: reduce) {
+                .customer-marquee-track {
+                  animation: none;
+                }
+              }
+            `}</style>
+          </section>
+        )}
+
         {/* Install & Videos Section - moved to top */}
         <section id="install-section" className="py-16 sm:py-24 px-4 sm:px-6 bg-white scroll-mt-24">
           <div className="max-w-5xl mx-auto">
@@ -345,10 +732,10 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 ابدأ في أقل من دقيقة
               </span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">
-                حمل التطبيق وشاهد الشرح
+                ثبّت التطبيق في دقيقة، اجمع تقييماتك في الثانية
               </h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                تطبيق مشتري موثق متاح على متجر سلة — حمله الآن وشاهد الفيديوهات التوضيحية
+                مشتري موثق متاح على متجر سلة بنقرة واحدة — بدون إعدادات معقدة، وبدون خبرة تقنية
               </p>
             </div>
 
@@ -392,7 +779,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
           </div>
         </section>
 
-        {/* لماذا مشتري موثق - Premium Cards */}
+        {/* لماذا مشتري موثق — USP cards (what makes us different) + supporting stats */}
         <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12 sm:mb-16">
@@ -400,80 +787,119 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 لماذا نحن؟
               </span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">
-                لماذا مشتري موثق = مبيعات أكثر
+                ما يميّز مشتري موثق عن باقي تطبيقات التقييم
               </h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                ضمان طرف ثالث محايد يُزيل تردد العميل ويحول الزوار إلى مشترين
+                ميزات حصرية مبنية للسوق السعودي — لا تجدها في التطبيقات العالمية
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+            {/* USP cards — 4 across on desktop, 2×2 on tablet, 1 column on mobile */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
               {[
                 {
-                  emoji: '🎯',
+                  emoji: '🛡️',
+                  color: 'from-emerald-400 to-teal-600',
+                  bgColor: 'bg-emerald-50',
+                  title: 'توثيق لا يقبل الشك',
+                  desc: 'نظام Triple Match يضمن أن كل تقييم قادم من مشتري حقيقي 100% — لا تقييمات وهمية ولا منافسين خبثاء.',
+                  badge: 'حصري',
+                },
+                {
+                  emoji: '🏷️',
                   color: 'from-amber-400 to-orange-500',
                   bgColor: 'bg-amber-50',
-                  title: 'رفع احتمالية الشراء',
-                  desc: 'بمجرد وجود 5 تقييمات موثقة',
-                  stat: '+270%',
-                  statLabel: 'احتمالية الشراء',
-                  source: 'Northwestern Spiegel',
-                  sourceUrl: 'https://spiegel.medill.northwestern.edu/how-online-reviews-influence-sales/',
+                  title: 'شارة "موثق" المرئية',
+                  desc: 'تظهر بجانب كل تقييم كدليل بصري فوري يبني ثقة العميل في ثوانٍ — قبل أن يقرأ كلمة واحدة.',
+                  badge: 'تحويل أعلى',
                 },
                 {
-                  emoji: '🛒',
+                  emoji: '🇸🇦',
                   color: 'from-blue-400 to-indigo-500',
                   bgColor: 'bg-blue-50',
-                  title: 'زيادة المبيعات المباشرة',
-                  desc: 'عند إضافة شارة "المشتري الموثق"',
-                  stat: '+15%',
-                  statLabel: 'مبيعات مباشرة',
-                  source: 'AMA',
-                  sourceUrl: 'https://www.ama.org/marketing-news/the-power-of-verified-reviews-in-shaping-buying-decisions-and-building-brand-trust/',
+                  title: 'دعم سعودي بشري',
+                  desc: 'فريق محلي يفهم سلة وزد ويرد عليك بسرعة باللهجة التي تفهمها — لا روبوتات ولا انتظار طويل.',
+                  badge: 'دعم 24/7',
                 },
                 {
-                  emoji: '📈',
+                  emoji: '💰',
                   color: 'from-green-400 to-emerald-500',
                   bgColor: 'bg-green-50',
-                  title: 'مضاعفة معدل التحويل',
-                  desc: 'للمنتجات مرتفعة السعر عند عرض تقييمات موثقة',
-                  stat: '+380%',
-                  statLabel: 'معدل التحويل',
-                  source: 'Capital One Shopping',
-                  sourceUrl: 'https://capitaloneshopping.com/research/online-reviews-statistics/',
+                  title: 'تسعير عادل وثابت',
+                  desc: 'باقة واحدة بسعر ثابت — لا ضرائب على نموك، لا مفاجآت في الفاتورة، ولا تعقيدات.',
+                  badge: '20 ر.س/شهر',
                 },
               ].map((item, i) => (
                 <div
                   key={i}
-                  className={`group ${item.bgColor} rounded-2xl p-6 sm:p-8 border border-transparent hover:border-green-200 hover:shadow-xl transition-all duration-500 hover:-translate-y-1`}
+                  className={`group relative ${item.bgColor} rounded-2xl p-6 sm:p-7 border border-transparent hover:border-green-200 hover:shadow-xl transition-all duration-500 hover:-translate-y-1`}
                 >
                   {/* Emoji with gradient bg */}
                   <div className={`w-14 h-14 bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center text-2xl mb-5 shadow-md group-hover:scale-110 transition-transform duration-300`}>
                     {item.emoji}
                   </div>
 
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{item.title}</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed mb-5">{item.desc}</p>
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{item.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
 
-                  {/* Stat */}
-                  <div className="flex items-baseline gap-2 pt-4 border-t border-gray-200/50">
-                    <span className={`text-2xl sm:text-3xl font-black bg-gradient-to-l ${item.color} bg-clip-text text-transparent`}>
-                      {item.stat}
+                  {/* Feature badge replaces the old external-study stat */}
+                  <div className="mt-5 pt-4 border-t border-gray-200/50">
+                    <span className={`inline-flex items-center gap-1 text-xs font-bold bg-gradient-to-l ${item.color} bg-clip-text text-transparent`}>
+                      <svg className="w-3 h-3 text-current opacity-70" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                      {item.badge}
                     </span>
-                    <span className="text-gray-500 text-sm">{item.statLabel}</span>
                   </div>
-
-                  {/* Source */}
-                  <a
-                    href={item.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-block text-xs italic text-gray-500 hover:text-green-700 hover:underline"
-                  >
-                    المصدر: {item.source}
-                  </a>
                 </div>
               ))}
+            </div>
+
+            {/* Supporting research stats — demoted to a small secondary strip below the USPs */}
+            <div className="mt-16 sm:mt-20">
+              <div className="text-center mb-6 sm:mb-8">
+                <p className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                  والأرقام تؤكد ذلك
+                </p>
+                <h3 className="text-base sm:text-lg text-gray-700 mt-1">
+                  تأثير التقييمات الموثقة على المبيعات حسب دراسات عالمية
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto">
+                {[
+                  {
+                    stat: '+270%',
+                    label: 'احتمالية الشراء بعد 5 تقييمات موثقة',
+                    source: 'Northwestern Spiegel',
+                    sourceUrl: 'https://spiegel.medill.northwestern.edu/how-online-reviews-influence-sales/',
+                  },
+                  {
+                    stat: '+15%',
+                    label: 'زيادة المبيعات مع شارة المشتري الموثق',
+                    source: 'AMA',
+                    sourceUrl: 'https://www.ama.org/marketing-news/the-power-of-verified-reviews-in-shaping-buying-decisions-and-building-brand-trust/',
+                  },
+                  {
+                    stat: '+380%',
+                    label: 'معدل التحويل للمنتجات مرتفعة السعر',
+                    source: 'Capital One Shopping',
+                    sourceUrl: 'https://capitaloneshopping.com/research/online-reviews-statistics/',
+                  },
+                ].map((item, i) => (
+                  <div key={i} className="bg-gray-50 rounded-xl p-4 sm:p-5 text-center border border-gray-100 hover:border-green-200 transition-colors">
+                    <div className="text-2xl sm:text-3xl font-black bg-gradient-to-l from-green-500 to-emerald-600 bg-clip-text text-transparent mb-1">
+                      {item.stat}
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600 leading-tight mb-2">{item.label}</p>
+                    <a
+                      href={item.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] italic text-gray-400 hover:text-green-700 hover:underline"
+                    >
+                      {item.source}
+                    </a>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -485,7 +911,7 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-3">
                 كيف يعمل مشتري موثق؟
               </h2>
-              <p className="text-gray-600">خطوات بسيطة لبناء ثقة عملائك</p>
+              <p className="text-gray-600">من التثبيت إلى شارة التوثيق — كل ما تحتاجه لتحويل ثقة العملاء إلى مبيعات حقيقية</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
@@ -493,22 +919,22 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                 {
                   num: '1',
                   emoji: '🔗',
-                  title: 'فعل التطبيق',
-                  desc: 'اربط "مشتري موثق" بمتجرك في سلة بضغطة زر واحدة، بدون إعدادات معقدة أو خبرة تقنية.',
+                  title: 'ثبّت التطبيق',
+                  desc: 'اربط مشتري موثق بمتجرك في سلة بضغطة زر — لا إعدادات، لا أكواد، لا تعقيد.',
                   color: 'bg-green-500'
                 },
                 {
                   num: '2',
                   emoji: '⭐',
-                  title: 'العميل يقيم كالمعتاد',
-                  desc: 'يقيم العميل مشترياته داخل متجرك مباشرة عبر روابط سلة الرسمية، دون أي إزعاج.',
+                  title: 'عميلك يقيّم كالمعتاد',
+                  desc: 'يكمل عميلك شراءه ويترك تقييمه عبر روابط سلة الرسمية — بدون أي إزعاج أو خطوات إضافية.',
                   color: 'bg-blue-500'
                 },
                 {
                   num: '3',
                   emoji: '🔒',
-                  title: 'التوثيق الفوري',
-                  desc: 'نظامنا يتحقق آلياً من "شراء العميل الفعلي" و"اكتمال الطلب" فور وصول التقييم.',
+                  title: 'نظام Triple Match يتحقق فوراً',
+                  desc: 'نتأكد آلياً من شراء العميل الفعلي واكتمال الطلب لحظة وصول التقييم. لا تقييمات وهمية تمر.',
                   color: 'bg-purple-500'
                 },
                 {
@@ -523,8 +949,8 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                       />
                     </div>
                   ),
-                  title: 'شارة الثقة تظهر',
-                  desc: 'تظهر "شارة التوثيق" تلقائياً بجانب التقييمات الصادقة ليعرف زوارك أنها من مشترين حقيقيين.',
+                  title: 'تظهر شارة "موثق" تلقائياً',
+                  desc: 'بجانب كل تقييم صادق — دليل بصري فوري يعرف منه زوارك أنه تقييم من مشترٍ حقيقي.',
                   color: 'bg-orange-500'
                 },
                 {
@@ -539,8 +965,8 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
                       />
                     </div>
                   ),
-                  title: 'شهادة توثيق التقييمات',
-                  desc: 'يعرض الويدجت "شهادة توثيق" رسمية للتقييمات، مما يعزز مصداقية متجرك ويزيد ثقة العملاء.',
+                  title: 'شهادة توثيق رسمية',
+                  desc: 'يعرض الويدجت شهادة توثيق على صفحة منتجك — ترفع المصداقية وتدفع العميل المتردد للشراء.',
                   color: 'bg-teal-500'
                 },
               ].map((step, i) => (
@@ -568,45 +994,30 @@ export default function LandingPage({ appReviews }: InferGetStaticPropsType<type
 
 
 
-        {/* Testimonials Section */}
-        <section className="py-16 sm:py-24 px-4 sm:px-6 bg-green-50/50">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12 sm:mb-16">
-              <span className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full mb-4">
-                ماذا يقول عملاؤنا؟
-              </span>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">
-                متاجر حقيقية.. نتائج حقيقية
-              </h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
-                أصحاب متاجر يشاركون تجربتهم مع مشتري موثق
-              </p>
-            </div>
+        {/* (Removed: legacy testimonials section. The two marquees above —
+            "قالوا عن مشتري موثق" and "قالوا عن عملائنا" — now carry the
+            social-proof job better than three static cards ever could.) */}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-              {appReviews.map((item, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-                >
-                  <div className="flex gap-0.5 mb-4">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <span key={star} className={`text-lg ${star <= item.stars ? 'text-green-700' : 'text-gray-300'}`}>★</span>
-                    ))}
-                  </div>
-                  <p className="text-gray-700 leading-relaxed mb-6 text-[15px]">{item.text}</p>
-                  <p className="text-green-700 font-semibold text-sm">{item.storeName}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white text-center">
+        {/* CTA Section — final push: real number + clear next step */}
+        <section className="py-16 sm:py-20 px-4 sm:px-6 bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 text-center">
           <div className="max-w-2xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">جاهز لزيادة مبيعاتك؟</h2>
-            <p className="text-gray-600 mb-8 text-lg">انضم الى العديد من المتاجر التي حسنت ثقة عملائها مع مشتري موثق</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-900 mb-4">
+              جاهز تنضم لمتاجر بتبيع بثقة؟
+            </h2>
+            <p className="text-gray-600 mb-8 text-base sm:text-lg">
+              {verifiedReviewsCount.toLocaleString('ar')}+ تقييم موثق جمعناه لعملائنا. ثبّت التطبيق الآن، وابدأ تبني ثقة عملائك في دقيقة.
+            </p>
+            <a
+              href="https://apps.salla.sa/ar/app/1180703836"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 bg-green-700 text-white px-8 sm:px-10 py-3.5 sm:py-4 rounded-full text-base sm:text-lg font-bold shadow-lg shadow-green-500/20 hover:bg-green-800 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18 15v3H6v-3H4v3c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-3h-2zm-1-4-1.41-1.41L13 12.17V4h-2v8.17L8.41 9.59 7 11l5 5 5-5z" />
+              </svg>
+              ثبّت مشتري موثق من متجر سلة
+            </a>
           </div>
         </section>
 

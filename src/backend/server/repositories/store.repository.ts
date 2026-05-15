@@ -99,6 +99,23 @@ export class StoreRepository extends BaseRepository<Store> {
     }
 
     /**
+     * Count all stores whose subscription is currently active (plan.active === true
+     * AND not expired). Pulls the candidate set with a `plan.active` query, then
+     * filters out docs whose `expiresAt` is in the past — a defense against the
+     * data-integrity issue where some lapsed stores still have `plan.active=true`
+     * because the deactivation webhook didn't fire.
+     */
+    async countActiveSubscriptions(): Promise<number> {
+        const { isStoreSubscriptionActive } = await import('../services/admin.service');
+        const snap = await this.collection.where('plan.active', '==', true).get();
+        let count = 0;
+        for (const doc of snap.docs) {
+            if (isStoreSubscriptionActive(doc.data() as Record<string, unknown>)) count++;
+        }
+        return count;
+    }
+
+    /**
      * Deactivate subscription (expired/cancelled)
      */
     async deactivateSubscription(storeUid: string, raw?: object): Promise<void> {

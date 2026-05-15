@@ -98,6 +98,8 @@ const nextConfig = {
       'storage.googleapis.com',
       'ucarecdn.com',  // Uploadcare CDN
       'lh3.googleusercontent.com', // صور Google
+      'cdn.salla.sa', // شعارات متاجر سلة (avatars في تقييمات السوق - CDN قديم)
+      'cdn.files.salla.network', // شعارات متاجر سلة (CDN جديد - مسارات theme)
     ],
     // أنماط أكثر تفصيلاً للصور
     remotePatterns: [
@@ -114,6 +116,16 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'storage.googleapis.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.salla.sa',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.files.salla.network',
         pathname: '/**',
       }
     ],

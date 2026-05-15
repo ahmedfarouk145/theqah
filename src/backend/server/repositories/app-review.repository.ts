@@ -12,6 +12,11 @@ export interface AppReview extends EntityBase {
     text: string;
     reviewDate: string;
     source: string; // 'salla'
+    /** Store logo URL from Salla CDN (optional, captured at sync time). */
+    avatar?: string | null;
+    /** Public store URL resolved by matching the reviewer's merchant name
+     *  against installed stores in the `stores` collection at sync time. */
+    storeUrl?: string | null;
 }
 
 export class AppReviewRepository extends BaseRepository<AppReview> {

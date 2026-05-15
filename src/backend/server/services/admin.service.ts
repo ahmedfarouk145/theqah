@@ -62,7 +62,7 @@ function isPublishedReviewDoc(data: FirestoreDoc | undefined): boolean {
     return data?.published === true || data?.status === 'published' || data?.status === 'approved';
 }
 
-function resolveStoreDisplayName(data: FirestoreDoc | undefined): string {
+export function resolveStoreDisplayName(data: FirestoreDoc | undefined): string {
     const meta = (data?.meta || {}) as FirestoreDoc;
     const userinfo = (meta.userinfo || {}) as FirestoreDoc;
     const payload = (userinfo.data || userinfo.context || {}) as FirestoreDoc;
@@ -79,7 +79,32 @@ function resolveStoreDisplayName(data: FirestoreDoc | undefined): string {
     );
 }
 
-function resolveStoreDomainValue(data: FirestoreDoc | undefined): string | null {
+/**
+ * Returns true only when the store has a current, non-lapsed subscription.
+ *
+ * Why this exists: Firestore can hold stale `plan.active === true` records
+ * for stores whose subscription has expired — usually because Salla's
+ * `app.subscription.expired` webhook didn't fire or failed mid-flight.
+ * Always pair this check with `plan.active` queries when "truly active"
+ * matters (landing-page stats, marquees, marketing).
+ */
+export function isStoreSubscriptionActive(data: FirestoreDoc | undefined): boolean {
+    if (!data) return false;
+    const plan = (data.plan || {}) as FirestoreDoc;
+    if (plan.active !== true) return false;
+
+    const now = Date.now();
+    const subscription = (data.subscription || {}) as FirestoreDoc;
+    const subExpiresAt = typeof subscription.expiresAt === 'number' ? subscription.expiresAt : null;
+    if (subExpiresAt !== null && subExpiresAt < now) return false;
+
+    const planExpiredAt = typeof plan.expiredAt === 'number' ? plan.expiredAt : null;
+    if (planExpiredAt !== null && planExpiredAt < now) return false;
+
+    return true;
+}
+
+export function resolveStoreDomainValue(data: FirestoreDoc | undefined): string | null {
     const domain = data?.domain;
     if (typeof domain === 'string') {
         return domain;

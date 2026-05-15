@@ -24,6 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 stars: r.stars,
                 text: r.text,
                 reviewDate: r.reviewDate,
+                avatar: r.avatar ?? null,
+                storeUrl: r.storeUrl ?? null,
             }))
         });
     } catch {
