@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
+import Link from "next/link";
 import Script from "next/script";
 import { URLS } from "@/config/constants";
 
@@ -663,11 +664,11 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
                         <span className="foot-sep">·</span>
                         <a href="mailto:reviews@theqah.com.sa">تواصل معنا: reviews@theqah.com.sa</a>
                         <span className="foot-sep">·</span>
-                        <a href="/privacy-policy">سياسة الخصوصية</a>
+                        <Link href="/privacy-policy">سياسة الخصوصية</Link>
                         <span className="foot-sep">·</span>
-                        <a href="/terms">الشروط وسياسة الإرجاع</a>
+                        <Link href="/terms">الشروط وسياسة الإرجاع</Link>
                         <span className="foot-sep">·</span>
-                        <a href="/sitemap.xml">خريطة الموقع</a>
+                        <Link href="/sitemap.xml">خريطة الموقع</Link>
                     </nav>
                     <div className="foot-credit">
                         تقييمات مُدققة بواسطة <a href={URLS.CANONICAL_ORIGIN} target="_blank" rel="noopener noreferrer">مشتري موثق</a>
