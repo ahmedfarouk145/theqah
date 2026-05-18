@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "4.0.0"; // V4 "Royal Navy + Champagne": transparent bg, champagne title, navy medallion, gold cert-num chip
+  const SCRIPT_VERSION = "4.1.0"; // V4.1: inline verified-buyer badge next to reviewer name (avoids flex-wrap drop)
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -572,35 +572,55 @@
         if (el.querySelector('.theqah-verified-logo')) return;
         if (el.shadowRoot?.querySelector('.theqah-verified-logo')) return;
 
-        // Find best insertion point for Salla modern theme
-        // Try light DOM first, then shadow DOM, then element itself as fallback
-        let insertPoint =
-          el.querySelector('.s-comments-item-user-info-name') ||  // User name in Salla
-          el.querySelector('.s-comments-item-user-wrapper') ||    // User wrapper
-          el.querySelector('[class*="user-name"]') ||             // Any user name class
-          el.querySelector('[class*="user-info"]') ||             // Any user info class
-          el.querySelector('[class*="author"]') ||                // Author class
-          el.querySelector('.review-header') ||
-          el.querySelector('.review-stars') ||
-          el.querySelector('.review-rating') ||
-          el.querySelector('[class*="rating"]') ||                // Any rating class
-          el.firstElementChild;
+        // Two-tier insertion strategy:
+        //  (1) preferred: place the logo as an immediate sibling of the
+        //      reviewer's name heading, so it sits inline next to the name
+        //      (the user-wrapper has flex-wrap:wrap on Salla themes and
+        //      will spill the logo to a new row otherwise — see
+        //      lodrbeautiful.com case).
+        //  (2) fallback: any user-* / rating-* container, with the legacy
+        //      appendChild behaviour.
+        const nameEl =
+          el.querySelector('.s-comments-item-user-info-name-with-margin') ||
+          el.querySelector('.s-comments-item-user-info-name') ||
+          el.querySelector('.s-comments-item-user-info h3') ||
+          el.querySelector('h3');
 
-        // Shadow DOM fallback for iOS Safari
-        if (!insertPoint && el.shadowRoot) {
+        let insertPoint = null;
+        let insertMode = 'append';
+
+        if (nameEl) {
+          insertPoint = nameEl;
+          insertMode = 'afterend';
+        } else {
           insertPoint =
-            el.shadowRoot.querySelector('.s-comments-item-user-info-name') ||
-            el.shadowRoot.querySelector('.s-comments-item-user-wrapper') ||
-            el.shadowRoot.querySelector('[class*="user-name"]') ||
-            el.shadowRoot.querySelector('[class*="user-info"]') ||
-            el.shadowRoot.querySelector('[class*="rating"]') ||
-            el.shadowRoot.firstElementChild;
+            el.querySelector('.s-comments-item-user-wrapper') ||
+            el.querySelector('[class*="user-name"]') ||
+            el.querySelector('[class*="user-info"]') ||
+            el.querySelector('[class*="author"]') ||
+            el.querySelector('.review-header') ||
+            el.querySelector('.review-stars') ||
+            el.querySelector('.review-rating') ||
+            el.querySelector('[class*="rating"]') ||
+            el.firstElementChild;
+
+          // Shadow DOM fallback for iOS Safari
+          if (!insertPoint && el.shadowRoot) {
+            insertPoint =
+              el.shadowRoot.querySelector('.s-comments-item-user-info-name-with-margin') ||
+              el.shadowRoot.querySelector('.s-comments-item-user-info-name') ||
+              el.shadowRoot.querySelector('h3') ||
+              el.shadowRoot.querySelector('.s-comments-item-user-wrapper') ||
+              el.shadowRoot.querySelector('[class*="user-name"]') ||
+              el.shadowRoot.querySelector('[class*="user-info"]') ||
+              el.shadowRoot.querySelector('[class*="rating"]') ||
+              el.shadowRoot.firstElementChild;
+            if (insertPoint && (insertPoint.tagName?.toLowerCase() === 'h3')) {
+              insertMode = 'afterend';
+            }
+          }
+          if (!insertPoint) insertPoint = el;
         }
-
-        // Ultimate fallback: append directly to the element
-        if (!insertPoint) insertPoint = el;
-
-
 
         const publicReviewId = reviewLinkMap.get(String(domReviewId));
         const resolvedStoreUid = storeUidOverride || G.storeData?.storeUid || G.storeUid || '';
@@ -613,21 +633,40 @@
         logoLink.title = publicReviewId
           ? 'مشتري موثق - عرض هذا التقييم الموثق'
           : 'مشتري موثق - عرض تقييمات المتجر';
-        logoLink.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none;transition:transform 0.2s ease;margin-inline-start:8px;';
+        logoLink.style.cssText = 'display:inline-flex;align-items:center;text-decoration:none;transition:transform 0.2s ease;margin-inline-start:8px;flex-shrink:0;';
         logoLink.onmouseover = function () { this.style.transform = 'scale(1.1)'; };
         logoLink.onmouseout = function () { this.style.transform = 'scale(1)'; };
 
+        // Inline placement next to the name: smaller logo so it doesn't
+        // dwarf a ~24px-tall heading. Legacy fallback keeps the larger
+        // logo used by older theme layouts.
+        const inlineSize = insertMode === 'afterend' ? 28 : 60;
         const logo = document.createElement('img');
         logo.src = LOGO_URL;
         logo.className = 'theqah-verified-logo';
         logo.alt = 'مشتري موثق - Verified Buyer';
-        logo.style.cssText = 'width:60px;height:60px;margin:0 8px;display:inline-block;vertical-align:middle;cursor:pointer;background:transparent;';
+        logo.style.cssText = `width:${inlineSize}px;height:${inlineSize}px;margin:0 6px;display:inline-block;vertical-align:middle;cursor:pointer;background:transparent;`;
 
         logoLink.appendChild(logo);
-        insertPoint.style.display = 'flex';
-        insertPoint.style.alignItems = 'center';
-        insertPoint.style.gap = '8px';
-        insertPoint.appendChild(logoLink);
+
+        if (insertMode === 'afterend') {
+          // Make the name's parent lay out in a row so the name + badge
+          // sit on the same line. Most Salla themes wrap the h3 in a div
+          // (.s-comments-item-user-info) that defaults to block.
+          const parent = insertPoint.parentElement;
+          if (parent) {
+            parent.style.display = 'flex';
+            parent.style.alignItems = 'center';
+            parent.style.gap = '6px';
+            parent.style.flexWrap = 'nowrap';
+          }
+          insertPoint.insertAdjacentElement('afterend', logoLink);
+        } else {
+          insertPoint.style.display = 'flex';
+          insertPoint.style.alignItems = 'center';
+          insertPoint.style.gap = '8px';
+          insertPoint.appendChild(logoLink);
+        }
 
 
       });
