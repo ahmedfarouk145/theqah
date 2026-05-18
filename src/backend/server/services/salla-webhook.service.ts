@@ -117,6 +117,23 @@ export class SallaWebhookService {
         rawPayload?: object
     ): Promise<void> {
         await this.storeRepo.updateSubscription(storeUid, 'TRIAL', startedAt, expiresAt, rawPayload);
+
+        // Trials are subscriptions for our purposes — merchants on TRIAL should
+        // still see their historical Salla reviews backfilled, otherwise the
+        // certificate widget shows zero verified reviews until trial→paid
+        // conversion (which may never happen). Mirrors handleSubscriptionEvent.
+        // Fire-and-forget + idempotent via BackfillJobService.enqueue dedupe.
+        try {
+            const { dbAdmin } = await import('@/lib/firebaseAdmin');
+            const { BackfillJobService } = await import('./backfill/backfill-job.service');
+            await new BackfillJobService(dbAdmin()).enqueue({
+                storeUid,
+                platform: 'salla',
+                source: 'webhook',
+            });
+        } catch (err) {
+            console.error('[SallaWebhookService] trial backfill enqueue failed:', err);
+        }
     }
 
     /**
