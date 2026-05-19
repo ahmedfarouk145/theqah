@@ -389,17 +389,17 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
     // X/Facebook crawlers render the per-review share card (matching what
     // the in-widget share button would produce). Without these overrides
     // every shared link previews as the generic store certificate.
-    const focusedReview = focusedReviewId
+    const focusedReviewForOg = focusedReviewId
         ? (profile?.reviews || []).find((r) => r.id === focusedReviewId)
         : null;
 
     let pageTitle = genericTitle;
     let pageDesc = genericDesc;
     let ogImageUrl: string | null = null;
-    if (focusedReview) {
-        const stars = "⭐".repeat(Math.max(1, Math.min(5, focusedReview.stars || 5)));
-        const reviewer = focusedReview.author?.displayName || "عميل موثق";
-        const reviewText = (focusedReview.text || "").trim();
+    if (focusedReviewForOg) {
+        const stars = "⭐".repeat(Math.max(1, Math.min(5, focusedReviewForOg.stars || 5)));
+        const reviewer = focusedReviewForOg.author?.displayName || "عميل موثق";
+        const reviewText = (focusedReviewForOg.text || "").trim();
         const excerpt = reviewText.length > 120 ? reviewText.slice(0, 117) + "…" : reviewText;
         pageTitle = `${stars} تقييم ${reviewer} على ${storeName} | مشتري موثق`;
         pageDesc = excerpt
@@ -409,7 +409,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
         if (storeName) ogParams.set("store", storeName);
         if (reviewer) ogParams.set("author", reviewer);
         if (reviewText) ogParams.set("text", reviewText);
-        if (focusedReview.stars) ogParams.set("stars", String(focusedReview.stars));
+        if (focusedReviewForOg.stars) ogParams.set("stars", String(focusedReviewForOg.stars));
         ogParams.set("storeUid", store.storeUid);
         ogParams.set("handle", "@theqahapp");
         ogImageUrl =
