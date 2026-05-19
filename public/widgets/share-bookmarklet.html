@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>اختبار زر المشاركة — ثقة</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; font-family: 'Cairo', system-ui, sans-serif; background: #f1f5f9; color: #0f172a; }
+  body { padding: 40px 20px 80px; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 8px; }
+  h2 { font-size: 17px; margin: 28px 0 10px; }
+  p { line-height: 1.85; color: #334155; margin: 0 0 14px; font-size: 14px; }
+  .hero { background: linear-gradient(160deg, #2a3860, #17213f); color: white; padding: 36px 32px; border-radius: 18px; margin-bottom: 24px; }
+  .hero h1 { color: #f0dcab; }
+  .hero p { color: #cbd5e1; font-size: 15px; }
+
+  .bookmark-zone {
+    background: white;
+    border: 2px dashed #d9b879;
+    border-radius: 14px;
+    padding: 28px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .bookmark-link {
+    display: inline-block;
+    background: linear-gradient(135deg, #d9b879, #b89968);
+    color: #17213f !important;
+    padding: 14px 30px;
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: 17px;
+    text-decoration: none;
+    box-shadow: 0 6px 20px -6px rgba(184,153,104,0.5);
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.15s ease;
+    border: 2px solid #8a6d3b;
+  }
+  .bookmark-link:hover { transform: translateY(-2px); }
+  .bookmark-link:active { cursor: grabbing; }
+
+  .step { background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px 22px; margin-bottom: 14px; display: flex; gap: 16px; align-items: flex-start; }
+  .step-num { width: 36px; height: 36px; border-radius: 50%; background: #2a3860; color: white; font-weight: 900; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-body h3 { margin: 0 0 6px; font-size: 15px; }
+  .step-body p { margin: 0; font-size: 13.5px; color: #475569; }
+  .step-body code { background: #f1f5f9; padding: 2px 8px; border-radius: 6px; font-size: 12px; direction: ltr; display: inline-block; }
+
+  .warn { background: #fef3c7; border: 1px solid #fde68a; padding: 14px 18px; border-radius: 10px; color: #78350f; font-size: 13px; line-height: 1.7; }
+  .warn b { color: #4a2206; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <h1>اختبار زر المشاركة على متجرك</h1>
+    <p>
+      هذه أداة اختبار مباشر لميزة <b>زر المشاركة</b> الجديدة. تتيح لك تجربة الزر على متجرك الحقيقي على سلة <b>قبل</b> أن نُطلقها رسمياً. لا تحتاج لتنصيب أي شيء — فقط اسحب الزر الذهبي أدناه إلى شريط المفضلة في متصفحك.
+    </p>
+  </div>
+
+  <div class="bookmark-zone">
+    <p style="margin-bottom: 18px; font-weight: 700; font-size: 15px;">↓ اسحب الزر الذهبي إلى شريط المفضلة ↓</p>
+    <a id="bm" class="bookmark-link" href="#" title="اسحبني إلى شريط المفضلة">
+      ✨ اختبر مشاركة ثقة
+    </a>
+    <p style="margin-top: 18px; font-size: 12px; color: #64748b;">
+      اضغط واسحب (لا تنقر) هذا الزر إلى شريط المفضلة في أعلى المتصفح.
+    </p>
+  </div>
+
+  <h2>كيف تستخدمه</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h3>اسحب الزر الذهبي أعلاه إلى شريط المفضلة</h3>
+      <p>إذا لم يكن شريط المفضلة ظاهراً، اضغط <code>Ctrl+Shift+B</code> (أو <code>Cmd+Shift+B</code> على ماك) لإظهاره.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h3>اذهب إلى أي صفحة منتج على متجرك</h3>
+      <p>مثل: <code>https://lodrbeautiful.com/p1028882325</code> أو أي منتج فيه تقييمات موثقة.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h3>اضغط زر "اختبر مشاركة ثقة" في شريط المفضلة</h3>
+      <p>سيظهر زر "مشاركة" ذهبي بجانب شعار "مشتري موثق" في كل تقييم موثق.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <h3>اضغط على زر "مشاركة" لأي تقييم</h3>
+      <p>ستظهر نافذة بـ 5 خيارات: X (تويتر)، Facebook، Instagram، TikTok، نسخ الرابط. كل خيار سيفتح المنصة المناسبة مع النص الجاهز وذكر <code>@theqahapp</code>.</p>
+    </div>
+  </div>
+
+  <div class="warn" style="margin-top: 22px;">
+    <b>ملاحظة:</b> هذا اختبار شخصي لك فقط — زر المشاركة لا يظهر للعملاء، فقط في متصفحك بعد ضغط الإشارة المرجعية. عند ضغط Instagram أو TikTok، ستفتح صورة الشهادة في تبويب جديد لتحفظها وتنشرها يدوياً. عند ضغط X أو Facebook، ستفتح نافذة المشاركة جاهزة بالنص والرابط.
+  </div>
+
+</div>
+
+<script>
+  // Build the bookmarklet payload as a self-contained IIFE.
+  // The actual share-button + modal injection code that's been verified
+  // working on lodrbeautiful.com via Chrome DevTools. Packed into a
+  // bookmarklet URL.
+  const PREVIEW_ORIGIN = location.origin; // same origin as this page = preview deployment
+  const PROD_ORIGIN = 'https://www.theqah.com.sa';
+
+  // The payload runs in the page context of any Salla store the merchant
+  // visits. It looks for verified-buyer badges, injects a share button
+  // next to each, and wires up a 5-platform modal.
+  const payload = `(function(){
+    try{
+      var PREVIEW='${PREVIEW_ORIGIN}',PROD='${PROD_ORIGIN}',NS='http://www.w3.org/2000/svg';
+      document.querySelectorAll('.theqah-owner-share-btn').forEach(function(n){n.remove()});
+      var pb=document.querySelector('#theqah-share-back');if(pb)pb.remove();
+      var ps=document.querySelector('#theqah-share-modal-style');if(ps)ps.remove();
+      function svgEl(vb,parts){var s=document.createElementNS(NS,'svg');s.setAttribute('viewBox',vb);s.setAttribute('fill','currentColor');parts.forEach(function(p){var el=document.createElementNS(NS,p[0]);for(var k in p[1])el.setAttribute(k,p[1][k]);s.appendChild(el)});return s}
+      function shareIcon(){var s=document.createElementNS(NS,'svg');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('fill','none');s.setAttribute('stroke','currentColor');s.setAttribute('stroke-width','2.2');s.setAttribute('stroke-linecap','round');s.setAttribute('stroke-linejoin','round');s.setAttribute('width','12');s.setAttribute('height','12');[['circle',{cx:'18',cy:'5',r:'3'}],['circle',{cx:'6',cy:'12',r:'3'}],['circle',{cx:'18',cy:'19',r:'3'}],['line',{x1:'8.59',y1:'13.51',x2:'15.42',y2:'17.49'}],['line',{x1:'15.41',y1:'6.51',x2:'8.59',y2:'10.49'}]].forEach(function(p){var el=document.createElementNS(NS,p[0]);for(var k in p[1])el.setAttribute(k,p[1][k]);s.appendChild(el)});return s}
+      var ICONS={x:'M18.244 2H21l-6.52 7.45L22 22h-6.84l-4.74-6.18L4.8 22H2.04l6.98-7.97L2 2h6.96l4.28 5.66L18.244 2Zm-2.4 18.2h1.86L7.27 3.7H5.32l10.52 16.5Z',fb:'M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.51 1.5-3.9 3.78-3.9 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.77l-.44 2.9h-2.33v6.98A10 10 0 0 0 22 12Z',ig:'M12 2c2.72 0 3.06.01 4.12.06 1.07.05 1.79.22 2.43.46.66.26 1.22.6 1.77 1.16.56.55.9 1.11 1.16 1.77.25.64.42 1.37.46 2.43.05 1.07.06 1.4.06 4.12s-.01 3.06-.06 4.12c-.05 1.07-.22 1.79-.46 2.43-.26.66-.6 1.22-1.16 1.77-.55.56-1.11.9-1.77 1.16-.64.25-1.37.42-2.43.46-1.07.05-1.4.06-4.12.06s-3.06-.01-4.12-.06c-1.07-.05-1.79-.22-2.43-.46a4.92 4.92 0 0 1-1.77-1.16 4.92 4.92 0 0 1-1.16-1.77c-.25-.64-.42-1.37-.46-2.43C2.01 15.06 2 14.72 2 12s.01-3.06.06-4.12c.05-1.07.22-1.79.46-2.43.26-.66.6-1.22 1.16-1.77.55-.56 1.11-.9 1.77-1.16.64-.25 1.37-.42 2.43-.46C8.94 2.01 9.28 2 12 2Zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 1.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Zm5.25-3.05a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z',tt:'M19.3 7.6a6.66 6.66 0 0 1-3.94-1.27V15.4a5.6 5.6 0 1 1-5.6-5.6c.18 0 .36.01.54.03v2.4a3.2 3.2 0 1 0 2.66 3.16V2h2.4a4.66 4.66 0 0 0 3.94 4.6v2.4-1.4Z',copy:'M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z'};
+      function brandIcon(k,size){return svgEl('0 0 24 24',[['path',{d:ICONS[k]}]])}
+      function buildUrl(p){var q=new URLSearchParams();if(p.store)q.set('store',p.store);if(p.author)q.set('author',p.author);if(p.text)q.set('text',p.text);if(p.product)q.set('product',p.product);if(p.productImg)q.set('productImg',p.productImg);if(p.stars)q.set('stars',String(p.stars));if(p.storeUid)q.set('storeUid',p.storeUid);q.set('handle','@theqahapp');return PREVIEW+'/api/og/share-card?'+q.toString().replace(/\\+/g,'%20')}
+      function buildText(p,url){var s='⭐'.repeat(Math.max(1,Math.min(5,p.stars||5)));var e=(p.text||'').length>140?(p.text||'').slice(0,137)+'…':(p.text||'');var L=[s+' تقييم موثق من '+(p.store||'متجرنا'),'',e?'\"'+e+'\"':'',p.author?'— '+p.author:'','','مدقق بواسطة @theqahapp'].filter(Boolean);if(url)L.push(url);return L.join('\\n')}
+      async function copyText(t){try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(t);return true}}catch(e){}try{var ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:-9999px';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();return true}catch(e){return false}}
+      var st=document.createElement('style');st.id='theqah-share-modal-style';st.textContent='.theqah-owner-share-btn{display:inline-flex!important;align-items:center;gap:4px;background:white;border:1.5px solid #b89968;color:#8a6d3b;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;cursor:pointer;font-family:Cairo,system-ui,sans-serif;margin-inline-start:6px;flex-shrink:0;box-shadow:0 2px 6px -2px rgba(184,153,104,0.4);vertical-align:middle}.theqah-owner-share-btn:hover{transform:translateY(-1px)}.theqah-share-back{position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:2147483646;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);font-family:Cairo,system-ui,sans-serif;direction:rtl}.theqah-share-back.open{display:flex}.theqah-share-modal{background:white;border-radius:18px;max-width:460px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px -10px rgba(15,23,42,0.4);color:#0f172a}.theqah-share-h{padding:18px 22px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center}.theqah-share-h h3{margin:0;font-size:16px;font-weight:900}.theqah-share-close{background:none;border:none;cursor:pointer;font-size:24px;color:#64748b;padding:4px 8px}.theqah-share-b{padding:18px 22px}.theqah-share-intro{font-size:12px;color:#64748b;margin:0 0 14px;line-height:1.7}.theqah-share-pbtn{width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid #e2e8f0;background:white;margin-bottom:8px;cursor:pointer;font-family:inherit;text-align:start}.theqah-share-pbtn:hover{border-color:#2a3860;background:#fafbff}.theqah-share-pbtn .ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0}.theqah-share-pbtn .ico svg{width:18px;height:18px}.ico-x{background:#000}.ico-fb{background:#1877f2}.ico-ig{background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)}.ico-tt{background:linear-gradient(135deg,#25f4ee,#000,#fe2c55)}.ico-copy{background:#2a3860}.theqah-share-pbtn b{font-size:14px;font-weight:800;display:block;margin-bottom:2px}.theqah-share-pbtn>span>span{font-size:11.5px;color:#64748b;display:block}.theqah-share-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f172a;color:white;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;z-index:2147483647;opacity:0;transition:opacity 0.2s ease;font-family:Cairo,sans-serif}.theqah-share-toast.show{opacity:1}';document.head.appendChild(st);
+      var back=document.createElement('div');back.id='theqah-share-back';back.className='theqah-share-back';
+      var mod=document.createElement('div');mod.className='theqah-share-modal';
+      var hd=document.createElement('div');hd.className='theqah-share-h';
+      var h3=document.createElement('h3');h3.textContent='مشاركة التقييم ';
+      var rev=document.createElement('span');rev.id='theqah-share-reviewer';rev.style.cssText='font-weight:700;color:#64748b';h3.appendChild(rev);
+      var cb=document.createElement('button');cb.className='theqah-share-close';cb.textContent='×';hd.append(h3,cb);
+      var bd=document.createElement('div');bd.className='theqah-share-b';
+      var intro=document.createElement('p');intro.className='theqah-share-intro';intro.textContent='اختر المنصة. سيتم فتح نافذة جاهزة بالنص والصورة وذكر @theqahapp.';bd.appendChild(intro);
+      var PL=[['x','X (تويتر)','تغريدة جاهزة + رابط + صورة معاينة','ico-x'],['fb','Facebook','منشور مع رابط ومعاينة','ico-fb'],['ig','Instagram','صورة + نص للنسخ','ico-ig'],['tt','TikTok','نفس الصورة + نص للنسخ','ico-tt'],['copy','نسخ الرابط','انسخ الرابط لأي مكان آخر','ico-copy']];
+      var pbtns=[];PL.forEach(function(p){var b=document.createElement('button');b.className='theqah-share-pbtn';b.dataset.platform=p[0];b.type='button';var i=document.createElement('span');i.className='ico '+p[3];i.appendChild(brandIcon(p[0]));var t=document.createElement('span');t.style.flex='1';var bb=document.createElement('b');bb.textContent=p[1];var dd=document.createElement('span');dd.textContent=p[2];t.append(bb,dd);b.append(i,t);bd.appendChild(b);pbtns.push(b)});
+      mod.append(hd,bd);back.appendChild(mod);document.body.appendChild(back);
+      var toast=document.createElement('div');toast.className='theqah-share-toast';document.body.appendChild(toast);
+      function showToast(m){toast.textContent=m;toast.classList.add('show');setTimeout(function(){toast.classList.remove('show')},3500)}
+      var current=null;function openM(p){current=p;rev.textContent=p.author?'— '+p.author:'';back.classList.add('open')}function closeM(){back.classList.remove('open')}
+      cb.addEventListener('click',closeM);back.addEventListener('click',function(e){if(e.target===back)closeM()});
+      pbtns.forEach(function(b){b.addEventListener('click',async function(){var p=current||{};var url=PROD+'/store/'+encodeURIComponent(p.storeUid||'')+'/reviews'+(p.reviewId?'?review='+encodeURIComponent(p.reviewId):'');var pl=b.dataset.platform;if(pl==='x'){window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(buildText(p,url)),'_blank','noopener')}else if(pl==='fb'){window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(url),'_blank','noopener')}else if(pl==='ig'||pl==='tt'){await copyText(buildText(p,'theqah.com.sa'));window.open(buildUrl(p),'_blank','noopener');showToast('تم نسخ النص. الصورة فُتحت في تبويب جديد')}else if(pl==='copy'){var ok=await copyText(url);showToast(ok?'تم نسخ الرابط ✓':'تعذّر نسخ الرابط')}closeM()})});
+      var img=(document.querySelector('meta[property=\"og:image\"]')||{}).content||'';
+      var sn=((document.querySelector('h2')||{}).textContent||'').trim();
+      var pn=((document.querySelector('h1')||{}).textContent||'').trim();
+      var suid='';var sub=document.querySelector('a[href*=\"theqah.com.sa/store/\"]');if(sub){var mm=sub.href.match(/store\\/([^\\/]+)/);if(mm)suid=decodeURIComponent(mm[1])}
+      var links=[].slice.call(document.querySelectorAll('a')).filter(function(a){var im=a.querySelector('img');return im&&(im.src||'').includes('theqah.com.sa')&&(a.title||'').includes('مشتري موثق')});
+      var n=0;links.forEach(function(link){var card=link;while(card&&card.tagName&&card.tagName.toLowerCase()!=='salla-comment-item')card=card.parentElement;var who=card&&card.querySelector('h3')?card.querySelector('h3').textContent.trim():'';var mm=(link.href||'').match(/review=([^&]+)/);var rid=mm?decodeURIComponent(mm[1]):'';var p={author:who,text:'منتج رائع وجودة ممتازة',product:pn,productImg:img,stars:5,store:sn,storeUid:suid,reviewId:rid};var b=document.createElement('button');b.className='theqah-owner-share-btn';b.type='button';b.title='مشاركة هذا التقييم';b.appendChild(shareIcon());var l=document.createElement('span');l.textContent='مشاركة';b.appendChild(l);b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openM(p)});link.insertAdjacentElement('afterend',b);n++});
+      console.log('[Theqah Share Bookmarklet] Injected '+n+' share buttons.');
+      if(n===0)alert('لم يتم إيجاد تقييمات موثقة في هذه الصفحة. تأكد أنك على صفحة منتج فيها تقييمات.');
+    }catch(e){alert('خطأ في تشغيل الأداة: '+e.message);console.error(e)}
+  })();`;
+
+  document.getElementById('bm').href = 'javascript:' + encodeURIComponent(payload.replace(/\s+/g, ' '));
+</script>
+</body>
+</html>
