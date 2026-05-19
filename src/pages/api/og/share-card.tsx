@@ -175,11 +175,15 @@ export default async function handler(req: NextRequest) {
           }}
         />
 
-        {/* Header: brand + cert chip */}
+        {/* Header: brand + cert chip.
+            Satori doesn't reliably honour `direction: rtl` on nested flex
+            containers, so we force the RTL visual via `row-reverse`. JSX
+            order remains source-natural (logo block, then cert chip) but
+            visually the logo ends up on the right and cert on the left. */}
         <div
           style={{
             display: 'flex',
-            direction: 'rtl',
+            flexDirection: 'row-reverse',
             justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: '40px',
@@ -245,7 +249,7 @@ export default async function handler(req: NextRequest) {
         <div
           style={{
             display: 'flex',
-            direction: 'rtl',
+            flexDirection: 'row-reverse',
             gap: '36px',
             alignItems: 'center',
             flex: 1,
@@ -328,7 +332,7 @@ export default async function handler(req: NextRequest) {
         <div
           style={{
             display: 'flex',
-            direction: 'rtl',
+            flexDirection: 'row-reverse',
             justifyContent: 'space-between',
             alignItems: 'center',
             paddingTop: '32px',
