@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>اختبار شهادة المشاركة — ثقة</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px 20px; font-family: 'Cairo', system-ui, sans-serif; background: #f1f5f9; color: #0f172a; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p.sub { color: #64748b; font-size: 13px; margin: 0 0 24px; line-height: 1.7; }
+  .layout { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .panel { background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; box-shadow: 0 4px 12px -8px rgba(15,23,42,0.08); }
+  label { display: block; font-size: 12px; font-weight: 700; color: #334155; margin: 12px 0 6px; }
+  input, textarea, select { width: 100%; padding: 9px 11px; border: 1.5px solid #cbd5e1; border-radius: 8px; font: inherit; font-size: 13px; background: white; }
+  textarea { resize: vertical; min-height: 70px; line-height: 1.6; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: #2a3860; }
+  button { background: #2a3860; color: white; border: none; padding: 12px 22px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 800; cursor: pointer; margin-top: 14px; }
+  button:hover { background: #17213f; }
+  .preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .preset { padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 999px; background: white; font-size: 11px; cursor: pointer; font-family: inherit; }
+  .preset:hover { background: #fafbff; border-color: #2a3860; }
+  .preview { background: white; border-radius: 14px; padding: 16px; min-height: 400px; }
+  .preview-title { font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+  #card { width: 100%; max-width: 720px; aspect-ratio: 1/1; display: block; border-radius: 12px; background: #fafbff; }
+  #card.loading { background: linear-gradient(135deg, #fafbff, #eef2f7); }
+  .url-box { margin-top: 16px; background: #0f172a; color: #cbd5e1; padding: 12px 14px; border-radius: 8px; font-family: ui-monospace, monospace; font-size: 11px; line-height: 1.6; word-break: break-all; max-height: 120px; overflow-y: auto; }
+  .url-label { color: #f0dcab; font-weight: 700; margin-bottom: 4px; font-family: 'Cairo', sans-serif; font-size: 12px; }
+  .note { margin-top: 12px; font-size: 11.5px; color: #64748b; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>اختبار شهادة المشاركة</h1>
+  <p class="sub">صفحة اختبار محلية لمعاينة <code>/api/og/share-card</code> دون أي مشاكل في ترميز الرابط. الصورة تُبنى مباشرةً من المتصفح بدون نسخ ولصق.</p>
+
+  <div class="layout">
+
+    <div class="panel">
+      <div class="preset-row">
+        <button class="preset" type="button" data-preset="lodr">عطر لودر</button>
+        <button class="preset" type="button" data-preset="tamr">تمر 9</button>
+        <button class="preset" type="button" data-preset="short">نص قصير</button>
+        <button class="preset" type="button" data-preset="long">نص طويل</button>
+      </div>
+
+      <label>اسم المتجر</label>
+      <input id="store" value="لودر بيوتيفل" />
+
+      <label>اسم المنتج</label>
+      <input id="product" value="عطر فيس تو فيس" />
+
+      <label>صورة المنتج (URL)</label>
+      <input id="productImg" value="https://cdn.salla.sa/aKAjK/tPfSx9SKzpioazbC0WgfPefkhUirtI4DECOqjVQh.png" />
+
+      <label>اسم المُقَيّم</label>
+      <input id="author" value="ابرار الشمري" />
+
+      <label>عدد النجوم</label>
+      <select id="stars">
+        <option value="5">5 ★</option>
+        <option value="4">4 ★</option>
+        <option value="3">3 ★</option>
+      </select>
+
+      <label>نص التقييم</label>
+      <textarea id="text">منتج رائع وجودة ممتازة، وصل أسرع من المتوقع والتغليف كان احترافي.</textarea>
+
+      <label>storeUid (للشهادة)</label>
+      <input id="storeUid" value="salla:294939335" />
+
+      <button id="renderBtn" type="button">عرض الشهادة</button>
+    </div>
+
+    <div class="panel preview">
+      <div class="preview-title">معاينة 1080×1080</div>
+      <img id="card" alt="معاينة الشهادة" />
+      <div id="url" class="url-box">
+        <div class="url-label">URL المُولّد:</div>
+        <div id="urlValue"></div>
+      </div>
+      <p class="note">
+        إذا ظهرت الصورة بشكل صحيح هنا، فالـ endpoint يعمل. أي مشاكل في النص أو الصورة تظهر هنا فوراً دون أي شك في الترميز.
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const presets = {
+    lodr: {
+      store: 'لودر بيوتيفل',
+      product: 'عطر فيس تو فيس',
+      productImg: 'https://cdn.salla.sa/aKAjK/tPfSx9SKzpioazbC0WgfPefkhUirtI4DECOqjVQh.png',
+      author: 'ابرار الشمري',
+      stars: '5',
+      text: 'منتج رائع وجودة ممتازة، وصل أسرع من المتوقع والتغليف كان احترافي.',
+      storeUid: 'salla:294939335',
+    },
+    tamr: {
+      store: 'متجر 9 تمرات',
+      product: 'علبة تمور مشكلة فاخرة',
+      productImg: 'https://cdn.salla.sa/aKAjK/d05f8a92-6f59-4c4f-8c15-1c4e1f9e9e92-500x500.jpg',
+      author: 'محمد صالح',
+      stars: '5',
+      text: 'منتج جديد قلت أجربه — صراحة تمور فاخرة وعلبة فاخرة، التغليف ممتاز والطعم رهيب.',
+      storeUid: 'salla:373285341',
+    },
+    short: {
+      store: 'لودر بيوتيفل',
+      product: 'عطر فيس تو فيس',
+      productImg: 'https://cdn.salla.sa/aKAjK/tPfSx9SKzpioazbC0WgfPefkhUirtI4DECOqjVQh.png',
+      author: 'سارة',
+      stars: '5',
+      text: 'ممتاز جداً.',
+      storeUid: 'salla:294939335',
+    },
+    long: {
+      store: 'لودر بيوتيفل',
+      product: 'عطر فيس تو فيس',
+      productImg: 'https://cdn.salla.sa/aKAjK/tPfSx9SKzpioazbC0WgfPefkhUirtI4DECOqjVQh.png',
+      author: 'فهد العتيبي',
+      stars: '5',
+      text: 'تجربتي مع هذا العطر كانت ممتازة من البداية للنهاية. التغليف احترافي والعطر فواح وثباته طويل. خدمة العملاء سريعة والتوصيل أسرع من المتوقع، أنصح بشدة بالشراء من هذا المتجر.',
+      storeUid: 'salla:294939335',
+    },
+  };
+
+  function loadPreset(key) {
+    const p = presets[key];
+    if (!p) return;
+    for (const [k, v] of Object.entries(p)) {
+      const el = document.getElementById(k);
+      if (el) el.value = v;
+    }
+    render();
+  }
+
+  function render() {
+    const fields = ['store', 'product', 'productImg', 'author', 'stars', 'text', 'storeUid'];
+    const params = new URLSearchParams();
+    for (const f of fields) {
+      const v = document.getElementById(f).value.trim();
+      if (v) params.set(f, v);
+    }
+    params.set('handle', '@theqahapp');
+    // URLSearchParams encodes spaces as `+`; convert to %20 for prettier URLs.
+    const qs = params.toString().replace(/\+/g, '%20');
+    const url = location.origin + '/api/og/share-card?' + qs;
+    const img = document.getElementById('card');
+    img.classList.add('loading');
+    img.src = url;
+    img.onload = () => img.classList.remove('loading');
+    document.getElementById('urlValue').textContent = url;
+  }
+
+  // Wire up the preset buttons + render button without inline handlers
+  document.querySelectorAll('.preset').forEach((btn) => {
+    btn.addEventListener('click', () => loadPreset(btn.dataset.preset));
+  });
+  document.getElementById('renderBtn').addEventListener('click', render);
+
+  // Auto-render on first load
+  render();
+</script>
+</body>
+</html>
