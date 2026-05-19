@@ -378,8 +378,45 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
         !HIDE_DIST_STORE_UIDS.includes(store.storeUid) &&
         !HIDE_DIST_DOMAINS.some((d) => (store.domain || "").toLowerCase().includes(d));
 
-    const pageTitle = `شهادة توثيق التقييمات — ${storeName} | مشتري موثق`;
-    const pageDesc = `سجل رسمي لـ ${stats.totalReviews} تقييم موثق عن متجر ${storeName}، مدققة وفق نظام Triple Matching من مشتري موثق.`;
+    // Generic page metadata — used for the bare /reviews and /certificate
+    // routes (no `?review=X` deep-link).
+    const genericTitle = `شهادة توثيق التقييمات — ${storeName} | مشتري موثق`;
+    const genericDesc = `سجل رسمي لـ ${stats.totalReviews} تقييم موثق عن متجر ${storeName}، مدققة وفق نظام Triple Matching من مشتري موثق.`;
+
+    // When the page is hit as a share-link (`?review=X`), find the focused
+    // review and emit review-specific Open Graph + Twitter Card tags. The
+    // og:image points at /api/og/share-card with the review's data so
+    // X/Facebook crawlers render the per-review share card (matching what
+    // the in-widget share button would produce). Without these overrides
+    // every shared link previews as the generic store certificate.
+    const focusedReview = focusedReviewId
+        ? (profile?.reviews || []).find((r) => r.id === focusedReviewId)
+        : null;
+
+    let pageTitle = genericTitle;
+    let pageDesc = genericDesc;
+    let ogImageUrl: string | null = null;
+    if (focusedReview) {
+        const stars = "⭐".repeat(Math.max(1, Math.min(5, focusedReview.stars || 5)));
+        const reviewer = focusedReview.author?.displayName || "عميل موثق";
+        const reviewText = (focusedReview.text || "").trim();
+        const excerpt = reviewText.length > 120 ? reviewText.slice(0, 117) + "…" : reviewText;
+        pageTitle = `${stars} تقييم ${reviewer} على ${storeName} | مشتري موثق`;
+        pageDesc = excerpt
+            ? `"${excerpt}" — ${reviewer}. مدقق بواسطة @theqahapp وفق نظام Triple Matching.`
+            : `${stars} تقييم موثق من ${reviewer} على متجر ${storeName}. مدقق بواسطة @theqahapp.`;
+        const ogParams = new URLSearchParams();
+        if (storeName) ogParams.set("store", storeName);
+        if (reviewer) ogParams.set("author", reviewer);
+        if (reviewText) ogParams.set("text", reviewText);
+        if (focusedReview.stars) ogParams.set("stars", String(focusedReview.stars));
+        ogParams.set("storeUid", store.storeUid);
+        ogParams.set("handle", "@theqahapp");
+        ogImageUrl =
+            `${URLS.CANONICAL_ORIGIN}/api/og/share-card?` +
+            ogParams.toString().replace(/\+/g, "%20");
+    }
+
     // Canonical must point to the route the user is actually on. The certificate
     // route (where `jsonLd` is injected) is a distinct, indexable URL — not a
     // duplicate of /reviews. Pointing both routes at /reviews caused
@@ -398,6 +435,18 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
                 <meta property="og:description" content={pageDesc} />
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content={canonicalUrl} />
+                {ogImageUrl && (
+                    <>
+                        <meta property="og:image" content={ogImageUrl} />
+                        <meta property="og:image:width" content="1080" />
+                        <meta property="og:image:height" content="1080" />
+                        <meta name="twitter:card" content="summary_large_image" />
+                        <meta name="twitter:image" content={ogImageUrl} />
+                        <meta name="twitter:title" content={pageTitle} />
+                        <meta name="twitter:description" content={pageDesc} />
+                        <meta name="twitter:site" content="@theqahapp" />
+                    </>
+                )}
                 <meta name="robots" content={shouldIndex ? "index, follow" : "noindex, follow"} />
                 {jsonLd && (
                     <>
