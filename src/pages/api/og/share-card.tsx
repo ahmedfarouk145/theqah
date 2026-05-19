@@ -88,11 +88,20 @@ export default async function handler(req: NextRequest) {
     /* font fetch failed — ImageResponse will fall back to system font */
   }
 
-  // Absolute URL for the brand logo. Using the same logo file the
-  // widget already pulls from prevents an extra asset round-trip when
-  // the OG image is cached at the edge.
-  const origin = url.origin;
-  const brandLogo = `${origin}/widgets/logo.png?v=3`;
+  // Absolute production URL for the brand logo. We hardcode www.theqah.com.sa
+  // rather than url.origin so that Vercel preview deployments (which are
+  // SSO-gated and return HTML 401 pages for asset paths) still get a real
+  // PNG to embed. Production prod URL is publicly reachable.
+  const brandLogo = `https://www.theqah.com.sa/widgets/logo.png?v=3`;
+
+  // Pre-compose every multi-fragment string so each <div> in the JSX
+  // contains exactly one text child. Satori (the @vercel/og renderer)
+  // rejects divs with multiple children unless they have an explicit
+  // `display: flex`; pre-composing avoids the issue entirely.
+  const brandCaption = `VERIFIED · ${handle}`;
+  const certText = cert ? `CERT · ${cert}` : '';
+  const reviewQuote = review ? `"${review}"` : '';
+  const footerSubLine = `تقييم موثق · تم التحقق من الشراء${product ? ` · ${product}` : ''}`;
 
   return new ImageResponse(
     (
@@ -160,7 +169,7 @@ export default async function handler(req: NextRequest) {
                   letterSpacing: '0.18em',
                 }}
               >
-                VERIFIED · {handle}
+                {brandCaption}
               </div>
             </div>
           </div>
@@ -177,7 +186,7 @@ export default async function handler(req: NextRequest) {
                 display: 'flex',
               }}
             >
-              CERT · {cert}
+              {certText}
             </div>
           )}
         </div>
@@ -236,7 +245,7 @@ export default async function handler(req: NextRequest) {
                 display: 'flex',
               }}
             >
-              {review ? `"${review}"` : ''}
+              {reviewQuote}
             </div>
           </div>
         </div>
@@ -257,8 +266,7 @@ export default async function handler(req: NextRequest) {
               {author}
             </div>
             <div style={{ fontSize: '18px', color: '#cbd5e1' }}>
-              تقييم موثق · تم التحقق من الشراء
-              {product ? ` · ${product}` : ''}
+              {footerSubLine}
             </div>
           </div>
           <div
