@@ -284,7 +284,13 @@ export default async function handler(req: NextRequest) {
             style={{
               display: 'flex',
               flexDirection: 'column',
-              direction: 'rtl',
+              alignItems: 'flex-end', // Yoga-level right-alignment — pushes
+                                       // stars row and text block to the
+                                       // column's right edge. textAlign on
+                                       // the inner text leaf doesn't take
+                                       // effect in Satori, but alignItems
+                                       // does because it's a flex layout
+                                       // property the layout engine respects.
               flex: 1,
             }}
           >
@@ -313,14 +319,15 @@ export default async function handler(req: NextRequest) {
               })}
             </div>
             <div
-              dir="rtl"
               style={{
                 fontSize: '40px',
                 fontWeight: 800,
                 lineHeight: 1.45,
                 color: '#f8fafc',
-                direction: 'rtl',
                 textAlign: 'right',
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'flex-end',
               }}
             >
               {reviewQuote}
