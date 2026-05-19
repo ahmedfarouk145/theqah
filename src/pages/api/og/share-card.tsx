@@ -322,12 +322,15 @@ export default async function handler(req: NextRequest) {
               style={{
                 fontSize: '40px',
                 fontWeight: 800,
-                lineHeight: 1.45,
+                lineHeight: 1.5,
                 color: '#f8fafc',
                 textAlign: 'right',
                 width: '100%',
-                display: 'flex',
-                justifyContent: 'flex-end',
+                // Satori treats `display: flex` text containers as if each
+                // word is a flex item — with `justifyContent: flex-end`
+                // that produced massive word-spacing. Plain block layout
+                // wraps text naturally and respects textAlign.
+                display: 'block',
               }}
             >
               {reviewQuote}
