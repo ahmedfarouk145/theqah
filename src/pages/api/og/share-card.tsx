@@ -179,6 +179,7 @@ export default async function handler(req: NextRequest) {
         <div
           style={{
             display: 'flex',
+            direction: 'rtl',
             justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: '40px',
@@ -235,10 +236,16 @@ export default async function handler(req: NextRequest) {
           )}
         </div>
 
-        {/* Body: product image + review block side-by-side */}
+        {/* Body: product image + review block side-by-side.
+            `direction: rtl` is repeated on every nested flex container so
+            children lay out right-to-left as Arabic readers expect. The
+            inline `dir="rtl"` HTML attr is for the text-bearing leaf, since
+            Satori's bidi algorithm anchors on dir for paragraph-level
+            line alignment (right-aligns wrapped lines). */}
         <div
           style={{
             display: 'flex',
+            direction: 'rtl',
             gap: '36px',
             alignItems: 'center',
             flex: 1,
@@ -269,7 +276,14 @@ export default async function handler(req: NextRequest) {
               />
             </div>
           ) : null}
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              direction: 'rtl',
+              flex: 1,
+            }}
+          >
             <div
               style={{
                 display: 'flex',
@@ -295,12 +309,14 @@ export default async function handler(req: NextRequest) {
               })}
             </div>
             <div
+              dir="rtl"
               style={{
                 fontSize: '40px',
                 fontWeight: 800,
                 lineHeight: 1.45,
                 color: '#f8fafc',
-                display: 'flex',
+                direction: 'rtl',
+                textAlign: 'right',
               }}
             >
               {reviewQuote}
@@ -312,6 +328,7 @@ export default async function handler(req: NextRequest) {
         <div
           style={{
             display: 'flex',
+            direction: 'rtl',
             justifyContent: 'space-between',
             alignItems: 'center',
             paddingTop: '32px',
