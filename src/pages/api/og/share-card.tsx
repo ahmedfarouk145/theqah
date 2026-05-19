@@ -28,6 +28,39 @@ const GOLD_2 = '#d9b879';
 const GOLD_4 = '#8a6d3b';
 const GOLD_5 = '#fff8e1';
 
+// Fetches an image and returns a data: URI. We do this ourselves
+// rather than let Satori fetch the URL directly because Satori's
+// image loader is fragile — it throws "s is not iterable" on certain
+// hosts and produces "Unsupported image type: unknown" if a CDN
+// returns the bytes with a quirky content-type. By pre-fetching and
+// inlining as base64 we bypass Satori's loader entirely.
+async function fetchImageAsDataUri(rawUrl: string): Promise<string | null> {
+  if (!rawUrl) return null;
+  // Strip any whitespace that may have been injected by URL paste / log
+  // truncation — the actual asset never contains whitespace in its path.
+  const clean = rawUrl.replace(/\s+/g, '').trim();
+  if (!/^https?:\/\//i.test(clean)) return null;
+  try {
+    const r = await fetch(clean, {
+      // Some CDNs (incl. Salla) gate hotlinking on a plausible UA;
+      // a desktop Chrome UA gets us a normal image response.
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      },
+    });
+    if (!r.ok) return null;
+    const ct = (r.headers.get('content-type') || 'image/png').split(';')[0].trim();
+    const buf = await r.arrayBuffer();
+    // Buffer is available in modern Edge runtime on Vercel.
+    const b64 = Buffer.from(buf).toString('base64');
+    return `data:${ct};base64,${b64}`;
+  } catch {
+    return null;
+  }
+}
+
 async function loadCairo(weight: number): Promise<ArrayBuffer> {
   const cssUrl = `https://fonts.googleapis.com/css2?family=Cairo:wght@${weight}&display=swap`;
   const css = await fetch(cssUrl, {
@@ -87,11 +120,15 @@ export default async function handler(req: NextRequest) {
     /* font fetch failed — ImageResponse will fall back to system font */
   }
 
-  // Absolute production URL for the brand logo. We hardcode www.theqah.com.sa
-  // rather than url.origin so that Vercel preview deployments (which are
-  // SSO-gated and return HTML 401 pages for asset paths) still get a real
-  // PNG to embed. Production prod URL is publicly reachable.
-  const brandLogo = `https://www.theqah.com.sa/widgets/logo.png?v=3`;
+  // Absolute production URL for the brand logo + the product image
+  // passed in via query. Both get pre-fetched server-side and inlined
+  // as base64 data URIs so Satori never has to make outbound image
+  // requests of its own.
+  const brandLogoRemote = `https://www.theqah.com.sa/widgets/logo.png?v=3`;
+  const [brandLogo, productImgDataUri] = await Promise.all([
+    fetchImageAsDataUri(brandLogoRemote),
+    fetchImageAsDataUri(productImg),
+  ]);
 
   // Pre-compose every multi-fragment string so each <div> in the JSX
   // contains exactly one text child. Satori (the @vercel/og renderer)
@@ -199,7 +236,7 @@ export default async function handler(req: NextRequest) {
             flex: 1,
           }}
         >
-          {productImg ? (
+          {productImgDataUri ? (
             <div
               style={{
                 width: '340px',
@@ -214,8 +251,9 @@ export default async function handler(req: NextRequest) {
                 boxShadow: 'inset 0 0 0 2px rgba(232,212,160,0.4)',
               }}
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={productImg}
+                src={productImgDataUri}
                 alt=""
                 width={300}
                 height={300}
