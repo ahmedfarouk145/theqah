@@ -66,6 +66,51 @@ export class ReviewRepository extends BaseRepository<Review> {
     }
 
     /**
+     * Find which page (1-indexed) of `findVerifiedByStore` contains the
+     * review with `targetReviewId`. Returns null if the review doesn't
+     * exist or isn't verified/approved for this store.
+     *
+     * Used by the public `/api/public/store-profile` endpoint so that
+     * deep-link share URLs (e.g. `/reviews?review=X`) can land on the
+     * page that actually contains the focused review — otherwise the
+     * SSR would always fetch page 1 and miss reviews further down.
+     *
+     * Cost: 1 doc read + 1 COUNT aggregation. The aggregation matches
+     * the implicit `__name__` ordering used by findVerifiedByStore so
+     * indexes stay consistent.
+     */
+    async findVerifiedReviewPage(
+        storeUid: string,
+        targetReviewId: string,
+        pageSize: number,
+    ): Promise<number | null> {
+        if (pageSize <= 0) return null;
+        const { dbAdmin } = await import('@/lib/firebaseAdmin');
+        const { FieldPath } = await import('firebase-admin/firestore');
+        const db = dbAdmin();
+        const targetRef = db.collection(this.collectionName).doc(targetReviewId);
+        const targetDoc = await targetRef.get();
+        if (!targetDoc.exists) return null;
+        const data = targetDoc.data() as Record<string, unknown> | undefined;
+        if (!data) return null;
+        // Only count if the target review actually belongs to this
+        // store's verified+approved set; otherwise the page number we'd
+        // return would be meaningless.
+        if (data.storeUid !== storeUid || data.verified !== true || data.status !== 'approved') {
+            return null;
+        }
+        const beforeQuery = db.collection(this.collectionName)
+            .where('storeUid', '==', storeUid)
+            .where('verified', '==', true)
+            .where('status', '==', 'approved')
+            .orderBy(FieldPath.documentId())
+            .endBefore(targetDoc);
+        const countSnap = await beforeQuery.count().get();
+        const index = countSnap.data().count;
+        return Math.floor(index / pageSize) + 1;
+    }
+
+    /**
      * Find the best published 5-star customer reviews across ALL stores
      * (independent of whether the store reviewed the app itself on Salla).
      * Used by the landing page's "real customer reviews" marquee.

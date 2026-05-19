@@ -92,7 +92,14 @@ export async function fetchStoreReviewsProps(
 
     try {
         const base = process.env.NEXT_PUBLIC_BASE_URL?.trim() || `http://localhost:${process.env.PORT || 3000}`;
-        const url = `${base}/api/public/store-profile?storeUid=${encodeURIComponent(storeUid)}&page=${pageNum}&pageSize=30`;
+        // When a deep-link includes `?review=X` (share-link traffic),
+        // forward it to the API as `focusReview=X` so the server lands
+        // on the page that actually contains that review. The API
+        // ignores `focusReview` if an explicit `?page=N` is also given.
+        const focusReviewParam = focusedReviewId
+            ? `&focusReview=${encodeURIComponent(focusedReviewId)}`
+            : '';
+        const url = `${base}/api/public/store-profile?storeUid=${encodeURIComponent(storeUid)}&page=${pageNum}&pageSize=30${focusReviewParam}`;
         const res = await fetch(url, { headers: { "x-internal": "1" } });
 
         if (!res.ok) {

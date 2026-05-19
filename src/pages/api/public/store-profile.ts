@@ -38,8 +38,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // verified reviews. pageSize is clamped to 100 to bound payload.
         const pageRaw = parseInt(String(req.query.page ?? '1'), 10);
         const pageSizeRaw = parseInt(String(req.query.pageSize ?? '30'), 10);
-        const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+        const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
         const pageSize = Math.min(100, Math.max(1, Number.isFinite(pageSizeRaw) ? pageSizeRaw : 30));
+
+        // Focus-review support: when a share-link includes `?review=X`,
+        // the SSR fetcher passes `focusReview=X` here so we land on the
+        // page that actually contains that review. Without this, page 1
+        // would be served and the focused review would land in the
+        // empty-state branch. The explicit `?page=N` query always wins
+        // over the focus lookup.
+        const focusReviewRaw = typeof req.query.focusReview === 'string' ? req.query.focusReview.trim() : '';
+        const explicitPageGiven = typeof req.query.page === 'string' && req.query.page.trim().length > 0;
+        let focusedPage: number | null = null;
+        if (focusReviewRaw && !explicitPageGiven) {
+            try {
+                focusedPage = await reviewService.findVerifiedReviewPage(storeUid, focusReviewRaw, pageSize);
+            } catch (err) {
+                // If the page-lookup fails (missing composite index, doc
+                // gone, etc.), fall back to page 1 rather than 500-ing
+                // the whole request. The empty-state branch on the
+                // component side is a softer failure mode.
+                console.error('[store-profile] findVerifiedReviewPage failed:', err);
+                focusedPage = null;
+            }
+        }
+        const page = focusedPage ?? requestedPage;
         const offset = (page - 1) * pageSize;
 
         // Fetch store info + this page's verified reviews + true total

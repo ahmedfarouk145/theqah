@@ -119,6 +119,29 @@ export class ReviewService {
     }
 
     /**
+     * Find which 1-indexed page of `getVerifiedReviews` contains the
+     * review with `targetReviewId`. Returns null if the review doesn't
+     * exist or doesn't belong to this store's verified set. Used by the
+     * public store-profile endpoint to make deep-link share URLs land
+     * on the right page instead of always page 1.
+     */
+    async findVerifiedReviewPage(
+        storeUid: string,
+        targetReviewId: string,
+        pageSize: number,
+    ): Promise<number | null> {
+        if (pageSize <= 0) return null;
+        if (isZidStoreUid(storeUid)) {
+            // Zid path: small N, fetch all IDs and find index in memory.
+            const all = await this.zidReviewRepo.findVerifiedByStore(storeUid);
+            const idx = all.findIndex((r) => (r.id || r.reviewId) === targetReviewId);
+            if (idx < 0) return null;
+            return Math.floor(idx / pageSize) + 1;
+        }
+        return this.reviewRepo.findVerifiedReviewPage(storeUid, targetReviewId, pageSize);
+    }
+
+    /**
      * True total of verified reviews via Firestore COUNT aggregation
      * — does not read documents. Use for badge counts so the number
      * stays accurate even when getVerifiedReviews is page-limited.
