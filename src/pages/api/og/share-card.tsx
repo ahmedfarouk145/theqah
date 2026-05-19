@@ -76,7 +76,6 @@ export default async function handler(req: NextRequest) {
   const stars = Math.max(1, Math.min(5, parseInt(sp.get('stars') || '5', 10) || 5));
 
   const cert = storeUid ? certCode(storeUid) : '';
-  const starStr = '★'.repeat(stars) + '☆'.repeat(5 - stars);
 
   // Load the Cairo Arabic font for both the regular and bold weights.
   // Parallel fetch to keep cold-start fast.
@@ -227,14 +226,27 @@ export default async function handler(req: NextRequest) {
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
             <div
               style={{
-                fontSize: '74px',
-                color: GOLD_1,
-                letterSpacing: '8px',
-                marginBottom: '24px',
                 display: 'flex',
+                gap: '10px',
+                marginBottom: '28px',
               }}
             >
-              {starStr}
+              {Array.from({ length: 5 }, (_, i) => {
+                const filled = i < stars;
+                return (
+                  <svg
+                    key={i}
+                    width="56"
+                    height="56"
+                    viewBox="0 0 24 24"
+                    fill={filled ? GOLD_1 : 'rgba(232,212,160,0.25)'}
+                    stroke={GOLD_1}
+                    strokeWidth={filled ? 0 : 1.5}
+                  >
+                    <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+                  </svg>
+                );
+              })}
             </div>
             <div
               style={{
