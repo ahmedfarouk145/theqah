@@ -61,23 +61,26 @@ async function fetchImageAsDataUri(rawUrl: string): Promise<string | null> {
   }
 }
 
-async function loadCairo(weight: number): Promise<ArrayBuffer> {
+// Load all Cairo subset font files for a given weight. Google Fonts
+// splits the font into separate woff2 files by Unicode range (arabic,
+// latin, latin-ext) so the browser only fetches what each page needs.
+// For server-side OG rendering we need ALL of them — otherwise Satori
+// hits a character outside the loaded subset (e.g. the Latin · MIDDLE
+// DOT used between footer segments) and tries to download a "dynamic
+// font" from Google which returns 400, leaving the glyph broken.
+async function loadCairoSubsets(weight: number): Promise<ArrayBuffer[]> {
   const cssUrl = `https://fonts.googleapis.com/css2?family=Cairo:wght@${weight}&display=swap`;
   const css = await fetch(cssUrl, {
     headers: {
-      // Sending a desktop UA gets us TTF/woff2 served from gstatic.
       'User-Agent':
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
     },
   }).then((r) => r.text());
-  // Pick the Arabic subset block, then the woff2 URL inside it. The
-  // file order in the response is: arabic, latin-ext, latin. We want
-  // arabic for the Arabic glyphs.
-  const arabicBlock = css.match(/\/\* arabic \*\/[\s\S]+?src: url\((.+?)\)/);
-  const fontUrl = arabicBlock?.[1] || css.match(/src: url\((.+?)\)/)?.[1];
-  if (!fontUrl) throw new Error('Cairo font URL not found');
-  const buf = await fetch(fontUrl).then((r) => r.arrayBuffer());
-  return buf;
+  // Extract every `src: url(...)` in the CSS — one per @font-face block.
+  const urls = Array.from(css.matchAll(/src:\s*url\((https?:\/\/[^)]+)\)/g)).map((m) => m[1]);
+  if (urls.length === 0) throw new Error('Cairo font URLs not found');
+  const buffers = await Promise.all(urls.map((u) => fetch(u).then((r) => r.arrayBuffer())));
+  return buffers;
 }
 
 function trim(s: string | null, max: number): string {
@@ -110,12 +113,17 @@ export default async function handler(req: NextRequest) {
 
   const cert = storeUid ? certCode(storeUid) : '';
 
-  // Load the Cairo Arabic font for both the regular and bold weights.
-  // Parallel fetch to keep cold-start fast.
-  let cairoRegular: ArrayBuffer | null = null;
-  let cairoBold: ArrayBuffer | null = null;
+  // Load Cairo at two weights, each fanning out to all subsets (arabic,
+  // latin, latin-ext) so Satori has glyphs for every character we render
+  // — Arabic letters, Latin letters in @theqahapp, and Latin punctuation
+  // like · that gets used as a footer separator.
+  let cairoRegularBufs: ArrayBuffer[] = [];
+  let cairoBoldBufs: ArrayBuffer[] = [];
   try {
-    [cairoRegular, cairoBold] = await Promise.all([loadCairo(600), loadCairo(900)]);
+    [cairoRegularBufs, cairoBoldBufs] = await Promise.all([
+      loadCairoSubsets(600),
+      loadCairoSubsets(900),
+    ]);
   } catch {
     /* font fetch failed — ImageResponse will fall back to system font */
   }
@@ -348,12 +356,18 @@ export default async function handler(req: NextRequest) {
       width: 1080,
       height: 1080,
       fonts: [
-        ...(cairoRegular
-          ? [{ name: 'Cairo', data: cairoRegular, weight: 600 as const, style: 'normal' as const }]
-          : []),
-        ...(cairoBold
-          ? [{ name: 'Cairo', data: cairoBold, weight: 900 as const, style: 'normal' as const }]
-          : []),
+        ...cairoRegularBufs.map((data) => ({
+          name: 'Cairo',
+          data,
+          weight: 600 as const,
+          style: 'normal' as const,
+        })),
+        ...cairoBoldBufs.map((data) => ({
+          name: 'Cairo',
+          data,
+          weight: 900 as const,
+          style: 'normal' as const,
+        })),
       ],
       // Allow the edge to cache this for 1 hour. Same params = same image.
       headers: {
