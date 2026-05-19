@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "4.1.0"; // V4.1: inline verified-buyer badge next to reviewer name (avoids flex-wrap drop)
+  const SCRIPT_VERSION = "4.2.0-beta"; // V4.2-beta: owner-only share button + per-review share modal (testing)
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -424,7 +424,13 @@
           .filter(r => r && r.sallaReviewId)
           .map(r => ({
             reviewId: r.reviewId ? String(r.reviewId) : null,
-            sallaReviewId: String(r.sallaReviewId)
+            sallaReviewId: String(r.sallaReviewId),
+            // Full data kept around so the owner-share button can build
+            // a populated share-card URL without re-fetching.
+            stars: Number(r.stars) || 0,
+            text: r.text || '',
+            authorName: r.authorName || r.author?.displayName || '',
+            productName: r.productName || '',
           }));
 
         G.verifiedReviews = verifiedReviews;
@@ -445,6 +451,274 @@
         });
       }
     } catch { /* silent */ }
+  }
+
+  // ——— Owner-only share feature (V4.2) ———
+  //
+  // The share button appears beside each verified review *only* for the
+  // store owner. Detection signal: a `?theqah_owner=1` URL query param
+  // (sticky via sessionStorage so it persists across in-store navigation
+  // without the merchant having to add the param to every page). Customers
+  // never see the button.
+  //
+  // Clicking the share button opens a modal with five options: X / Facebook
+  // / Instagram / TikTok / copy link. Each option uses share-card.tsx (a
+  // server-side @vercel/og endpoint) to render the 1080×1080 PNG.
+  function isOwnerMode() {
+    try {
+      const qp = new URLSearchParams(location.search);
+      if (qp.get('theqah_owner') === '1') {
+        sessionStorage.setItem('theqah:owner', '1');
+        return true;
+      }
+      if (qp.get('theqah_owner') === '0') {
+        sessionStorage.removeItem('theqah:owner');
+        return false;
+      }
+      return sessionStorage.getItem('theqah:owner') === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function extractPageProductImage() {
+    try {
+      const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+      for (const s of scripts) {
+        try {
+          const data = JSON.parse(s.textContent || '');
+          const arr = Array.isArray(data) ? data : [data];
+          for (const node of arr) {
+            const t = node?.['@type'];
+            const isProduct = t === 'Product' || (Array.isArray(t) && t.includes('Product'));
+            if (isProduct && node?.image) {
+              const img = Array.isArray(node.image) ? node.image[0] : node.image;
+              if (typeof img === 'string') return img;
+              if (img?.url) return img.url;
+            }
+          }
+        } catch { /* ignore one invalid block */ }
+      }
+    } catch { /* ignore */ }
+    try {
+      const og = document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+      if (og) return og;
+    } catch { /* ignore */ }
+    return '';
+  }
+
+  function buildShareCardUrl(payload) {
+    const params = new URLSearchParams();
+    if (payload.store) params.set('store', payload.store);
+    if (payload.storeUid) params.set('storeUid', payload.storeUid);
+    if (payload.author) params.set('author', payload.author);
+    if (payload.text) params.set('text', payload.text);
+    if (payload.product) params.set('product', payload.product);
+    if (payload.productImg) params.set('productImg', payload.productImg);
+    if (payload.stars) params.set('stars', String(payload.stars));
+    params.set('handle', '@theqahapp');
+    return `${SCRIPT_ORIGIN}/api/og/share-card?${params.toString()}`;
+  }
+
+  function buildShareText(payload, urlForCaption) {
+    const stars = '⭐'.repeat(Math.max(1, Math.min(5, payload.stars || 5)));
+    const excerpt = (payload.text || '').length > 140
+      ? (payload.text || '').slice(0, 137) + '…'
+      : (payload.text || '');
+    const lines = [
+      `${stars} تقييم موثق من ${payload.store || 'متجرنا'}`,
+      '',
+      excerpt ? `"${excerpt}"` : '',
+      payload.author ? `— ${payload.author}` : '',
+      '',
+      `مدقق بواسطة @theqahapp`,
+    ].filter(Boolean);
+    if (urlForCaption) lines.push(urlForCaption);
+    return lines.join('\n');
+  }
+
+  async function downloadShareCard(payload, filename) {
+    const cardUrl = buildShareCardUrl(payload);
+    const res = await fetch(cardUrl);
+    if (!res.ok) throw new Error('share-card fetch failed: ' + res.status);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'theqah-review.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function copyToClipboard(text) {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch { /* fall through */ }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // Inline SVG icons returned as strings — fed to h() via the `html`
+  // attr key, the same pattern the rest of this widget uses for icons.
+  const SVG_X = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2H21l-6.52 7.45L22 22h-6.84l-4.74-6.18L4.8 22H2.04l6.98-7.97L2 2h6.96l4.28 5.66L18.244 2Zm-2.4 18.2h1.86L7.27 3.7H5.32l10.52 16.5Z"/></svg>';
+  const SVG_FB = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.51 1.5-3.9 3.78-3.9 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.77l-.44 2.9h-2.33v6.98A10 10 0 0 0 22 12Z"/></svg>';
+  const SVG_IG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.72 0 3.06.01 4.12.06 1.07.05 1.79.22 2.43.46.66.26 1.22.6 1.77 1.16.56.55.9 1.11 1.16 1.77.25.64.42 1.37.46 2.43.05 1.07.06 1.4.06 4.12s-.01 3.06-.06 4.12c-.05 1.07-.22 1.79-.46 2.43-.26.66-.6 1.22-1.16 1.77-.55.56-1.11.9-1.77 1.16-.64.25-1.37.42-2.43.46-1.07.05-1.4.06-4.12.06s-3.06-.01-4.12-.06c-1.07-.05-1.79-.22-2.43-.46a4.92 4.92 0 0 1-1.77-1.16 4.92 4.92 0 0 1-1.16-1.77c-.25-.64-.42-1.37-.46-2.43C2.01 15.06 2 14.72 2 12s.01-3.06.06-4.12c.05-1.07.22-1.79.46-2.43.26-.66.6-1.22 1.16-1.77.55-.56 1.11-.9 1.77-1.16.64-.25 1.37-.42 2.43-.46C8.94 2.01 9.28 2 12 2Zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 1.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Zm5.25-3.05a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z"/></svg>';
+  const SVG_TT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.3 7.6a6.66 6.66 0 0 1-3.94-1.27V15.4a5.6 5.6 0 1 1-5.6-5.6c.18 0 .36.01.54.03v2.4a3.2 3.2 0 1 0 2.66 3.16V2h2.4a4.66 4.66 0 0 0 3.94 4.6v2.4-1.4Z"/></svg>';
+  const SVG_COPY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"/></svg>';
+  const SVG_SHARE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>';
+
+  function makePlatformButton(platform, label, desc, iconClass, svgHtml) {
+    const ico = h('span', { class: 'ico ' + iconClass, html: svgHtml });
+    const info = h('span', { style: 'flex:1;' }, [
+      h('b', {}, label),
+      h('span', {}, desc),
+    ]);
+    const btn = h('button', { class: 'theqah-share-pbtn', 'data-platform': platform, type: 'button' }, [ico, info]);
+    return btn;
+  }
+
+  let shareModalInjected = false;
+  function ensureShareModal() {
+    if (shareModalInjected) return;
+    shareModalInjected = true;
+    const style = h('style', {
+      id: 'theqah-share-modal-style',
+      html: `
+        .theqah-share-back { position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:2147483646; display:none; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(3px); font-family:'Cairo',system-ui,sans-serif; direction:rtl; }
+        .theqah-share-back.open { display:flex; }
+        .theqah-share-modal { background:white; border-radius:18px; max-width:460px; width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px -10px rgba(15,23,42,0.4); color:#0f172a; }
+        .theqah-share-h { padding:18px 22px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; }
+        .theqah-share-h h3 { margin:0; font-size:16px; font-weight:900; }
+        .theqah-share-close { background:none; border:none; cursor:pointer; font-size:24px; color:#64748b; line-height:1; padding:4px 8px; }
+        .theqah-share-b { padding:18px 22px; }
+        .theqah-share-intro { font-size:12px; color:#64748b; margin:0 0 14px; line-height:1.7; }
+        .theqah-share-pbtn { width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:12px; border:1px solid #e2e8f0; background:white; margin-bottom:8px; cursor:pointer; font-family:inherit; text-align:start; transition:all 0.15s ease; color:#0f172a; }
+        .theqah-share-pbtn:hover { border-color:#2a3860; background:#fafbff; }
+        .theqah-share-pbtn .ico { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:white; flex-shrink:0; }
+        .theqah-share-pbtn .ico svg { width:18px; height:18px; }
+        .ico-x { background:#000; }
+        .ico-fb { background:#1877f2; }
+        .ico-ig { background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888); }
+        .ico-tt { background:linear-gradient(135deg,#25f4ee,#000,#fe2c55); }
+        .ico-copy { background:#2a3860; }
+        .theqah-share-pbtn b { font-size:14px; font-weight:800; margin:0 0 2px; display:block; }
+        .theqah-share-pbtn > span > span { font-size:11.5px; color:#64748b; line-height:1.5; display:block; }
+        .theqah-share-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#0f172a; color:white; padding:12px 20px; border-radius:10px; font-size:13px; font-weight:700; z-index:2147483647; opacity:0; transition:opacity 0.2s ease; font-family:'Cairo',system-ui,sans-serif; }
+        .theqah-share-toast.show { opacity:1; }
+        .theqah-owner-share-btn { display:inline-flex; align-items:center; gap:4px; background:white; border:1.5px solid #b89968; color:#8a6d3b; padding:5px 9px; border-radius:999px; font-size:11px; font-weight:800; cursor:pointer; font-family:'Cairo',system-ui,sans-serif; margin-inline-start:6px; flex-shrink:0; transition:transform 0.15s ease, box-shadow 0.15s ease; box-shadow:0 2px 6px -2px rgba(184,153,104,0.4); }
+        .theqah-owner-share-btn:hover { transform:translateY(-1px); box-shadow:0 4px 10px -2px rgba(184,153,104,0.6); }
+        .theqah-owner-share-btn svg { width:12px; height:12px; }
+      `,
+    });
+    document.head.appendChild(style);
+
+    const reviewerSpan = h('span', { id: 'theqah-share-reviewer', style: 'font-weight:700;color:#64748b;' });
+    const heading = h('h3', {}, ['مشاركة تقييم ', reviewerSpan]);
+    const closeBtn = h('button', { class: 'theqah-share-close', id: 'theqah-share-close', 'aria-label': 'إغلاق' }, '×');
+    const headerBar = h('div', { class: 'theqah-share-h' }, [heading, closeBtn]);
+
+    const intro = h('p', { class: 'theqah-share-intro' }, [
+      'اختر المنصة. سيتم فتح نافذة جاهزة بالنص والصورة وذكر ',
+      h('b', {}, '@theqahapp'),
+      '.',
+    ]);
+
+    const buttons = [
+      makePlatformButton('x', 'X (تويتر)', 'تغريدة جاهزة + رابط + صورة معاينة', 'ico-x', SVG_X),
+      makePlatformButton('fb', 'Facebook', 'منشور مع رابط ومعاينة', 'ico-fb', SVG_FB),
+      makePlatformButton('ig', 'Instagram', 'صورة 1080×1080 تنزيل + نص للنسخ', 'ico-ig', SVG_IG),
+      makePlatformButton('tt', 'TikTok', 'نفس الصورة + نص جاهز للنسخ', 'ico-tt', SVG_TT),
+      makePlatformButton('copy', 'نسخ الرابط فقط', 'للصق في WhatsApp، Snapchat، أو أي مكان', 'ico-copy', SVG_COPY),
+    ];
+
+    const body = h('div', { class: 'theqah-share-b' }, [intro, ...buttons]);
+    const modal = h('div', { class: 'theqah-share-modal', role: 'dialog', 'aria-label': 'مشاركة التقييم' }, [headerBar, body]);
+    const back = h('div', { class: 'theqah-share-back', id: 'theqah-share-back' }, [modal]);
+    document.body.appendChild(back);
+
+    const close = () => back.classList.remove('open');
+    closeBtn.addEventListener('click', close);
+    back.addEventListener('click', (e) => { if (e.target === back) close(); });
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const platform = btn.getAttribute('data-platform');
+        const payload = G._shareCurrent || {};
+        const reviewUrl = payload.reviewUrl || SCRIPT_ORIGIN;
+        const text = buildShareText(payload, platform === 'x' ? reviewUrl : '');
+
+        if (platform === 'x') {
+          const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+          window.open(intent, '_blank', 'noopener');
+        } else if (platform === 'fb') {
+          const intent = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(reviewUrl)}`;
+          window.open(intent, '_blank', 'noopener');
+        } else if (platform === 'ig' || platform === 'tt') {
+          const caption = buildShareText(payload, 'theqah.com.sa');
+          copyToClipboard(caption);
+          downloadShareCard(payload, `theqah-${platform}-${payload.reviewId || 'review'}.png`)
+            .then(() => showToast(`تم تنزيل الصورة. النص منسوخ — الصقه في ${platform === 'ig' ? 'Instagram' : 'TikTok'}.`))
+            .catch(() => showToast('تعذّر تنزيل الصورة. حاول مرة أخرى.'));
+        } else if (platform === 'copy') {
+          copyToClipboard(reviewUrl).then((ok) => {
+            showToast(ok ? 'تم نسخ الرابط ✓' : 'تعذّر نسخ الرابط.');
+          });
+        }
+        close();
+      });
+    });
+  }
+
+  function showToast(msg) {
+    let t = document.querySelector('.theqah-share-toast');
+    if (!t) {
+      t = h('div', { class: 'theqah-share-toast' });
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  function openShareModalFor(payload) {
+    ensureShareModal();
+    G._shareCurrent = payload;
+    const back = document.getElementById('theqah-share-back');
+    if (!back) return;
+    const reviewerEl = back.querySelector('#theqah-share-reviewer');
+    if (reviewerEl) reviewerEl.textContent = payload.author ? `— ${payload.author}` : '';
+    back.classList.add('open');
+  }
+
+  function createShareButtonElement(payload) {
+    const btn = h('button', {
+      class: 'theqah-owner-share-btn',
+      type: 'button',
+      'aria-label': 'مشاركة هذا التقييم',
+      title: 'يظهر لك فقط (صاحب المتجر) — مشاركة هذا التقييم',
+      html: SVG_SHARE + '<span>مشاركة</span>',
+    });
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openShareModalFor(payload);
+    });
+    return btn;
   }
 
   // ——— Add logos to Salla reviews ———
@@ -668,7 +942,29 @@
           insertPoint.appendChild(logoLink);
         }
 
-
+        // Owner-only share button — injected as a sibling of the badge.
+        // Hidden for everyone except the store owner (URL-trigger detected
+        // via isOwnerMode()). The full payload built here is what the
+        // share modal hands off to the OG share-card endpoint.
+        if (isOwnerMode() && !el.querySelector('.theqah-owner-share-btn')) {
+          const verifiedFull = (verifiedReviews || []).find(
+            (v) => String(v.sallaReviewId) === String(domReviewId),
+          ) || {};
+          const sharePayload = {
+            reviewId: publicReviewId || domReviewId,
+            sallaReviewId: domReviewId,
+            stars: verifiedFull.stars || 5,
+            text: verifiedFull.text || '',
+            author: verifiedFull.authorName || '',
+            product: verifiedFull.productName || (document.querySelector('h1')?.textContent || '').trim(),
+            productImg: G._pageProductImg || (G._pageProductImg = extractPageProductImage()),
+            store: G.storeProfile?.storeName || '',
+            storeUid: resolvedStoreUid,
+            reviewUrl: resolvedStoreUid ? buildStoreReviewsUrl(resolvedStoreUid, publicReviewId) : SCRIPT_ORIGIN,
+          };
+          const shareBtn = createShareButtonElement(sharePayload);
+          logoLink.insertAdjacentElement('afterend', shareBtn);
+        }
       });
     });
   }
