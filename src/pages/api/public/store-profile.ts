@@ -43,14 +43,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Focus-review support: when a share-link includes `?review=X`,
         // the SSR fetcher passes `focusReview=X` here so we land on the
-        // page that actually contains that review. Without this, page 1
-        // would be served and the focused review would land in the
-        // empty-state branch. The explicit `?page=N` query always wins
-        // over the focus lookup.
+        // page that actually contains that review. focusReview is only
+        // honoured when the requested page is 1 (the default); if the
+        // user has explicitly paginated to page 2+, respect that and
+        // ignore focusReview. Note: SSR always sends `page=1` even when
+        // the user URL has no `?page=` — so we can't gate on "page param
+        // missing", we have to gate on the actual page *value* being 1.
         const focusReviewRaw = typeof req.query.focusReview === 'string' ? req.query.focusReview.trim() : '';
-        const explicitPageGiven = typeof req.query.page === 'string' && req.query.page.trim().length > 0;
         let focusedPage: number | null = null;
-        if (focusReviewRaw && !explicitPageGiven) {
+        if (focusReviewRaw && requestedPage === 1) {
             try {
                 focusedPage = await reviewService.findVerifiedReviewPage(storeUid, focusReviewRaw, pageSize);
             } catch (err) {
