@@ -548,18 +548,34 @@
     return `${SCRIPT_ORIGIN}/api/og/share-card?${params.toString()}`;
   }
 
+  // Build the share-post text. Format the merchant requested:
+  //   ⭐⭐⭐⭐⭐ تقييم على {product or store}
+  //
+  //   "{review text}"
+  //   — {author}
+  //
+  //   مدقق بواسطة @theqahapp
+  //   {product URL on the live store}
+  //
+  // The product URL (location.href of the page the share happened on) is
+  // appended as the last line so X/Facebook crawlers use IT as the
+  // link-preview source — that surfaces the product on the merchant's
+  // own Salla page instead of theqah.com.sa.
   function buildShareText(payload, urlForCaption) {
     const stars = '⭐'.repeat(Math.max(1, Math.min(5, payload.stars || 5)));
-    const excerpt = (payload.text || '').length > 140
-      ? (payload.text || '').slice(0, 137) + '…'
+    const excerpt = (payload.text || '').length > 200
+      ? (payload.text || '').slice(0, 197) + '…'
       : (payload.text || '');
+    const headline = payload.product
+      ? `${stars} تقييم على ${payload.product}`
+      : `${stars} تقييم موثق من ${payload.store || 'متجرنا'}`;
     const lines = [
-      `${stars} تقييم موثق من ${payload.store || 'متجرنا'}`,
+      headline,
       '',
       excerpt ? `"${excerpt}"` : '',
       payload.author ? `— ${payload.author}` : '',
       '',
-      `مدقق بواسطة @theqahapp`,
+      'مدقق بواسطة @theqahapp',
     ].filter(Boolean);
     if (urlForCaption) lines.push(urlForCaption);
     return lines.join('\n');
@@ -685,13 +701,25 @@
         const platform = btn.getAttribute('data-platform');
         const payload = G._shareCurrent || {};
         const reviewUrl = payload.reviewUrl || SCRIPT_ORIGIN;
-        const text = buildShareText(payload, platform === 'x' ? reviewUrl : '');
 
+        // X/Facebook posts use the merchant's actual PRODUCT URL (the
+        // page the share happened on) — that's what generates the
+        // link-preview card. The text contains review excerpt + author
+        // + @theqahapp mention.
+        const productUrl = payload.productUrl || reviewUrl;
         if (platform === 'x') {
+          // buildShareText already appends productUrl as the last line,
+          // so X parses it as the tweet's link → renders preview card
+          // from the Salla product page.
+          const text = buildShareText(payload, productUrl);
           const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
           window.open(intent, '_blank', 'noopener');
         } else if (platform === 'fb') {
-          const intent = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(reviewUrl)}`;
+          // Facebook sharer ignores any text we'd prefill — it only
+          // crawls the URL we hand it. Hand it the product URL so the
+          // Salla product page's OG preview (product image + name) is
+          // what shows in the share dialog.
+          const intent = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(productUrl)}`;
           window.open(intent, '_blank', 'noopener');
         } else if (platform === 'ig' || platform === 'tt') {
           const caption = buildShareText(payload, 'theqah.com.sa');
@@ -985,6 +1013,11 @@
             store: G.storeProfile?.storeName || '',
             storeLogo: extractPageStoreLogo(),
             storeUid: resolvedStoreUid,
+            // URL of the actual Salla product page — what X/Facebook
+            // crawl for the link preview card.
+            productUrl: location.href,
+            // URL of the public per-review page on theqah.com.sa — kept
+            // as a fallback for "Copy link" and as the IG/TT caption URL.
             reviewUrl: resolvedStoreUid ? buildStoreReviewsUrl(resolvedStoreUid, publicReviewId) : SCRIPT_ORIGIN,
           };
           const shareBtn = createShareButtonElement(sharePayload);
