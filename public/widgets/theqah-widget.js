@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "4.2.6"; // V4.2.6: 1080×1350 (4:5 IG/TikTok feed) share-card + safe-zone padding
+  const SCRIPT_VERSION = "4.3.0"; // V4.3.0: share button visible to ALL visitors (was owner-only)
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -854,7 +854,7 @@
       class: 'theqah-owner-share-btn',
       type: 'button',
       'aria-label': 'مشاركة هذا التقييم',
-      title: 'يظهر لك فقط (صاحب المتجر) — مشاركة هذا التقييم',
+      title: 'شارك هذا التقييم الموثق',
       html: SVG_SHARE + '<span>مشاركة</span>',
     });
     btn.addEventListener('click', (e) => {
@@ -1086,11 +1086,12 @@
           insertPoint.appendChild(logoLink);
         }
 
-        // Owner-only share button — injected as a sibling of the badge.
-        // Hidden for everyone except the store owner (URL-trigger detected
-        // via isOwnerMode()). The full payload built here is what the
-        // share modal hands off to the OG share-card endpoint.
-        if (isOwnerMode() && !el.querySelector('.theqah-owner-share-btn')) {
+        // Share button — injected as a sibling of the badge for EVERY
+        // verified review, visible to all visitors (customers + owner).
+        // Letting customers share verified reviews amplifies social
+        // proof: verified buyers sharing in their own networks is more
+        // credible than the merchant pushing it themselves.
+        if (!el.querySelector('.theqah-owner-share-btn')) {
           const verifiedFull = (verifiedReviews || []).find(
             (v) => String(v.sallaReviewId) === String(domReviewId),
           ) || {};
@@ -1115,7 +1116,6 @@
           };
           const shareBtn = createShareButtonElement(sharePayload);
           logoLink.insertAdjacentElement('afterend', shareBtn);
-          ensureOwnerModeBanner();
         }
       });
     });
