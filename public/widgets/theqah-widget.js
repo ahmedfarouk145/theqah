@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "4.2.4"; // V4.2.4: product-name headline + owner-mode TTL + visible owner banner
+  const SCRIPT_VERSION = "4.2.5"; // V4.2.5: removed Facebook from share modal (kept X / Instagram / TikTok / copy link)
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -744,7 +744,6 @@
 
     const buttons = [
       makePlatformButton('x', 'X (تويتر)', 'تغريدة جاهزة + رابط + صورة معاينة', 'ico-x', SVG_X),
-      makePlatformButton('fb', 'Facebook', 'منشور مع رابط ومعاينة', 'ico-fb', SVG_FB),
       makePlatformButton('ig', 'Instagram', 'صورة 1080×1080 تنزيل + نص للنسخ', 'ico-ig', SVG_IG),
       makePlatformButton('tt', 'TikTok', 'نفس الصورة + نص جاهز للنسخ', 'ico-tt', SVG_TT),
       makePlatformButton('copy', 'نسخ الرابط فقط', 'للصق في WhatsApp، Snapchat، أو أي مكان', 'ico-copy', SVG_COPY),
@@ -776,13 +775,6 @@
           // from the Salla product page.
           const text = buildShareText(payload, productUrl);
           const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-          window.open(intent, '_blank', 'noopener');
-        } else if (platform === 'fb') {
-          // Facebook sharer ignores any text we'd prefill — it only
-          // crawls the URL we hand it. Hand it the product URL so the
-          // Salla product page's OG preview (product image + name) is
-          // what shows in the share dialog.
-          const intent = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(productUrl)}`;
           window.open(intent, '_blank', 'noopener');
         } else if (platform === 'ig' || platform === 'tt') {
           const caption = buildShareText(payload, 'theqah.com.sa');
