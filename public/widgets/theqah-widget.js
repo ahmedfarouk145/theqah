@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "4.2.3"; // V4.2.3: SVG stars (Chromium font fix) + 'تقييم موثق بواسطة' transition pill
+  const SCRIPT_VERSION = "4.2.4"; // V4.2.4: product-name headline + owner-mode TTL + visible owner banner
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -464,21 +464,61 @@
   // Clicking the share button opens a modal with five options: X / Facebook
   // / Instagram / TikTok / copy link. Each option uses share-card.tsx (a
   // server-side @vercel/og endpoint) to render the 1080×1080 PNG.
+  // 30-minute sliding expiry on the owner-mode flag — if the merchant
+  // hasn't refreshed/navigated in 30 min, their browser tab is treated
+  // as a non-owner session so the share button stops appearing. Each
+  // navigation resets the timer.
+  const OWNER_TTL_MS = 30 * 60 * 1000;
+
   function isOwnerMode() {
     try {
       const qp = new URLSearchParams(location.search);
       if (qp.get('theqah_owner') === '1') {
-        sessionStorage.setItem('theqah:owner', '1');
+        sessionStorage.setItem('theqah:owner', String(Date.now()));
         return true;
       }
       if (qp.get('theqah_owner') === '0') {
         sessionStorage.removeItem('theqah:owner');
         return false;
       }
-      return sessionStorage.getItem('theqah:owner') === '1';
+      const stamp = sessionStorage.getItem('theqah:owner');
+      if (!stamp) return false;
+      const ts = Number(stamp);
+      if (!Number.isFinite(ts) || Date.now() - ts > OWNER_TTL_MS) {
+        sessionStorage.removeItem('theqah:owner');
+        return false;
+      }
+      // Refresh the timer on each check so active sessions stay active.
+      sessionStorage.setItem('theqah:owner', String(Date.now()));
+      return true;
     } catch {
       return false;
     }
+  }
+
+  // Show a small floating banner so the merchant always knows they're in
+  // owner-preview mode (and can click to exit). This makes it obvious
+  // the share button is invisible to customers — addresses the common
+  // worry "is the button showing up for everyone".
+  function ensureOwnerModeBanner() {
+    if (document.getElementById('theqah-owner-banner')) return;
+    const banner = h('div', { id: 'theqah-owner-banner' });
+    banner.style.cssText = [
+      'position:fixed', 'bottom:16px', 'inset-inline-start:16px', 'z-index:2147483645',
+      'background:#0a1020', 'color:#f0dcab', 'border:1.5px solid #8a6d3b',
+      'padding:8px 14px', 'border-radius:999px',
+      'font:800 12px/1 Cairo,system-ui,sans-serif', 'direction:rtl',
+      'box-shadow:0 8px 22px -6px rgba(0,0,0,0.5)', 'cursor:pointer',
+      'display:flex', 'align-items:center', 'gap:8px',
+    ].join(';');
+    banner.appendChild(document.createTextNode('وضع المعاينة - صاحب المتجر فقط · إغلاق ×'));
+    banner.title = 'هذا الزر مخفي عن العملاء. اضغط لإيقاف وضع المعاينة في هذا المتصفح.';
+    banner.addEventListener('click', () => {
+      try { sessionStorage.removeItem('theqah:owner'); } catch { /* ignore */ }
+      document.querySelectorAll('.theqah-owner-share-btn').forEach(b => b.remove());
+      banner.remove();
+    });
+    document.body.appendChild(banner);
   }
 
   function extractPageProductImage() {
@@ -573,9 +613,10 @@
     const excerpt = (payload.text || '').length > 200
       ? (payload.text || '').slice(0, 197) + '…'
       : (payload.text || '');
-    // Headline anchors on the STORE, not the product — per merchant
-    // feedback: "make it تقييم موثق على لودر".
-    const headline = `${stars} تقييم موثق على ${payload.store || 'متجرنا'}`;
+    // Headline uses the PRODUCT name (latest merchant feedback: "i want
+    // it to say the product name not the store"). Falls back to the
+    // store name if product name isn't available.
+    const headline = `${stars} تقييم موثق على ${payload.product || payload.store || 'متجرنا'}`;
     const lines = [
       headline,
       '',
@@ -1082,6 +1123,7 @@
           };
           const shareBtn = createShareButtonElement(sharePayload);
           logoLink.insertAdjacentElement('afterend', shareBtn);
+          ensureOwnerModeBanner();
         }
       });
     });
