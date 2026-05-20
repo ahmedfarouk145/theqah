@@ -566,9 +566,9 @@
     const excerpt = (payload.text || '').length > 200
       ? (payload.text || '').slice(0, 197) + '…'
       : (payload.text || '');
-    const headline = payload.product
-      ? `${stars} تقييم على ${payload.product}`
-      : `${stars} تقييم موثق من ${payload.store || 'متجرنا'}`;
+    // Headline anchors on the STORE, not the product — per merchant
+    // feedback: "make it تقييم موثق على لودر".
+    const headline = `${stars} تقييم موثق على ${payload.store || 'متجرنا'}`;
     const lines = [
       headline,
       '',
@@ -579,6 +579,20 @@
     ].filter(Boolean);
     if (urlForCaption) lines.push(urlForCaption);
     return lines.join('\n');
+  }
+
+  // Strip the owner-trigger param from a URL before sharing it
+  // externally — `?theqah_owner=1` is for the merchant's own browser
+  // session, not for public posts.
+  function stripOwnerParam(url) {
+    if (!url) return url;
+    try {
+      const u = new URL(url);
+      u.searchParams.delete('theqah_owner');
+      return u.toString();
+    } catch {
+      return url.replace(/[?&]theqah_owner=1\b/, '');
+    }
   }
 
   // Open the share-card PNG in a new tab. We previously used a fetch +
@@ -723,9 +737,46 @@
           window.open(intent, '_blank', 'noopener');
         } else if (platform === 'ig' || platform === 'tt') {
           const caption = buildShareText(payload, 'theqah.com.sa');
-          copyToClipboard(caption);
-          openShareCardInNewTab(payload);
-          showToast(`الصورة فُتحت في تبويب جديد · النص منسوخ — احفظ الصورة والصقها في ${platform === 'ig' ? 'Instagram' : 'TikTok'}`);
+          // On mobile devices with the Web Share API, open the system
+          // share sheet — that sheet usually includes Instagram and
+          // TikTok as targets and auto-fills the image + caption. This
+          // is the closest thing to "auto-post" possible on those
+          // platforms (neither has an open web-share URL like X does).
+          // Desktop falls back to: download + clipboard caption.
+          const cardUrl = buildShareCardUrl(payload);
+          const platformLabel = platform === 'ig' ? 'Instagram' : 'TikTok';
+          const tryWebShare = async () => {
+            if (!navigator.share) return false;
+            try {
+              // Attempt to fetch the image as a File so the share sheet
+              // can attach it directly (only works if CORS allows; on
+              // theqah.com.sa origin it will, so the merchant can
+              // attach the image to the IG/TT post natively).
+              const res = await fetch(cardUrl);
+              if (res.ok && navigator.canShare) {
+                const blob = await res.blob();
+                const file = new File([blob], `theqah-${payload.reviewId || 'review'}.png`, { type: 'image/png' });
+                if (navigator.canShare({ files: [file] })) {
+                  await navigator.share({ files: [file], text: caption, title: 'تقييم موثق' });
+                  return true;
+                }
+              }
+              await navigator.share({ text: caption, url: cardUrl, title: 'تقييم موثق' });
+              return true;
+            } catch {
+              return false;
+            }
+          };
+          tryWebShare().then((shared) => {
+            if (shared) {
+              showToast(`تم فتح خيارات المشاركة — اختر ${platformLabel}`);
+            } else {
+              // Desktop fallback: copy caption + open image in new tab
+              copyToClipboard(caption);
+              openShareCardInNewTab(payload);
+              showToast(`الصورة فُتحت في تبويب جديد · النص منسوخ — احفظ الصورة وارفعها على ${platformLabel}`);
+            }
+          });
         } else if (platform === 'copy') {
           copyToClipboard(reviewUrl).then((ok) => {
             showToast(ok ? 'تم نسخ الرابط ✓' : 'تعذّر نسخ الرابط.');
@@ -1014,8 +1065,9 @@
             storeLogo: extractPageStoreLogo(),
             storeUid: resolvedStoreUid,
             // URL of the actual Salla product page — what X/Facebook
-            // crawl for the link preview card.
-            productUrl: location.href,
+            // crawl for the link preview card. We strip ?theqah_owner=1
+            // so the owner-only trigger doesn't leak into public posts.
+            productUrl: stripOwnerParam(location.href),
             // URL of the public per-review page on theqah.com.sa — kept
             // as a fallback for "Copy link" and as the IG/TT caption URL.
             reviewUrl: resolvedStoreUid ? buildStoreReviewsUrl(resolvedStoreUid, publicReviewId) : SCRIPT_ORIGIN,

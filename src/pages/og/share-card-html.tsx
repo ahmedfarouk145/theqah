@@ -89,13 +89,9 @@ export default function ShareCardHtml(p: Props) {
               <div className="store-tagline">تقييم موثق من عميل</div>
             </div>
           </div>
-          <div className="stars-header" aria-hidden="true">
-            {'★'.repeat(p.stars)}
-            <span className="empty">{'★'.repeat(5 - p.stars)}</span>
-          </div>
         </div>
 
-        {/* BODY: product image + the actual review text + author */}
+        {/* BODY: product image + STARS (prominent) + review quote + author */}
         <div className="body">
           {p.productImg && (
             <div className="product-frame">
@@ -104,6 +100,10 @@ export default function ShareCardHtml(p: Props) {
             </div>
           )}
           <div className="review-col">
+            <div className="stars-body" aria-hidden="true">
+              {'★'.repeat(p.stars)}
+              <span className="empty">{'★'.repeat(5 - p.stars)}</span>
+            </div>
             {p.text && <div className="quote">{p.text}</div>}
             <div className="byline">— {p.author}</div>
           </div>
@@ -182,13 +182,15 @@ export default function ShareCardHtml(p: Props) {
           color: #cbd5e1;
           letter-spacing: 0.06em;
         }
-        .stars-header {
+        .stars-body {
           color: #f0dcab;
-          font-size: 44px;
-          letter-spacing: 6px;
+          font-size: 72px;
+          letter-spacing: 12px;
           direction: ltr;
+          line-height: 1;
+          margin-bottom: 8px;
         }
-        .stars-header .empty { color: rgba(232, 212, 160, 0.25); }
+        .stars-body .empty { color: rgba(232, 212, 160, 0.25); }
 
         /* BODY — product + review */
         .body {

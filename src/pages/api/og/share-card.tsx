@@ -89,6 +89,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       'Cache-Control',
       'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
     );
+    // CORS — allow any origin to fetch the image. The widget runs on
+    // Salla store domains (not theqah.com.sa) and needs to fetch this
+    // image to attach it to navigator.share() on mobile devices. The
+    // image is public anyway (no auth), so opening CORS here is safe.
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.status(200).send(png);
   } catch (err) {
     console.error('[share-card] screenshot failed', err);
