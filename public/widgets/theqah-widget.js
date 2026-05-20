@@ -675,9 +675,10 @@
         .theqah-share-pbtn > span > span { font-size:11.5px; color:#64748b; line-height:1.5; display:block; }
         .theqah-share-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#0f172a; color:white; padding:12px 20px; border-radius:10px; font-size:13px; font-weight:700; z-index:2147483647; opacity:0; transition:opacity 0.2s ease; font-family:'Cairo',system-ui,sans-serif; }
         .theqah-share-toast.show { opacity:1; }
-        .theqah-owner-share-btn { display:inline-flex; align-items:center; gap:4px; background:white; border:1.5px solid #b89968; color:#8a6d3b; padding:5px 9px; border-radius:999px; font-size:11px; font-weight:800; cursor:pointer; font-family:'Cairo',system-ui,sans-serif; margin-inline-start:6px; flex-shrink:0; transition:transform 0.15s ease, box-shadow 0.15s ease; box-shadow:0 2px 6px -2px rgba(184,153,104,0.4); }
-        .theqah-owner-share-btn:hover { transform:translateY(-1px); box-shadow:0 4px 10px -2px rgba(184,153,104,0.6); }
-        .theqah-owner-share-btn svg { width:12px; height:12px; }
+        .theqah-owner-share-btn { display:inline-flex !important; flex-direction:row !important; align-items:center !important; justify-content:center !important; gap:5px !important; background:white !important; border:1.5px solid #b89968 !important; color:#8a6d3b !important; padding:5px 10px !important; border-radius:999px !important; font-size:11px !important; font-weight:800 !important; cursor:pointer !important; font-family:'Cairo',system-ui,sans-serif !important; margin-inline-start:6px !important; flex-shrink:0 !important; transition:transform 0.15s ease, box-shadow 0.15s ease !important; box-shadow:0 2px 6px -2px rgba(184,153,104,0.4) !important; line-height:1 !important; height:auto !important; width:auto !important; min-width:0 !important; max-width:none !important; white-space:nowrap !important; vertical-align:middle !important; text-decoration:none !important; }
+        .theqah-owner-share-btn:hover { transform:translateY(-1px) !important; box-shadow:0 4px 10px -2px rgba(184,153,104,0.6) !important; }
+        .theqah-owner-share-btn svg { width:12px !important; height:12px !important; min-width:12px !important; max-width:12px !important; min-height:12px !important; max-height:12px !important; flex-shrink:0 !important; display:inline-block !important; vertical-align:middle !important; }
+        .theqah-owner-share-btn > span { display:inline !important; white-space:nowrap !important; font-size:11px !important; line-height:1 !important; }
       `,
     });
     document.head.appendChild(style);
