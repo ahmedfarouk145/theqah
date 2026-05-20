@@ -45,7 +45,7 @@ async function getBrowser(): Promise<Browser> {
   browserPromise = (async () => {
     return puppeteer.launch({
       args: chromium.args,
-      defaultViewport: { width: 1080, height: 1080, deviceScaleFactor: 1 },
+      defaultViewport: { width: 1080, height: 1350, deviceScaleFactor: 1 },
       executablePath: await chromium.executablePath(),
       headless: true,
     });
@@ -71,7 +71,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     browser = await getBrowser();
     page = await browser.newPage();
-    await page.setViewport({ width: 1080, height: 1080, deviceScaleFactor: 1 });
+    // 4:5 IG/TikTok feed-post aspect — taller than square for max
+    // vertical real estate. Matches the .card dimensions in the HTML
+    // template; mismatched dimensions cause clipping or whitespace.
+    await page.setViewport({ width: 1080, height: 1350, deviceScaleFactor: 1 });
     await page.goto(pageUrl, {
       waitUntil: 'networkidle0',
       timeout: 15000,
@@ -81,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await new Promise((r) => setTimeout(r, 200));
     const png = await page.screenshot({
       type: 'png',
-      clip: { x: 0, y: 0, width: 1080, height: 1080 },
+      clip: { x: 0, y: 0, width: 1080, height: 1350 },
       omitBackground: false,
     });
     res.setHeader('Content-Type', 'image/png');

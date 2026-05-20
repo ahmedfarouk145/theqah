@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "4.2.5"; // V4.2.5: removed Facebook from share modal (kept X / Instagram / TikTok / copy link)
+  const SCRIPT_VERSION = "4.2.6"; // V4.2.6: 1080×1350 (4:5 IG/TikTok feed) share-card + safe-zone padding
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;

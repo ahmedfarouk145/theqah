@@ -66,6 +66,9 @@ export default function ShareCardHtml(p: Props) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=1080,initial-scale=1" />
         <title>Theqah Share Card</title>
+        {/* IG/TikTok feed-post aspect (4:5 = 1080×1350) for maximum
+            vertical real estate, with safe-zone padding top + bottom
+            so the platform's app chrome doesn't overlay the content. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -151,9 +154,12 @@ export default function ShareCardHtml(p: Props) {
         body { font-family: 'Cairo', system-ui, sans-serif; }
         .card {
           width: 1080px;
-          height: 1080px;
+          height: 1350px;
           box-sizing: border-box;
-          padding: 70px 80px;
+          /* Vertical padding gives ~140px safe zones top + bottom so
+             Instagram/TikTok app overlays (username, like buttons,
+             caption preview) don't cover the actual content. */
+          padding: 140px 80px;
           background: linear-gradient(160deg, #2a3860 0%, #17213f 50%, #0a1020 100%);
           color: #f1f5f9;
           direction: rtl;

@@ -439,7 +439,7 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
                     <>
                         <meta property="og:image" content={ogImageUrl} />
                         <meta property="og:image:width" content="1080" />
-                        <meta property="og:image:height" content="1080" />
+                        <meta property="og:image:height" content="1350" />
                         <meta name="twitter:card" content="summary_large_image" />
                         <meta name="twitter:image" content={ogImageUrl} />
                         <meta name="twitter:title" content={pageTitle} />
