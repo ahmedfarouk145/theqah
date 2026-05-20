@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "4.2.1"; // V4.2.1: store-branded share card (logo+name at top, Theqah footer) + CORS-safe new-tab IG/TT flow
+  const SCRIPT_VERSION = "4.2.2"; // V4.2.2: stars-in-body, store headline, strip owner-param, version-stamped share-card URLs
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -545,6 +545,13 @@
     if (payload.productImg) params.set('productImg', payload.productImg);
     if (payload.stars) params.set('stars', String(payload.stars));
     params.set('handle', '@theqahapp');
+    // Cache-buster tied to widget version. When we ship a new layout
+    // (e.g. moving stars or changing the footer), bumping SCRIPT_VERSION
+    // changes the cache key so the edge serves a fresh render rather
+    // than the stale PNG. Sub-URL stays stable per-version so crawler
+    // caches (Facebook, X) still benefit from edge caching within a
+    // release.
+    params.set('v', SCRIPT_VERSION);
     return `${SCRIPT_ORIGIN}/api/og/share-card?${params.toString()}`;
   }
 
