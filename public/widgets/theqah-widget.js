@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "4.2.2"; // V4.2.2: stars-in-body, store headline, strip owner-param, version-stamped share-card URLs
+  const SCRIPT_VERSION = "4.2.3"; // V4.2.3: SVG stars (Chromium font fix) + 'تقييم موثق بواسطة' transition pill
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;

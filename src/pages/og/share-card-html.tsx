@@ -123,6 +123,13 @@ export default function ShareCardHtml(p: Props) {
           </div>
         </div>
 
+        {/* Verifier transition pill — sits between the body (the review)
+            and the footer (Theqah brand), explicitly labelling the
+            relationship: "Verified review by → Mushtari Mowathaq". */}
+        <div className="verifier-label-wrap">
+          <span className="verifier-label">تقييم موثق بواسطة</span>
+        </div>
+
         {/* FOOTER: Theqah branding as the verifier / trust footnote */}
         <div className="footer">
           <div className="theqah-brand">
@@ -255,6 +262,28 @@ export default function ShareCardHtml(p: Props) {
           font-weight: 700;
           color: #cbd5e1;
           text-align: right;
+        }
+
+        /* Verifier transition pill — small gold-bordered label that
+           explicitly connects the body (the review) to the footer
+           (Theqah brand). Sits right-aligned just above the footer
+           divider so the eye reads:
+           [review] → "تقييم موثق بواسطة" → [Theqah brand]. */
+        .verifier-label-wrap {
+          display: flex;
+          justify-content: flex-start;
+          margin-top: 24px;
+        }
+        .verifier-label {
+          display: inline-block;
+          padding: 8px 18px;
+          border: 1.5px solid #8a6d3b;
+          border-radius: 999px;
+          color: #f0dcab;
+          background: rgba(10, 16, 32, 0.4);
+          font-size: 18px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
         }
 
         /* FOOTER — Theqah verifier */
