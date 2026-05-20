@@ -100,9 +100,23 @@ export default function ShareCardHtml(p: Props) {
             </div>
           )}
           <div className="review-col">
+            {/* Stars rendered as inline SVG — @sparticuz/chromium ships
+                without fonts that contain U+2605 BLACK STAR, so a plain
+                ★ character renders as blank in the screenshot. SVG paths
+                always render regardless of font coverage. */}
             <div className="stars-body" aria-hidden="true">
-              {'★'.repeat(p.stars)}
-              <span className="empty">{'★'.repeat(5 - p.stars)}</span>
+              {Array.from({ length: 5 }, (_, i) => {
+                const filled = i < p.stars;
+                return (
+                  <svg
+                    key={i}
+                    className={`star ${filled ? 'star-filled' : 'star-empty'}`}
+                    viewBox="0 0 24 24"
+                  >
+                    <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+                  </svg>
+                );
+              })}
             </div>
             {p.text && <div className="quote">{p.text}</div>}
             <div className="byline">— {p.author}</div>
@@ -183,14 +197,17 @@ export default function ShareCardHtml(p: Props) {
           letter-spacing: 0.06em;
         }
         .stars-body {
-          color: #f0dcab;
-          font-size: 72px;
-          letter-spacing: 12px;
+          display: flex;
+          gap: 12px;
           direction: ltr;
-          line-height: 1;
           margin-bottom: 8px;
         }
-        .stars-body .empty { color: rgba(232, 212, 160, 0.25); }
+        .star {
+          width: 72px;
+          height: 72px;
+        }
+        .star-filled { fill: #f0dcab; }
+        .star-empty { fill: rgba(232, 212, 160, 0.25); }
 
         /* BODY — product + review */
         .body {
