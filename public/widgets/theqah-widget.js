@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "4.2.0-beta"; // V4.2-beta: owner-only share button + per-review share modal (testing)
+  const SCRIPT_VERSION = "4.2.1"; // V4.2.1: store-branded share card (logo+name at top, Theqah footer) + CORS-safe new-tab IG/TT flow
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -507,9 +507,37 @@
     return '';
   }
 
+  // The store's own logo (NOT the Theqah logo). Looked up at first share
+  // and cached for the session. We try the standard Salla theme markers
+  // first, then fall back to a generic header-logo selector. Used as
+  // the hero brand image in the share card header.
+  function extractPageStoreLogo() {
+    if (G._pageStoreLogo) return G._pageStoreLogo;
+    const candidates = [
+      'header a[href="/"] img',
+      'header .logo img',
+      '[class*="store-logo"] img',
+      'a[aria-label*="logo" i] img',
+      'header img[alt*="logo" i]',
+      'header img',
+    ];
+    for (const sel of candidates) {
+      try {
+        const img = document.querySelector(sel);
+        const src = img?.currentSrc || img?.src;
+        if (src && /^https?:/.test(src)) {
+          G._pageStoreLogo = src;
+          return src;
+        }
+      } catch { /* ignore */ }
+    }
+    return '';
+  }
+
   function buildShareCardUrl(payload) {
     const params = new URLSearchParams();
     if (payload.store) params.set('store', payload.store);
+    if (payload.storeLogo) params.set('storeLogo', payload.storeLogo);
     if (payload.storeUid) params.set('storeUid', payload.storeUid);
     if (payload.author) params.set('author', payload.author);
     if (payload.text) params.set('text', payload.text);
@@ -537,19 +565,16 @@
     return lines.join('\n');
   }
 
-  async function downloadShareCard(payload, filename) {
+  // Open the share-card PNG in a new tab. We previously used a fetch +
+  // blob + <a download> pattern, but that's a cross-origin fetch (the
+  // widget runs on a Salla store domain, the share-card lives on
+  // theqah.com.sa) and the endpoint doesn't return CORS headers — so
+  // the fetch always failed with the merchant seeing "couldn't download
+  // the image". window.open is a navigation, not a fetch, so no CORS
+  // check applies. The merchant saves the image from the new tab.
+  function openShareCardInNewTab(payload) {
     const cardUrl = buildShareCardUrl(payload);
-    const res = await fetch(cardUrl);
-    if (!res.ok) throw new Error('share-card fetch failed: ' + res.status);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename || 'theqah-review.png';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    window.open(cardUrl, '_blank', 'noopener');
   }
 
   async function copyToClipboard(text) {
@@ -671,9 +696,8 @@
         } else if (platform === 'ig' || platform === 'tt') {
           const caption = buildShareText(payload, 'theqah.com.sa');
           copyToClipboard(caption);
-          downloadShareCard(payload, `theqah-${platform}-${payload.reviewId || 'review'}.png`)
-            .then(() => showToast(`تم تنزيل الصورة. النص منسوخ — الصقه في ${platform === 'ig' ? 'Instagram' : 'TikTok'}.`))
-            .catch(() => showToast('تعذّر تنزيل الصورة. حاول مرة أخرى.'));
+          openShareCardInNewTab(payload);
+          showToast(`الصورة فُتحت في تبويب جديد · النص منسوخ — احفظ الصورة والصقها في ${platform === 'ig' ? 'Instagram' : 'TikTok'}`);
         } else if (platform === 'copy') {
           copyToClipboard(reviewUrl).then((ok) => {
             showToast(ok ? 'تم نسخ الرابط ✓' : 'تعذّر نسخ الرابط.');
@@ -959,6 +983,7 @@
             product: verifiedFull.productName || (document.querySelector('h1')?.textContent || '').trim(),
             productImg: G._pageProductImg || (G._pageProductImg = extractPageProductImage()),
             store: G.storeProfile?.storeName || '',
+            storeLogo: extractPageStoreLogo(),
             storeUid: resolvedStoreUid,
             reviewUrl: resolvedStoreUid ? buildStoreReviewsUrl(resolvedStoreUid, publicReviewId) : SCRIPT_ORIGIN,
           };

@@ -11,6 +11,7 @@ import Head from 'next/head';
 
 interface Props {
   store: string;
+  storeLogo: string;
   author: string;
   text: string;
   product: string;
@@ -41,6 +42,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const storeUid = String(q.storeUid || '');
   const props: Props = {
     store: trimText(String(q.store || ''), 60) || 'متجر',
+    storeLogo: String(q.storeLogo || ''),
     author: trimText(String(q.author || ''), 40) || 'عميل موثق',
     text: trimText(String(q.text || ''), 220),
     product: trimText(String(q.product || ''), 80),
@@ -74,18 +76,26 @@ export default function ShareCardHtml(p: Props) {
       <div className="card">
         <div className="gold-rule top" />
 
+        {/* HEADER: store branding (the merchant's own logo + name) — this
+            is THEIR review being shared, so their brand is hero-position. */}
         <div className="header">
-          <div className="brand">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://www.theqah.com.sa/widgets/logo.png?v=3" alt="" />
-            <div>
-              <div className="brand-text-lg">مشتري موثق</div>
-              <div className="brand-text-sm">VERIFIED · {p.handle}</div>
+          <div className="store-brand">
+            {p.storeLogo && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.storeLogo} alt="" className="store-logo" />
+            )}
+            <div className="store-text">
+              <div className="store-name-lg">{p.store}</div>
+              <div className="store-tagline">تقييم موثق من عميل</div>
             </div>
           </div>
-          {p.cert && <div className="cert-chip">CERT · {p.cert}</div>}
+          <div className="stars-header" aria-hidden="true">
+            {'★'.repeat(p.stars)}
+            <span className="empty">{'★'.repeat(5 - p.stars)}</span>
+          </div>
         </div>
 
+        {/* BODY: product image + the actual review text + author */}
         <div className="body">
           {p.productImg && (
             <div className="product-frame">
@@ -94,23 +104,22 @@ export default function ShareCardHtml(p: Props) {
             </div>
           )}
           <div className="review-col">
-            <div className="stars" aria-hidden="true">
-              {'★'.repeat(p.stars)}
-              <span className="empty">{'★'.repeat(5 - p.stars)}</span>
-            </div>
             {p.text && <div className="quote">{p.text}</div>}
+            <div className="byline">— {p.author}</div>
           </div>
         </div>
 
+        {/* FOOTER: Theqah branding as the verifier / trust footnote */}
         <div className="footer">
-          <div>
-            <div className="author-name">{p.author}</div>
-            <div className="author-meta">
-              تقييم موثق · تم التحقق من الشراء
-              {p.product ? ` · ${p.product}` : ''}
+          <div className="theqah-brand">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://www.theqah.com.sa/widgets/logo.png?v=3" alt="" className="theqah-logo" />
+            <div>
+              <div className="theqah-name">مشتري موثق</div>
+              <div className="theqah-tag">VERIFIED · {p.handle}</div>
             </div>
           </div>
-          <div className="store-name">{p.store}</div>
+          {p.cert && <div className="cert-chip">CERT · {p.cert}</div>}
         </div>
 
         <div className="gold-rule bottom" />
@@ -141,37 +150,47 @@ export default function ShareCardHtml(p: Props) {
         }
         .gold-rule.top { top: 0; }
         .gold-rule.bottom { bottom: 0; }
+
+        /* HEADER — store branding (hero) */
         .header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 40px;
+          margin-bottom: 50px;
         }
-        .brand { display: flex; align-items: center; gap: 20px; }
-        .brand img { width: 84px; height: 84px; object-fit: contain; }
-        .brand-text-lg {
-          font-size: 34px;
+        .store-brand { display: flex; align-items: center; gap: 22px; }
+        .store-logo {
+          width: 110px;
+          height: 110px;
+          border-radius: 18px;
+          object-fit: cover;
+          background: white;
+          padding: 8px;
+          box-shadow: 0 6px 18px -6px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(232, 212, 160, 0.4);
+        }
+        .store-text { display: flex; flex-direction: column; gap: 6px; }
+        .store-name-lg {
+          font-size: 46px;
           font-weight: 900;
           color: #f0dcab;
-          letter-spacing: -0.01em;
           line-height: 1.1;
+          letter-spacing: -0.01em;
         }
-        .brand-text-sm {
-          font-size: 15px;
+        .store-tagline {
+          font-size: 16px;
           font-weight: 700;
           color: #cbd5e1;
-          letter-spacing: 0.18em;
-          margin-top: 6px;
+          letter-spacing: 0.06em;
         }
-        .cert-chip {
-          border: 2px solid #8a6d3b;
+        .stars-header {
           color: #f0dcab;
-          padding: 10px 22px;
-          border-radius: 999px;
-          font-size: 17px;
-          font-weight: 800;
-          letter-spacing: 0.2em;
+          font-size: 44px;
+          letter-spacing: 6px;
+          direction: ltr;
         }
+        .stars-header .empty { color: rgba(232, 212, 160, 0.25); }
+
+        /* BODY — product + review */
         .body {
           display: flex;
           gap: 36px;
@@ -179,11 +198,11 @@ export default function ShareCardHtml(p: Props) {
           flex: 1;
         }
         .product-frame {
-          width: 340px;
-          height: 340px;
+          width: 360px;
+          height: 360px;
           border-radius: 24px;
           background: white;
-          padding: 20px;
+          padding: 22px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -191,8 +210,8 @@ export default function ShareCardHtml(p: Props) {
           box-shadow: inset 0 0 0 2px rgba(232, 212, 160, 0.4);
         }
         .product-frame img {
-          max-width: 300px;
-          max-height: 300px;
+          max-width: 316px;
+          max-height: 316px;
           object-fit: contain;
         }
         .review-col {
@@ -200,51 +219,57 @@ export default function ShareCardHtml(p: Props) {
           min-width: 0;
           display: flex;
           flex-direction: column;
+          gap: 22px;
         }
-        .stars {
-          color: #f0dcab;
-          font-size: 56px;
-          letter-spacing: 10px;
-          margin-bottom: 28px;
-          text-align: right;
-        }
-        .stars .empty { color: rgba(232, 212, 160, 0.25); }
         .quote {
-          font-size: 40px;
+          font-size: 44px;
           font-weight: 800;
-          line-height: 1.5;
+          line-height: 1.45;
           color: #f8fafc;
           text-align: right;
           direction: rtl;
         }
         .quote::before { content: '"'; }
         .quote::after { content: '"'; }
+        .byline {
+          font-size: 24px;
+          font-weight: 700;
+          color: #cbd5e1;
+          text-align: right;
+        }
+
+        /* FOOTER — Theqah verifier */
         .footer {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding-top: 32px;
+          padding-top: 28px;
           border-top: 1px solid rgba(232, 212, 160, 0.25);
-          margin-top: 36px;
+          margin-top: 40px;
         }
-        .author-name {
-          font-size: 32px;
-          font-weight: 900;
-          color: #f1f5f9;
-          margin-bottom: 4px;
-        }
-        .author-meta {
-          font-size: 18px;
-          color: #cbd5e1;
-        }
-        .store-name {
-          font-size: 32px;
+        .theqah-brand { display: flex; align-items: center; gap: 14px; }
+        .theqah-logo { width: 56px; height: 56px; object-fit: contain; }
+        .theqah-name {
+          font-size: 22px;
           font-weight: 900;
           color: #f0dcab;
-          letter-spacing: 0.02em;
-          text-align: left;
-          line-height: 1.2;
-          max-width: 360px;
+          line-height: 1;
+        }
+        .theqah-tag {
+          font-size: 12px;
+          font-weight: 700;
+          color: #94a3b8;
+          letter-spacing: 0.18em;
+          margin-top: 4px;
+        }
+        .cert-chip {
+          border: 2px solid #8a6d3b;
+          color: #f0dcab;
+          padding: 10px 22px;
+          border-radius: 999px;
+          font-size: 15px;
+          font-weight: 800;
+          letter-spacing: 0.2em;
         }
       `}</style>
     </>
