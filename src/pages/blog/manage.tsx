@@ -435,12 +435,16 @@ export default function BlogManage() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">صورة الغلاف</label>
+                                    {/* Visually-hidden (not display:none) so iOS Safari
+                                        will reliably open the file picker when we call
+                                        coverInputRef.current?.click(). display:none inputs
+                                        sometimes silently fail to trigger on iOS. */}
                                     <input
                                         type="file"
                                         ref={coverInputRef}
                                         accept="image/*"
-                                        className="hidden"
                                         aria-label="رفع صورة الغلاف"
+                                        style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
                                         onChange={(e) => {
                                             const file = e.target.files?.[0];
                                             if (file) handleCoverUpload(file);

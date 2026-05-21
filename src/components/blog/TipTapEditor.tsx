@@ -105,13 +105,17 @@ export default function TipTapEditor({ content, onChange }: Props) {
 
     return (
         <div className="border border-gray-300 rounded-xl overflow-hidden bg-white relative">
-            {/* Hidden file input for image upload */}
+            {/* Visually-hidden file input for image upload.
+                iOS Safari can refuse to open the file picker when `.click()`
+                is called on a `display: none` input; positioning it offscreen
+                while keeping it rendered is the reliable cross-platform
+                pattern (same as Tailwind's sr-only). */}
             <input
                 type="file"
                 ref={imageInputRef}
                 accept="image/*"
-                className="hidden"
                 aria-label="رفع صورة"
+                style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
                 onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleImageUpload(file);
@@ -233,6 +237,12 @@ function ToolbarBtn({
     return (
         <button
             type="button"
+            // iOS Safari steals focus from the contentEditable as soon as
+            // the button receives a touch, collapsing the selection before
+            // onClick fires. preventDefault on the pointer-down phase keeps
+            // the editor focused so toggleBold / toggleHeading etc. apply
+            // to the actual selection instead of an empty cursor.
+            onMouseDown={(e) => e.preventDefault()}
             onClick={onClick}
             title={title}
             className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${active
