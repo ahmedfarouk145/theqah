@@ -70,8 +70,12 @@ ${disallows}
 ${aiCrawlerBlocks}
 
 # --- Feeds and discovery ---
+# Sitemaps tell crawlers WHICH pages exist. Public data feeds carry the
+# verified-review content directly so AI crawlers (Perplexity, ChatGPT,
+# Claude, Gemini training) can ingest reviews without scraping every page.
 Sitemap: ${SITE_URL}/sitemap.xml
 Sitemap: ${SITE_URL}/blog/rss.xml
+Sitemap: ${SITE_URL}/feeds/reviews.rss.xml
 `;
 
     res.setHeader("Content-Type", "text/plain; charset=utf-8");

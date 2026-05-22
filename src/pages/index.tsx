@@ -360,6 +360,22 @@ export default function LandingPage({ appReviews, verifiedReviewsCount, topRevie
             }),
           }}
         />
+        {/* Auto-discovery hints for feed-aware browsers and AI crawlers.
+            JSON Feed listed first because modern consumers (Perplexity,
+            ChatGPT browsing) prefer its richer schema; RSS is the
+            broad-compat fallback that also unlocks IndexNow submission. */}
+        <link
+          rel="alternate"
+          type="application/feed+json"
+          href={`${URLS.CANONICAL_ORIGIN}/feeds/reviews.json`}
+          title="تقييمات موثقة — JSON Feed"
+        />
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          href={`${URLS.CANONICAL_ORIGIN}/feeds/reviews.rss.xml`}
+          title="تقييمات موثقة — RSS"
+        />
       </Head>
       <NavbarLanding />
       <div className="h-20" aria-hidden="true" />
