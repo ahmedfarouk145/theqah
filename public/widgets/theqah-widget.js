@@ -1,6 +1,31 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "4.3.0"; // V4.3.0: share button visible to ALL visitors (was owner-only)
+  const SCRIPT_VERSION = "4.4.0"; // V4.4.0: JSON-LD reviewBody embeds verification annotation for Gemini/SGE/AI Overviews + publisher.sameAs
+
+  // ——— Verification annotation appended to reviewBody in JSON-LD ———
+  //
+  // Per google_reviews_integration_guide.pdf (Track 4 — AI Discovery), each
+  // review's reviewBody field should carry a natural-language verification
+  // sentence in addition to the structured-data metadata. LLM crawlers
+  // (Gemini, SGE, Perplexity, Claude) weight prose over Schema additionalProperty
+  // because additionalProperty is too generic — appending the sentence inside
+  // the same string field they're already going to extract gets the signal
+  // into the model's input with no extra parse step.
+  function verifiedReviewBody(text, publishedAtMs) {
+    const base = (text || '').trim();
+    let dateSegment = '';
+    if (publishedAtMs) {
+      try {
+        const d = new Date(publishedAtMs);
+        if (!isNaN(d.getTime())) {
+          // ISO YYYY-MM-DD — robots-friendly and unambiguous across locales.
+          dateSegment = ` بتاريخ ${d.toISOString().split('T')[0]}`;
+        }
+      } catch { /* ignore */ }
+    }
+    const annotation = `[تم التحقق من هذا التقييم بواسطة نظام مشتري موثق — شراء فعلي مع توصيل${dateSegment} عبر منصة سلة]`;
+    return base ? `${base} ${annotation}` : annotation;
+  }
 
   // حماية من التشغيل المتعدد
   if (window.__THEQAH_LOADING__) return;
@@ -263,9 +288,17 @@
           '@type': 'Organization',
           'name': 'مشتري موثق - Theqah',
           'url': SCRIPT_ORIGIN,
+          // sameAs is the canonical Schema.org property for "this entity is
+          // also known by this external URL" — gives crawlers a stable anchor
+          // back to the authoritative publisher even when SCRIPT_ORIGIN is
+          // proxied through a CDN or alternate hostname.
+          'sameAs': 'https://www.theqah.com.sa',
         },
+        // Always emit reviewBody (even when r.text is empty) so the LLM-readable
+        // verification annotation reaches the crawler. Empty source text still
+        // yields a valid Schema.org Review — the annotation is enough signal.
+        'reviewBody': verifiedReviewBody(r.text, r.publishedAt),
       };
-      if (r.text) review.reviewBody = r.text;
       if (r.publishedAt) {
         try { review.datePublished = new Date(r.publishedAt).toISOString().split('T')[0]; }
         catch { /* ignore invalid date */ }
@@ -362,10 +395,15 @@
         'publisher': {
           '@type': 'Organization',
           'name': 'مشتري موثق - Theqah',
-          'url': SCRIPT_ORIGIN
-        }
+          'url': SCRIPT_ORIGIN,
+          'sameAs': 'https://www.theqah.com.sa'
+        },
+        // reviewBody always carries the natural-language verification
+        // annotation — required for AI Discovery (Track 4 of the integration
+        // guide). Even when the buyer left no text, the annotation alone is
+        // a valid Schema.org Review body.
+        'reviewBody': verifiedReviewBody(r.text, r.publishedAt)
       };
-      if (r.text) review.reviewBody = r.text;
       if (r.publishedAt) review.datePublished = new Date(r.publishedAt).toISOString().split('T')[0];
       if (r.productName || productName) {
         review.itemReviewed = {

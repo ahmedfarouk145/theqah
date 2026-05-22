@@ -166,9 +166,27 @@ function Stars({ count, className = "" }: { count: number; className?: string })
 }
 
 /* ── Review card ── */
-function ReviewCard({ review, highlighted = false }: { review: ReviewItem; highlighted?: boolean }) {
+function ReviewCard({
+    review,
+    highlighted = false,
+    certNumber,
+    platformLabel,
+}: {
+    review: ReviewItem;
+    highlighted?: boolean;
+    certNumber?: string;
+    platformLabel?: string;
+}) {
     const isLow = review.stars <= 2;
     const showText = review.text && review.text.trim().length > 0;
+    // Natural-language verification sentence rendered as visible prose under
+    // each review. Per google_reviews_integration_guide.pdf (Track 4 — AI
+    // Discovery), LLM-based crawlers (Gemini, SGE, Perplexity) prefer plain
+    // sentences over Schema.org additionalProperty fields. Rendering this in
+    // the DOM lets them quote the verification claim directly.
+    const verifiedLine = certNumber
+        ? `تم التحقق من هذا التقييم بواسطة نظام مشتري موثق — شراء فعلي مع توصيل بتاريخ ${arDate(review.publishedAt)}${platformLabel ? ` عبر منصة ${platformLabel}` : ""} — شهادة #${certNumber}`
+        : null;
     return (
         <article
             id={`review-${review.id}`}
@@ -208,6 +226,12 @@ function ReviewCard({ review, highlighted = false }: { review: ReviewItem; highl
                         </div>
                     ))}
                 </div>
+            )}
+            {verifiedLine && (
+                <p className="review-verified-line" itemProp="reviewBody">
+                    <span aria-hidden="true">✔ </span>
+                    {verifiedLine}
+                </p>
             )}
         </article>
     );
@@ -656,7 +680,17 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
                     ) : (
                         <div className="review-list">
                             {filteredReviews.map((r) => (
-                                <ReviewCard key={r.id} review={r} highlighted={focusedReviewId === r.id} />
+                                <ReviewCard
+                                    key={r.id}
+                                    review={r}
+                                    highlighted={focusedReviewId === r.id}
+                                    certNumber={certCode(profile.store.storeUid)}
+                                    platformLabel={
+                                        profile.store.platform === "salla" ? "سلة"
+                                        : profile.store.platform === "zid" ? "زد"
+                                        : undefined
+                                    }
+                                />
                             ))}
                         </div>
                     )}
@@ -962,6 +996,12 @@ const V3_CSS = `
 .v3-root .review-imgs{margin-top:14px;padding-right:62px;display:flex;gap:10px;flex-wrap:wrap}
 .v3-root .review-img{position:relative;width:64px;height:64px;border:1px solid var(--rule-2);overflow:hidden;background:var(--parchment-2)}
 
+/* Natural-language verification annotation rendered as visible prose. The
+   line is intentionally low-key (small, muted) so it doesn't compete with
+   the customer's actual review text, but still gets indexed by AI crawlers
+   reading the rendered HTML. */
+.v3-root .review-verified-line{font-family:'Amiri',serif;font-size:13px;line-height:1.6;color:var(--muted);margin-top:12px;padding-right:62px;padding-top:10px;border-top:1px dashed var(--rule-2);font-style:italic}
+
 .v3-root .empty{text-align:center;padding:48px 24px;color:rgba(245,236,214,.55);font-family:'Amiri',serif;font-size:16px}
 
 .v3-root .faq-section{margin-top:64px;animation:fadeUp .6s .2s ease both}
@@ -1003,7 +1043,7 @@ const V3_CSS = `
   .v3-root .qr{grid-column:span 2;justify-self:flex-start}
   .v3-root .sig{grid-template-columns:1fr;gap:16px}
   .v3-root .sig-stamp{margin:0 auto}
-  .v3-root .review-text,.v3-root .review-imgs{padding-right:0;margin-top:14px}
+  .v3-root .review-text,.v3-root .review-imgs,.v3-root .review-verified-line{padding-right:0;margin-top:14px}
   .v3-root .reviews-t{font-size:22px}
 }
 

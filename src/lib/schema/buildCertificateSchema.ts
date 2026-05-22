@@ -44,10 +44,29 @@ export interface CertSchemaInput {
     };
     /** Most recent verified reviews (≤20). */
     reviews: CertSchemaReview[];
+    /**
+     * Source platform name (e.g., "سلة", "زد"). Used in the natural-language
+     * verification annotation embedded inside each review's reviewBody so AI
+     * crawlers (Gemini, SGE, Perplexity) get verification context as prose,
+     * not just as Schema.org additionalProperty entries.
+     */
+    platformLabel?: string;
+}
+
+/**
+ * Builds the per-review natural-language verification annotation appended
+ * to reviewBody — fuses Track 1 (Schema) with Track 4 (AI Discovery) from
+ * google_reviews_integration_guide.pdf. LLMs weight prose over structured
+ * additionalProperty, so embedding the sentence inside reviewBody surfaces
+ * the verification signal in the same string the model already extracts.
+ */
+function verifiedAnnotation(certNumber: string, dateISO: string, platformLabel: string): string {
+    const dateBit = dateISO ? ` بتاريخ ${dateISO.split("T")[0]}` : "";
+    return ` [تم التحقق من هذا التقييم بواسطة نظام مشتري موثق — شراء فعلي مع توصيل${dateBit} عبر منصة ${platformLabel} — شهادة #${certNumber}]`;
 }
 
 export function buildCertificateSchema(input: CertSchemaInput) {
-    const { store, stats, certificate, reviews } = input;
+    const { store, stats, certificate, reviews, platformLabel = "سلة / زد" } = input;
 
     const certUrl = `${BASE}/store/${encodeURIComponent(store.storeUid)}/certificate`;
     const storeUrl = store.url || certUrl;
@@ -68,6 +87,7 @@ export function buildCertificateSchema(input: CertSchemaInput) {
     // them. Position is 1-based to match ListItem semantics.
     const reviewNodes = reviews.slice(0, 20).map((r, i) => {
         const reviewId = `${certUrl}#review-${i + 1}`;
+        const baseText = (r.text || "").trim() || "تقييم بدون نص";
         return {
             "@type": "Review",
             "@id": reviewId,
@@ -83,7 +103,12 @@ export function buildCertificateSchema(input: CertSchemaInput) {
                 worstRating: "1",
             },
             datePublished: r.dateISO,
-            reviewBody: r.text || "تقييم بدون نص",
+            // reviewBody includes a natural-language verification annotation
+            // so LLM-based crawlers extract the verification claim from prose
+            // (which they weight heavily) in addition to the structured
+            // additionalProperty entries below (which traditional indexers
+            // also see). Same signal, two delivery channels.
+            reviewBody: baseText + verifiedAnnotation(certificate.number, r.dateISO, platformLabel),
             inLanguage: "ar-SA",
             additionalProperty: [
                 { "@type": "PropertyValue", name: "verificationStatus", value: "verified" },
@@ -131,7 +156,12 @@ export function buildCertificateSchema(input: CertSchemaInput) {
                 url: BASE,
                 logo: { "@id": logoId },
                 image: { "@id": logoId },
-                sameAs: ["https://twitter.com/theqahapp"],
+                sameAs: [
+                    "https://www.theqah.com.sa",
+                    "https://twitter.com/theqahapp",
+                    "https://www.instagram.com/theqahapp",
+                    "https://www.tiktok.com/@theqahapp",
+                ],
                 description:
                     "Independent third-party buyer review verification for Saudi e-commerce. " +
                     "Triple Match protocol: payment + shipping + delivery confirmation.",

@@ -97,6 +97,14 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
             text: r.text || "",
             dateISO: new Date(r.publishedAt).toISOString(),
         })),
+        // Maps the store's platform identifier to the Arabic label embedded
+        // in each review's natural-language verification annotation. Falls
+        // back to "سلة / زد" (already the schema default) for any new platform
+        // we add without remembering to extend this mapping.
+        platformLabel:
+            filteredProfile.store.platform === "salla" ? "سلة"
+            : filteredProfile.store.platform === "zid" ? "زد"
+            : undefined,
     });
 
     return {
