@@ -142,7 +142,7 @@ function pickContact(data) {
     console.warn('(verified count unavailable):', err.message);
   }
 
-  const feedUrl = `${SITE_URL}/api/feeds/google-product-reviews/${encodeURIComponent(storeUid)}.xml`;
+  const feedUrl = `${SITE_URL}/api/feeds/google-product-reviews/${encodeURIComponent(storeUid)}/feed.xml`;
   const cert = certCode(storeUid);
 
   // ── Display ────────────────────────────────────────────────────────

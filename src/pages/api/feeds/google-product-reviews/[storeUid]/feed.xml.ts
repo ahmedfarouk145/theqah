@@ -1,4 +1,4 @@
-// src/pages/api/feeds/google-product-reviews/[storeUid].xml.ts
+// src/pages/api/feeds/google-product-reviews/[storeUid]/feed.xml.ts
 //
 // Per-merchant Google Merchant Center product-reviews XML feed.
 // (Phase 2 of google_reviews_integration_guide.pdf.)
@@ -15,10 +15,12 @@
 // exposure. Rate-limited via the existing public rate-limit helper to
 // keep abuse manageable.
 //
-// File path quirk: Next.js Pages Router maps the literal "xml" suffix
-// into the URL, so this resolves to
-//   /api/feeds/google-product-reviews/{storeUid}.xml
-// — exactly what we want to give to merchants.
+// URL structure: this file resolves to
+//   /api/feeds/google-product-reviews/{storeUid}/feed.xml
+// Using a `[storeUid]/` directory + `feed.xml.ts` instead of the flatter
+// `[storeUid].xml.ts` pattern because the latter confuses the Pages
+// Router (it can't reliably split `salla:123.xml` into the dynamic part
+// vs. the file extension). The subdirectory form is unambiguous.
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { rateLimitPublic, RateLimitPresets } from "@/server/rate-limit-public";
@@ -62,11 +64,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     if (limited) return;
 
-    // Strip the `.xml` suffix the catch-all route picked up so the storeUid
-    // matches what's actually in Firestore.
+    // Dynamic segment is the storeUid alone — no `.xml` suffix to strip,
+    // since `feed.xml` lives in its own static segment.
     const rawParam = req.query.storeUid;
     const param = Array.isArray(rawParam) ? rawParam[0] : (rawParam || "");
-    const storeUid = String(param).replace(/\.xml$/i, "").trim();
+    const storeUid = String(param).trim();
 
     if (!storeUid) {
         res.status(400).json({ error: "missing_storeUid" });
