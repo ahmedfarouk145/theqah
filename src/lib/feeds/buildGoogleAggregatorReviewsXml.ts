@@ -111,6 +111,25 @@ export function buildGoogleAggregatorReviewsXml(input: AggregatorFeedInput): str
             const reviewerName = trim(r.reviewerName || "عميل موثق", 80);
             const productName = trim(r.productName || `منتج من متجر ${r.storeName}`, 200);
 
+            // Strong product identifiers — Google's matcher uses these to
+            // attach the review to the right product in its global catalog.
+            // We don't have GTINs (we'd need a Salla-side backfill), but
+            // we have stable SKUs (Salla productId) + brand (store name),
+            // which is the next-best combination per Google's spec.
+            // Without at least one strong identifier, low-match-rate feeds
+            // get partial-approval at best.
+            const productIdsBlock = r.productId
+                ? `          <product_ids>
+            <skus>
+              <sku>${escXml(r.productId)}</sku>
+            </skus>
+            <brands>
+              <brand>${escXml(r.storeName || "")}</brand>
+            </brands>
+          </product_ids>
+`
+                : "";
+
             return `    <review>
       <review_id>${escXml(r.reviewId)}</review_id>
       <reviewer>
@@ -125,7 +144,7 @@ export function buildGoogleAggregatorReviewsXml(input: AggregatorFeedInput): str
       </ratings>
       <products>
         <product>
-          <product_name>${escXml(productName)}</product_name>
+${productIdsBlock}          <product_name>${escXml(productName)}</product_name>
           <product_url>${escXml(productUrl)}</product_url>
         </product>
       </products>

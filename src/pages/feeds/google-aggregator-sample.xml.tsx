@@ -32,12 +32,20 @@ import { URLS } from "@/config/constants";
 const SITE_URL = URLS.CANONICAL_ORIGIN;
 
 /**
- * Target sample size. Google's aggregator-application docs ask for a
- * "representative sample" without naming a hard floor; the team has
- * historically expected at least ~3,000 reviews drawn from multiple
- * merchants. We aim for 3500 and cap at 5000 to bound payload size.
+ * Target output size: 3500 reviews after filtering. Google's aggregator-
+ * application docs ask for a "representative sample" with no hard floor,
+ * but the team has historically expected at least ~3,000 reviews drawn
+ * from multiple merchants.
+ *
+ * We over-fetch (10,000) because the filter below excludes any review
+ * lacking a real merchant product URL — typically the legacy backfilled
+ * rows where Salla's API didn't return product info. Google's automated
+ * feed validator rejects the entire feed if it finds <product_url>
+ * entries that don't resolve to product pages, so filtering aggressively
+ * is the right tradeoff (better fewer-but-clean than many-but-rejected).
  */
-const AGGREGATOR_SAMPLE_LIMIT = 3500;
+const AGGREGATOR_TARGET_SIZE = 3500;
+const AGGREGATOR_FETCH_LIMIT = 10000;
 
 // Bumped function timeout — fetching 3,500 reviews + bulk store enrichment
 // can take ~10-20s on a cold start. Default is 300s on current Vercel
@@ -50,27 +58,44 @@ export const config = {
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {
     let xml = "";
     try {
-        const items = await buildReviewFeedData(AGGREGATOR_SAMPLE_LIMIT);
+        const items = await buildReviewFeedData(AGGREGATOR_FETCH_LIMIT);
+
+        // Filter: keep only reviews where we can build a REAL product URL
+        // on the merchant's storefront. Without productId + storeDomain we
+        // fall back to the certificate-page URL, and Google's automated
+        // feed validator rejects feeds whose product_url doesn't resolve
+        // to an actual product page. Better to ship 800 clean reviews than
+        // 3,500 with a backfill-poisoned tail.
+        const productPageReady = items.filter(
+            (r) => !!r.productId && !!r.storeDomain,
+        );
 
         // Map the shared ReviewFeedItem shape to the aggregator XML's
-        // input shape. The two diverge intentionally: the AI-discovery
-        // feeds care about trimmed content + title; the Google aggregator
-        // feed needs raw productId/productName + storeDomain to build
-        // per-merchant product URLs.
-        const aggregatorReviews: AggregatorFeedReview[] = items.map((r) => ({
-            reviewId: r.reviewId,
-            reviewerName: r.authorName,
-            publishedAtISO: r.datePublishedISO,
-            rating: r.rating,
-            text: r.content,
-            certificateNumber: r.certificateNumber,
-            storeUid: r.storeUid,
-            storeName: r.storeName,
-            storeDomain: r.storeDomain,
-            productId: r.productId,
-            productName: r.productName,
-            platform: r.platform,
-        }));
+        // input shape, capped at the target sample size.
+        const aggregatorReviews: AggregatorFeedReview[] = productPageReady
+            .slice(0, AGGREGATOR_TARGET_SIZE)
+            .map((r) => ({
+                reviewId: r.reviewId,
+                reviewerName: r.authorName,
+                publishedAtISO: r.datePublishedISO,
+                rating: r.rating,
+                text: r.content,
+                certificateNumber: r.certificateNumber,
+                storeUid: r.storeUid,
+                storeName: r.storeName,
+                storeDomain: r.storeDomain,
+                productId: r.productId,
+                productName: r.productName,
+                platform: r.platform,
+            }));
+
+        // One-line summary in logs so we can spot the filter ratio
+        // immediately when the endpoint runs.
+        console.info(
+            `[feeds/google-aggregator-sample] fetched=${items.length} ` +
+            `productPageReady=${productPageReady.length} ` +
+            `emitted=${aggregatorReviews.length}`,
+        );
 
         xml = buildGoogleAggregatorReviewsXml({
             reviews: aggregatorReviews,
