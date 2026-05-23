@@ -119,13 +119,18 @@ export class SallaBackfillService {
                 const sallaReviewId = String(r.id ?? '');
                 if (!sallaReviewId) { bumpSkip('no_review_id'); continue; }
 
-                // Salla's bulk reviews endpoint does NOT return product info
-                // inline. We use sallaReviewId (globally unique) as the dedupe
-                // key instead of orderId+productId. productId stays empty —
-                // the cert page reads the product name from sallaReviewId on
-                // demand if needed.
+                // Salla's bulk reviews endpoint DOES return product info inline
+                // via r.product.id + r.product.name (see SallaApiReview type
+                // above — same struct that powers the productName capture
+                // below). Earlier comment claimed otherwise and hardcoded
+                // productId='', which broke Google's aggregator-feed product
+                // matching for thousands of backfilled rows. We use sallaReviewId
+                // (globally unique) as the dedupe key — productId is captured
+                // here so review.itemReviewed can resolve to a Product entity
+                // in the Schema graph + so the GMC XML feeds emit a real
+                // {domain}/p{productId} product URL per review.
                 const orderId = String(r.order_id ?? '');
-                const productId = '';
+                const productId = String(r.product?.id ?? '');
 
                 if (this.deps.getReviewBySallaId) {
                     const existing = await this.deps.getReviewBySallaId(sallaReviewId);
