@@ -70,6 +70,47 @@ function trim(s: string, max: number): string {
 }
 
 /**
+ * Generic platform URLs we explicitly REJECT as merchant_url values.
+ *
+ * Why: some legacy stores in Firestore have `domain: "salla.sa"` instead
+ * of their actual custom storefront. If we ship those as <merchant_url>,
+ * Google reads the reviews as if they belong to Salla-the-platform rather
+ * than the specific merchant — and the gold stars would attach to
+ * salla.sa, not the merchant's brand. (Gemini caught this on the first
+ * draft of the merchant feed.)
+ *
+ * For these cases we fall through to the merchant-specific Theqah cert
+ * page URL, which IS a real, store-scoped URL on a domain we own — Google
+ * accepts that as a valid merchant_url.
+ */
+const GENERIC_PLATFORM_HOSTS = new Set([
+    "salla.sa",
+    "www.salla.sa",
+    "salla.com",
+    "www.salla.com",
+    "zid.store",
+    "www.zid.store",
+    "zid.sa",
+    "www.zid.sa",
+]);
+
+function isGenericPlatformUrl(url: string | null): boolean {
+    if (!url) return false;
+    try {
+        const u = new URL(url);
+        // Reject when the host IS the platform itself (no merchant subdomain)
+        // and the path is empty or just "/".
+        if (GENERIC_PLATFORM_HOSTS.has(u.host.toLowerCase())) {
+            const trimmedPath = u.pathname.replace(/\/+$/, "");
+            return trimmedPath === "" || trimmedPath === "/";
+        }
+        return false;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Build merchant_reviews.xsd-compliant XML. Returns a single string ready
  * to send as the HTTP body, with leading <?xml ... ?> declaration.
  *
@@ -87,13 +128,14 @@ export function buildGoogleMerchantReviewsXml(input: MerchantFeedInput): string 
 
             const reviewUrl = `${siteOrigin}/store/${encodeURIComponent(r.storeUid)}/certificate#review-${r.reviewId}`;
 
-            // Merchant URL: prefer the merchant's own storefront. If we
-            // don't have it (some legacy stores), fall back to the cert
-            // page — the certificate page IS a valid Theqah-hosted view
-            // of the merchant, so it satisfies the schema's "merchant_url
-            // must be a real URL" requirement.
-            const merchantUrl = r.storeUrl
-                || `${siteOrigin}/store/${encodeURIComponent(r.storeUid)}/certificate`;
+            // Merchant URL: prefer the merchant's own storefront. Reject
+            // generic platform URLs like "https://salla.sa" — those would
+            // make Google attribute the stars to the platform, not the
+            // merchant. Fall back to the merchant-specific Theqah cert
+            // page URL which IS a real, store-scoped URL.
+            const merchantUrl = (r.storeUrl && !isGenericPlatformUrl(r.storeUrl))
+                ? r.storeUrl
+                : `${siteOrigin}/store/${encodeURIComponent(r.storeUid)}/certificate`;
 
             const verifiedTag =
                 ` [تم التحقق من هذا التقييم بواسطة نظام مشتري موثق — شراء فعلي مع توصيل عبر منصة ${platformLabel} — شهادة #${r.certificateNumber}]`;
