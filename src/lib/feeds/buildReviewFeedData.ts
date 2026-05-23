@@ -24,13 +24,16 @@ import { URLS } from "@/config/constants";
 const SITE_URL = URLS.CANONICAL_ORIGIN;
 
 /**
- * Hard cap on feed length. Feeds longer than this take too long to
- * serialize per request and aren't useful to AI crawlers anyway — they
- * sample from the head, not the tail.
+ * Default cap for the public AI-discovery feeds. Larger consumers
+ * (e.g. Google's aggregator-application review feed) pass an explicit
+ * higher limit. We don't want a single 5,000-item JSON Feed served on
+ * every crawler poll — sampling from the head is the right pattern.
  */
-const FEED_MAX_ITEMS = 100;
+const FEED_DEFAULT_LIMIT = 100;
 
 export interface ReviewFeedItem {
+    /** Stable Firestore review document ID — used as review_id in feeds. */
+    reviewId: string;
     /** Stable, globally-unique URL fragment for this review. */
     id: string;
     /** Full URL to the review's anchor on the store certificate page. */
@@ -39,7 +42,7 @@ export interface ReviewFeedItem {
     title: string;
     /** Reviewer's display name as captured at submission time. */
     authorName: string;
-    /** Review body text. Empty if the buyer left no comment. */
+    /** Review body text — trimmed/normalized for the AI-discovery feeds. */
     content: string;
     /** Star rating, 1-5. */
     rating: number;
@@ -49,10 +52,19 @@ export interface ReviewFeedItem {
     storeName: string;
     storeUid: string;
     storeUrl: string | null;
+    /** Bare domain (host[/path]) — used to build merchant product URLs. */
+    storeDomain: string | null;
     /** Source platform — "salla" / "zid" / "manual". */
     platform: string;
     /** Triple-Match certificate code, format TQ-XXXXXX. */
     certificateNumber: string;
+    /**
+     * Platform's internal product ID (NOT a GTIN). Used by the Google
+     * aggregator-sample feed to build {domain}/p{productId} product URLs.
+     */
+    productId: string;
+    /** Product name as captured at review submission time. May be empty. */
+    productName: string;
 }
 
 /**
@@ -155,15 +167,19 @@ async function loadStores(uids: string[]): Promise<Map<string, StoreSnapshot>> {
  * (which live in `zid_reviews`) aren't included here yet because the feed
  * is a global, paginated head; adding a union of two collections with
  * mixed schemas is deferred until after Phase 4 validates the approach.
+ *
+ * `limit` defaults to FEED_DEFAULT_LIMIT (100) for the AI-discovery feeds.
+ * The aggregator-application sample feed for Google passes a higher limit
+ * (up to a few thousand) to satisfy their review-volume requirement.
  */
-export async function buildReviewFeedData(): Promise<ReviewFeedItem[]> {
+export async function buildReviewFeedData(limit = FEED_DEFAULT_LIMIT): Promise<ReviewFeedItem[]> {
     const db = dbAdmin();
 
     const snap = await db.collection("reviews")
         .where("verified", "==", true)
         .where("status", "==", "approved")
         .orderBy("publishedAt", "desc")
-        .limit(FEED_MAX_ITEMS)
+        .limit(limit)
         .get();
 
     if (snap.empty) return [];
@@ -200,6 +216,7 @@ export async function buildReviewFeedData(): Promise<ReviewFeedItem[]> {
         const certUrl = `${SITE_URL}/store/${encodeURIComponent(storeUid)}/certificate#review-${reviewId}`;
 
         items.push({
+            reviewId,
             id: certUrl,
             url: certUrl,
             title: trim(
@@ -213,8 +230,14 @@ export async function buildReviewFeedData(): Promise<ReviewFeedItem[]> {
             storeName,
             storeUid,
             storeUrl,
+            // Keep the raw domain (without https://) so the aggregator
+            // serializer can rebuild {domain}/p{productId} reliably even
+            // when storeUrl is already fully qualified.
+            storeDomain: store?.domain ?? null,
             platform: String(r.platform || "salla"),
             certificateNumber: certCode(storeUid),
+            productId: String(r.productId || ""),
+            productName: String(r.productName || ""),
         });
     }
 
