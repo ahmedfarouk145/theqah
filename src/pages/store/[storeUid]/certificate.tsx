@@ -96,6 +96,11 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
             rating: r.stars,
             text: r.text || "",
             dateISO: new Date(r.publishedAt).toISOString(),
+            // productId + productName drive the per-Product nodes the
+            // schema builder emits. Reviews without a productId (some
+            // legacy backfill rows) fall back to itemReviewed = store.
+            productId: r.productId,
+            productName: r.productName,
         })),
         // Maps the store's platform identifier to the Arabic label embedded
         // in each review's natural-language verification annotation. Falls

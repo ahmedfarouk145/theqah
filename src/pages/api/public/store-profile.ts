@@ -82,6 +82,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const reviews = verifiedReviews.map((r) => ({
             id: r.id || r.reviewId || "",
             productId: r.productId || null,
+            // productName surfaces here so the certificate page can attach
+            // each Review to its specific Product in JSON-LD (enables Google
+            // Product Ratings path in addition to Seller Ratings).
+            productName: r.productName || null,
             stars: r.stars || 0,
             text: r.text || "",
             publishedAt: r.publishedAt || r.createdAt || 0,

@@ -11,6 +11,12 @@ import { URLS } from "@/config/constants";
 export interface ReviewItem {
     id: string;
     productId: string | null;
+    /**
+     * Captured at review-submission time. Surfaces here so the certificate
+     * page can attach the Review to its specific Product in JSON-LD —
+     * required for Google's Product Ratings (vs. just Seller Ratings).
+     */
+    productName: string | null;
     stars: number;
     text: string;
     publishedAt: number;

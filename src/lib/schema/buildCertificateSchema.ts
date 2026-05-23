@@ -27,6 +27,15 @@ export interface CertSchemaReview {
     text: string;
     /** ISO 8601 date string. */
     dateISO: string;
+    /**
+     * Platform's internal product ID (Salla/Zid). When present, this review
+     * is attached to a specific Product node in the @graph so Google sees
+     * it as a Product Rating (in addition to the store-level AggregateRating
+     * which Google uses for Seller Ratings). When absent, the review falls
+     * back to itemReviewed = the store.
+     */
+    productId?: string | null;
+    productName?: string | null;
 }
 
 export interface CertSchemaInput {
@@ -82,16 +91,54 @@ export function buildCertificateSchema(input: CertSchemaInput) {
         `${stats.reviewCount} تقييم موثق لمتجر ${store.name} عبر Triple Match — ` +
         `(دفع + شحن + استلام) · مشتري موثق`;
 
+    // Build unique Product nodes from reviews that reference a specific
+    // product. Each Review then attaches to its Product via @id, which is
+    // what unlocks Google's Product Ratings path (in addition to the store-
+    // level AggregateRating which already serves Seller Ratings). Stable
+    // @ids derived from the product page URL on the merchant's domain so
+    // they're consistent across crawls and aggregator submissions.
+    const slicedReviews = reviews.slice(0, 20);
+    const storeDomain = store.url
+        ? store.url.replace(/^https?:\/\//i, "").replace(/\/$/, "")
+        : null;
+    const productMap = new Map<
+        string,
+        { "@id": string; productID: string; name: string; url: string | null }
+    >();
+    for (const r of slicedReviews) {
+        const pid = (r.productId || "").trim();
+        if (!pid) continue;
+        if (productMap.has(pid)) continue;
+        const productUrl = storeDomain ? `https://${storeDomain}/p${pid}` : null;
+        const productNodeId = productUrl
+            ? `${productUrl}#product`
+            : `${certUrl}#product-${pid}`;
+        productMap.set(pid, {
+            "@id": productNodeId,
+            productID: pid,
+            name: (r.productName || `منتج من متجر ${store.name}`).trim(),
+            url: productUrl,
+        });
+    }
+
     // Build review nodes once with stable @ids so the ItemList, the merchant's
     // `review` array, and the top-level review entries can all cross-reference
     // them. Position is 1-based to match ListItem semantics.
-    const reviewNodes = reviews.slice(0, 20).map((r, i) => {
+    const reviewNodes = slicedReviews.map((r, i) => {
         const reviewId = `${certUrl}#review-${i + 1}`;
         const baseText = (r.text || "").trim() || "تقييم بدون نص";
+        const pid = (r.productId || "").trim();
+        // Link Review to its specific Product when available; fall back to
+        // the store itself for reviews that lack a productId (e.g. some
+        // legacy backfill reviews). Either way, the store's AggregateRating
+        // remains intact for Seller Ratings.
+        const itemReviewedRef = pid && productMap.has(pid)
+            ? { "@id": productMap.get(pid)!["@id"] }
+            : { "@id": storeNodeId };
         return {
             "@type": "Review",
             "@id": reviewId,
-            itemReviewed: { "@id": storeNodeId },
+            itemReviewed: itemReviewedRef,
             author: { "@type": "Person", name: r.authorName },
             // `publisher` is the load-bearing signal that distinguishes a
             // third-party-verified review from a merchant-supplied testimonial.
@@ -263,6 +310,35 @@ export function buildCertificateSchema(input: CertSchemaInput) {
             // 8. Individual verified reviews (each carries its own @id +
             //    publisher pointer back to the issuing Organization).
             ...reviewNodes,
+
+            // 8b. Per-Product nodes for every unique product referenced by a
+            //     review on this page. Linking each Review.itemReviewed to a
+            //     specific Product is what unlocks Google's Product Ratings
+            //     surface in Shopping Ads / free Shopping tab — distinct
+            //     from the Seller Ratings surface that the store's own
+            //     AggregateRating drives. Stable @ids match the merchant's
+            //     storefront product URL so Google can cross-link entities
+            //     across crawls. The Product nodes here intentionally do
+            //     NOT carry their own aggregateRating: the per-product
+            //     star average is left to be computed from each Review's
+            //     reviewRating that points back here. This keeps a single
+            //     source of truth and avoids drift between the per-product
+            //     average and the page's overall numbers.
+            ...Array.from(productMap.values()).map((p) => ({
+                "@type": "Product",
+                "@id": p["@id"],
+                productID: p.productID,
+                name: p.name,
+                ...(p.url ? { url: p.url } : {}),
+                brand: { "@id": storeNodeId },
+                offers: {
+                    "@type": "Offer",
+                    seller: { "@id": storeNodeId },
+                    ...(p.url ? { url: p.url } : {}),
+                    availability: "https://schema.org/InStock",
+                },
+                inLanguage: "ar-SA",
+            })),
 
             // 9. FAQPage explaining Triple Match. Doubles as a schema win
             //    AND a content-depth boost — both scores were below target.
