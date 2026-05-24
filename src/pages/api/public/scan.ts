@@ -14,6 +14,8 @@
 // in our `stores`/`zid_stores` collections.
 
 import type { NextApiRequest, NextApiResponse } from 'next';
+import chromium from '@sparticuz/chromium';
+import puppeteer, { type Browser } from 'puppeteer-core';
 import { rateLimitPublic, RateLimitPresets } from '@/server/rate-limit-public';
 import { dbAdmin } from '@/lib/firebaseAdmin';
 import { sendEmailDmail } from '@/server/messaging/email-dmail';
@@ -75,9 +77,11 @@ type JsonObj = Record<string, any>;
 // VERCEL FUNCTION CONFIG
 // ═══════════════════════════════════════════════════════════════════════════════
 // Streaming path holds the connection open ~40s while phase events
-// are sent. Default Vercel function timeout is 300s; set a tighter
-// 60s cap so a hung scan can't pin a worker.
-export const config = { maxDuration: 60 };
+// are sent. We now also do two Chromium renders (homepage + sampled
+// product page), each ~5-10s. Bumped cap from 60s → 90s to give the
+// real-browser path comfortable headroom while still bounding any
+// hung scan.
+export const config = { maxDuration: 90 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // HANDLER
@@ -430,19 +434,40 @@ async function streamScan(req: NextApiRequest, res: NextApiResponse) {
 async function runScan(storeUrl: string, subscriber: SubscriberInfo): Promise<ScanReport> {
     const domain = extractDomain(storeUrl);
 
-    const [mainHtml, robotsTxt, llmsTxt] = await Promise.all([
-        fetchWithTimeout(storeUrl),
+    // Main page: render with real Chromium so we see JS-injected schema
+    // (theqah widget, Salla/Zid storefront frameworks). We ALSO sample a
+    // product page from the homepage links so we can score Product schema
+    // honestly — the widget and the platform both emit Product JSON-LD
+    // only on product pages, never on the homepage.
+    //
+    // robots.txt and llms.txt are pure text files — no JS to execute — so
+    // static fetch is the right call there.
+    const [rendered, robotsTxt, llmsTxt] = await Promise.all([
+        renderStoreForScan(storeUrl),
         fetchWithTimeout(`https://${domain}/robots.txt`),
         fetchWithTimeout(`https://${domain}/llms.txt`),
     ]);
 
-    const html = mainHtml.ok ? mainHtml.text : '';
+    // Safety net: if Chromium crashed or timed out, fall back to a raw
+    // fetch of just the homepage. We still want to score the page rather
+    // than 500-out — losing Product schema is better than no scan at all.
+    let html = rendered.homepage.ok ? rendered.homepage.html : '';
+    if (!html) {
+        const staticFallback = await fetchWithTimeout(storeUrl);
+        html = staticFallback.ok ? staticFallback.text : '';
+    }
     const robotsContent = robotsTxt.ok ? robotsTxt.text : null;
     const llmsContent = llmsTxt.ok ? llmsTxt.text : null;
 
     if (!html) throw new Error('cannot_reach_store');
 
-    const schemas = extractJsonLd(html);
+    // Combine schemas from homepage + sampled product page. The schema
+    // scorer is type-based ("did we see Product anywhere?") so unioning
+    // is correct — duplicates don't double-count.
+    const homepageSchemas = extractJsonLd(html);
+    const productSchemas = rendered.product?.ok ? extractJsonLd(rendered.product.html) : [];
+    const schemas = [...homepageSchemas, ...productSchemas];
+
     const metaTags = extractMetaTags(html);
     const headings = countHeadings(html);
     const storeType = detectStoreType(html, domain);
@@ -469,11 +494,11 @@ async function runScan(storeUrl: string, subscriber: SubscriberInfo): Promise<Sc
         (contentResult.score / 100) * WEIGHTS.content,
     );
 
-    // If the store is a theqah subscriber but our static fetch didn't see
-    // any Schema.org Review markup or "مشتري موثق" badge text, that means
-    // the widget injected the JSON-LD via JS — visible to JS-executing
-    // crawlers (ChatGPT browsing, modern Googlebot) but not to static
-    // scrapers. Surface that as an honest alert so the merchant knows.
+    // We now render the page in real Chromium before scanning, so the
+    // widget's JS-injected JSON-LD should be visible. If it still isn't
+    // here, that's a real problem — the widget didn't load (CSP blocked,
+    // ad blocker, merchant removed the script tag, etc.) and JS-aware
+    // crawlers won't see the schema either. Worth flagging honestly.
     const staticHtmlMissingReviews =
         subscriber.isSubscriber &&
         !flattenSchemas(schemas).some((s) => s['@type'] === 'Review') &&
@@ -845,6 +870,149 @@ async function fetchWithTimeout(url: string): Promise<{ ok: boolean; status: num
         return { ok: false, status: 0, text: '' };
     } finally {
         clearTimeout(timer);
+    }
+}
+
+// ─── Headless-rendered fetch ────────────────────────────────────────────────
+// Why this exists: a `fetch()` call only sees the raw HTML the server sends.
+// Our widget — and most Schema.org markup on modern Salla/Zid storefronts —
+// is injected AFTER the page boots, via JavaScript. A JS-aware AI crawler
+// (ChatGPT browsing, Gemini, Perplexity, modern Googlebot) sees the injected
+// schema fine; a static fetch sees an empty <head>.
+//
+// Result: every subscriber's Schema score was unfairly 25/100 even though
+// our widget was actively injecting Product + LocalBusiness JSON-LD on
+// their pages. The honest fix is to render with real Chromium and read
+// the post-JS DOM, the way a real AI crawler would.
+//
+// We use the same puppeteer-core + @sparticuz/chromium combo already
+// running on Vercel for the share-card endpoint, so no new dependencies.
+let browserPromise: Promise<Browser> | null = null;
+
+async function getBrowser(): Promise<Browser> {
+    if (browserPromise) {
+        try {
+            const b = await browserPromise;
+            if (b.connected) return b;
+        } catch {
+            /* fall through and relaunch */
+        }
+    }
+    browserPromise = (async () => {
+        return puppeteer.launch({
+            args: chromium.args,
+            executablePath: await chromium.executablePath(),
+            headless: true,
+        });
+    })();
+    return browserPromise;
+}
+
+interface RenderedStorePages {
+    /** The user-entered URL — typically the homepage. */
+    homepage: { ok: boolean; html: string };
+    /** A sampled product page discovered from the homepage links. Null if
+     *  no product link was found OR the second render failed. Optional —
+     *  scoring still works without it (just no Product schema). */
+    product: { ok: boolean; html: string; url: string } | null;
+}
+
+/**
+ * Render the store's homepage with real Chromium, then auto-discover
+ * a product page link and render that too. Returns both HTML payloads.
+ *
+ * Why we sample a product page:
+ *   - Our widget injects Product JSON-LD only on product pages. A
+ *     homepage-only scan can never give credit for it, no matter what.
+ *   - Salla/Zid/Shopify/Woo product pages carry Product + Offer schemas
+ *     emitted by the platform itself.
+ *   - AI crawlers (ChatGPT, Gemini, Googlebot) crawl many pages — judging
+ *     "AI readiness" from one page misses the most important schema in
+ *     the store. Sampling one product page closely mirrors what a real
+ *     crawler would see across the site.
+ *
+ * Falls back gracefully: if Chromium fails entirely, both fields are
+ * null and the caller switches to a static-fetch fallback.
+ */
+async function renderStoreForScan(storeUrl: string): Promise<RenderedStorePages> {
+    let page: Awaited<ReturnType<Browser['newPage']>> | null = null;
+    try {
+        const browser = await getBrowser();
+        page = await browser.newPage();
+        await page.setUserAgent(
+            'Theqah-Scanner/2.0 (JS-aware AI-readiness audit; +https://theqah.com.sa)',
+        );
+        // Block heavy assets — we only need HTML + executed JS, not images.
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+            const type = req.resourceType();
+            if (type === 'image' || type === 'media' || type === 'font') {
+                req.abort().catch(() => {});
+            } else {
+                req.continue().catch(() => {});
+            }
+        });
+
+        // 1) Render the homepage.
+        await page.goto(storeUrl, { waitUntil: 'networkidle2', timeout: 25_000 });
+        // Widget mounts after DOMContentLoaded — give JSON-LD time to appear.
+        await new Promise((r) => setTimeout(r, 2_000));
+        const homepageHtml = await page.content();
+
+        // 2) Discover a product link inside the rendered DOM.
+        //    We match the common storefront URL shapes:
+        //      - Salla: /<slug>/p<digits>           e.g. /lipstick/p123456
+        //      - Zid / Shopify / Woo: /products/<slug> or /product/<slug>
+        const productUrl = await page.evaluate(() => {
+            const anchors = Array.from(document.querySelectorAll('a[href]'));
+            for (const a of anchors) {
+                const href = (a as HTMLAnchorElement).href;
+                if (!href) continue;
+                try {
+                    const u = new URL(href, location.origin);
+                    if (u.hostname !== location.hostname) continue;
+                    const path = u.pathname;
+                    // Skip the homepage itself and obvious non-product paths.
+                    if (path === '/' || path === '') continue;
+                    if (/\/(cart|checkout|account|login|register|about|contact|terms|privacy|policy|blog|category|categories|faq|brands?|search)(\/|$)/i.test(path)) continue;
+                    // Salla product slug pattern: /something/pNNN or /pNNN
+                    if (/\/p\d+(?:[\/?#]|$)/.test(path)) return u.href;
+                    // Zid/Shopify/Woo product index pattern: /products/<slug> or /product/<slug>
+                    if (/\/products?\/[^/]+/i.test(path)) return u.href;
+                } catch {
+                    // ignore unparseable hrefs
+                }
+            }
+            return null;
+        });
+
+        // No product link found — return the homepage alone.
+        if (!productUrl) {
+            return { homepage: { ok: true, html: homepageHtml }, product: null };
+        }
+
+        // 3) Render the product page in the same browser tab so we keep
+        //    the request-interception handler. Wrapped in try/catch so a
+        //    bad product link doesn't kill the whole scan.
+        try {
+            await page.goto(productUrl, { waitUntil: 'networkidle2', timeout: 20_000 });
+            await new Promise((r) => setTimeout(r, 1_500));
+            const productHtml = await page.content();
+            return {
+                homepage: { ok: true, html: homepageHtml },
+                product: { ok: true, html: productHtml, url: productUrl },
+            };
+        } catch (err) {
+            console.warn('[scan] product-page render failed (keeping homepage):', err);
+            return { homepage: { ok: true, html: homepageHtml }, product: null };
+        }
+    } catch (err) {
+        console.warn('[scan] headless render failed, falling back to static fetch:', err);
+        return { homepage: { ok: false, html: '' }, product: null };
+    } finally {
+        if (page) {
+            try { await page.close(); } catch { /* ignore */ }
+        }
     }
 }
 
