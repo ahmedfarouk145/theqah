@@ -27,6 +27,12 @@ const STATIC_PAGES: { path: string; priority: number; changefreq: string }[] = [
     { path: "/faq", priority: 0.7, changefreq: "monthly" },
     { path: "/privacy-policy", priority: 0.3, changefreq: "yearly" },
     { path: "/terms", priority: 0.3, changefreq: "yearly" },
+    // Verification & Trust Policy — public methodology page Google's
+    // aggregator team links to from our application ticket. Higher
+    // priority than other policies because it's the primary trust-
+    // signal entry point for AI crawlers + regulators.
+    { path: "/verification-trust-policy", priority: 0.8, changefreq: "monthly" },
+    { path: "/verification-trust-policy/en", priority: 0.8, changefreq: "monthly" },
     { path: "/support", priority: 0.6, changefreq: "monthly" },
 ];
 

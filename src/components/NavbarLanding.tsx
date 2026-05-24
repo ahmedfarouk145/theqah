@@ -32,6 +32,7 @@ export default function NavbarLanding({
       <Link href="/support" className="hover:text-green-900 transition">الدعم</Link>
       <Link href="/terms" className="hover:text-green-900 transition">الشروط</Link>
       <Link href="/privacy-policy" className="hover:text-green-900 transition">الخصوصية</Link>
+      <Link href="/verification-trust-policy" className="hover:text-green-900 transition">سياسة التحقق</Link>
       <Link href="/report" className="hover:text-green-900 transition">الإبلاغ</Link>
       <Link href="/faq" className="hover:text-green-900 transition">الأسئلة الشائعة</Link>
     </>
@@ -100,6 +101,7 @@ export default function NavbarLanding({
                 <Link href="/support" onClick={() => setOpen(false)} className="block hover:text-green-900 transition">الدعم</Link>
                 <Link href="/terms" onClick={() => setOpen(false)} className="block hover:text-green-900 transition">الشروط</Link>
                 <Link href="/privacy-policy" onClick={() => setOpen(false)} className="block hover:text-green-900 transition">الخصوصية</Link>
+                <Link href="/verification-trust-policy" onClick={() => setOpen(false)} className="block hover:text-green-900 transition">سياسة التحقق</Link>
                 <Link href="/report" onClick={() => setOpen(false)} className="block hover:text-green-900 transition">الإبلاغ</Link>
                 <Link href="/faq" onClick={() => setOpen(false)} className="block hover:text-green-900 transition">الأسئلة الشائعة</Link>
 

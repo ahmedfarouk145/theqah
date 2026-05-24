@@ -760,6 +760,8 @@ export default function StoreReviewsPage({ profile, error, focusedReviewId, json
                         <span className="foot-sep">·</span>
                         <a href="mailto:reviews@theqah.com.sa">تواصل معنا: reviews@theqah.com.sa</a>
                         <span className="foot-sep">·</span>
+                        <Link href="/verification-trust-policy">سياسة التحقق والثقة</Link>
+                        <span className="foot-sep">·</span>
                         <Link href="/privacy-policy">سياسة الخصوصية</Link>
                         <span className="foot-sep">·</span>
                         <Link href="/terms">الشروط وسياسة الإرجاع</Link>
