@@ -36,6 +36,8 @@ export interface CertSchemaReview {
      */
     productId?: string | null;
     productName?: string | null;
+    /** Human-authored/approved merchant replies to this review. */
+    replies?: Array<{ text: string }>;
 }
 
 export interface CertSchemaInput {
@@ -170,6 +172,13 @@ export function buildCertificateSchema(input: CertSchemaInput) {
                 { "@type": "PropertyValue", name: "verifiedBy", value: "مشتري موثق — theqah.com.sa" },
                 { "@type": "PropertyValue", name: "certificateNumber", value: certificate.number },
             ],
+            ...(r.replies && r.replies.length
+              ? { comment: r.replies.map((rep) => ({
+                  '@type': 'Comment',
+                  text: rep.text,
+                  author: { '@type': 'Organization', name: store.name },
+                })) }
+              : {}),
         };
     });
 

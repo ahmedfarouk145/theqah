@@ -22,6 +22,7 @@ import StoreReviewsPage, {
 } from "./reviews";
 import { buildCertificateSchema } from "@/lib/schema/buildCertificateSchema";
 import { ConsensusRepository } from "@/server/repositories/consensus.repository";
+import { dbAdmin } from "@/lib/firebaseAdmin";
 
 /**
  * Minimum star rating required for a review to appear on the
@@ -87,6 +88,17 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
     const productConsensus: Record<string, string> = {};
     for (const [pid, text] of consensusEntries) if (text) productConsensus[pid] = text;
 
+    const replyEntries = await Promise.all(
+        recentReviews.map(async (r): Promise<[string, Array<{ text: string }>]> => {
+            if (!r.id) return [r.id, []];
+            const snap = await dbAdmin().collection('reviews').doc(r.id).collection('replies')
+                .where('visibility', '==', 'public').orderBy('createdAt', 'asc').get();
+            return [r.id, snap.docs.map((d) => ({ text: String((d.data() as { text?: string }).text || '') }))];
+        }),
+    );
+    const repliesByReview: Record<string, Array<{ text: string }>> = {};
+    for (const [rid, reps] of replyEntries) if (reps.length) repliesByReview[rid] = reps;
+
     const jsonLd = buildCertificateSchema({
         store: {
             storeUid: filteredProfile.store.storeUid,
@@ -115,6 +127,7 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
             // legacy backfill rows) fall back to itemReviewed = store.
             productId: r.productId,
             productName: r.productName,
+            replies: repliesByReview[r.id] || undefined,
         })),
         // Maps the store's platform identifier to the Arabic label embedded
         // in each review's natural-language verification annotation. Falls
