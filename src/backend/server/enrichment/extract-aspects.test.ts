@@ -41,4 +41,15 @@ describe('extractAspects', () => {
     const out = await extractAspects({ text: '   ', stars: 5 });
     expect(out).toBeNull();
   });
+
+  it('returns null and does not throw when the API call fails', async () => {
+    const original = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = 'sk-invalid-test-key';
+    try {
+      const out = await extractAspects({ text: 'منتج ممتاز', stars: 5 });
+      expect(out).toBeNull();
+    } finally {
+      process.env.OPENAI_API_KEY = original;
+    }
+  });
 });

@@ -1,5 +1,6 @@
 // src/backend/server/enrichment/extract-aspects.ts
 import { z } from 'zod';
+import OpenAI from 'openai';
 
 export const ASPECT_SENTIMENT = ['positive', 'neutral', 'negative'] as const;
 
@@ -41,8 +42,6 @@ export function parseExtractionResponse(raw: string): ReviewEnrichment | null {
   return result.success ? result.data : null;
 }
 
-import OpenAI from 'openai';
-
 export interface ExtractionInput {
   text: string;
   stars: number;
@@ -57,11 +56,12 @@ export async function extractAspects(input: ExtractionInput): Promise<ReviewEnri
   const text = (input.text || '').trim();
   if (!text || !process.env.OPENAI_API_KEY) return null;
 
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    timeout = setTimeout(() => controller.abort(), 12000);
 
     const completion = await client.chat.completions.create({
       model,
@@ -74,11 +74,12 @@ export async function extractAspects(input: ExtractionInput): Promise<ReviewEnri
       ],
     }, { signal: controller.signal });
 
-    clearTimeout(timeout);
     const content = completion.choices[0]?.message?.content || '';
     return parseExtractionResponse(content);
   } catch (e) {
     console.error('[extractAspects] failed:', e instanceof Error ? e.message : String(e));
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
