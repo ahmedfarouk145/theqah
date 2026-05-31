@@ -22,7 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const repo = RepositoryFactory.getReviewRepository();
     const review = await repo.findById(reviewDocId);
-    if (!review || !review.text?.trim()) return;
+    if (!review) return;
+    if (!review.text?.trim()) {
+      await repo.saveEnrichment(reviewDocId, {
+        aspects: [], topics: [], sentiment: 'neutral',
+        model: 'skip-empty', extractedAt: Date.now(),
+      });
+      return;
+    }
 
     const enrichment = await extractAspects({ text: review.text, stars: review.stars });
     if (!enrichment) return;
@@ -33,6 +40,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       extractedAt: Date.now(),
     });
   } catch (e) {
-    console.error('[enrich-review] failed:', e instanceof Error ? e.message : String(e));
+    console.error('[enrich-review] failed:', reviewDocId, e instanceof Error ? e.message : String(e));
   }
 }
