@@ -40,3 +40,45 @@ export function parseExtractionResponse(raw: string): ReviewEnrichment | null {
   const result = ExtractionSchema.safeParse(json);
   return result.success ? result.data : null;
 }
+
+import OpenAI from 'openai';
+
+export interface ExtractionInput {
+  text: string;
+  stars: number;
+}
+
+/**
+ * Calls OpenAI in JSON mode and returns validated enrichment, or null on
+ * empty input / network failure / invalid output. Never throws — callers
+ * run inside fire-and-forget jobs that must not crash on enrichment failure.
+ */
+export async function extractAspects(input: ExtractionInput): Promise<ReviewEnrichment | null> {
+  const text = (input.text || '').trim();
+  if (!text || !process.env.OPENAI_API_KEY) return null;
+
+  try {
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+
+    const completion = await client.chat.completions.create({
+      model,
+      temperature: 0,
+      max_tokens: 400,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'أنت محلل يستخرج بيانات منظمة من تقييمات العملاء ويعيد JSON فقط.' },
+        { role: 'user', content: buildExtractionPrompt(text, input.stars) },
+      ],
+    }, { signal: controller.signal });
+
+    clearTimeout(timeout);
+    const content = completion.choices[0]?.message?.content || '';
+    return parseExtractionResponse(content);
+  } catch (e) {
+    console.error('[extractAspects] failed:', e instanceof Error ? e.message : String(e));
+    return null;
+  }
+}

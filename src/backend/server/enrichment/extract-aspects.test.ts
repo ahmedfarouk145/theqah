@@ -33,3 +33,12 @@ describe('parseExtractionResponse', () => {
     expect(parseExtractionResponse(raw)).toBeNull();
   });
 });
+
+import { extractAspects } from './extract-aspects';
+
+describe('extractAspects', () => {
+  it('returns null for empty text without calling the model', async () => {
+    const out = await extractAspects({ text: '   ', stars: 5 });
+    expect(out).toBeNull();
+  });
+});
