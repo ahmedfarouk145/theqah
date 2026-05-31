@@ -213,6 +213,62 @@ export class SallaReviewIdLookupService {
     }
 
     /**
+     * Backfill scan: page the store's review list ONCE (Salla ignores all
+     * filters, so per-product scanning just multiplies cost) and collect the
+     * full set of product-review candidates for each target order id. Returning
+     * the COMPLETE candidate set per order lets the caller disambiguate safely
+     * (the API has no product field, so order_id alone is not unique).
+     *
+     * `reachedCap` is true when the store has more pages than `maxPages` — the
+     * candidate sets are then incomplete and the caller MUST NOT match on them
+     * (would risk a wrong-product match). Today no store exceeds the cap; a
+     * larger store is a signal to add cursor-based resumable paging.
+     */
+    async collectCandidatesForOrders(params: {
+        accessToken: string;
+        targetOrderIds: Set<string>;
+        maxPages: number;
+    }): Promise<{
+        candidatesByOrder: Map<string, Array<{ id: string; rating: number; content: string }>>;
+        totalPages: number;
+        pagesScanned: number;
+        reachedCap: boolean;
+    }> {
+        const { accessToken, targetOrderIds, maxPages } = params;
+        const candidatesByOrder = new Map<string, Array<{ id: string; rating: number; content: string }>>();
+        let page = 1;
+        let totalPages = 1;
+        let pagesScanned = 0;
+
+        while (page <= maxPages) {
+            const pageData = await this.fetchReviewPage(accessToken, page);
+            pagesScanned += 1;
+
+            const reported = toPositiveInteger(pageData.pagination?.totalPages);
+            if (reported !== null) totalPages = reported;
+            else if (!pageData.pagination?.links?.next) totalPages = page;
+
+            for (const remote of pageData.data ?? []) {
+                if (!isProductReviewType(remote.type)) continue;
+                const oid = remote.order_id != null ? String(remote.order_id) : null;
+                if (!oid || !targetOrderIds.has(oid)) continue;
+                const arr = candidatesByOrder.get(oid) ?? [];
+                arr.push({
+                    id: String(remote.id),
+                    rating: typeof remote.rating === 'number' ? remote.rating : 0,
+                    content: remote.content ?? '',
+                });
+                candidatesByOrder.set(oid, arr);
+            }
+
+            if ((pageData.data ?? []).length === 0 || page >= totalPages) break;
+            page += 1;
+        }
+
+        return { candidatesByOrder, totalPages, pagesScanned, reachedCap: totalPages > maxPages };
+    }
+
+    /**
      * Primary path — scans Salla reviews with `products[]=<productId>`
      * server-side filter, then matches on orderId + type only.
      *
