@@ -88,16 +88,20 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
     const productConsensus: Record<string, string> = {};
     for (const [pid, text] of consensusEntries) if (text) productConsensus[pid] = text;
 
+    // Deliberate divergence from getPublicReviews (which guards on lastRepliedAt):
+    // the cert page reads replies for all ≤20 recentReviews unconditionally because
+    // ReviewItem lacks lastRepliedAt (no cheap guard available) and the bounded read
+    // count (≤20) combined with s-maxage caching keeps the cost acceptable.
     const replyEntries = await Promise.all(
         recentReviews.map(async (r): Promise<[string, Array<{ text: string }>]> => {
-            if (!r.id) return [r.id, []];
+            if (!r.id) return ['', []];
             const snap = await dbAdmin().collection('reviews').doc(r.id).collection('replies')
                 .where('visibility', '==', 'public').orderBy('createdAt', 'asc').get();
             return [r.id, snap.docs.map((d) => ({ text: String((d.data() as { text?: string }).text || '') }))];
         }),
     );
     const repliesByReview: Record<string, Array<{ text: string }>> = {};
-    for (const [rid, reps] of replyEntries) if (reps.length) repliesByReview[rid] = reps;
+    for (const [rid, reps] of replyEntries) if (rid && reps.length) repliesByReview[rid] = reps;
 
     const jsonLd = buildCertificateSchema({
         store: {

@@ -10,7 +10,8 @@ export const config = { maxDuration: 300 };
 const MAX_PRODUCTS_PER_RUN = 40;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'unauthorized' });
   }
 
