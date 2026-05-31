@@ -194,6 +194,11 @@
     }
     const match = location.pathname.match(/\/product\/(\d+)/);
     if (match) return match[1];
+    // Salla storefront product URLs are /<slug>/p<productId>. The productId is
+    // in the URL immediately, whereas Salla injects the data-product-id attribute
+    // only after hydration — so this makes productId resolution timing-independent.
+    const sallaMatch = location.pathname.match(/\/p(\d+)(?:[\/?#]|$)/);
+    if (sallaMatch) return sallaMatch[1];
     const urlParams = new URLSearchParams(location.search);
     return urlParams.get('product_id') || urlParams.get('productId') || null;
   }
@@ -522,6 +527,10 @@
             if (currentCount < expectedCount) {
               addLogosToSallaReviews(verifiedReviews, storeUid);
             }
+            // The review host/product anchor can render late (same reason logos
+            // retry). renderConsensus is idempotent (.theqah-consensus guard), so
+            // retrying is safe and ensures the panel lands once the host exists.
+            renderConsensus(storeUid, productId);
           }, delay);
         });
 
