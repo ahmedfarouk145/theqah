@@ -21,6 +21,7 @@ import StoreReviewsPage, {
     type StoreProfile,
 } from "./reviews";
 import { buildCertificateSchema } from "@/lib/schema/buildCertificateSchema";
+import { ConsensusRepository } from "@/server/repositories/consensus.repository";
 
 /**
  * Minimum star rating required for a review to appear on the
@@ -73,6 +74,19 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
         .sort((a, b) => b.publishedAt - a.publishedAt)
         .slice(0, 20);
 
+    const consensusRepo = new ConsensusRepository();
+    const productIds = Array.from(
+        new Set(recentReviews.map((r) => r.productId).filter(Boolean) as string[]),
+    );
+    const consensusEntries = await Promise.all(
+        productIds.map(
+            async (pid) =>
+                [pid, (await consensusRepo.get(filteredProfile.store.storeUid, pid))?.text] as const,
+        ),
+    );
+    const productConsensus: Record<string, string> = {};
+    for (const [pid, text] of consensusEntries) if (text) productConsensus[pid] = text;
+
     const jsonLd = buildCertificateSchema({
         store: {
             storeUid: filteredProfile.store.storeUid,
@@ -110,6 +124,7 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
             filteredProfile.store.platform === "salla" ? "سلة"
             : filteredProfile.store.platform === "zid" ? "زد"
             : undefined,
+        productConsensus,
     });
 
     return {

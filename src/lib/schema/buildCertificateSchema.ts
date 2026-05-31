@@ -53,6 +53,8 @@ export interface CertSchemaInput {
     };
     /** Most recent verified reviews (≤20). */
     reviews: CertSchemaReview[];
+    /** Optional verified-consensus text keyed by productId. Rendered ONLY as Product.description. */
+    productConsensus?: Record<string, string>;
     /**
      * Source platform name (e.g., "سلة", "زد"). Used in the natural-language
      * verification annotation embedded inside each review's reviewBody so AI
@@ -75,7 +77,7 @@ function verifiedAnnotation(certNumber: string, dateISO: string, platformLabel: 
 }
 
 export function buildCertificateSchema(input: CertSchemaInput) {
-    const { store, stats, certificate, reviews, platformLabel = "سلة / زد" } = input;
+    const { store, stats, certificate, reviews, platformLabel = "سلة / زد", productConsensus } = input;
 
     const certUrl = `${BASE}/store/${encodeURIComponent(store.storeUid)}/certificate`;
     const storeUrl = store.url || certUrl;
@@ -329,6 +331,9 @@ export function buildCertificateSchema(input: CertSchemaInput) {
                 "@id": p["@id"],
                 productID: p.productID,
                 name: p.name,
+                ...(productConsensus && productConsensus[p.productID]
+                  ? { description: productConsensus[p.productID] }
+                  : {}),
                 ...(p.url ? { url: p.url } : {}),
                 brand: { "@id": storeNodeId },
                 offers: {
