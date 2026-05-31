@@ -203,18 +203,25 @@ export class ReviewService {
             const reviewId = r.id || r.reviewId || '';
             let replies: { text: string; createdAt: number }[] = [];
             if (reviewId && (r as { lastRepliedAt?: number }).lastRepliedAt) {
-                const { dbAdmin } = await import('@/lib/firebaseAdmin');
-                const snap = await dbAdmin()
-                    .collection('reviews')
-                    .doc(reviewId)
-                    .collection('replies')
-                    .where('visibility', '==', 'public')
-                    .orderBy('createdAt', 'asc')
-                    .get();
-                replies = snap.docs.map(d => ({
-                    text: String(d.data().text || ''),
-                    createdAt: Number(d.data().createdAt || 0),
-                }));
+                try {
+                    const { dbAdmin } = await import('@/lib/firebaseAdmin');
+                    // Equality-only query (NO orderBy) → needs no composite index;
+                    // sort in memory. Wrapped so it can never throw into the public API.
+                    const snap = await dbAdmin()
+                        .collection('reviews')
+                        .doc(reviewId)
+                        .collection('replies')
+                        .where('visibility', '==', 'public')
+                        .get();
+                    replies = snap.docs
+                        .map(d => ({
+                            text: String(d.data().text || ''),
+                            createdAt: Number(d.data().createdAt || 0),
+                        }))
+                        .sort((a, b) => a.createdAt - b.createdAt);
+                } catch {
+                    replies = [];
+                }
             }
             return {
                 id: reviewId,

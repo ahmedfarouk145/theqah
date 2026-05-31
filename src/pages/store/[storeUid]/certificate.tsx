@@ -80,10 +80,13 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
         new Set(recentReviews.map((r) => r.productId).filter(Boolean) as string[]),
     );
     const consensusEntries = await Promise.all(
-        productIds.map(
-            async (pid) =>
-                [pid, (await consensusRepo.get(filteredProfile.store.storeUid, pid))?.text] as const,
-        ),
+        productIds.map(async (pid) => {
+            try {
+                return [pid, (await consensusRepo.get(filteredProfile.store.storeUid, pid))?.text] as const;
+            } catch {
+                return [pid, undefined] as const;
+            }
+        }),
     );
     const productConsensus: Record<string, string> = {};
     for (const [pid, text] of consensusEntries) if (text) productConsensus[pid] = text;
@@ -95,9 +98,20 @@ export const getServerSideProps: GetServerSideProps<StoreReviewsPageProps> = asy
     const replyEntries = await Promise.all(
         recentReviews.map(async (r): Promise<[string, Array<{ text: string }>]> => {
             if (!r.id) return ['', []];
-            const snap = await dbAdmin().collection('reviews').doc(r.id).collection('replies')
-                .where('visibility', '==', 'public').orderBy('createdAt', 'asc').get();
-            return [r.id, snap.docs.map((d) => ({ text: String((d.data() as { text?: string }).text || '') }))];
+            try {
+                // Equality-only query (NO orderBy) so it needs no composite index;
+                // sort in memory. Wrapped so an optional reply fetch can never 500
+                // the certificate page (regression guard).
+                const snap = await dbAdmin().collection('reviews').doc(r.id).collection('replies')
+                    .where('visibility', '==', 'public').get();
+                const reps = snap.docs
+                    .map((d) => d.data() as { text?: string; createdAt?: number })
+                    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+                    .map((d) => ({ text: String(d.text || '') }));
+                return [r.id, reps];
+            } catch {
+                return [r.id, []];
+            }
         }),
     );
     const repliesByReview: Record<string, Array<{ text: string }>> = {};
