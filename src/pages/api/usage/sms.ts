@@ -1,6 +1,6 @@
 // src/pages/api/usage/sms.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { requireUser } from '@/server/auth/requireUser';
+import { requireStore, StoreNotLinkedError } from '@/server/auth/resolveStoreUid';
 
 /**
  * L10: SMS Cost Estimation API
@@ -20,8 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const user = await requireUser(req);
-        const storeUid = user.uid;
+        const { storeUid } = await requireStore(req);
 
         const { dbAdmin } = await import('@/lib/firebaseAdmin');
         const db = dbAdmin();
@@ -131,6 +130,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
     } catch (error) {
+        if (error instanceof StoreNotLinkedError) {
+            return res.status(200).json({
+                period: { days: 0, startDate: new Date().toISOString(), isCurrentMonth: false },
+                summary: { totalSent: 0, successful: 0, failed: 0, successRate: 0, localSms: 0, internationalSms: 0 },
+                cost: { estimated: 0, currency: 'SAR', breakdown: { local: { count: 0, rate: 0.05, total: 0 }, international: { count: 0, rate: 0.12, total: 0 } } },
+                projection: { dailyAverage: 0, projectedMonthly: 0, projectedCost: 0 },
+                daily: [],
+                pricing: { local: 0.05, international: 0.12, currency: 'SAR' },
+                storeNotLinked: true,
+            });
+        }
         console.error('SMS Usage Error:', error);
         return res.status(500).json({ error: 'Failed to fetch SMS usage' });
     }

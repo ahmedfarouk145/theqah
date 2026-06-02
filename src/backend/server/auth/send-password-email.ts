@@ -1,6 +1,7 @@
 // src/server/auth/send-password-email.ts
 import { getAuth } from "firebase-admin/auth";
 import { sendEmailDmail } from "@/server/messaging/email-dmail";
+import { linkUserToStore } from "@/server/auth/resolveStoreUid";
 
 type SendPasswordEmailInput = {
   email: string;
@@ -40,23 +41,21 @@ export async function sendPasswordSetupEmail({
   const auth = getAuth();
 
   // Check if user exists, create if not
-  let userExists = false;
+  let userRecord: { uid: string } | null = null;
   try {
-    await auth.getUserByEmail(email);
-    userExists = true;
+    userRecord = await auth.getUserByEmail(email);
   } catch (err: unknown) {
     // User doesn't exist - this is expected for new merchants
     const firebaseErr = err as { code?: string };
     if (firebaseErr.code === "auth/user-not-found") {
       // Create the user
       try {
-        await auth.createUser({
+        userRecord = await auth.createUser({
           email,
           emailVerified: false,
           disabled: false,
           displayName: storeName || undefined,
         });
-        userExists = true;
       } catch (createErr) {
         const createErrTyped = createErr as { message?: string };
         return { ok: false, error: `create_user_failed: ${createErrTyped.message || String(createErr)}` };
@@ -66,8 +65,16 @@ export async function sendPasswordSetupEmail({
     }
   }
 
-  if (!userExists) {
+  if (!userRecord) {
     return { ok: false, error: "user_not_created" };
+  }
+
+  // Write the uid -> storeUid mapping so the dashboard resolves correctly
+  try {
+    await linkUserToStore(userRecord.uid, storeUid, { email, via: 'onboarding' });
+  } catch (linkErr) {
+    // Non-fatal: mapping failure must not block the password email
+    console.warn('[send-password-email] linkUserToStore failed:', linkErr);
   }
 
   // Generate password reset link

@@ -3,7 +3,7 @@
 // Delegates to ZidReviewSyncService
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { requireUser } from '@/backend/server/auth/requireUser';
+import { requireStore, StoreNotLinkedError } from '@/server/auth/resolveStoreUid';
 import { ZidTokenService } from '@/backend/server/services/zid-token.service';
 import { ZidReviewSyncService } from '@/backend/server/services/zid-review-sync.service';
 import { dbAdmin } from '@/lib/firebaseAdmin';
@@ -11,16 +11,19 @@ import { dbAdmin } from '@/lib/firebaseAdmin';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).end();
 
-    let user;
+    let storeUid: string;
     try {
-        user = await requireUser(req);
-    } catch {
+        ({ storeUid } = await requireStore(req));
+    } catch (e) {
+        if (e instanceof StoreNotLinkedError) {
+            return res.status(200).json({ ok: false, storeNotLinked: true });
+        }
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
     try {
         const db = dbAdmin();
-        const storeDoc = await db.collection('stores').doc(user.uid).get();
+        const storeDoc = await db.collection('stores').doc(storeUid).get();
         const storeData = storeDoc.data();
         const zidStoreId = storeData?.zid?.storeId;
 
@@ -38,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Sync reviews
         const syncService = new ZidReviewSyncService();
         const result = await syncService.syncReviewsForStore(
-            user.uid,
+            storeUid,
             zidStoreId,
             tokens,
             {
@@ -47,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         );
 
-        console.log(`[ZID_SYNC] Manual sync for ${user.uid}: ${JSON.stringify(result)}`);
+        console.log(`[ZID_SYNC] Manual sync for ${storeUid}: ${JSON.stringify(result)}`);
         return res.status(200).json({ ok: true, ...result });
     } catch (err) {
         console.error('[ZID_SYNC] Error:', err);

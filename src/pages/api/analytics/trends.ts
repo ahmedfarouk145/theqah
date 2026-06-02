@@ -1,6 +1,6 @@
 // src/pages/api/analytics/trends.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { requireUser } from '@/server/auth/requireUser';
+import { requireStore, StoreNotLinkedError } from '@/server/auth/resolveStoreUid';
 
 /**
  * L8: Review Analytics Trends API
@@ -12,8 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const user = await requireUser(req);
-        const storeUid = user.uid;
+        const { storeUid } = await requireStore(req);
 
         const { dbAdmin } = await import('@/lib/firebaseAdmin');
         const db = dbAdmin();
@@ -105,6 +104,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
     } catch (error) {
+        if (error instanceof StoreNotLinkedError) {
+            return res.status(200).json({
+                period: { days: 0, startDate: new Date().toISOString() },
+                summary: { totalReviews: 0, averageRating: 0, reviewsPerDay: 0, trend: 'stable' },
+                starsDistribution: [],
+                daily: [],
+                weekly: [],
+                storeNotLinked: true,
+            });
+        }
         console.error('Analytics Trends Error:', error);
         return res.status(500).json({ error: 'Failed to fetch analytics' });
     }

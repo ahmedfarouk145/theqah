@@ -1,6 +1,6 @@
 // src/pages/api/usage/current.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { requireUser } from '@/server/auth/requireUser';
+import { requireStore, StoreNotLinkedError } from '@/server/auth/resolveStoreUid';
 import { StoreService } from '@/server/services/store.service';
 
 type UsageData = {
@@ -15,16 +15,16 @@ type UsageData = {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<{ ok: boolean; usage?: UsageData; message?: string }>
+  res: NextApiResponse<{ ok: boolean; usage?: UsageData; message?: string; storeNotLinked?: boolean }>
 ) {
   if (req.method !== 'GET') {
     return res.status(405).json({ ok: false, message: 'Method not allowed' });
   }
 
   try {
-    const { uid } = await requireUser(req);
+    const { storeUid } = await requireStore(req);
     const storeService = new StoreService();
-    const usage = await storeService.getUsageStats(uid);
+    const usage = await storeService.getUsageStats(storeUid);
 
     if (!usage) {
       return res.status(404).json({ ok: false, message: 'Store not found' });
@@ -32,6 +32,9 @@ export default async function handler(
 
     return res.status(200).json({ ok: true, usage });
   } catch (error) {
+    if (error instanceof StoreNotLinkedError) {
+      return res.status(200).json({ ok: true, storeNotLinked: true });
+    }
     console.error('[USAGE API] Error:', error);
     return res.status(500).json({ ok: false, message: 'Internal server error' });
   }

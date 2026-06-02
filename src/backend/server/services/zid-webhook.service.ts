@@ -13,6 +13,7 @@
 
 import crypto from 'crypto';
 import { ZidStoreRepository } from '@/server/repositories/zid-store.repository';
+import { linkUserToStore } from '@/server/auth/resolveStoreUid';
 
 // Module-level singleton — repos are stateless and safe to share.
 const zidStoreRepo = new ZidStoreRepository();
@@ -122,6 +123,13 @@ export class ZidWebhookService {
                     storeUid,
                     { ownerUid: firebaseUser.uid } as unknown as Parameters<typeof zidStoreRepo.set>[1],
                 );
+
+                // Write the users/{uid} -> storeUid mapping so the dashboard resolver works
+                try {
+                    await linkUserToStore(firebaseUser.uid, storeUid, { email, via: 'onboarding' });
+                } catch (linkErr) {
+                    console.error('[ZID_WEBHOOK] Failed to write uid->storeUid mapping:', linkErr);
+                }
             } catch (authErr) {
                 console.error(`[ZID_WEBHOOK] ⚠️ Failed to create Firebase user:`, authErr);
             }
