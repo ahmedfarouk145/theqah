@@ -187,18 +187,22 @@
 
   // ——— Extract product ID from page ———
   function extractProductId() {
+    // PREFER the Salla storefront URL id `/p<id>` (formats: /<slug>/p<id>,
+    // /-/p<id>, /p<id>-<slug>). This `/p<id>` equals the product.id Salla sends
+    // in the review webhook — i.e. the id our reviews + consensus are keyed by.
+    // The DOM's `data-product-id` is a DIFFERENT id on some stores (verified on
+    // kamaidostore1: URL 2069806742 vs data-product-id 523504106), so trusting
+    // it broke per-product matching there. The `[-/?#]` boundary handles the
+    // /p<id>-<slug> canonical form.
+    const sallaMatch = location.pathname.match(/\/p(\d+)(?:[-/?#]|$)/);
+    if (sallaMatch) return sallaMatch[1];
+    const match = location.pathname.match(/\/product\/(\d+)/);
+    if (match) return match[1];
     const fromData = document.querySelector("[data-product-id], [data-productid]");
     if (fromData) {
       const id = fromData.getAttribute("data-product-id") || fromData.getAttribute("data-productid");
       if (id) return id;
     }
-    const match = location.pathname.match(/\/product\/(\d+)/);
-    if (match) return match[1];
-    // Salla storefront product URLs are /<slug>/p<productId>. The productId is
-    // in the URL immediately, whereas Salla injects the data-product-id attribute
-    // only after hydration — so this makes productId resolution timing-independent.
-    const sallaMatch = location.pathname.match(/\/p(\d+)(?:[\/?#]|$)/);
-    if (sallaMatch) return sallaMatch[1];
     const urlParams = new URLSearchParams(location.search);
     return urlParams.get('product_id') || urlParams.get('productId') || null;
   }
