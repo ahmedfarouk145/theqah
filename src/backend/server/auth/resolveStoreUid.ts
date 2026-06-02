@@ -27,6 +27,19 @@ export function pickStoreUid(c: StoreUidCandidates): string | null {
   return unique.length === 1 ? unique[0] : null;
 }
 
+/**
+ * Security gate for the email-fallback path. The fallback matches the caller's
+ * Firebase email against store records and AUTO-LINKS the login to that store —
+ * so an UNVERIFIED email is an account-takeover vector: an attacker can sign up
+ * with a victim merchant's email, never verify it, and be mapped to the victim's
+ * store (IDOR). Only consult the fallback when the email is verified (proven
+ * control of that mailbox == the real merchant). Skipped anyway when an ownerUid
+ * match already resolved the store. Pure for unit testing.
+ */
+export function emailFallbackAllowed(emailVerified: boolean, ownerUidStoreUid: string | null): boolean {
+  return emailVerified === true && !ownerUidStoreUid;
+}
+
 const normEmail = (e: string | null | undefined) => String(e || '').trim().toLowerCase();
 
 function storeEmails(d: Record<string, unknown>): string[] {
@@ -73,7 +86,7 @@ export async function linkUserToStore(
 }
 
 /** Resolve uid -> storeUid using the precedence above; caches fallback resolutions. */
-export async function resolveStoreUid(uid: string, email: string | null): Promise<string | null> {
+export async function resolveStoreUid(uid: string, email: string | null, emailVerified: boolean): Promise<string | null> {
   const { dbAdmin } = await import('@/lib/firebaseAdmin');
   const db = dbAdmin();
 
@@ -86,8 +99,11 @@ export async function resolveStoreUid(uid: string, email: string | null): Promis
   const ownerSnap = await db.collection('stores').where('ownerUid', '==', uid).limit(1).get();
   const ownerUidStoreUid = ownerSnap.empty ? null : ownerSnap.docs[0].id;
 
-  // 3) unique email match (fallback)
-  const emailMatchedStoreUids = ownerUidStoreUid ? [] : await findStoreUidsByEmail(email || '');
+  // 3) unique email match (fallback) — ONLY for a verified email, else this is
+  //    an account-takeover vector. See emailFallbackAllowed().
+  const emailMatchedStoreUids = emailFallbackAllowed(emailVerified, ownerUidStoreUid)
+    ? await findStoreUidsByEmail(email || '')
+    : [];
 
   const resolved = pickStoreUid({ mappedStoreUid, ownerUidStoreUid, emailMatchedStoreUids });
 
@@ -104,8 +120,8 @@ export class StoreNotLinkedError extends Error {
 
 /** Endpoint helper: authenticate AND resolve the caller's store. Throws StoreNotLinkedError if unresolved. */
 export async function requireStore(req: NextApiRequest): Promise<{ uid: string; email: string | null; storeUid: string }> {
-  const { uid, email } = await requireUser(req);
-  const storeUid = await resolveStoreUid(uid, email);
+  const { uid, email, emailVerified } = await requireUser(req);
+  const storeUid = await resolveStoreUid(uid, email, emailVerified);
   if (!storeUid) throw new StoreNotLinkedError();
   return { uid, email, storeUid };
 }

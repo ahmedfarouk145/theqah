@@ -115,8 +115,13 @@ export async function verifyStore(req: NextApiRequest): Promise<{ uid: string; e
     const decoded = await authAdmin().verifyIdToken(token);
     const email = decoded.email ?? undefined;
 
-    // Resolve the actual store UID (might be different from Firebase Auth UID)
-    const storeUid = await resolveStoreUid(decoded.uid, email);
+    // Resolve the actual store UID (might be different from Firebase Auth UID).
+    // Only resolve BY EMAIL when the email is verified — an unverified email is
+    // attacker-controllable (sign up as a victim merchant's email, never verify),
+    // and resolving by it would be account takeover (IDOR). Non-email paths
+    // (uid alias) still work regardless.
+    const emailForResolve = decoded.email_verified === true ? email : undefined;
+    const storeUid = await resolveStoreUid(decoded.uid, emailForResolve);
 
     (req as AuthedRequest).storeId = storeUid;
     (req as AuthedRequest).storeEmail = email;

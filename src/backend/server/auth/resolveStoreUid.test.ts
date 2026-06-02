@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pickStoreUid } from './resolveStoreUid';
+import { pickStoreUid, emailFallbackAllowed } from './resolveStoreUid';
 
 describe('pickStoreUid (precedence)', () => {
   it('prefers an existing users/{uid} mapping above everything', () => {
@@ -48,5 +48,23 @@ describe('pickStoreUid (precedence)', () => {
       ownerUidStoreUid: null,
       emailMatchedStoreUids: ['salla:3', 'salla:3'],
     })).toBe('salla:3');
+  });
+});
+
+describe('emailFallbackAllowed (account-takeover gate)', () => {
+  it('allows the email fallback only when the email is VERIFIED', () => {
+    expect(emailFallbackAllowed(true, null)).toBe(true);
+  });
+
+  it('BLOCKS the email fallback when the email is unverified (attacker-controllable)', () => {
+    // An attacker can sign up with a victim merchant's email and never verify it.
+    // Without this gate, the unique-email match would auto-link them to the
+    // victim's store → account takeover (IDOR).
+    expect(emailFallbackAllowed(false, null)).toBe(false);
+  });
+
+  it('does not need the email fallback when an ownerUid match already exists', () => {
+    expect(emailFallbackAllowed(true, 'salla:2')).toBe(false);
+    expect(emailFallbackAllowed(false, 'salla:2')).toBe(false);
   });
 });
