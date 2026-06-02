@@ -17,6 +17,7 @@ import {
   toDomainBase,
   encodeUrlForFirestore,
   pickStoreUidFromSalla,
+  resolveAuthorizeStoreUid,
   keyOf,
   generateIdempotencyKey,
 } from "@/server/utils/salla-webhook.utils";
@@ -201,7 +202,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // A) authorize/installed/updated → flags/domain + oauth + store/info + userinfo + password email
     if (event === "app.store.authorize" || event === "app.updated" || event === "app.installed") {
-      const storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
+      let storeUid = merchantId != null ? `salla:${String(merchantId)}` : undefined;
 
       // DEBUG: Log full payload structure to understand what Salla sends
       await fbLog(db, {
@@ -249,6 +250,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           : (typeof (dataRaw["token"]) === "object" && dataRaw["token"] && typeof (dataRaw["token"] as Dict)["access_token"] === "string"
             ? ((dataRaw["token"] as Dict)["access_token"] as string).trim()
             : "");
+
+      // SELF-HEAL: if the payload had no merchant id, derive storeUid from the
+      // token via store/info (data.id) — otherwise the token is archived but
+      // never persisted to owners/{uid}, which is how stores went dead-token.
+      if (!storeUid && tokenFromPayload) {
+        const healed = await resolveAuthorizeStoreUid({
+          merchantId,
+          accessToken: tokenFromPayload,
+          fetchStoreInfo,
+        });
+        if (healed) {
+          storeUid = healed;
+          await fbLog(db, {
+            level: "info", scope: "oauth", msg: "self-healed storeUid from store/info",
+            event, idemKey, merchant: merchantId, orderId, meta: { storeUid: healed },
+          });
+        } else {
+          await fbLog(db, {
+            level: "warn", scope: "oauth", msg: "authorize had no merchant id and store/info could not resolve one",
+            event, idemKey, merchant: merchantId, orderId,
+          });
+        }
+      }
 
       // دومين من البودي (إن وُجد)
       const domainInPayload =

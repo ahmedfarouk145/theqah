@@ -103,6 +103,36 @@ export function pickStoreUidFromSalla(eventData: Dict, bodyMerchant?: string | n
     return sid !== undefined ? `salla:${String(sid)}` : undefined;
 }
 
+/**
+ * Resolve the storeUid for an app.store.authorize/installed/updated event.
+ * Prefers the merchant id from the payload; when that's absent (which silently
+ * dropped tokens and created the "dead-token" stores), self-heals by deriving
+ * the store id from the token itself via store/info (`data.id`). Returns null
+ * only when there's neither a merchant id nor a usable token.
+ */
+export async function resolveAuthorizeStoreUid(opts: {
+    merchantId: string | number | null | undefined;
+    accessToken?: string | null;
+    fetchStoreInfo: (token: string) => Promise<{ data?: { id?: number | string } }>;
+}): Promise<string | null> {
+    const { merchantId, accessToken, fetchStoreInfo } = opts;
+    if (merchantId !== undefined && merchantId !== null && String(merchantId).length > 0) {
+        return `salla:${String(merchantId)}`;
+    }
+    if (accessToken) {
+        try {
+            const info = await fetchStoreInfo(accessToken);
+            const id = info?.data?.id;
+            if (id !== undefined && id !== null && String(id).length > 0) {
+                return `salla:${String(id)}`;
+            }
+        } catch {
+            return null;
+        }
+    }
+    return null;
+}
+
 export const keyOf = (event: string, orderId?: string, status?: string) =>
     `salla:${lc(event)}:${orderId ?? "none"}:${status ?? ""}`;
 

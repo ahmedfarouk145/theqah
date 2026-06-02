@@ -133,6 +133,11 @@ export interface Owner extends EntityBase {
         expires?: number;
         receivedAt: number;
         strategy: string;
+        /** Set true when Salla revokes the grant (invalid_grant/401). The store
+         * must reinstall the app; surfaced by the fleet sweep for outreach. */
+        needsReauth?: boolean;
+        reauthReason?: string;
+        deadAt?: number;
     };
 }
 
