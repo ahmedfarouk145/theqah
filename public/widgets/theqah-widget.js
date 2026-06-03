@@ -1449,6 +1449,15 @@
     return container;
   }
 
+  // Bounded self-retry so a late-hydrating Salla product page doesn't freeze the
+  // badge in the footer: while only the weak (footer/floating) anchor exists, we
+  // wait and re-check until the near-product anchor appears. ~15 × 400ms ≈ 6s,
+  // after which we accept the fallback so pages that truly lack a product anchor
+  // still get a badge.
+  let certPlacementAttempts = 0;
+  const CERT_PLACEMENT_MAX_ATTEMPTS = 15;
+  const CERT_PLACEMENT_RETRY_MS = 400;
+
   // ——— إدراج شهادة التوثيق في صفحة المتجر ———
   function insertCertificateBadge(storeUid, lang, theme, position = 'auto', profile = null) {
     // Check if already inserted
@@ -1463,13 +1472,26 @@
       }
     }
 
-    const certificate = createCertificateBadge(lang, theme, profile);
-    if (!certificate) return;
-
     // Smart Heuristics: find best placement based on position setting
     const placement = findBestPlacement(position);
-
     if (!placement) return;
+
+    // Defer a weak fallback (footer/floating) while the near-product anchor may
+    // still be hydrating, so the badge lands NEAR THE PRODUCT deterministically
+    // rather than wherever the load race happened to leave it.
+    if (position === 'auto' && placement.quality === 'fallback'
+        && certPlacementAttempts < CERT_PLACEMENT_MAX_ATTEMPTS) {
+      certPlacementAttempts++;
+      setTimeout(
+        () => insertCertificateBadge(storeUid, lang, theme, position, profile),
+        CERT_PLACEMENT_RETRY_MS
+      );
+      return;
+    }
+    certPlacementAttempts = 0; // reset for future (re)mounts / SPA navigations
+
+    const certificate = createCertificateBadge(lang, theme, profile);
+    if (!certificate) return;
 
     if (placement.type === 'floating') {
       // Floating badge in corner
@@ -1519,43 +1541,37 @@
       return { type: 'floating' };
     }
 
-    // Auto mode: Smart Heuristics based on page structure
-    // أولوية 1: قبل قسم التقييمات مباشرة
+    // Auto mode: prefer NEAR THE PRODUCT. `quality: 'preferred'` means a real
+    // in-content anchor; `quality: 'fallback'` (footer/floating) is a weak last
+    // resort the caller DEFERS while the page is still hydrating, so the badge
+    // doesn't freeze at the page bottom (see insertCertificateBadge).
+
+    // أولوية 1: بجانب المنتج — وصف/معلومات/نموذج المنتج
+    const productAnchor = document.querySelector(
+      '.product-description, .product__description, .s-product-description, [data-product-description],'
+      + '.product-info, .product__info, .s-product-info, .product-details,'
+      + 'salla-add-product-button, .product-form, .s-product-card-content, .entry-summary, .product__meta'
+    );
+    if (productAnchor && isVisible(productAnchor)) {
+      return { element: productAnchor, position: 'after', quality: 'preferred' };
+    }
+
+    // أولوية 2: قسم التقييمات (لا يزال داخل المحتوى)
     const reviewsSection = document.querySelector(
       'salla-products-comments, .s-comments-list, .product-reviews, .reviews-section, #reviews, [data-reviews]'
     );
-
     if (reviewsSection && isVisible(reviewsSection)) {
-      return { element: reviewsSection, position: 'before' };
+      return { element: reviewsSection, position: 'before', quality: 'preferred' };
     }
 
-    // أولوية 2: بعد وصف المنتج
-    const productDesc = document.querySelector(
-      '.product-description, .product__description, .s-product-description, [data-product-description]'
-    );
-
-    if (productDesc && isVisible(productDesc)) {
-      return { element: productDesc, position: 'after' };
-    }
-
-    // أولوية 3: بعد معلومات المنتج
-    const productInfo = document.querySelector(
-      '.product-info, .product__info, .s-product-info, .product-details'
-    );
-
-    if (productInfo && isVisible(productInfo)) {
-      return { element: productInfo, position: 'after' };
-    }
-
-    // أولوية 4: في الفوتر
+    // أولوية 3 (احتياطي ضعيف): الفوتر — يؤجَّل حتى يكتمل تحميل الصفحة
     const footer = document.querySelector('footer, .s-footer');
     if (footer) {
-      return { element: footer, position: 'before' };
+      return { element: footer, position: 'before', quality: 'fallback' };
     }
 
-    // Fallback: Floating badge
-
-    return { type: 'floating' };
+    // احتياطي أخير: بادج عائم
+    return { type: 'floating', quality: 'fallback' };
   }
 
   // Helper to check visibility
