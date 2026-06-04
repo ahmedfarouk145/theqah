@@ -2,14 +2,14 @@
 //
 // Public AI-readiness scanner section for the home page.
 // Posts to /api/public/scan and renders an honest 5-dimension report.
-// When the scanned domain isn't an active theqah subscriber, the result
-// panel surfaces a prominent "reviews not independently verified" warning
-// + Salla install CTA. When it IS an active subscriber, the panel shows
-// a positive "متجرك يستخدم مشتري موثق" badge + link to the public certificate.
+// When the scanned domain IS an active subscriber, the panel shows a positive
+// "متجرك يستخدم مشتري موثق" badge + link to the public certificate. Non-subscribers
+// see no red banner; instead the reviews-trust alert links the "مشتري موثق"
+// service name (in blue) to the Salla install page.
 
 'use client';
 
-import { useState, FormEvent, useRef, useEffect } from 'react';
+import { useState, FormEvent, useRef, useEffect, ReactNode } from 'react';
 
 interface CategoryReport {
     label: string;
@@ -41,6 +41,33 @@ interface ScanResponse {
 }
 
 const SALLA_INSTALL_URL = 'https://apps.salla.sa/ar/app/1180703836';
+
+// Render an alert string, turning the "مشتري موثق" service name into a blue
+// link to the Salla install page — but only inside the reviews-trust alert
+// that proposes the service as the solution.
+function renderAlert(text: string): ReactNode {
+    const TOKEN = 'مشتري موثق';
+    if (text.includes('تحل هذه المشكلة')) {
+        const idx = text.indexOf(TOKEN);
+        if (idx !== -1) {
+            return (
+                <>
+                    {text.slice(0, idx)}
+                    <a
+                        href={SALLA_INSTALL_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-700 font-bold underline"
+                    >
+                        {TOKEN}
+                    </a>
+                    {text.slice(idx + TOKEN.length)}
+                </>
+            );
+        }
+    }
+    return text;
+}
 
 function gradeFor(score: number): { label: string; color: string; bg: string } {
     if (score >= 70) return { label: 'ممتاز', color: '#047857', bg: '#ecfdf5' };
@@ -370,22 +397,7 @@ export default function ScannerSection() {
                                     )}
                                 </div>
                             </div>
-                        ) : (
-                            <div className="mt-6 rounded-xl bg-red-50 border border-red-300 p-4">
-                                <div className="font-bold text-red-800 mb-1">⚠️ تقييمات متجرك غير موثّقة من جهة مستقلة</div>
-                                <div className="text-sm text-red-700 mb-3">
-                                    عملاؤك لا يستطيعون التحقق من صحة التقييمات. ثبّت تطبيق &quot;مشتري موثق&quot; لتفعيل التحقق الفوري.
-                                </div>
-                                <a
-                                    href={SALLA_INSTALL_URL}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-block px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-colors"
-                                >
-                                    ثبّت &quot;مشتري موثق&quot; على سلة ←
-                                </a>
-                            </div>
-                        )}
+                        ) : null}
 
                         {/* Category breakdown — each row has:
                             - Label + weight + tooltip (?)
@@ -458,7 +470,7 @@ export default function ScannerSection() {
                                             key={i}
                                             className="px-3 py-2.5 rounded-lg bg-amber-50 border-r-4 border-amber-400 text-amber-900 text-sm"
                                         >
-                                            {a}
+                                            {renderAlert(a)}
                                         </li>
                                     ))}
                                 </ul>
