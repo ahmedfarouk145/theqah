@@ -2,7 +2,7 @@
 // Refreshes Zid OAuth tokens — delegates to ZidTokenService
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { requireUser } from '@/backend/server/auth/requireUser';
+import { requireStore, StoreNotLinkedError } from '@/server/auth/resolveStoreUid';
 import { ZidTokenService } from '@/backend/server/services/zid-token.service';
 import { dbAdmin } from '@/lib/firebaseAdmin';
 
@@ -27,16 +27,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // User mode: refresh for authenticated user
-  let user;
+  let storeUid: string;
   try {
-    user = await requireUser(req);
-  } catch {
+    ({ storeUid } = await requireStore(req));
+  } catch (e) {
+    if (e instanceof StoreNotLinkedError) {
+      return res.status(200).json({ ok: false, storeNotLinked: true });
+    }
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
     const db = dbAdmin();
-    const storeDoc = await db.collection('stores').doc(user.uid).get();
+    const storeDoc = await db.collection('stores').doc(storeUid).get();
     const zidStoreId = storeDoc.data()?.zid?.storeId;
 
     if (!zidStoreId) {

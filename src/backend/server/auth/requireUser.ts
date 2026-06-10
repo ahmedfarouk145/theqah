@@ -4,7 +4,7 @@ import { authAdmin } from "@/lib/firebaseAdmin";
 
 export async function requireUser(
   req: NextApiRequest
-): Promise<{ uid: string; email: string | null }> {
+): Promise<{ uid: string; email: string | null; emailVerified: boolean }> {
   const authz = req.headers.authorization || "";
   const m = authz.match(/^Bearer\s+(.+)$/i);
   const token = m?.[1];
@@ -14,5 +14,7 @@ export async function requireUser(
   }
 
   const decoded = await authAdmin().verifyIdToken(token);
-  return { uid: decoded.uid, email: decoded.email ?? null };
+  // email_verified gates the email-fallback store resolution (account-takeover
+  // protection in resolveStoreUid) — surface it for callers that need it.
+  return { uid: decoded.uid, email: decoded.email ?? null, emailVerified: decoded.email_verified === true };
 }

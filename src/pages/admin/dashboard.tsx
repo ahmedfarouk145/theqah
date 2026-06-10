@@ -30,6 +30,10 @@ const AdminMonitoring = dynamic(() => import('@/components/admin/AdminMonitoring
   loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-green-600" /></div>,
   ssr: false
 });
+const AdminScans = dynamic(() => import('@/components/admin/AdminScans'), {
+  loading: () => <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-green-600" /></div>,
+  ssr: false
+});
 
 
 const adminTabs = [
@@ -40,6 +44,7 @@ const adminTabs = [
   'سجلات غير مصنفة',
   'الإحصائيات العامة',
   'إدارة الاشتراكات',
+  'الفحوصات والعملاء',
   'المراقبة',
 ] as const;
 
@@ -101,6 +106,7 @@ export default function AdminDashboard() {
         {activeTab === 'سجلات غير مصنفة' && <AdminStores provider="unknown" />}
         {activeTab === 'الإحصائيات العامة' && <AdminAnalytics />}
         {activeTab === 'إدارة الاشتراكات' && <AdminSubscriptions />}
+        {activeTab === 'الفحوصات والعملاء' && <AdminScans />}
         {activeTab === 'المراقبة' && <AdminMonitoring />}
 
       </div>

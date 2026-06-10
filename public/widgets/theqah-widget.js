@@ -187,13 +187,22 @@
 
   // ——— Extract product ID from page ———
   function extractProductId() {
+    // PREFER the Salla storefront URL id `/p<id>` (formats: /<slug>/p<id>,
+    // /-/p<id>, /p<id>-<slug>). This `/p<id>` equals the product.id Salla sends
+    // in the review webhook — i.e. the id our reviews + consensus are keyed by.
+    // The DOM's `data-product-id` is a DIFFERENT id on some stores (verified on
+    // kamaidostore1: URL 2069806742 vs data-product-id 523504106), so trusting
+    // it broke per-product matching there. The `[-/?#]` boundary handles the
+    // /p<id>-<slug> canonical form.
+    const sallaMatch = location.pathname.match(/\/p(\d+)(?:[-/?#]|$)/);
+    if (sallaMatch) return sallaMatch[1];
+    const match = location.pathname.match(/\/product\/(\d+)/);
+    if (match) return match[1];
     const fromData = document.querySelector("[data-product-id], [data-productid]");
     if (fromData) {
       const id = fromData.getAttribute("data-product-id") || fromData.getAttribute("data-productid");
       if (id) return id;
     }
-    const match = location.pathname.match(/\/product\/(\d+)/);
-    if (match) return match[1];
     const urlParams = new URLSearchParams(location.search);
     return urlParams.get('product_id') || urlParams.get('productId') || null;
   }
@@ -452,33 +461,51 @@
   async function renderConsensus(storeUid, productId) {
     try {
       if (!storeUid || !productId) return;
-      // Avoid double-insertion on re-runs
-      if (document.querySelector('.theqah-consensus')) return;
 
-      const url = `${SCRIPT_ORIGIN}/api/public/consensus?storeUid=${encodeURIComponent(storeUid)}&productId=${encodeURIComponent(productId)}`;
-      const resp = await fetch(url);
-      if (!resp.ok) return;
-      const data = await resp.json();
-      const c = data && data.consensus;
-      if (!c || !c.text) return;
+      // The certificate shield card (.theqah-certificate-badge) and this summary
+      // used to fight for the same anchor, so one covered the other. Anchor the
+      // summary to render DIRECTLY UNDER the shield card so they stack. Retries
+      // self-correct: if placed before the card exists, the next pass moves it.
+      const cert = document.querySelector('.theqah-certificate-badge');
+      let box = document.querySelector('.theqah-consensus');
 
+      // Already sitting directly under the card → nothing to do.
+      if (box && cert && box.previousElementSibling === cert) return;
+      // Already placed and no card yet to align to → leave it; a retry repositions.
+      if (box && !cert) return;
+
+      if (!box) {
+        const url = `${SCRIPT_ORIGIN}/api/public/consensus?storeUid=${encodeURIComponent(storeUid)}&productId=${encodeURIComponent(productId)}`;
+        const resp = await fetch(url);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const c = data && data.consensus;
+        if (!c || !c.text) return;
+
+        box = document.createElement('div');
+        box.className = 'theqah-consensus';
+        box.setAttribute('dir', 'rtl');
+        // Centered + 500px to align with the certificate card above it.
+        box.style.cssText = 'margin:12px auto;padding:12px 14px;border-radius:10px;max-width:500px;'
+          + 'background:#f6f9f6;border:1px solid #e2efe2;font-size:14px;line-height:1.7;color:#1f3d2b;';
+        const label = document.createElement('div');
+        label.style.cssText = 'font-weight:700;margin-bottom:4px;color:#137a3a;';
+        label.textContent = 'خلاصة مشتري موثق';
+        const body = document.createElement('p');
+        body.style.cssText = 'margin:0;';
+        body.textContent = c.text; // visible text only — set via textContent (never innerHTML), NOT injected as Review schema
+        box.appendChild(label);
+        box.appendChild(body);
+      }
+
+      // Place (or move) the panel directly under the certificate card.
+      if (cert && cert.parentNode) {
+        cert.parentNode.insertBefore(box, cert.nextSibling);
+        return;
+      }
+      // Fallback: no certificate card on this page — mount in the review host.
       const host = ensureHostUnderProduct();
       if (!host) return;
-      if (host.querySelector('.theqah-consensus')) return;
-
-      const box = document.createElement('div');
-      box.className = 'theqah-consensus';
-      box.setAttribute('dir', 'rtl');
-      box.style.cssText = 'margin:12px 0;padding:12px 14px;border-radius:10px;'
-        + 'background:#f6f9f6;border:1px solid #e2efe2;font-size:14px;line-height:1.7;color:#1f3d2b;';
-      const label = document.createElement('div');
-      label.style.cssText = 'font-weight:700;margin-bottom:4px;color:#137a3a;';
-      label.textContent = 'خلاصة مشتري موثق';
-      const body = document.createElement('p');
-      body.style.cssText = 'margin:0;';
-      body.textContent = c.text; // visible text only — set via textContent (never innerHTML), NOT injected as Review schema
-      box.appendChild(label);
-      box.appendChild(body);
       host.insertBefore(box, host.firstChild);
     } catch (e) {
       /* consensus is non-critical: never disrupt the widget */
@@ -522,6 +549,10 @@
             if (currentCount < expectedCount) {
               addLogosToSallaReviews(verifiedReviews, storeUid);
             }
+            // The review host/product anchor can render late (same reason logos
+            // retry). renderConsensus is idempotent (.theqah-consensus guard), so
+            // retrying is safe and ensures the panel lands once the host exists.
+            renderConsensus(storeUid, productId);
           }, delay);
         });
 

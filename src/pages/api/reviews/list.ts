@@ -1,6 +1,6 @@
 // src/pages/api/reviews/list.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { requireUser } from '@/server/auth/requireUser';
+import { requireStore, StoreNotLinkedError } from '@/server/auth/resolveStoreUid';
 import { ReviewService } from '@/server/services/review.service';
 
 /**
@@ -11,10 +11,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
 
   try {
-    const { uid } = await requireUser(req);
+    // Resolve the logged-in user to their store (the login uid is NOT the storeUid).
+    const { storeUid } = await requireStore(req);
 
     const reviewService = new ReviewService();
-    const result = await reviewService.listWithFilters(uid, {
+    const result = await reviewService.listWithFilters(storeUid, {
       limit: Math.min(parseInt(req.query.limit as string) || 50, 100),
       cursor: req.query.cursor as string | undefined,
       status: req.query.status as string | undefined,
@@ -29,7 +30,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     return res.status(200).json(result);
-  } catch {
+  } catch (e) {
+    if (e instanceof StoreNotLinkedError) {
+      // Authenticated, but this login isn't linked to a store yet. Surface a
+      // clear, empty state instead of a silently-empty list or a 401.
+      return res.status(200).json({
+        reviews: [],
+        pagination: { hasMore: false, nextCursor: null, limit: 0 },
+        storeNotLinked: true,
+      });
+    }
     return res.status(401).json({ message: 'Unauthorized' });
   }
 }

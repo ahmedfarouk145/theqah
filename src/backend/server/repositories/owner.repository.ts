@@ -31,8 +31,28 @@ export class OwnerRepository extends BaseRepository<Owner> {
                 ...oauth,
                 receivedAt: Date.now(),
                 strategy: oauth.strategy || 'easy_mode',
+                // A fresh token means the grant is healthy again — clear any
+                // prior revocation flag so the store leaves the re-auth list.
+                needsReauth: false,
             },
         } as Owner);
+    }
+
+    /**
+     * Mark a store's OAuth grant as revoked (Salla invalid_grant/401). The
+     * refresh token is single-use and rotating; once revoked it cannot be
+     * recovered by refresh — the merchant must reinstall the app. Persisting
+     * this lets the fleet sweep surface the store for outreach instead of it
+     * failing silently on every API call.
+     */
+    async markNeedsReauth(storeUid: string, reason: string): Promise<void> {
+        await this.set(storeUid, {
+            oauth: {
+                needsReauth: true,
+                reauthReason: reason,
+                deadAt: Date.now(),
+            },
+        } as Partial<Owner>);
     }
 
     /**

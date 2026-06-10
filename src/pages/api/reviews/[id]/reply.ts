@@ -1,7 +1,7 @@
 // src/pages/api/reviews/[id]/reply.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { dbAdmin } from '@/lib/firebaseAdmin';
-import { requireUser } from '@/server/auth/requireUser';
+import { requireStore } from '@/server/auth/resolveStoreUid';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const db = dbAdmin();
@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { uid } = await requireUser(req);
+      const { storeUid } = await requireStore(req);
       const { text } = (req.body || {}) as { text?: string };
       const t = String(text || '').trim();
       if (!t) return res.status(400).json({ ok: false, error: 'text_required' });
@@ -26,13 +26,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!reviewSnap.exists) return res.status(404).json({ ok: false, error: 'review_not_found' });
 
       const review = reviewSnap.data() as { storeUid?: string };
-      if (review.storeUid !== uid) return res.status(403).json({ ok: false, error: 'forbidden' });
+      if (review.storeUid !== storeUid) return res.status(403).json({ ok: false, error: 'forbidden' });
 
       const replyRef = reviewRef.collection('replies').doc();
       await replyRef.set({
         id: replyRef.id,
         reviewId: id,
-        storeUid: uid,
+        storeUid,
         text: t.slice(0, 2000),
         visibility: 'public',
         createdAt: Date.now(),

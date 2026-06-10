@@ -1,6 +1,6 @@
 // src/pages/api/orders/export.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { requireUser } from '@/server/auth/requireUser';
+import { requireStore, StoreNotLinkedError } from '@/server/auth/resolveStoreUid';
 
 /**
  * M11: Orders Export API
@@ -12,8 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const user = await requireUser(req);
-        const storeUid = user.uid;
+        const { storeUid } = await requireStore(req);
 
         const { dbAdmin } = await import('@/lib/firebaseAdmin');
         const db = dbAdmin();
@@ -70,6 +69,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
     } catch (error) {
+        if (error instanceof StoreNotLinkedError) {
+            return res.status(200).json({ total: 0, orders: [], storeNotLinked: true });
+        }
         console.error('Orders Export Error:', error);
         return res.status(500).json({ error: 'Failed to export orders' });
     }

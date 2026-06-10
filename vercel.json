@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/refresh-consensus",
       "schedule": "30 */6 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-tokens",
+      "schedule": "0 2 * * *"
     }
   ]
 }
