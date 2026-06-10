@@ -151,6 +151,10 @@ export const getStaticProps: GetStaticProps<{ appReviews: AppReviewItem[]; verif
   let sallaReviews: AppReviewItem[] = [];
   let verifiedReviewsCount = 0;
   let topReviews: TopReviewItem[] = [];
+  // Names of queries that threw. If any query failed we throw at the end so
+  // ISR keeps serving the last good page instead of caching zeroed stats for
+  // the next 6 hours (which is what happened during the Firestore outage).
+  const queryFailures: string[] = [];
 
   const { RepositoryFactory } = await import('@/server/repositories');
   const { resolveStoreDisplayName, resolveStoreDomainValue } = await import('@/server/services/admin.service');
@@ -171,12 +175,14 @@ export const getStaticProps: GetStaticProps<{ appReviews: AppReviewItem[]; verif
     }));
   } catch (e) {
     console.error('[getStaticProps] appReviewRepo.findAllActive failed:', e);
+    queryFailures.push('appReviewRepo.findAllActive');
   }
 
   try {
     verifiedReviewsCount = await reviewRepo.countAllVerified();
   } catch (e) {
     console.error('[getStaticProps] reviewRepo.countAllVerified failed:', e);
+    queryFailures.push('reviewRepo.countAllVerified');
   }
 
   try {
@@ -209,6 +215,17 @@ export const getStaticProps: GetStaticProps<{ appReviews: AppReviewItem[]; verif
     });
   } catch (e) {
     console.error('[getStaticProps] reviewRepo.findTopReviews failed:', e);
+    queryFailures.push('reviewRepo.findTopReviews');
+  }
+
+  // Fail the regeneration rather than cache a page with zeroed stats.
+  // On ISR revalidation Next.js keeps the previous good HTML when
+  // getStaticProps throws; only a first-ever build would hard-fail.
+  if (queryFailures.length > 0) {
+    throw new Error(
+      `[getStaticProps] Firestore queries failed (${queryFailures.join(', ')}) — ` +
+      'aborting regeneration so the last good page keeps being served'
+    );
   }
 
   const seenNames = new Set(sallaReviews.map((r) => r.storeName?.trim().toLowerCase()));
