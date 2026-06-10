@@ -1,5 +1,5 @@
 // src/pages/index.tsx
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -9,46 +9,135 @@ import type { InferGetStaticPropsType, GetStaticProps } from 'next';
 import NavbarLanding from '@/components/NavbarLanding';
 import { URLS } from '@/config/constants';
 
-function YouTubeFacade({ videoId, title }: { videoId: string; title: string }) {
-  const [loaded, setLoaded] = useState(false);
-  const handleClick = useCallback(() => setLoaded(true), []);
+const EXPLAINER_VIDEOS = [
+  { id: 'UqvdRG1ogN8', title: 'ماهو مشتري موثق؟' },
+  { id: 's6gBXoANREY', title: 'كيف تربط متجرك؟' },
+  { id: 'rFl9wS8s4c0', title: 'شاهد كيف يعمل على متجر حقيقي' },
+];
 
-  if (loaded) {
-    return (
-      <iframe
-        src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
-        className="w-full"
-        style={{ height: '580px' }}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-        allowFullScreen
-        title={title}
-      />
-    );
-  }
+// One tappable link → popup that lists the three explainer videos by title;
+// pick one and it plays inside the popup. The YouTube iframe mounts only after
+// a video is selected, so the landing page LCP never pays for it.
+function VideoExplorer() {
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const close = useCallback(() => {
+    setOpen(false);
+    setActiveIndex(null);
+  }, []);
+  const active = activeIndex !== null ? EXPLAINER_VIDEOS[activeIndex] : null;
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden'; // lock background scroll
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, close]);
 
   return (
-    <button
-      onClick={handleClick}
-      className="relative w-full bg-black cursor-pointer group"
-      style={{ height: '580px' }}
-      aria-label={`تشغيل فيديو: ${title}`}
-    >
-      {/* YouTube thumbnail */}
-      <img
-        src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
-        alt={title}
-        className="absolute inset-0 w-full h-full object-cover"
-        loading="lazy"
-      />
-      {/* Play button overlay */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:bg-red-700 transition-colors">
-          <svg className="w-7 h-7 text-white mr-[-2px]" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" />
-          </svg>
+    <>
+      {/* The single tappable link */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="group inline-flex items-center gap-2 text-green-700 hover:text-green-800 font-semibold text-sm sm:text-base transition-colors"
+      >
+        <span className="w-8 h-8 rounded-full bg-red-600 group-hover:bg-red-700 flex items-center justify-center shadow-sm transition-colors shrink-0">
+          <svg className="w-4 h-4 text-white mr-[-1px]" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+        </span>
+        <span className="underline decoration-green-300 underline-offset-4 group-hover:decoration-green-500">
+          شاهد كيف يعمل مشتري موثق في أقل من دقيقة
+        </span>
+      </button>
+
+      {/* Popup: list the three videos by title, select one to play */}
+      {open && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={close}
+          role="dialog"
+          aria-modal="true"
+          aria-label="فيديوهات مشتري موثق"
+        >
+          <div
+            dir="rtl"
+            className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-white">
+              <h3 className="font-bold text-green-900">شاهد كيف يعمل مشتري موثق</h3>
+              <button onClick={close} aria-label="إغلاق" className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="p-5">
+              {/* Selected video player */}
+              {active && (
+                <div className="mb-6">
+                  <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow">
+                    <iframe
+                      key={active.id}
+                      src={`https://www.youtube.com/embed/${active.id}?autoplay=1`}
+                      className="absolute inset-0 w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                      allowFullScreen
+                      title={active.title}
+                    />
+                  </div>
+                  <p className="text-center font-bold text-green-900 mt-3">{active.title}</p>
+                </div>
+              )}
+
+              {/* Chooser — three titled videos, pick one */}
+              <p className="text-sm text-gray-500 mb-3 text-center">
+                {active ? 'اختر فيديو آخر' : 'اختر الفيديو الذي تريد مشاهدته'}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {EXPLAINER_VIDEOS.map((v, i) => (
+                  <button
+                    key={v.id}
+                    onClick={() => setActiveIndex(i)}
+                    className={`group text-right rounded-xl overflow-hidden border-2 transition-all ${i === activeIndex ? 'border-green-500 ring-1 ring-green-200' : 'border-gray-100 hover:border-green-300'}`}
+                  >
+                    <span className="relative block w-full aspect-video bg-black">
+                      <img src={`https://img.youtube.com/vi/${v.id}/hqdefault.jpg`} alt={v.title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/0 transition-colors">
+                        <span className="w-10 h-10 bg-red-600 group-hover:bg-red-700 rounded-full flex items-center justify-center shadow transition-colors">
+                          <svg className="w-5 h-5 text-white mr-[-1px]" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                        </span>
+                      </span>
+                    </span>
+                    <span className="block px-3 py-2.5 text-sm font-semibold text-gray-800 leading-snug">{v.title}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* See more on YouTube */}
+              <div className="text-center mt-5">
+                <a
+                  href="https://youtube.com/@theqahapp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                  </svg>
+                  شاهد المزيد على يوتيوب
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </button>
+      )}
+    </>
   );
 }
 
@@ -443,6 +532,11 @@ export default function LandingPage({ appReviews, verifiedReviewsCount, topRevie
               حول شك عملائك إلى مبيعات.. وانضم لنخبة المتاجر التي تُهيكل تقييماتها تقنياً لتتصدر ترشيحات الذكاء الاصطناعي.
             </p>
 
+            {/* Watch-how-it-works link → opens the 3-video popup */}
+            <div className="flex justify-center pt-1">
+              <VideoExplorer />
+            </div>
+
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
               <a
@@ -755,42 +849,19 @@ export default function LandingPage({ appReviews, verifiedReviewsCount, topRevie
               </p>
             </div>
 
-            {/* Videos */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
-              {/* Video 1 - What is مشتري موثق */}
-              <div className="text-center">
-                <h3 className="text-lg font-bold text-green-900 mb-4">ماهو مشتري موثق؟</h3>
-                <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
-                  <YouTubeFacade videoId="UqvdRG1ogN8" title="ماهو مشتري موثق" />
-                </div>
-              </div>
-
-              {/* Video 2 - How to connect */}
-              <div className="text-center">
-                <h3 className="text-lg font-bold text-green-900 mb-4">كيف تربط متجرك؟</h3>
-                <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
-                  <YouTubeFacade videoId="s6gBXoANREY" title="كيف تربط متجرك مع مشتري موثق" />
-                </div>
-              </div>
-
-              {/* Video 3 - Real store demo */}
-              <div className="text-center">
-                <h3 className="text-lg font-bold text-green-900 mb-4">شاهد كيف يعمل على متجر حقيقي</h3>
-                <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-black">
-                  <YouTubeFacade videoId="rFl9wS8s4c0" title="شاهد كيف يعمل مشتري موثق على متجر حقيقي" />
-                </div>
-                <a
-                  href="https://youtube.com/shorts/rFl9wS8s4c0?si=SAqoTt9DifF8GE7H"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 mt-4 text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                  </svg>
-                  شاهد على يوتيوب
-                </a>
-              </div>
+            {/* Install CTA (videos moved up to the hero link) */}
+            <div className="text-center">
+              <a
+                href="https://apps.salla.sa/ar/app/1180703836"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 bg-green-700 hover:bg-green-800 text-white px-8 sm:px-10 py-4 rounded-full text-lg font-bold shadow-lg shadow-green-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18 15v3H6v-3H4v3c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-3h-2zm-1-4-1.41-1.41L13 12.17V4h-2v8.17L8.41 9.59 7 11l5 5 5-5z" />
+                </svg>
+                حمل التطبيق من متجر سلة
+              </a>
             </div>
           </div>
         </section>
@@ -916,6 +987,58 @@ export default function LandingPage({ appReviews, verifiedReviewsCount, topRevie
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* انشر تقييماتك — turn verified reviews into free social ads */}
+        <section className="py-16 sm:py-24 px-4 sm:px-6 bg-gradient-to-b from-[#eaf6f0] to-white overflow-hidden">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+            {/* Text */}
+            <div className="text-center lg:text-right order-2 lg:order-1">
+              <span className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full mb-4">
+                إعلان مجاني
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-green-900 mb-5 leading-snug">
+                حوّل آراء عملائك إلى إعلان مجاني!
+              </h2>
+              <p className="text-gray-600 text-base sm:text-lg leading-relaxed max-w-xl mx-auto lg:mx-0">
+                انشر تقييماتك الموثقة في كل مكان يتواجد فيه عملاؤك — من نتائج بحث جوجل إلى سناب شات وتيك توك وإكس. دع تجارب عملائك الحقيقية تضاعف مبيعاتك تلقائياً.
+              </p>
+
+              {/* Platform chips */}
+              <div className="flex flex-wrap gap-2.5 justify-center lg:justify-start mt-7">
+                {['جوجل', 'سناب شات', 'تيك توك', 'إكس (تويتر)', 'إنستغرام', 'واتساب'].map((p) => (
+                  <span key={p} className="inline-flex items-center gap-1.5 bg-white border border-green-100 text-gray-700 text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-full shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    {p}
+                  </span>
+                ))}
+              </div>
+
+              <div className="mt-8">
+                <a
+                  href="https://apps.salla.sa/ar/app/1180703836"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-bold px-7 py-3.5 rounded-xl shadow-lg shadow-green-600/20 hover:shadow-xl transition-all hover:-translate-y-0.5"
+                >
+                  ابدأ بمشاركة تقييماتك
+                  <svg className="w-5 h-5 rotate-180" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                </a>
+              </div>
+            </div>
+
+            {/* Marketing graphic */}
+            <div className="order-1 lg:order-2 flex justify-center">
+              <Image
+                src="/share-reviews-everywhere.png"
+                alt="انشر تقييماتك الموثقة على سناب شات وتيك توك وإكس وإنستغرام وواتساب"
+                width={461}
+                height={576}
+                className="w-full max-w-[340px] sm:max-w-[420px] h-auto drop-shadow-2xl"
+                loading="lazy"
+              />
             </div>
           </div>
         </section>
