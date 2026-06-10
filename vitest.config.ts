@@ -16,8 +16,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      // Order matters: vite matches string aliases by prefix in declaration
+      // order, so the more specific '@/server' must come before the broad '@'
+      // or it gets shadowed (→ src/server/... which doesn't exist).
       '@/server': path.resolve(__dirname, './src/backend/server'),
+      '@': path.resolve(__dirname, './src'),
     },
   },
 });
