@@ -9,23 +9,15 @@ import type { InferGetStaticPropsType, GetStaticProps } from 'next';
 import NavbarLanding from '@/components/NavbarLanding';
 import { URLS } from '@/config/constants';
 
-const EXPLAINER_VIDEOS = [
-  { id: 'UqvdRG1ogN8', title: 'ماهو مشتري موثق؟' },
-  { id: 's6gBXoANREY', title: 'كيف تربط متجرك؟' },
-  { id: 'rFl9wS8s4c0', title: 'شاهد كيف يعمل على متجر حقيقي' },
-];
+const VIDEO_WHAT_IS = { id: 'UqvdRG1ogN8', title: 'ماهو مشتري موثق؟' };
+const VIDEO_CONNECT_STORE = { id: 's6gBXoANREY', title: 'كيف تربط متجرك؟', vertical: true };
 
-// One tappable link → popup that lists the three explainer videos by title;
-// pick one and it plays inside the popup. The YouTube iframe mounts only after
-// a video is selected, so the landing page LCP never pays for it.
-function VideoExplorer() {
+// Green-boxed tappable link → popup that plays one explainer video. The
+// YouTube iframe mounts only after the popup opens, so the landing page LCP
+// never pays for it. `vertical` switches the player to 9:16 for Shorts.
+function VideoPopupLink({ video, label }: { video: { id: string; title: string; vertical?: boolean }; label: string }) {
   const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const close = useCallback(() => {
-    setOpen(false);
-    setActiveIndex(null);
-  }, []);
-  const active = activeIndex !== null ? EXPLAINER_VIDEOS[activeIndex] : null;
+  const close = useCallback(() => setOpen(false), []);
 
   useEffect(() => {
     if (!open) return;
@@ -41,86 +33,55 @@ function VideoExplorer() {
 
   return (
     <>
-      {/* The single tappable link */}
+      {/* The boxed tappable link */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group inline-flex items-center gap-2 text-green-700 hover:text-green-800 font-semibold text-sm sm:text-base transition-colors"
+        className="group inline-flex items-center gap-2 border-2 border-green-600 rounded-lg px-4 py-2.5 bg-white hover:bg-green-50 text-green-700 hover:text-green-800 font-semibold text-sm sm:text-base transition-colors"
       >
         <span className="w-8 h-8 rounded-full bg-red-600 group-hover:bg-red-700 flex items-center justify-center shadow-sm transition-colors shrink-0">
           <svg className="w-4 h-4 text-white mr-[-1px]" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
         </span>
         <span className="underline decoration-green-300 underline-offset-4 group-hover:decoration-green-500">
-          شاهد كيف يعمل مشتري موثق في أقل من دقيقة
+          {label}
         </span>
       </button>
 
-      {/* Popup: list the three videos by title, select one to play */}
+      {/* Popup: plays this one video */}
       {open && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           onClick={close}
           role="dialog"
           aria-modal="true"
-          aria-label="فيديوهات مشتري موثق"
+          aria-label={video.title}
         >
           <div
             dir="rtl"
-            className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl"
+            className={`relative w-full ${video.vertical ? 'max-w-xs sm:max-w-sm' : 'max-w-3xl'} max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-white">
-              <h3 className="font-bold text-green-900">شاهد كيف يعمل مشتري موثق</h3>
+              <h3 className="font-bold text-green-900">{video.title}</h3>
               <button onClick={close} aria-label="إغلاق" className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
             <div className="p-5">
-              {/* Selected video player */}
-              {active && (
-                <div className="mb-6">
-                  <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow">
-                    <iframe
-                      key={active.id}
-                      src={`https://www.youtube.com/embed/${active.id}?autoplay=1`}
-                      className="absolute inset-0 w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                      allowFullScreen
-                      title={active.title}
-                    />
-                  </div>
-                  <p className="text-center font-bold text-green-900 mt-3">{active.title}</p>
-                </div>
-              )}
-
-              {/* Chooser — three titled videos, pick one */}
-              <p className="text-sm text-gray-500 mb-3 text-center">
-                {active ? 'اختر فيديو آخر' : 'اختر الفيديو الذي تريد مشاهدته'}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {EXPLAINER_VIDEOS.map((v, i) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setActiveIndex(i)}
-                    className={`group text-right rounded-xl overflow-hidden border-2 transition-all ${i === activeIndex ? 'border-green-500 ring-1 ring-green-200' : 'border-gray-100 hover:border-green-300'}`}
-                  >
-                    <span className="relative block w-full aspect-video bg-black">
-                      <img src={`https://img.youtube.com/vi/${v.id}/hqdefault.jpg`} alt={v.title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/0 transition-colors">
-                        <span className="w-10 h-10 bg-red-600 group-hover:bg-red-700 rounded-full flex items-center justify-center shadow transition-colors">
-                          <svg className="w-5 h-5 text-white mr-[-1px]" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                        </span>
-                      </span>
-                    </span>
-                    <span className="block px-3 py-2.5 text-sm font-semibold text-gray-800 leading-snug">{v.title}</span>
-                  </button>
-                ))}
+              <div className={`relative w-full ${video.vertical ? 'aspect-[9/16]' : 'aspect-video'} bg-black rounded-xl overflow-hidden shadow`}>
+                <iframe
+                  src={`https://www.youtube.com/embed/${video.id}?autoplay=1&playsinline=1`}
+                  className="absolute inset-0 w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                  allowFullScreen
+                  title={video.title}
+                />
               </div>
 
               {/* See more on YouTube */}
-              <div className="text-center mt-5">
+              <div className="text-center mt-4">
                 <a
                   href="https://youtube.com/@theqahapp"
                   target="_blank"
@@ -532,9 +493,9 @@ export default function LandingPage({ appReviews, verifiedReviewsCount, topRevie
               حول شك عملائك إلى مبيعات.. وانضم لنخبة المتاجر التي تُهيكل تقييماتها تقنياً لتتصدر ترشيحات الذكاء الاصطناعي.
             </p>
 
-            {/* Watch-how-it-works link → opens the 3-video popup */}
+            {/* Watch-how-it-works link → popup plays the intro video */}
             <div className="flex justify-center pt-1">
-              <VideoExplorer />
+              <VideoPopupLink video={VIDEO_WHAT_IS} label="شاهد كيف يعمل مشتري موثق في أقل من دقيقة" />
             </div>
 
             {/* CTA Buttons */}
@@ -1051,6 +1012,10 @@ export default function LandingPage({ appReviews, verifiedReviewsCount, topRevie
                 كيف يعمل مشتري موثق؟
               </h2>
               <p className="text-gray-600">من التثبيت إلى شارة التوثيق — كل ما تحتاجه لتحويل ثقة العملاء إلى مبيعات حقيقية</p>
+            </div>
+
+            <div className="flex justify-center mb-10 sm:mb-14">
+              <VideoPopupLink video={VIDEO_CONNECT_STORE} label="شاهد كيف تربط متجرك في أقل من دقيقة" />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">

@@ -44,8 +44,8 @@
 
   const API_BASE = `${SCRIPT_ORIGIN}/api/public/reviews`;
   const CHECK_API = `${SCRIPT_ORIGIN}/api/reviews/check-verified`;
-  const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png?v=3`;
-  const CERTIFICATE_LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png?v=3`;
+  const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.webp?v=4`;
+  const CERTIFICATE_LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.webp?v=4`;
 
   // ——— Helpers ———
   const h = (tag, attrs = {}, children = []) => {

@@ -19,7 +19,7 @@
   const API_RESOLVE = `${SCRIPT_ORIGIN}/api/public/reviews/resolve`;
   const API_CHECK = `${SCRIPT_ORIGIN}/api/reviews/check-verified`;
   const API_PROFILE = `${SCRIPT_ORIGIN}/api/public/store-profile`;
-  const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.png?v=3`;
+  const LOGO_URL = `${SCRIPT_ORIGIN}/widgets/logo.webp?v=4`;
 
   // ——— Shared state ———
   const G = (window.__THEQAH_ZID__ = window.__THEQAH_ZID__ || {});
