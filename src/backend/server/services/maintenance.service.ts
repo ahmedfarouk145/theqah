@@ -101,7 +101,6 @@ export class MaintenanceService {
         const db = await this.getDb();
         const startedAt = Date.now();
         let totalDeleted = 0;
-        let hasMore = false;
 
         for (const cutoff of [cutoffDate.getTime(), cutoffDate] as Array<number | Date>) {
             const query = db.collection(collectionName).where('timestamp', '<', cutoff);
@@ -122,7 +121,7 @@ export class MaintenanceService {
                 if (snapshot.size < 500) break;
             }
         }
-        return { deletedCount: totalDeleted, hasMore };
+        return { deletedCount: totalDeleted, hasMore: false };
     }
 
     /**
