@@ -1,6 +1,6 @@
 //public/widgets/theqah-widget.js
 (() => {
-  const SCRIPT_VERSION = "4.4.0"; // V4.4.0: JSON-LD reviewBody embeds verification annotation for Gemini/SGE/AI Overviews + publisher.sameAs
+  const SCRIPT_VERSION = "4.4.1"; // V4.4.1: version-scoped resolve cache (stale negatives flushed on every release)
 
   // ——— Verification annotation appended to reviewBody in JSON-LD ———
   //
@@ -81,12 +81,14 @@
     return seg ? `${host}/${seg}` : host;
   }
 
-  // v2 key: pre-2026-06 widget versions stored a nested OBJECT under `uid`
-  // with a 10-minute TTL. Reading those legacy entries under the new 24h
-  // TTL produced "/store/[object Object]/certificate" links. The version
-  // bump orphans all legacy entries; uidString() guards against any other
-  // non-string shape ever reaching a URL.
-  function cacheKey(scope) { return `theqah:storeUid:v2:${scope}`; }
+  // Version-scoped key, two reasons:
+  //  - pre-2026-06 widgets stored a nested OBJECT under `uid` (produced
+  //    "/store/[object Object]/certificate" links when re-read);
+  //  - negative entries cached during an outage must not outlive the fix.
+  // Binding the key to SCRIPT_VERSION flushes positive AND negative state
+  // on every release; uidString() guards against any non-string shape
+  // ever reaching a URL.
+  function cacheKey(scope) { return `theqah:storeUid:${SCRIPT_VERSION}:${scope}`; }
 
   function uidString(v) {
     if (typeof v === 'string' && v) return v;

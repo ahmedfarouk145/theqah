@@ -1,7 +1,7 @@
 // public/widgets/theqah-zid-widget.js
 // Zid-specific widget — certificate badge + verified review logos
 (() => {
-  const SCRIPT_VERSION = '2.1.0';
+  const SCRIPT_VERSION = '2.1.1'; // version-scoped resolve cache (stale negatives flushed on release)
 
   // Prevent double load
   if (window.__THEQAH_ZID_LOADING__) return;
@@ -56,7 +56,9 @@
   // ——— localStorage cache + single-flight resolve ———
   const NEG_TTL_MS = 6 * 60 * 60 * 1000; // 6h negative cache for unresolvable stores
 
-  function cacheKey(host) { return `theqah:zid:${host}`; }
+  // Version-scoped so negative entries cached during an outage are
+  // flushed by the next release.
+  function cacheKey(host) { return `theqah:zid:${SCRIPT_VERSION}:${host}`; }
   function getCached(host) {
     try {
       const o = JSON.parse(localStorage.getItem(cacheKey(host)) || '{}');
