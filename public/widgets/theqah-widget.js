@@ -81,12 +81,27 @@
     return seg ? `${host}/${seg}` : host;
   }
 
-  function cacheKey(scope) { return `theqah:storeUid:${scope}`; }
+  // v2 key: pre-2026-06 widget versions stored a nested OBJECT under `uid`
+  // with a 10-minute TTL. Reading those legacy entries under the new 24h
+  // TTL produced "/store/[object Object]/certificate" links. The version
+  // bump orphans all legacy entries; uidString() guards against any other
+  // non-string shape ever reaching a URL.
+  function cacheKey(scope) { return `theqah:storeUid:v2:${scope}`; }
+
+  function uidString(v) {
+    if (typeof v === 'string' && v) return v;
+    if (v && typeof v === 'object') return uidString(v.storeUid || v.uid);
+    return null;
+  }
+
   function getCached(scope) {
     try {
       const o = JSON.parse(localStorage.getItem(cacheKey(scope)) || '{}');
       if (o.notFound && (Date.now() - (o.t || 0) < NEG_TTL_MS)) return { notFound: true };
-      if (o.uid && (Date.now() - (o.t || 0) < TTL_MS)) return o;
+      const uid = uidString(o.storeUid || o.uid);
+      if (uid && (Date.now() - (o.t || 0) < TTL_MS)) {
+        return { storeUid: uid, certificatePosition: o.certificatePosition || o.pos || 'auto' };
+      }
     } catch { }
     return null;
   }
@@ -103,12 +118,7 @@
     const cached = getCached(scope);
     if (cached) {
       if (cached.notFound) return null; // negative cache — skip the API
-      // For backwards compatibility, handle both old format (string) and new format (object)
-      if (typeof cached === 'string' || typeof cached.uid === 'string' && !cached.storeUid) {
-        G.storeData = { storeUid: cached.uid || cached, certificatePosition: cached.pos || 'auto' };
-      } else {
-        G.storeData = { storeUid: cached.storeUid || cached.uid, certificatePosition: cached.certificatePosition || 'auto' };
-      }
+      G.storeData = cached;
       return G.storeData;
     }
 
