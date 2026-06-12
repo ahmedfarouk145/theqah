@@ -384,6 +384,33 @@ describe('F5: salla.sa/<store> pages cannot resolve to another store (was: cross
     expect(fake.state.domainDocs['salla_sa']).toBeUndefined();
     expect(fake.state.domainDocs[r.encodeUrlForFirestore('https://salla.sa')]).toBeUndefined();
   });
+
+  it('resolves path stores via legacy underscore keys (salla_sa_alool22 format)', async () => {
+    // Install-time mappings (saveDomainVariations era) used this format —
+    // the ONLY mapping many path stores have. Regression: 2026-06-12.
+    fake.state.domainDocs['salla_sa_store-b'] = { base: 'salla.sa/store-b', storeUid: 'salla:B' };
+    fake.state.storeDocs['salla:B'] = { storeUid: 'salla:B', salla: { connected: true } };
+
+    const r = new DomainResolverService();
+    const result = await r.resolveStoreUid({ href: 'https://salla.sa/store-b/p/123' });
+    expect(result?.storeUid).toBe('salla:B');
+    // and the canonical key gets written through for next time
+    expect(fake.state.domainDocs[r.encodeUrlForFirestore('https://salla.sa/store-b')]).toMatchObject({ storeUid: 'salla:B' });
+  });
+
+  it('a positive legacy mapping beats an active tombstone at the canonical key', async () => {
+    const r = new DomainResolverService();
+    fake.state.domainDocs[r.encodeUrlForFirestore('https://salla.sa/store-b')] = {
+      base: 'https://salla.sa/store-b', notFound: true, until: Date.now() + 60_000,
+    };
+    fake.state.domainDocs['salla_sa_store-b'] = { base: 'salla.sa/store-b', storeUid: 'salla:B' };
+    fake.state.storeDocs['salla:B'] = { storeUid: 'salla:B', salla: { connected: true } };
+
+    const result = await r.resolveStoreUid({ href: 'https://salla.sa/store-b/p/123' });
+    expect(result?.storeUid).toBe('salla:B');
+    // tombstone replaced by the real mapping
+    expect(fake.state.domainDocs[r.encodeUrlForFirestore('https://salla.sa/store-b')]).toMatchObject({ storeUid: 'salla:B', notFound: false });
+  });
 });
 
 /* ============== F6 — allowed-request metrics are sampled ============== */
