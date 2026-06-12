@@ -23,7 +23,7 @@
 
   // ——— Shared state ———
   const G = (window.__THEQAH_ZID__ = window.__THEQAH_ZID__ || {});
-  const TTL_MS = 10 * 60 * 1000;
+  const TTL_MS = 24 * 60 * 60 * 1000; // 24h — domain→store mappings rarely change
   let mainRunning = false;
 
   // ——— Helpers ———
@@ -54,10 +54,13 @@
   }
 
   // ——— localStorage cache + single-flight resolve ———
+  const NEG_TTL_MS = 6 * 60 * 60 * 1000; // 6h negative cache for unresolvable stores
+
   function cacheKey(host) { return `theqah:zid:${host}`; }
   function getCached(host) {
     try {
       const o = JSON.parse(localStorage.getItem(cacheKey(host)) || '{}');
+      if (o.notFound && (Date.now() - (o.t || 0) < NEG_TTL_MS)) return { notFound: true };
       if (o.uid && (Date.now() - (o.t || 0) < TTL_MS)) return o;
     } catch { }
     return null;
@@ -75,6 +78,7 @@
     // localStorage
     const cached = getCached(host);
     if (cached) {
+      if (cached.notFound) return null; // negative cache — skip the API
       G.storeData = { storeUid: cached.uid, certificatePosition: cached.pos || 'auto' };
       return G.storeData;
     }
@@ -82,10 +86,25 @@
     // Single-flight
     if (G.resolvePromise) return G.resolvePromise;
 
-    const url = `${API_RESOLVE}?host=${encodeURIComponent(host)}&href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
+    // Low-cardinality URL (host only, plus optional store id from the page
+    // query) so the CDN caches one entry per store, not per page.
+    let hrefParam = `https://${host}/`;
+    try {
+      const qp = new URLSearchParams(location.search);
+      const sid = qp.get('identifier') || qp.get('merchant') || qp.get('store_id');
+      if (sid) hrefParam += `?store_id=${encodeURIComponent(sid)}`;
+    } catch { }
 
-    G.resolvePromise = fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(5000) })
-      .then(r => r.ok ? r.json() : null)
+    const url = `${API_RESOLVE}?host=${encodeURIComponent(host)}&href=${encodeURIComponent(hrefParam)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
+
+    G.resolvePromise = fetch(url, { signal: AbortSignal.timeout(5000) })
+      .then(r => {
+        if (r.status === 404) {
+          setCached(host, { notFound: true });
+          return null;
+        }
+        return r.ok ? r.json() : null;
+      })
       .then(j => {
         if (!j?.storeUid) return null;
         G.storeData = { storeUid: j.storeUid, certificatePosition: j.certificatePosition || 'auto' };

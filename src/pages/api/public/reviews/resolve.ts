@@ -8,7 +8,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Max-Age', '86400');
-  res.setHeader('Cache-Control', 'no-store');
+  // Domain->store mappings are stable; let the CDN absorb repeat
+  // lookups across all visitors of a store (overridden per-branch below).
+  res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'method_not_allowed' });
@@ -20,6 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const host = typeof req.query.host === 'string' ? req.query.host.trim().toLowerCase() : '';
 
     if (!storeUidParam && !href && !storeId && !host) {
+      res.setHeader('Cache-Control', 'no-store');
       return res.status(400).json({ error: 'MISSING_INPUT', hint: 'send storeUid, href, or host' });
     }
 
@@ -35,6 +38,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!result) {
       console.warn('[resolve] Store not found:', { href, storeId });
+      // Shorter negative TTL so a fresh install becomes visible quickly.
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
       return res.status(404).json({
         error: 'STORE_NOT_FOUND',
         message: 'لم يتم العثور على متجر لهذا الدومين/المعرف.',
@@ -72,6 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json(result);
   } catch (e) {
     console.error('[resolve] unexpected', e);
+    res.setHeader('Cache-Control', 'no-store');
     return res.status(500).json({ error: 'RESOLVE_FAILED' });
   }
 }

@@ -84,88 +84,95 @@ export class MaintenanceService {
     }
 
     /**
+     * Delete docs whose `timestamp` is older than the cutoff, handling
+     * BOTH value types found in production: numeric millis (Date.now())
+     * and Firestore Timestamps. Firestore comparisons are type-strict, so
+     * a single Date-typed query silently matches zero numeric docs — the
+     * bug that let `metrics` grow to 1M+ docs.
+     *
+     * `budgetMs` bounds the run so the backlog drains across multiple
+     * invocations instead of timing out the function.
+     */
+    private async cleanupByTimestamp(
+        collectionName: string,
+        cutoffDate: Date,
+        budgetMs: number,
+    ): Promise<{ deletedCount: number; hasMore: boolean }> {
+        const db = await this.getDb();
+        const startedAt = Date.now();
+        let totalDeleted = 0;
+        let hasMore = false;
+
+        for (const cutoff of [cutoffDate.getTime(), cutoffDate] as Array<number | Date>) {
+            const query = db.collection(collectionName).where('timestamp', '<', cutoff);
+            for (;;) {
+                if (Date.now() - startedAt >= budgetMs) {
+                    return { deletedCount: totalDeleted, hasMore: true };
+                }
+                const snapshot = await query.limit(500).get();
+                if (snapshot.empty) break;
+
+                const batch = db.batch();
+                snapshot.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
+                    batch.delete(doc.ref);
+                    totalDeleted++;
+                });
+                await batch.commit();
+
+                if (snapshot.size < 500) break;
+            }
+        }
+        return { deletedCount: totalDeleted, hasMore };
+    }
+
+    /**
      * Cleanup old metrics
      */
-    async cleanupMetrics(daysOld: number = 30): Promise<{ deletedCount: number; cutoffDate: string }> {
+    async cleanupMetrics(
+        daysOld: number = 30,
+        budgetMs: number = 240_000,
+    ): Promise<{ deletedCount: number; cutoffDate: string; hasMore: boolean }> {
         const db = await this.getDb();
 
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
-        const metricsRef = db.collection('metrics');
-        const query = metricsRef.where('timestamp', '<', cutoffDate);
-
-        let totalDeleted = 0;
-        let hasMore = true;
-
-        while (hasMore) {
-            const snapshot = await query.limit(500).get();
-            if (snapshot.empty) {
-                hasMore = false;
-                break;
-            }
-
-            const batch = db.batch();
-            snapshot.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
-                batch.delete(doc.ref);
-                totalDeleted++;
-            });
-
-            await batch.commit();
-            hasMore = snapshot.size === 500;
-        }
+        const { deletedCount, hasMore } = await this.cleanupByTimestamp('metrics', cutoffDate, budgetMs);
 
         // Log cleanup
         await db.collection('metrics').add({
             timestamp: Date.now(),
             type: 'cleanup',
             severity: 'info',
-            metadata: { deletedCount: totalDeleted, cutoffDate: cutoffDate.toISOString(), daysOld },
+            metadata: { deletedCount, cutoffDate: cutoffDate.toISOString(), daysOld, hasMore },
         });
 
-        return { deletedCount: totalDeleted, cutoffDate: cutoffDate.toISOString() };
+        return { deletedCount, cutoffDate: cutoffDate.toISOString(), hasMore };
     }
 
     /**
      * Cleanup old sync logs
      */
-    async cleanupSyncLogs(daysOld: number = MONITORING.LOGS_RETENTION_DAYS): Promise<{ deletedCount: number; cutoffDate: string }> {
+    async cleanupSyncLogs(
+        daysOld: number = MONITORING.LOGS_RETENTION_DAYS,
+        budgetMs: number = 240_000,
+    ): Promise<{ deletedCount: number; cutoffDate: string; hasMore: boolean }> {
         const db = await this.getDb();
 
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
-        const query = db.collection('syncLogs').where('timestamp', '<', cutoffDate);
-
-        let totalDeleted = 0;
-        let hasMore = true;
-
-        while (hasMore) {
-            const snapshot = await query.limit(500).get();
-            if (snapshot.empty) {
-                hasMore = false;
-                break;
-            }
-
-            const batch = db.batch();
-            snapshot.docs.forEach((doc: FirebaseFirestore.QueryDocumentSnapshot) => {
-                batch.delete(doc.ref);
-                totalDeleted++;
-            });
-
-            await batch.commit();
-            hasMore = snapshot.size === 500;
-        }
+        const { deletedCount, hasMore } = await this.cleanupByTimestamp('syncLogs', cutoffDate, budgetMs);
 
         // Log cleanup
         await db.collection('metrics').add({
             timestamp: Date.now(),
             type: 'cleanup',
             severity: 'info',
-            metadata: { collection: 'syncLogs', deletedCount: totalDeleted, cutoffDate: cutoffDate.toISOString(), daysOld },
+            metadata: { collection: 'syncLogs', deletedCount, cutoffDate: cutoffDate.toISOString(), daysOld, hasMore },
         });
 
-        return { deletedCount: totalDeleted, cutoffDate: cutoffDate.toISOString() };
+        return { deletedCount, cutoffDate: cutoffDate.toISOString(), hasMore };
     }
 
     /**

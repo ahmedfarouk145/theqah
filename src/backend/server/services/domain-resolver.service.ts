@@ -12,8 +12,21 @@ export interface ParsedHref {
     base: string;
     host: string;
     isTrial: boolean;
+    /** true when the store lives under a path on a shared platform host
+     *  (e.g. salla.sa/<store>) — bare-host lookups must be skipped or
+     *  every path store on the host resolves to the same store. */
+    isPlatformPath: boolean;
     url: URL | null;
 }
+
+/** Shared platform hosts where the first path segment IS the store. */
+const PLATFORM_PATH_HOSTS = new Set([
+    'salla.sa', 'www.salla.sa',
+    'zid.sa', 'www.zid.sa',
+]);
+
+/** Negative-cache (tombstone) TTL for unresolvable domains. */
+const TOMBSTONE_TTL_MS = 6 * 60 * 60 * 1000;
 
 export class DomainResolverService {
     private normalizeUrl(raw: unknown): URL | null {
@@ -25,14 +38,16 @@ export class DomainResolverService {
 
     parseHref(href: string): ParsedHref {
         const u = this.normalizeUrl(href);
-        if (!u) return { base: '', host: '', isTrial: false, url: null };
+        if (!u) return { base: '', host: '', isTrial: false, isPlatformPath: false, url: null };
 
         const origin = u.origin.toLowerCase();
+        const host = u.host.toLowerCase();
         const firstSeg = u.pathname.split('/').filter(Boolean)[0] || '';
         const isTrial = firstSeg.startsWith('dev-');
-        const base = isTrial ? `${origin}/${firstSeg}` : origin;
+        const isPlatformPath = !isTrial && PLATFORM_PATH_HOSTS.has(host) && !!firstSeg;
+        const base = (isTrial || isPlatformPath) ? `${origin}/${firstSeg}` : origin;
 
-        return { base, host: u.host.toLowerCase(), isTrial, url: u };
+        return { base, host, isTrial, isPlatformPath, url: u };
     }
 
     encodeUrlForFirestore(url: string | null | undefined): string {
@@ -60,17 +75,36 @@ export class DomainResolverService {
 
         if (!params.href) return null;
 
-        const { base, host, isTrial, url: hrefUrl } = this.parseHref(params.href);
+        const parsed = this.parseHref(params.href);
+        const { base, host, isTrial, isPlatformPath, url: hrefUrl } = parsed;
 
         let doc: FirebaseFirestore.DocumentSnapshot | null = null;
+        let viaFastPath = false;
 
+        // FAST PATH: a previous resolution (or install-time mapping) put
+        // this domain in the `domains` collection — 1-3 doc reads instead
+        // of the ~60-query brute force below. Also honors tombstones so
+        // repeatedly-unresolvable domains cost 1 read until the TTL ends.
         if (base) {
-            // Try domain variations
-            const rawVariations = [
-                base,
-                `${host}${base.includes('/') ? base.substring(base.indexOf('/', 8)) : ''}`,
-                host,
-            ];
+            const fast = await this.fastLookup(db, parsed);
+            if (fast === 'tombstone') return null;
+            if (fast) {
+                doc = fast;
+                viaFastPath = true;
+            }
+        }
+
+        if (!doc && base) {
+            // Try domain variations.
+            // Platform-path stores (salla.sa/<store>) must never match on
+            // the bare host — that's shared by every store on the platform.
+            const rawVariations = isPlatformPath
+                ? [base, `${host}${base.substring(base.indexOf('/', 8))}`]
+                : [
+                    base,
+                    `${host}${base.includes('/') ? base.substring(base.indexOf('/', 8)) : ''}`,
+                    host,
+                ];
             // Include trailing-slash variants (Zid stores store domain as "https://x.zid.store/")
             const domainVariations = [
                 ...rawVariations,
@@ -126,11 +160,11 @@ export class DomainResolverService {
 
             // Try domains collection
             if (!doc) {
-                doc = await this.lookupFromDomainsCollection(db, base, hrefUrl, host);
+                doc = await this.lookupFromDomainsCollection(db, base, hrefUrl, host, isPlatformPath);
             }
 
-            // Try variations for non-trial stores
-            if (!doc && !isTrial) {
+            // Try variations for non-trial, non-platform-path stores
+            if (!doc && !isTrial && !isPlatformPath) {
                 doc = await this.tryDomainVariations(db, base, host);
             }
         } else if (params.storeId) {
@@ -147,7 +181,12 @@ export class DomainResolverService {
             }
         }
 
-        if (!doc) return null;
+        if (!doc) {
+            // Negative cache: the next miss for this base costs 1 read
+            // instead of the full brute force, until the TTL expires.
+            if (base) await this.writeTombstone(db, base);
+            return null;
+        }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data = doc.data() as any;
@@ -160,27 +199,126 @@ export class DomainResolverService {
 
         if (!resolvedUid) return null;
 
+        // Write-through: brute-force successes become fast-path hits for
+        // every subsequent request (also clears any stale tombstone).
+        if (base && !viaFastPath) {
+            await this.saveMapping(db, base, resolvedUid);
+        }
+
         return {
             storeUid: resolvedUid,
             certificatePosition: data.settings?.certificatePosition || 'auto',
         };
     }
 
+    /** True when `base` is a bare shared-platform origin (never map those). */
+    private isBarePlatformBase(base: string): boolean {
+        const stripped = base.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+        return PLATFORM_PATH_HOSTS.has(stripped);
+    }
+
+    private async fastLookup(
+        db: FirebaseFirestore.Firestore,
+        parsed: ParsedHref,
+    ): Promise<FirebaseFirestore.DocumentSnapshot | 'tombstone' | null> {
+        const { base, host, isPlatformPath } = parsed;
+        const keys = [this.encodeUrlForFirestore(base)];
+        if (!isPlatformPath) {
+            // Bare-host keys are only safe for dedicated domains.
+            keys.push(host.replace(/\./g, '_'));
+            keys.push(host.replace(/^www\./, '').replace(/\./g, '_'));
+        }
+        const uniqueKeys = keys.filter((k, i, arr) => k && arr.indexOf(k) === i);
+        const canonicalKey = uniqueKeys[0];
+
+        for (const key of uniqueKeys) {
+            let snap: FirebaseFirestore.DocumentSnapshot;
+            try {
+                snap = await db.collection('domains').doc(key).get();
+            } catch { continue; }
+            if (!snap.exists) continue;
+
+            const d = snap.data() as { storeUid?: string; uid?: string; notFound?: boolean; until?: number } | undefined;
+            if (d?.notFound) {
+                if ((d.until || 0) > Date.now()) return 'tombstone';
+                continue; // expired tombstone — fall through to full lookup
+            }
+            const uid = d?.storeUid || d?.uid;
+            if (!uid) continue;
+            // Bare-platform mappings are poison (one store claiming the
+            // whole shared host) — never honor them.
+            if (this.isBarePlatformBase(String((d as { base?: string })?.base || base))) continue;
+
+            const storeDoc = await db.collection('stores').doc(uid).get();
+            if (storeDoc.exists) {
+                // Legacy-format key hit: also save under the canonical key
+                // so future lookups match on the first doc get.
+                if (key !== canonicalKey) {
+                    await this.saveMapping(db, base, uid);
+                }
+                return storeDoc;
+            }
+        }
+        return null;
+    }
+
+    private async writeTombstone(db: FirebaseFirestore.Firestore, base: string): Promise<void> {
+        if (this.isBarePlatformBase(base)) return;
+        try {
+            await db.collection('domains').doc(this.encodeUrlForFirestore(base)).set({
+                base,
+                notFound: true,
+                until: Date.now() + TOMBSTONE_TTL_MS,
+                updatedAt: Date.now(),
+            }, { merge: true });
+        } catch { /* negative cache is best-effort */ }
+    }
+
+    private async saveMapping(
+        db: FirebaseFirestore.Firestore,
+        base: string,
+        storeUid: string,
+    ): Promise<void> {
+        if (this.isBarePlatformBase(base)) return;
+        try {
+            const key = this.encodeUrlForFirestore(base);
+            await db.collection('domains').doc(key).set({
+                base,
+                key,
+                uid: storeUid,
+                storeUid,
+                notFound: false,
+                until: 0,
+                autoMapped: true,
+                updatedAt: Date.now(),
+            }, { merge: true });
+        } catch { /* mapping cache is best-effort */ }
+    }
+
     private async lookupFromDomainsCollection(
         db: FirebaseFirestore.Firestore,
         base: string,
         hrefUrl: URL | null,
-        host: string
+        host: string,
+        isPlatformPath: boolean = false
     ): Promise<FirebaseFirestore.DocumentSnapshot | null> {
         try {
-            // Try multiple key formats since they may vary
-            const keysToTry = [
-                this.encodeUrlForFirestore(base),  // URL-encoded format
-                base,  // Raw base
-                host.replace(/\./g, '_').toLowerCase(),  // Underscore format (pointstylishes_com)
-                `www_${host.replace(/^www\./, '').replace(/\./g, '_').toLowerCase()}`,  // www variant
-                host.replace(/^www\./, '').replace(/\./g, '_').toLowerCase(),  // Non-www variant
-            ].filter((k, i, arr) => k && arr.indexOf(k) === i);
+            // Try multiple key formats since they may vary.
+            // Platform-path stores (salla.sa/<store>) must only match keys
+            // that include the store segment — a bare-host doc on a shared
+            // platform host would map EVERY store on it to one store.
+            const keysToTry = (isPlatformPath
+                ? [
+                    this.encodeUrlForFirestore(base),  // URL-encoded format (includes segment)
+                    base,  // Raw base (includes segment)
+                ]
+                : [
+                    this.encodeUrlForFirestore(base),  // URL-encoded format
+                    base,  // Raw base
+                    host.replace(/\./g, '_').toLowerCase(),  // Underscore format (pointstylishes_com)
+                    `www_${host.replace(/^www\./, '').replace(/\./g, '_').toLowerCase()}`,  // www variant
+                    host.replace(/^www\./, '').replace(/\./g, '_').toLowerCase(),  // Non-www variant
+                ]).filter((k, i, arr) => k && arr.indexOf(k) === i);
 
             let domainDoc: FirebaseFirestore.DocumentSnapshot | null = null;
 
@@ -195,8 +333,8 @@ export class DomainResolverService {
             }
 
             if (domainDoc?.exists) {
-                const d = domainDoc.data() as { storeUid?: string; uid?: string } | undefined;
-                const fromUid = d?.storeUid || d?.uid;
+                const d = domainDoc.data() as { storeUid?: string; uid?: string; notFound?: boolean } | undefined;
+                const fromUid = !d?.notFound ? (d?.storeUid || d?.uid) : undefined;
                 if (fromUid) {
                     const storeDoc = await db.collection('stores').doc(fromUid).get();
                     if (storeDoc.exists) return storeDoc;

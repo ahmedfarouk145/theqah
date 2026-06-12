@@ -63,32 +63,51 @@
 
   // ——— Cache/Single-flight لنتيجة resolveStore ———
   const G = (window.__THEQAH__ = window.__THEQAH__ || {});
-  const TTL_MS = 10 * 60 * 1000; // 10 دقائق
+  const TTL_MS = 24 * 60 * 60 * 1000; // 24h — domain→store mappings rarely change
+  const NEG_TTL_MS = 6 * 60 * 60 * 1000; // 6h — unresolvable stores stop hammering the API
 
-  function cacheKey(host) { return `theqah:storeUid:${host}`; }
-  function getCached(host) {
+  // Shared platform hosts where the first path segment identifies the store.
+  const PLATFORM_HOSTS = ['salla.sa', 'zid.sa'];
+
+  function platformSegment() {
+    const bare = location.host.replace(/^www\./, '').toLowerCase();
+    if (!PLATFORM_HOSTS.includes(bare)) return '';
+    return (location.pathname.split('/').filter(Boolean)[0] || '');
+  }
+
+  function cacheScope() {
+    const seg = platformSegment();
+    const host = location.host.replace(/^www\./, '').toLowerCase();
+    return seg ? `${host}/${seg}` : host;
+  }
+
+  function cacheKey(scope) { return `theqah:storeUid:${scope}`; }
+  function getCached(scope) {
     try {
-      const o = JSON.parse(localStorage.getItem(cacheKey(host)) || '{}');
-      if (o.uid && (Date.now() - (o.t || 0) < TTL_MS)) return o.uid;
+      const o = JSON.parse(localStorage.getItem(cacheKey(scope)) || '{}');
+      if (o.notFound && (Date.now() - (o.t || 0) < NEG_TTL_MS)) return { notFound: true };
+      if (o.uid && (Date.now() - (o.t || 0) < TTL_MS)) return o;
     } catch { }
     return null;
   }
-  function setCached(host, uid) {
-    try { localStorage.setItem(cacheKey(host), JSON.stringify({ uid, t: Date.now() })); } catch { }
+  function setCached(scope, data) {
+    try { localStorage.setItem(cacheKey(scope), JSON.stringify({ ...data, t: Date.now() })); } catch { }
   }
 
   async function resolveStore() {
+    const scope = cacheScope();
     const host = location.host.replace(/^www\./, '').toLowerCase();
 
     // ذاكرة + localStorage
     if (G.storeData) return G.storeData;
-    const cached = getCached(host);
+    const cached = getCached(scope);
     if (cached) {
+      if (cached.notFound) return null; // negative cache — skip the API
       // For backwards compatibility, handle both old format (string) and new format (object)
-      if (typeof cached === 'string') {
-        G.storeData = { storeUid: cached, certificatePosition: 'auto' };
+      if (typeof cached === 'string' || typeof cached.uid === 'string' && !cached.storeUid) {
+        G.storeData = { storeUid: cached.uid || cached, certificatePosition: cached.pos || 'auto' };
       } else {
-        G.storeData = cached;
+        G.storeData = { storeUid: cached.storeUid || cached.uid, certificatePosition: cached.certificatePosition || 'auto' };
       }
       return G.storeData;
     }
@@ -99,13 +118,26 @@
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&href=${encodeURIComponent(location.href)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
+    // Low-cardinality URL (host + platform segment + optional store id) so
+    // the CDN can cache one entry per STORE instead of one per page URL.
+    const seg = platformSegment();
+    let hrefParam = `https://${host}/${seg ? seg + '/' : ''}`;
+    try {
+      const qp = new URLSearchParams(location.search);
+      const sid = qp.get('identifier') || qp.get('merchant') || qp.get('store_id');
+      if (sid) hrefParam += `?store_id=${encodeURIComponent(sid)}`;
+    } catch { }
+
+    const url = `${API_BASE}/resolve?host=${encodeURIComponent(host)}&href=${encodeURIComponent(hrefParam)}&v=${encodeURIComponent(SCRIPT_VERSION)}`;
     G.resolvePromise = fetch(url, {
-      cache: 'no-store',
       signal: controller.signal
     })
       .then(r => {
         clearTimeout(timeoutId);
+        if (r.status === 404) {
+          setCached(scope, { notFound: true });
+          return null;
+        }
         return r.ok ? r.json() : null;
       })
       .then(j => {
@@ -115,7 +147,7 @@
           certificatePosition: j.certificatePosition || 'auto'
         };
         G.storeData = storeData;
-        setCached(host, storeData);
+        setCached(scope, storeData);
         return storeData;
       })
       .catch(() => {

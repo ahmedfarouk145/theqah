@@ -4,6 +4,7 @@
  */
 
 import { RepositoryFactory } from '../repositories';
+import { VerifiedIndexService } from './verified-index.service';
 import type { Review, Store } from '../core/types';
 
 export interface VerifiedReviewResult {
@@ -23,6 +24,7 @@ export class VerificationService {
     private reviewRepo = RepositoryFactory.getReviewRepository();
     private storeRepo = RepositoryFactory.getStoreRepository();
     private domainRepo = RepositoryFactory.getDomainRepository();
+    private indexService = new VerifiedIndexService();
 
     /**
      * Get verified reviews for widget display
@@ -48,18 +50,58 @@ export class VerificationService {
             return { hasVerified: false, reviews: [], count: 0 };
         }
 
-        let reviews = await this.reviewRepo.findVerifiedByStore(storeId, productId);
+        // Serve from the per-store verified index (1 doc read + 1 count
+        // aggregate) instead of reading every verified review per call.
+        // The page's own product reviews are fetched in full (small set)
+        // for JSON-LD; the rest of the store's reviews come back as
+        // compact ID-only entries — enough for the widget's DOM badge
+        // matching, and naturally excluded from JSON-LD by the widget's
+        // `r.stars && r.authorName` filter.
+        const [index, productReviews] = await Promise.all([
+            this.indexService.getFresh(storeId),
+            productId ? this.reviewRepo.findVerifiedByStore(storeId, productId) : Promise.resolve([]),
+        ]);
 
-        // Fallback: if product-filtered query returns nothing, try store-wide
-        // Reviews may not have productId stored (e.g. backfilled reviews)
-        if (reviews.length === 0 && productId) {
-            reviews = await this.reviewRepo.findVerifiedByStore(storeId);
+        const seen = new Set<string>(productReviews.map((r) => String(r.id || r.reviewId)));
+        const reviews: Review[] = [...productReviews];
+
+        for (const r of index.rich) {
+            if (seen.has(r.id)) continue;
+            seen.add(r.id);
+            reviews.push({
+                id: r.id,
+                reviewId: r.id,
+                sallaReviewId: r.sallaReviewId,
+                zidDomHash: r.zidDomHash,
+                productId: r.productId,
+                productName: r.productName,
+                stars: r.stars,
+                verified: true,
+                author: r.authorName ? { displayName: r.authorName } : undefined,
+                text: r.text,
+                publishedAt: r.publishedAt,
+            } as unknown as Review);
+        }
+
+        for (const e of index.entries) {
+            if (seen.has(e.id)) continue;
+            seen.add(e.id);
+            // Compact entry: IDs only. No stars/author so the widget's
+            // JSON-LD filter skips it; badge matching still works.
+            reviews.push({
+                id: e.id,
+                reviewId: e.id,
+                sallaReviewId: e.sallaReviewId,
+                zidDomHash: e.zidDomHash,
+                productId: e.productId,
+                verified: true,
+            } as unknown as Review);
         }
 
         return {
-            hasVerified: reviews.length > 0,
+            hasVerified: index.count > 0 || reviews.length > 0,
             reviews,
-            count: reviews.length,
+            count: Math.max(index.count, reviews.length),
         };
     }
 
