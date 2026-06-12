@@ -29,8 +29,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Public, store+product-keyed response — let Vercel's CDN absorb
-  // repeat product-page views (5 min fresh, 1 h stale-while-revalidate).
-  res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=3600");
+  // repeat product-page views. 1h fresh + 24h SWR: newly approved
+  // reviews appear within the hour (sooner via background revalidation),
+  // and per-store misses drop to ~1/hour/region.
+  res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
 
   // Rate limiting - 100 requests per 15 minutes per IP
   const limited = await rateLimitPublic(req, res, {

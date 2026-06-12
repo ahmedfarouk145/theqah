@@ -26,7 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const productId = get('productId') || get('product') || get('p');
 
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=900');
+  // Consensus regenerates via a 6-hourly cron — cache accordingly.
+  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
 
   if (!storeUid || !productId) return res.status(200).json({ consensus: null });
 

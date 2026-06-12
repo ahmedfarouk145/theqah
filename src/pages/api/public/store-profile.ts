@@ -16,7 +16,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== "GET") return res.status(405).json({ error: "method_not_allowed" });
 
     // Public paginated data — edge-cacheable per (store, page) key.
-    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=3600");
+    // 1h fresh + 24h stale-while-revalidate: review lists change a few
+    // times a day; SWR serves instantly and refreshes in the background,
+    // so visitors never wait and Firestore sees ~1 miss/store/hour.
+    res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
 
     // Rate limiting
     const limited = await rateLimitPublic(req, res, {
