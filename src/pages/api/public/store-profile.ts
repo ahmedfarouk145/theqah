@@ -15,6 +15,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === "OPTIONS") return res.status(200).end();
     if (req.method !== "GET") return res.status(405).json({ error: "method_not_allowed" });
 
+    // Public paginated data — edge-cacheable per (store, page) key.
+    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=3600");
+
     // Rate limiting
     const limited = await rateLimitPublic(req, res, {
         ...RateLimitPresets.PUBLIC_MODERATE,

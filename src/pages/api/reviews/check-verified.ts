@@ -28,6 +28,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  // Public, store+product-keyed response — let Vercel's CDN absorb
+  // repeat product-page views (5 min fresh, 1 h stale-while-revalidate).
+  res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=3600");
+
   // Rate limiting - 100 requests per 15 minutes per IP
   const limited = await rateLimitPublic(req, res, {
     ...RateLimitPresets.PUBLIC_MODERATE,

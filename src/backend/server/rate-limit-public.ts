@@ -311,7 +311,23 @@ interface RateLimitEventData {
   duration: number;
 }
 
+// Allowed requests are SAMPLED 1-in-N: logging every allowed request was
+// ~14.8k Firestore writes/day (~74% of the free daily write quota) for
+// data the dashboard only reads in aggregate. Blocked (429) events are
+// always logged. Dashboards should multiply sampled counts by the rate
+// (carried in metadata.sampleRate). Deterministic per-instance counters
+// (not Math.random) so low-traffic identifiers still get representation.
+const METRIC_SAMPLE_RATE = Math.max(1, parseInt(process.env.RATE_LIMIT_METRIC_SAMPLE_RATE || "10", 10) || 10);
+const sampleCounters = new Map<string, number>();
+
+function shouldSampleAllowed(identifier: string): boolean {
+  const n = sampleCounters.get(identifier) || 0;
+  sampleCounters.set(identifier, n + 1);
+  return n % METRIC_SAMPLE_RATE === 0;
+}
+
 async function trackRateLimitEvent(data: RateLimitEventData): Promise<void> {
+  if (data.allowed && !shouldSampleAllowed(data.identifier)) return;
   try {
     await metrics.track({
       type: "api_call",
@@ -326,7 +342,9 @@ async function trackRateLimitEvent(data: RateLimitEventData): Promise<void> {
         count: data.count,
         limit: data.limit,
         usage: `${data.count}/${data.limit}`,
-        blocked: !data.allowed
+        blocked: !data.allowed,
+        // Allowed events are sampled; consumers multiply by this rate.
+        sampleRate: data.allowed ? METRIC_SAMPLE_RATE : 1
       }
     });
   } catch (error) {
