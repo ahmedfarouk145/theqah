@@ -223,7 +223,18 @@ export class DomainResolverService {
     ): Promise<FirebaseFirestore.DocumentSnapshot | 'tombstone' | null> {
         const { base, host, isPlatformPath } = parsed;
         const keys = [this.encodeUrlForFirestore(base)];
-        if (!isPlatformPath) {
+        if (isPlatformPath) {
+            // Install-time mappings for path stores use legacy underscore
+            // keys WITH the store segment (e.g. salla_sa_alool22,
+            // salla_sa_perfect-perfume_com). Segment-bearing keys are safe
+            // — only bare-host keys are the poison pattern.
+            const seg = base.substring(base.indexOf('/', 8) + 1);
+            const bareHost = host.replace(/^www\./, '');
+            const underscore = (s: string) => s.replace(/\./g, '_').replace(/\//g, '_');
+            keys.push(this.encodeUrlForFirestore(`${bareHost}/${seg}`));
+            keys.push(underscore(`${bareHost}/${seg}`));
+            keys.push(underscore(`www.${bareHost}/${seg}`));
+        } else {
             // Bare-host keys are only safe for dedicated domains.
             keys.push(host.replace(/\./g, '_'));
             keys.push(host.replace(/^www\./, '').replace(/\./g, '_'));
@@ -231,6 +242,10 @@ export class DomainResolverService {
         const uniqueKeys = keys.filter((k, i, arr) => k && arr.indexOf(k) === i);
         const canonicalKey = uniqueKeys[0];
 
+        // Scan ALL keys; a positive mapping anywhere beats a tombstone —
+        // otherwise a stale tombstone at the canonical key would shadow a
+        // valid legacy-format mapping forever.
+        let sawActiveTombstone = false;
         for (const key of uniqueKeys) {
             let snap: FirebaseFirestore.DocumentSnapshot;
             try {
@@ -240,8 +255,8 @@ export class DomainResolverService {
 
             const d = snap.data() as { storeUid?: string; uid?: string; notFound?: boolean; until?: number } | undefined;
             if (d?.notFound) {
-                if ((d.until || 0) > Date.now()) return 'tombstone';
-                continue; // expired tombstone — fall through to full lookup
+                if ((d.until || 0) > Date.now()) sawActiveTombstone = true;
+                continue;
             }
             const uid = d?.storeUid || d?.uid;
             if (!uid) continue;
@@ -252,14 +267,15 @@ export class DomainResolverService {
             const storeDoc = await db.collection('stores').doc(uid).get();
             if (storeDoc.exists) {
                 // Legacy-format key hit: also save under the canonical key
-                // so future lookups match on the first doc get.
+                // (overwrites any tombstone) so future lookups match on
+                // the first doc get.
                 if (key !== canonicalKey) {
                     await this.saveMapping(db, base, uid);
                 }
                 return storeDoc;
             }
         }
-        return null;
+        return sawActiveTombstone ? 'tombstone' : null;
     }
 
     private async writeTombstone(db: FirebaseFirestore.Firestore, base: string): Promise<void> {
