@@ -833,7 +833,7 @@
   const SVG_IG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.72 0 3.06.01 4.12.06 1.07.05 1.79.22 2.43.46.66.26 1.22.6 1.77 1.16.56.55.9 1.11 1.16 1.77.25.64.42 1.37.46 2.43.05 1.07.06 1.4.06 4.12s-.01 3.06-.06 4.12c-.05 1.07-.22 1.79-.46 2.43-.26.66-.6 1.22-1.16 1.77-.55.56-1.11.9-1.77 1.16-.64.25-1.37.42-2.43.46-1.07.05-1.4.06-4.12.06s-3.06-.01-4.12-.06c-1.07-.05-1.79-.22-2.43-.46a4.92 4.92 0 0 1-1.77-1.16 4.92 4.92 0 0 1-1.16-1.77c-.25-.64-.42-1.37-.46-2.43C2.01 15.06 2 14.72 2 12s.01-3.06.06-4.12c.05-1.07.22-1.79.46-2.43.26-.66.6-1.22 1.16-1.77.55-.56 1.11-.9 1.77-1.16.64-.25 1.37-.42 2.43-.46C8.94 2.01 9.28 2 12 2Zm0 5a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 1.8a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4Zm5.25-3.05a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z"/></svg>';
   const SVG_TT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.3 7.6a6.66 6.66 0 0 1-3.94-1.27V15.4a5.6 5.6 0 1 1-5.6-5.6c.18 0 .36.01.54.03v2.4a3.2 3.2 0 1 0 2.66 3.16V2h2.4a4.66 4.66 0 0 0 3.94 4.6v2.4-1.4Z"/></svg>';
   const SVG_COPY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"/></svg>';
-  const SVG_SHARE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>';
+  const SVG_SHARE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>';
 
   function makePlatformButton(platform, label, desc, iconClass, svgHtml) {
     const ico = h('span', { class: 'ico ' + iconClass, html: svgHtml });
@@ -843,6 +843,25 @@
     ]);
     const btn = h('button', { class: 'theqah-share-pbtn', 'data-platform': platform, type: 'button' }, [ico, info]);
     return btn;
+  }
+
+  // Button styles are injected separately from the modal: buttons appear on
+  // page load, but the modal (and its CSS) is only built on first click —
+  // bundling these rules there left the buttons unstyled until then.
+  let shareBtnStylesInjected = false;
+  function ensureShareButtonStyles() {
+    if (shareBtnStylesInjected) return;
+    shareBtnStylesInjected = true;
+    const style = h('style', {
+      id: 'theqah-share-btn-style',
+      html: `
+        .theqah-owner-share-btn { display:inline-flex !important; flex-direction:row !important; align-items:center !important; justify-content:center !important; gap:5px !important; background:white !important; border:1.5px solid #b89968 !important; color:#8a6d3b !important; padding:5px 10px !important; border-radius:999px !important; font-size:11px !important; font-weight:800 !important; cursor:pointer !important; font-family:'Cairo',system-ui,sans-serif !important; margin-inline-start:6px !important; flex-shrink:0 !important; transition:transform 0.15s ease, box-shadow 0.15s ease !important; box-shadow:0 2px 6px -2px rgba(184,153,104,0.4) !important; line-height:1 !important; height:auto !important; width:auto !important; min-width:0 !important; max-width:none !important; white-space:nowrap !important; vertical-align:middle !important; text-decoration:none !important; }
+        .theqah-owner-share-btn:hover { transform:translateY(-1px) !important; box-shadow:0 4px 10px -2px rgba(184,153,104,0.6) !important; }
+        .theqah-owner-share-btn svg { width:12px !important; height:12px !important; min-width:12px !important; max-width:12px !important; min-height:12px !important; max-height:12px !important; flex-shrink:0 !important; display:inline-block !important; vertical-align:middle !important; }
+        .theqah-owner-share-btn > span { display:inline !important; white-space:nowrap !important; font-size:11px !important; line-height:1 !important; }
+      `,
+    });
+    document.head.appendChild(style);
   }
 
   let shareModalInjected = false;
@@ -873,10 +892,6 @@
         .theqah-share-pbtn > span > span { font-size:11.5px; color:#64748b; line-height:1.5; display:block; }
         .theqah-share-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#0f172a; color:white; padding:12px 20px; border-radius:10px; font-size:13px; font-weight:700; z-index:2147483647; opacity:0; transition:opacity 0.2s ease; font-family:'Cairo',system-ui,sans-serif; }
         .theqah-share-toast.show { opacity:1; }
-        .theqah-owner-share-btn { display:inline-flex !important; flex-direction:row !important; align-items:center !important; justify-content:center !important; gap:5px !important; background:white !important; border:1.5px solid #b89968 !important; color:#8a6d3b !important; padding:5px 10px !important; border-radius:999px !important; font-size:11px !important; font-weight:800 !important; cursor:pointer !important; font-family:'Cairo',system-ui,sans-serif !important; margin-inline-start:6px !important; flex-shrink:0 !important; transition:transform 0.15s ease, box-shadow 0.15s ease !important; box-shadow:0 2px 6px -2px rgba(184,153,104,0.4) !important; line-height:1 !important; height:auto !important; width:auto !important; min-width:0 !important; max-width:none !important; white-space:nowrap !important; vertical-align:middle !important; text-decoration:none !important; }
-        .theqah-owner-share-btn:hover { transform:translateY(-1px) !important; box-shadow:0 4px 10px -2px rgba(184,153,104,0.6) !important; }
-        .theqah-owner-share-btn svg { width:12px !important; height:12px !important; min-width:12px !important; max-width:12px !important; min-height:12px !important; max-height:12px !important; flex-shrink:0 !important; display:inline-block !important; vertical-align:middle !important; }
-        .theqah-owner-share-btn > span { display:inline !important; white-space:nowrap !important; font-size:11px !important; line-height:1 !important; }
       `,
     });
     document.head.appendChild(style);
@@ -1000,6 +1015,7 @@
   }
 
   function createShareButtonElement(payload) {
+    ensureShareButtonStyles();
     const btn = h('button', {
       class: 'theqah-owner-share-btn',
       type: 'button',
